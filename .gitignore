@@ -57,6 +57,9 @@ venv/
 .venv/
 env/
 .pytest_cache/
+*.spec
+dist/
+build/
 
 # SQLite databases (if used for simple caching locally)
 *.sqlite3

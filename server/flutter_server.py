@@ -42,6 +42,10 @@ API_KEY = os.getenv("NVIDIA_API_KEY")
 if not API_KEY:
     print("WARNING: NVIDIA_API_KEY is not set in .env!")
 
+current_source_lang = "auto"
+current_target_lang = "en"
+current_use_mic = False
+
 
 async def broadcast(message: dict):
     """Send a JSON message to all connected Flutter clients."""
@@ -68,7 +72,7 @@ def caption_callback(text, is_error, is_final=True, original_text=None):
 
 def audio_poll_loop():
     """Background thread: polls audio capture queue and feeds to nim_api."""
-    global is_running
+    global is_running, current_source_lang, current_target_lang
     stream_started = False
     while is_running:
         item = audio_capture.get_audio_chunk()
@@ -77,8 +81,8 @@ def audio_poll_loop():
             if not stream_started:
                 nim_api.start_stream(
                     sample_rate=sample_rate,
-                    source_lang="auto",
-                    target_lang="en",
+                    source_lang=current_source_lang,
+                    target_lang=current_target_lang,
                     callback=caption_callback,
                 )
                 stream_started = True
@@ -91,18 +95,25 @@ def audio_poll_loop():
 # ── REST endpoints ──────────────────────────────────────────────────────────
 
 @app.post("/start")
-async def start_capture(source_lang: str = "auto", target_lang: str = "en"):
+async def start_capture(source_lang: str = "auto", target_lang: str = "en", use_mic: bool = False):
     global nim_api, audio_capture, is_running, audio_thread
+    global current_source_lang, current_target_lang, current_use_mic
+    
+    current_source_lang = source_lang
+    current_target_lang = target_lang
+    current_use_mic = use_mic
+
     if is_running:
-        return {"status": "already running"}
+        await stop_capture()
+        await asyncio.sleep(0.5)
 
     nim_api = NimApiClient(api_key=API_KEY)
-    audio_capture = AudioCapture(sample_rate=16000, chunk_duration=1.5)
+    audio_capture = AudioCapture(sample_rate=16000, chunk_duration=1.5, use_mic=current_use_mic)
     is_running = True
     audio_capture.start()
     audio_thread = threading.Thread(target=audio_poll_loop, daemon=True)
     audio_thread.start()
-    return {"status": "started", "source": source_lang, "target": target_lang}
+    return {"status": "started", "source": source_lang, "target": target_lang, "use_mic": current_use_mic}
 
 
 @app.post("/stop")
@@ -134,10 +145,11 @@ async def captions_ws(websocket: WebSocket):
             data = await websocket.receive_text()
             msg = json.loads(data)
             # Flutter can send {"cmd": "start", "source": "auto", "target": "en"}
-            if msg.get("cmd") == "start":
+            if msg.get("cmd") in ("start", "settings_update"):
                 await start_capture(
                     source_lang=msg.get("source", "auto"),
                     target_lang=msg.get("target", "en"),
+                    use_mic=msg.get("use_mic", False),
                 )
             elif msg.get("cmd") == "stop":
                 await stop_capture()
@@ -146,4 +158,4 @@ async def captions_ws(websocket: WebSocket):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8765)
+    uvicorn.run(app, host="127.0.0.1", port=8765)

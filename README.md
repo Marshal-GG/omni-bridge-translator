@@ -1,6 +1,6 @@
 # Omni Bridge: Live AI Translator
 
-Omni Bridge: Live AI Translator is a real-time translating live-caption overlay built with Flutter and Python. It captures system audio (or microphone input) on Windows, sends it to a local Python WebSocket server, processes the audio using NVIDIA Riva/NIM and OpenAI for translation, and streams the translated captions back to a transparent, draggable, always-on-top desktop widget.
+Omni Bridge: Live AI Translator is a real-time translating live-caption overlay built with Flutter and Python. It captures system audio (or microphone input) on Windows, sends it to a local Python WebSocket server, processes the audio using NVIDIA Riva/NIM and OpenAI for translation or transcription, and streams the captions back to a transparent, draggable, always-on-top desktop widget.
 
 ## Architecture
 
@@ -60,20 +60,44 @@ python main.py
 ```
 *(Note: Replace `main.py` with your actual entry point script, e.g. `flutter_server.py`)*
 
-The server will start on `ws://0.0.0.0:8765`.
+The server will start on `ws://127.0.0.1:8765`.
 
-### 3. Running the Flutter App
+### 4. Running the Flutter App
 Open a separate terminal and run the Flutter application:
 ```ps1
 flutter run -d windows
 ```
 
+## Building for Production
+
+To create a standalone installer that bundles both the Python server and the Flutter UI:
+
+1. **Build Python Executable:**
+   Open a terminal in the `server` directory, activate the environment, and use PyInstaller.
+   ```ps1
+   cd server
+   .\server_env\Scripts\activate
+   pyinstaller --noconfirm --clean omni_bridge_server.spec
+   ```
+   This generates `dist/omni_bridge_server.exe`.
+
+2. **Build Flutter Release:**
+   Open a terminal in the root directory and build the Windows app.
+   ```ps1
+   flutter build windows
+   ```
+
+3. **Create Windows Installer (Inno Setup):**
+   Open `installer_setup.iss` in Inno Setup Compiler and click "Compile". This will bundle everything into a single `.exe` installer inside the `installers/` folder.
+
 ## Usage
 1. Make sure the Python server is running (`start_server.bat`).
 2. Launch the Omni Bridge: Live AI Translator Flutter app.
 3. Click the **Gear (Settings)** icon in the top right of the overlay.
-4. Select your **Source Language** (or leave as Auto-Detect) and your desired **Target Language**.
-5. Close the settings panel. Omni Bridge: Live AI Translator will connect to the server and begin displaying live translations for any audio playing on your PC.
+4. (Optional) Toggle **Microphone Translation** to translate your mic input instead of system audio.
+5. Select your **Source Language** (or leave as Auto-Detect).
+6. Select your **Target Language**. You can select **Original Source (Transcription)** to bypass translation and only transcribe the speech.
+7. Close the settings panel. Omni Bridge: Live AI Translator will connect to the server and begin displaying live translations or transcriptions for any audio playing on your PC (or from your microphone).
 
 ## Dependencies
 

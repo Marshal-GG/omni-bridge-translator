@@ -7,8 +7,12 @@ import 'translation_service.dart';
 class AsrWebSocketClient {
   TranslationService? _service;
 
-  void start({String sourceLang = 'auto', String targetLang = 'en'}) {
-    const url = 'localhost';
+  void start({
+    String sourceLang = 'auto',
+    String targetLang = 'en',
+    bool useMic = false,
+  }) {
+    const url = '127.0.0.1';
     const port = 8765;
     debugPrint('ASR WS connecting to: ws://$url:$port/captions');
 
@@ -17,6 +21,7 @@ class AsrWebSocketClient {
     _service!.captions.listen((msg) {
       if (msg.isError) {
         debugPrint('ASR error: ${msg.text}');
+        asrTextController.updateInterim('Connection Issue: ${msg.text}');
         return;
       }
       final text = msg.text.trim();
@@ -29,7 +34,23 @@ class AsrWebSocketClient {
       }
     });
 
-    _service!.start(sourceLang: sourceLang, targetLang: targetLang);
+    _service!.start(
+      sourceLang: sourceLang,
+      targetLang: targetLang,
+      useMic: useMic,
+    );
+  }
+
+  void updateSettings({
+    required String sourceLang,
+    required String targetLang,
+    required bool useMic,
+  }) {
+    _service?.updateSettings(
+      sourceLang: sourceLang,
+      targetLang: targetLang,
+      useMic: useMic,
+    );
   }
 
   void stop() {

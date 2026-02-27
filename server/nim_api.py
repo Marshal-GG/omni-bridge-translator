@@ -163,7 +163,7 @@ class NimApiClient:
                     
                     clean = self._clean_stutters(transcript)
 
-                    if self._target_lang and self._target_lang != self._source_lang:
+                    if self._target_lang and self._target_lang != self._source_lang and self._target_lang != 'none':
                         translated = self._translate_text(clean, self._source_lang, self._target_lang)
                         if self._callback:
                             self._callback(translated, False, is_final=True, original_text=clean)

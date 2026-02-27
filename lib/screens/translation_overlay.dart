@@ -50,25 +50,26 @@ class _DraggableOverlayContentState extends State<DraggableOverlayContent> {
   // --- LANGUAGES ---
   final Map<String, String> _languages = {
     'auto': 'Auto-Detect',
-    'en': 'English',
-    'es': 'Spanish',
-    'fr': 'French',
-    'de': 'German',
-    'zh': 'Chinese',
-    'ja': 'Japanese',
-    'ko': 'Korean',
-    'ru': 'Russian',
-    'pt': 'Portuguese',
-    'it': 'Italian',
-    'ar': 'Arabic',
-    'hi': 'Hindi',
-    'nl': 'Dutch',
-    'tr': 'Turkish',
-    'vi': 'Vietnamese',
-    'pl': 'Polish',
-    'id': 'Indonesian',
-    'th': 'Thai',
-    'bn': 'Bengali',
+    'none': 'Original Source (Transcription)',
+    'en': 'English (en)',
+    'es': 'Spanish (es)',
+    'fr': 'French (fr)',
+    'de': 'German (de)',
+    'zh': 'Chinese (zh)',
+    'ja': 'Japanese (ja)',
+    'ko': 'Korean (ko)',
+    'ru': 'Russian (ru)',
+    'pt': 'Portuguese (pt)',
+    'it': 'Italian (it)',
+    'ar': 'Arabic (ar)',
+    'hi': 'Hindi (hi)',
+    'nl': 'Dutch (nl)',
+    'tr': 'Turkish (tr)',
+    'vi': 'Vietnamese (vi)',
+    'pl': 'Polish (pl)',
+    'id': 'Indonesian (id)',
+    'th': 'Thai (th)',
+    'bn': 'Bengali (bn)',
   };
 
   @override
@@ -110,6 +111,12 @@ class _DraggableOverlayContentState extends State<DraggableOverlayContent> {
 
     debugPrint(
       "Saved: $_activeSourceLang → $_activeTargetLang (Mic: $_activeUseMic)",
+    );
+
+    _asrClient.updateSettings(
+      sourceLang: _activeSourceLang,
+      targetLang: _activeTargetLang,
+      useMic: _activeUseMic,
     );
 
     // Later we’ll send this to Python via WS
@@ -157,7 +164,10 @@ class _DraggableOverlayContentState extends State<DraggableOverlayContent> {
           const SizedBox(height: 5),
           DropdownSearch<String>(
             selectedItem: _languages[_tempSourceLang],
-            items: _languages.values.toList(),
+            items: _languages.entries
+                .where((e) => e.key != 'none')
+                .map((e) => e.value)
+                .toList(),
             dropdownDecoratorProps: DropDownDecoratorProps(
               dropdownSearchDecoration: _dropdownDecoration(),
             ),

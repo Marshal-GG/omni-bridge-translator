@@ -55,7 +55,11 @@ class TranslationService {
   Stream<CaptionMessage> get captions => _captionController.stream;
 
   /// Connect to server WebSocket then send start command
-  Future<void> start({String sourceLang = 'auto', String targetLang = 'en'}) async {
+  Future<void> start({
+    String sourceLang = 'auto',
+    String targetLang = 'en',
+    bool useMic = false,
+  }) async {
     _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
 
     _channel!.stream.listen(
@@ -66,19 +70,50 @@ class TranslationService {
         } catch (_) {}
       },
       onDone: () => _captionController.add(
-        CaptionMessage(text: '[Disconnected]', original: '', isError: true, isFinal: true),
+        CaptionMessage(
+          text: '[Disconnected]',
+          original: '',
+          isError: true,
+          isFinal: true,
+        ),
       ),
       onError: (e) => _captionController.add(
-        CaptionMessage(text: '[Error: $e]', original: '', isError: true, isFinal: true),
+        CaptionMessage(
+          text: '[Error: $e]',
+          original: '',
+          isError: true,
+          isFinal: true,
+        ),
       ),
     );
 
     // Send start command over WebSocket
-    _channel!.sink.add(jsonEncode({
-      'cmd': 'start',
-      'source': sourceLang,
-      'target': targetLang,
-    }));
+    _channel!.sink.add(
+      jsonEncode({
+        'cmd': 'start',
+        'source': sourceLang,
+        'target': targetLang,
+        'use_mic': useMic,
+      }),
+    );
+  }
+
+  /// Update active translation settings without reconnecting socket
+  void updateSettings({
+    required String sourceLang,
+    required String targetLang,
+    required bool useMic,
+  }) {
+    if (_channel != null) {
+      _channel!.sink.add(
+        jsonEncode({
+          'cmd': 'settings_update',
+          'source': sourceLang,
+          'target': targetLang,
+          'use_mic': useMic,
+        }),
+      );
+    }
   }
 
   /// Send stop command and close WebSocket
