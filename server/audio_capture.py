@@ -98,8 +98,23 @@ class AudioCapture:
                     input_device_index=device_info["index"],
                 )
 
-                buffer = []
-                actual_frames_per_chunk = int(native_rate * self.chunk_duration)
+                # --- VAD parameters ---
+                # RMS energy below this = silence. Raise if picking up background noise.
+                SILENCE_THRESHOLD = 150
+                # Silence must last this long to trigger a flush (seconds)
+                SILENCE_DURATION = 0.33
+                # Minimum speech collected before we're allowed to flush (seconds)
+                MIN_SPEECH_DURATION = 0.4
+                # Hard cap: flush even if speaker never pauses (seconds)
+                MAX_CHUNK_DURATION = 2.5
+
+                silence_frames_needed = int(native_rate * SILENCE_DURATION)
+                min_speech_frames = int(native_rate * MIN_SPEECH_DURATION)
+                max_chunk_frames = int(native_rate * MAX_CHUNK_DURATION)
+
+                speech_buffer = []   # accumulated audio for the current utterance
+                silence_counter = 0  # frames of consecutive silence since last speech
+                in_speech = False
 
                 while self.is_recording:
                     data = stream.read(1024, exception_on_overflow=False)
@@ -111,12 +126,40 @@ class AudioCapture:
                             audio_data_int16.reshape(-1, channels).mean(axis=1).astype(np.int16)
                         )
 
-                    buffer.extend(audio_data_int16.tolist())
+                    rms = np.sqrt(np.mean(audio_data_int16.astype(np.float32) ** 2))
+                    is_silent = rms < SILENCE_THRESHOLD
 
-                    if len(buffer) >= actual_frames_per_chunk:
-                        chunk = np.array(buffer[:actual_frames_per_chunk], dtype=np.int16)
+                    speech_buffer.extend(audio_data_int16.tolist())
+
+                    if not is_silent:
+                        in_speech = True
+                        silence_counter = 0
+                    elif in_speech:
+                        silence_counter += len(audio_data_int16)
+
+                    should_flush = False
+
+                    # Flush when we have enough speech AND a real pause has followed
+                    if (in_speech
+                            and len(speech_buffer) >= min_speech_frames
+                            and silence_counter >= silence_frames_needed):
+                        should_flush = True
+
+                    # Hard cap: flush regardless if speaker never pauses
+                    if len(speech_buffer) >= max_chunk_frames:
+                        should_flush = True
+
+                    if should_flush:
+                        chunk = np.array(speech_buffer, dtype=np.int16)
                         self.audio_queue.put((chunk, native_rate))
-                        buffer = buffer[actual_frames_per_chunk:]
+                        speech_buffer = []
+                        silence_counter = 0
+                        in_speech = False
+
+                # Flush any remaining audio when stopped
+                if speech_buffer and in_speech:
+                    chunk = np.array(speech_buffer, dtype=np.int16)
+                    self.audio_queue.put((chunk, native_rate))
 
                 stream.stop_stream()
                 stream.close()
