@@ -2,23 +2,17 @@
 
 Omni Bridge: Live AI Translator is a real-time translating live-caption overlay built with Flutter and Python. It captures system audio (or microphone input) on Windows, sends it to a local Python WebSocket server, processes the audio using NVIDIA Riva/NIM and OpenAI for translation or transcription, and streams the captions back to a transparent, draggable, always-on-top desktop widget.
 
-## 📸 Screenshots
+<div align="center">
 
-<p align="center">
-  <b>Normal View</b><br>
-  <img src="assets/screenshots/image3.png" width="700" alt="Normal view"/>
-</p>
+| Normal View | Mini View |
+| :---: | :---: |
+| <img src="assets/screenshots/image3.png" width="400"/> | <img src="assets/screenshots/image2.png" width="400"/> |
 
-<p align="center">
-  <b>Mini / Shrunk View</b><br>
-  <img src="assets/screenshots/image2.png" width="700" alt="Mini / Shrunk view"/>
-</p>
+| Settings |
+| :---: |
+| <img src="assets/screenshots/image1.png" width="380"/> |
 
-<p align="center">
-  <b>Settings</b><br>
-  <img src="assets/screenshots/image1.png" width="380" alt="Settings page"/>
-</p>
-
+</div>
 
 ## 🏗️ Architecture
 
