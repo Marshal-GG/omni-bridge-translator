@@ -45,6 +45,8 @@ if not API_KEY:
 current_source_lang = "auto"
 current_target_lang = "en"
 current_use_mic = False
+current_input_device_index = None
+current_output_device_index = None
 
 
 async def broadcast(message: dict):
@@ -94,21 +96,88 @@ def audio_poll_loop():
 
 # ── REST endpoints ──────────────────────────────────────────────────────────
 
+@app.get("/devices")
+async def list_devices():
+    """Return available mic input (WASAPI only) and loopback output devices."""
+    import pyaudiowpatch as pyaudio
+    inputs = []
+    outputs = []
+    default_input_name = "Default"
+    default_output_name = "Default"
+    try:
+        with pyaudio.PyAudio() as p:
+            wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
+            wasapi_index = wasapi_info["index"]
+
+            # Resolve default input name
+            try:
+                default_in = p.get_default_input_device_info()
+                default_input_name = default_in.get("name", "Default")
+            except Exception:
+                pass
+
+            # Resolve default output loopback name
+            try:
+                default_out_idx = wasapi_info.get("defaultInputDevice") or wasapi_info.get("defaultOutputDevice")
+                default_out = p.get_device_info_by_index(wasapi_info["defaultOutputDevice"])
+                default_output_name = default_out.get("name", "Default")
+            except Exception:
+                pass
+
+            # WASAPI input devices only (no duplicates)
+            for i in range(p.get_device_count()):
+                info = p.get_device_info_by_index(i)
+                if (
+                    info.get("hostApi") == wasapi_index
+                    and info.get("maxInputChannels", 0) > 0
+                    and not info.get("isLoopbackDevice", False)
+                ):
+                    inputs.append({"index": i, "name": info["name"]})
+
+            # Loopback outputs
+            for loopback in p.get_loopback_device_info_generator():
+                outputs.append({"index": loopback["index"], "name": loopback["name"]})
+
+    except Exception as e:
+        print(f"[/devices] Error enumerating devices: {e}")
+    return {
+        "input": inputs,
+        "output": outputs,
+        "default_input_name": default_input_name,
+        "default_output_name": default_output_name,
+    }
+
+
 @app.post("/start")
-async def start_capture(source_lang: str = "auto", target_lang: str = "en", use_mic: bool = False):
+async def start_capture(
+    source_lang: str = "auto",
+    target_lang: str = "en",
+    use_mic: bool = False,
+    input_device_index: int = None,
+    output_device_index: int = None,
+):
     global nim_api, audio_capture, is_running, audio_thread
     global current_source_lang, current_target_lang, current_use_mic
-    
+    global current_input_device_index, current_output_device_index
+
     current_source_lang = source_lang
     current_target_lang = target_lang
     current_use_mic = use_mic
+    current_input_device_index = input_device_index
+    current_output_device_index = output_device_index
 
     if is_running:
         await stop_capture()
         await asyncio.sleep(0.5)
 
     nim_api = NimApiClient(api_key=API_KEY)
-    audio_capture = AudioCapture(sample_rate=16000, chunk_duration=1.5, use_mic=current_use_mic)
+    audio_capture = AudioCapture(
+        sample_rate=16000,
+        chunk_duration=1.5,
+        use_mic=current_use_mic,
+        input_device_index=current_input_device_index,
+        output_device_index=current_output_device_index,
+    )
     is_running = True
     audio_capture.start()
     audio_thread = threading.Thread(target=audio_poll_loop, daemon=True)
@@ -150,6 +219,8 @@ async def captions_ws(websocket: WebSocket):
                     source_lang=msg.get("source", "auto"),
                     target_lang=msg.get("target", "en"),
                     use_mic=msg.get("use_mic", False),
+                    input_device_index=msg.get("input_device_index"),
+                    output_device_index=msg.get("output_device_index"),
                 )
             elif msg.get("cmd") == "stop":
                 await stop_capture()

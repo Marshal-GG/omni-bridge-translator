@@ -59,6 +59,8 @@ class TranslationService {
     String sourceLang = 'auto',
     String targetLang = 'en',
     bool useMic = false,
+    int? inputDeviceIndex,
+    int? outputDeviceIndex,
   }) async {
     _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
 
@@ -88,14 +90,19 @@ class TranslationService {
     );
 
     // Send start command over WebSocket
-    _channel!.sink.add(
-      jsonEncode({
-        'cmd': 'start',
-        'source': sourceLang,
-        'target': targetLang,
-        'use_mic': useMic,
-      }),
-    );
+    final startPayload = <String, dynamic>{
+      'cmd': 'start',
+      'source': sourceLang,
+      'target': targetLang,
+      'use_mic': useMic,
+    };
+    if (inputDeviceIndex != null) {
+      startPayload['input_device_index'] = inputDeviceIndex;
+    }
+    if (outputDeviceIndex != null) {
+      startPayload['output_device_index'] = outputDeviceIndex;
+    }
+    _channel!.sink.add(jsonEncode(startPayload));
   }
 
   /// Update active translation settings without reconnecting socket
@@ -103,16 +110,23 @@ class TranslationService {
     required String sourceLang,
     required String targetLang,
     required bool useMic,
+    int? inputDeviceIndex,
+    int? outputDeviceIndex,
   }) {
     if (_channel != null) {
-      _channel!.sink.add(
-        jsonEncode({
-          'cmd': 'settings_update',
-          'source': sourceLang,
-          'target': targetLang,
-          'use_mic': useMic,
-        }),
-      );
+      final updatePayload = <String, dynamic>{
+        'cmd': 'settings_update',
+        'source': sourceLang,
+        'target': targetLang,
+        'use_mic': useMic,
+      };
+      if (inputDeviceIndex != null) {
+        updatePayload['input_device_index'] = inputDeviceIndex;
+      }
+      if (outputDeviceIndex != null) {
+        updatePayload['output_device_index'] = outputDeviceIndex;
+      }
+      _channel!.sink.add(jsonEncode(updatePayload));
     }
   }
 
