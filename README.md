@@ -25,21 +25,41 @@ The project is split into two main components:
 ## Setup Instructions
 
 ### 1. Python Server Configuration
-The Python backend uses a virtual environment located in `server_env/`.
+The Python backend requires its own virtual environment and dependencies.
 
+1. Navigate to the `server` folder:
+   ```ps1
+   cd server
+   ```
+2. Create a virtual environment named `server_env`:
+   ```ps1
+   python -m venv server_env
+   ```
+3. Activate the environment:
+   ```ps1
+   .\server_env\Scripts\activate
+   ```
+4. Install the required dependencies:
+   ```ps1
+   pip install -r requirements.txt
+   ```
+
+### 2. Configure Environment Variables
 You must provide your API keys before running the server. 
 1. Copy the `server/.env.example` file and rename the copy to `server/.env`.
-2. Edit `server/.env` and replace `your_nvidia_nim_api_key_here` with your actual NVIDIA NIM API key.
+2. Edit `server/.env` and replace the placeholder API key with your actual NVIDIA NIM API key.
 
-### 2. Running the Server
+### 3. Running the Server
 The easiest way to start the backend is to double-click the **`start_server.bat`** file in the root directory. 
 
-Alternatively, run from the command line:
+Alternatively, if you want to run it from the command line, make sure your virtual environment is activated:
 ```ps1
-.\server_env\Scripts\activate
 cd server
-python flutter_server.py
+.\server_env\Scripts\activate
+python main.py
 ```
+*(Note: Replace `main.py` with your actual entry point script, e.g. `flutter_server.py`)*
+
 The server will start on `ws://0.0.0.0:8765`.
 
 ### 3. Running the Flutter App
