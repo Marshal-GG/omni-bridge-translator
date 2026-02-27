@@ -1,5 +1,9 @@
 name: omni_bridge
 description: "Omni Bridge: Live AI Translator. A real-time system audio translation application using Windows desktop capture and AI microservices."
+
+repository: https://github.com/Marshal-GG/omni-bridge-translator
+issue_tracker: https://github.com/Marshal-GG/omni-bridge-translator/issues
+
 version: 1.0.0+1
 
 environment:
