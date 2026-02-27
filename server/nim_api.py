@@ -56,15 +56,17 @@ class NimApiClient:
             if source_lang == "auto" or source_lang not in riva_supported or target_lang not in riva_supported:
                 model_name = "meta/llama-3.1-8b-instruct"
                 system_prompt = (
-                    f"You are a live caption translator. Translate speech to {target_lang}. "
-                    "Rules: output ONLY the translated text, no explanations, no labels, "
-                    "no introductory text, no quotes. Just the translation itself."
+                    f"Translate to {target_lang}. "
+                    "Output ONLY the translated sentence. "
+                    "Do NOT add any explanation, commentary, punctuation changes, or prefix. "
+                    "Never say 'Here is', 'Translation:', or anything similar. "
+                    "Respond with the translated text and nothing else."
                 )
             else:
                 model_name = "nvidia/riva-translate-4b-instruct-v1.1"
                 system_prompt = (
                     f"Translate from {source_lang} to {target_lang}. "
-                    "Output only the translated text. No labels or explanations."
+                    "Output only the translated text with no labels, no explanations, no extra words."
                 )
 
             completion = self.translate_client.chat.completions.create(
@@ -73,12 +75,18 @@ class NimApiClient:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": text}
                 ],
-                temperature=0.1,
+                temperature=0,
                 max_tokens=512,
             )
             result = completion.choices[0].message.content.strip()
             import re
-            result = re.sub(r'^(translation|translated text|here is.*?|output)[:\s]+', '', result, flags=re.IGNORECASE).strip()
+            result = re.sub(
+                r'^(translation[:\s]+|translated text[:\s]+|here is.*?:|output[:\s]+|in [a-z]+[:\s]+|sure[!,\s]+)',
+                '', result, flags=re.IGNORECASE
+            ).strip()
+            # Strip surrounding quotes if model wrapped the translation
+            if result.startswith('"') and result.endswith('"'):
+                result = result[1:-1].strip()
             return result
         except Exception as e:
             print(f"Translation error ({e}), falling back to Llama...")
@@ -86,10 +94,10 @@ class NimApiClient:
                 completion = self.translate_client.chat.completions.create(
                     model="meta/llama-3.1-8b-instruct",
                     messages=[
-                        {"role": "system", "content": f"You are a professional interpreter. Translate to {target_lang}. Output ONLY the translation."},
+                        {"role": "system", "content": f"Translate to {target_lang}. Output ONLY the translated text. No explanations, no labels, no extra words."},
                         {"role": "user", "content": text}
                     ],
-                    temperature=0.1,
+                    temperature=0,
                     max_tokens=512,
                 )
                 return completion.choices[0].message.content
