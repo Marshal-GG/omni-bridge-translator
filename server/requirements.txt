@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+websockets
+sounddevice
+numpy
+requests
+httpx
+python-multipart
+pyaudiowpatch
+PyAudio
+openai
+nvidia-riva-client
