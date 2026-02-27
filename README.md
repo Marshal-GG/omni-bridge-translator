@@ -4,14 +4,20 @@ Omni Bridge: Live AI Translator is a real-time translating live-caption overlay 
 
 ## 📸 Screenshots
 
-**Normal View**
-<img src="assets/screenshots/image3.png" width="700" alt="Normal view"/>
+<p align="center">
+  <b>Normal View</b><br>
+  <img src="assets/screenshots/image3.png" width="700" alt="Normal view"/>
+</p>
 
-**Mini / Shrunk View**
-<img src="assets/screenshots/image2.png" width="700" alt="Mini / Shrunk view"/>
+<p align="center">
+  <b>Mini / Shrunk View</b><br>
+  <img src="assets/screenshots/image2.png" width="700" alt="Mini / Shrunk view"/>
+</p>
 
-**Settings**
-<img src="assets/screenshots/image1.png" width="380" alt="Settings page"/>
+<p align="center">
+  <b>Settings</b><br>
+  <img src="assets/screenshots/image1.png" width="380" alt="Settings page"/>
+</p>
 
 
 ## 🏗️ Architecture
