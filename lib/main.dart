@@ -5,6 +5,10 @@ import 'core/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Auth (Mock for Windows compatibility)
+  AuthService.instance.init();
+
   // Initialize the window and tray manager
   await initializeWindow();
   await initializeTray();

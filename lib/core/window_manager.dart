@@ -27,23 +27,48 @@ Future<void> initializeWindow() async {
 }
 
 void configureMainWindow() async {
+  // Check common initial state - default to Login dialog size since we start there
   final win = appWindow;
-  win.minSize = const Size(300, 150);
-  win.size = const Size(730, 150);
-  win.alignment = Alignment.bottomCenter;
+  win.minSize = const Size(400, 300);
+  win.size = const Size(720, 480);
+  win.alignment = Alignment.center;
   win.title = "Omni Bridge: Live AI Translator";
 
   windowManager.setAlwaysOnTop(true);
-
-  // await Window.hideWindowControls();
-
-  // Set acrylic effect for semi-transparent window
-  // await Window.setEffect(
-  //   effect: WindowEffect.acrylic,
-  //   dark: true,
-  //   // color: Colors.black.withOpacity(0.1), // Not working
-  // );
   win.show();
+}
+
+/// Sets the window to a centered dialog style for Login
+Future<void> setToLoginPosition() async {
+  await windowManager.setResizable(true);
+  appWindow.minSize = const Size(400, 300); // Clear bitsdojo constraint
+  await windowManager.setMinimumSize(const Size(400, 300));
+  await windowManager.setSize(const Size(720, 480));
+  await windowManager.center();
+  await windowManager.setAlwaysOnTop(true);
+}
+
+/// Sets the window to the wide bottom-center overlay style
+Future<void> setToTranslationPosition() async {
+  await windowManager.setResizable(true);
+  appWindow.minSize = const Size(300, 150); // Clear bitsdojo constraint
+  // Set minimum size FIRST so that setSize isn't clamped by the old minSize
+  await windowManager.setMinimumSize(const Size(400, 150));
+  await windowManager.setSize(const Size(730, 150));
+
+  // bitsdojo_window alignment
+  appWindow.alignment = Alignment.bottomCenter;
+  await windowManager.setAlwaysOnTop(true);
+}
+
+/// Sets the window to a large centered view for History
+Future<void> setToHistoryPosition() async {
+  await windowManager.setResizable(true);
+  appWindow.minSize = const Size(600, 400); // Clear bitsdojo constraint
+  await windowManager.setMinimumSize(const Size(600, 400));
+  await windowManager.setSize(const Size(1000, 700));
+  await windowManager.center();
+  await windowManager.setAlwaysOnTop(false);
 }
 
 class _AppWindowListener extends WindowListener {

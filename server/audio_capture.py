@@ -4,6 +4,20 @@ import threading
 import queue
 import time
 
+def resample_audio(audio_data, orig_sr, target_sr=16000):
+    if orig_sr == target_sr:
+        return audio_data
+    if orig_sr % target_sr == 0:
+        factor = orig_sr // target_sr
+        return audio_data[::factor]
+    
+    duration = len(audio_data) / orig_sr
+    target_length = int(duration * target_sr)
+    x_old = np.linspace(0, duration, len(audio_data))
+    x_new = np.linspace(0, duration, target_length)
+    audio_new = np.interp(x_new, x_old, audio_data)
+    return audio_new.astype(np.int16)
+
 class AudioCapture:
     def __init__(self, sample_rate=16000, chunk_duration=3, use_mic=False,
                  input_device_index=None, output_device_index=None):
@@ -151,7 +165,8 @@ class AudioCapture:
 
                     if should_flush:
                         chunk = np.array(speech_buffer, dtype=np.int16)
-                        self.audio_queue.put((chunk, native_rate))
+                        chunk_16k = resample_audio(chunk, native_rate, self.sample_rate)
+                        self.audio_queue.put((chunk_16k, self.sample_rate))
                         speech_buffer = []
                         silence_counter = 0
                         in_speech = False
@@ -159,7 +174,8 @@ class AudioCapture:
                 # Flush any remaining audio when stopped
                 if speech_buffer and in_speech:
                     chunk = np.array(speech_buffer, dtype=np.int16)
-                    self.audio_queue.put((chunk, native_rate))
+                    chunk_16k = resample_audio(chunk, native_rate, self.sample_rate)
+                    self.audio_queue.put((chunk_16k, self.sample_rate))
 
                 stream.stop_stream()
                 stream.close()

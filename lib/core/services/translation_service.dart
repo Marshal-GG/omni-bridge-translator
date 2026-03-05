@@ -13,20 +13,31 @@ class CaptionMessage {
   final String original;
   final bool isError;
   final bool isFinal;
+  final String? sourceLangOverride;
 
   CaptionMessage({
     required this.text,
     required this.original,
     required this.isError,
     required this.isFinal,
+    this.sourceLangOverride,
   });
 
   factory CaptionMessage.fromJson(Map<String, dynamic> json) {
+    final text = json['text'] as String? ?? '';
+    // nim_api sends this magic string when auto-ASR falls back to a specific lang
+    String? magicOverride;
+    if (text.startsWith('__source_lang_override__:')) {
+      magicOverride = text.split(':').last.trim();
+    }
     return CaptionMessage(
-      text: json['text'] ?? '',
+      text: magicOverride != null ? '' : text,
       original: json['original'] ?? '',
       isError: json['type'] == 'error',
       isFinal: json['is_final'] ?? true,
+      sourceLangOverride: json['type'] == 'source_lang_override'
+          ? json['lang']
+          : magicOverride,
     );
   }
 }
