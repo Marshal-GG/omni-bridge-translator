@@ -326,7 +326,6 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         const SizedBox(height: 10),
         DropdownSearch<MapEntry<String, String>>(
-          key: ValueKey(state.tempSourceLang),
           items: appLanguages.entries
               .where((e) => e.key != 'none') // 'none' belongs on target
               .toList(),
@@ -335,9 +334,16 @@ class _SettingsScreenState extends State<SettingsScreen>
             state.tempSourceLang,
             appLanguages[state.tempSourceLang] ?? state.tempSourceLang,
           ),
-          onChanged: (entry) => context.read<SettingsBloc>().add(
-            UpdateTempSettingEvent(sourceLang: entry!.key),
-          ),
+          onChanged: (entry) {
+            // Delay updating bloc so DropdownSearch finishes closing without unmounting mid-frame
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (context.mounted) {
+                context.read<SettingsBloc>().add(
+                  UpdateTempSettingEvent(sourceLang: entry!.key),
+                );
+              }
+            });
+          },
           popupProps: PopupProps.menu(
             showSearchBox: true,
             fit: FlexFit.loose,
@@ -385,7 +391,6 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         const SizedBox(height: 10),
         DropdownSearch<MapEntry<String, String>>(
-          key: ValueKey(state.tempTargetLang),
           items: appLanguages.entries
               .where((e) => e.key != 'auto') // include 'none' = Original Source
               .toList(),
@@ -394,9 +399,16 @@ class _SettingsScreenState extends State<SettingsScreen>
             state.tempTargetLang,
             appLanguages[state.tempTargetLang] ?? state.tempTargetLang,
           ),
-          onChanged: (entry) => context.read<SettingsBloc>().add(
-            UpdateTempSettingEvent(targetLang: entry!.key),
-          ),
+          onChanged: (entry) {
+            // Delay updating bloc so DropdownSearch finishes closing without unmounting mid-frame
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (context.mounted) {
+                context.read<SettingsBloc>().add(
+                  UpdateTempSettingEvent(targetLang: entry!.key),
+                );
+              }
+            });
+          },
           popupProps: PopupProps.menu(
             showSearchBox: true,
             fit: FlexFit.loose,
@@ -680,7 +692,14 @@ class _SettingsScreenState extends State<SettingsScreen>
               orElse: () => {'name': defaultName, 'index': -1},
             )
           : null,
-      onChanged: onChanged,
+      onChanged: (device) {
+        // Delay updating bloc so DropdownSearch finishes closing without unmounting mid-frame
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (context.mounted) {
+            onChanged(device);
+          }
+        });
+      },
       popupProps: PopupProps.menu(
         showSearchBox: true,
         fit: FlexFit.loose,
