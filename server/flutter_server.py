@@ -182,6 +182,11 @@ async def start_capture(
     audio_capture.start()
     audio_thread = threading.Thread(target=audio_poll_loop, daemon=True)
     audio_thread.start()
+    
+    # Send an override message if we fell back from auto to en-US
+    if source_lang == "auto":
+        asyncio.create_task(broadcast({"type": "source_lang_override", "lang": "en"}))
+    
     return {"status": "started", "source": source_lang, "target": target_lang, "use_mic": current_use_mic}
 
 

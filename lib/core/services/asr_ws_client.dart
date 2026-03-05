@@ -9,6 +9,8 @@ import 'translation_service.dart';
 class AsrWebSocketClient {
   TranslationService? _service;
 
+  Stream<CaptionMessage>? get captions => _service?.captions;
+
   void start({
     String sourceLang = 'auto',
     String targetLang = 'en',
@@ -23,6 +25,9 @@ class AsrWebSocketClient {
     _service = TranslationService(serverHost: url, serverPort: port);
 
     _service!.captions.listen((msg) {
+      // Override signal from backend — handled by the UI layer, not shown in captions
+      if (msg.sourceLangOverride != null) return;
+
       if (msg.isError) {
         debugPrint('ASR error: ${msg.text}');
         asrTextController.updateInterim('Connection Issue: ${msg.text}');
@@ -33,6 +38,11 @@ class AsrWebSocketClient {
 
       if (msg.isFinal) {
         asrTextController.commitFinal(text);
+        // Feed into history — msg.original is the transcription, text is translation
+        final transcription = msg.original.trim().isNotEmpty
+            ? msg.original.trim()
+            : text;
+        HistoryService.instance.addEntry(transcription, text);
       } else {
         asrTextController.updateInterim(text);
       }
@@ -60,6 +70,13 @@ class AsrWebSocketClient {
       useMic: useMic,
       inputDeviceIndex: inputDeviceIndex,
       outputDeviceIndex: outputDeviceIndex,
+    );
+    // Keep HistoryService in sync with the current source/target lang
+    HistoryService.instance.configure(
+      sourceLang: sourceLang,
+      targetLang: targetLang,
+      translateFn: (text, src, tgt) async =>
+          text, // placeholder; real fn passed by overlay
     );
   }
 

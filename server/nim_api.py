@@ -105,7 +105,7 @@ class NimApiClient:
                 print(f"Fallback translation error: {e2}")
         return text
 
-    def start_stream(self, sample_rate, source_lang="en", target_lang=None, callback=None):
+    def start_stream(self, sample_rate, source_lang="auto", target_lang=None, callback=None):
         if not hasattr(self, 'asr_service') or not self.api_key:
             if callback:
                 callback("Error: API Key or Riva setup is missing.", True, is_final=True)
@@ -145,16 +145,24 @@ class NimApiClient:
             "nl": "nl-NL", "tr": "tr-TR", "vi": "vi-VN", "pl": "pl-PL",
             "id": "id-ID", "th": "th-TH", "bn": "bn-IN"
         }
-        # "multi" is the correct Parakeet code for auto language detection
-        asr_lang = lang_map.get(self._source_lang, "en-US") if self._source_lang != "auto" else "multi"
-        config = riva.client.RecognitionConfig(
-            encoding=riva.client.AudioEncoding.LINEAR_PCM,
-            sample_rate_hertz=self._sample_rate,
-            language_code=asr_lang,
-            max_alternatives=1,
-            enable_automatic_punctuation=True,
-            audio_channel_count=1
-        )
+
+        # When set to "auto", try Parakeet multi-language detection first.
+        # If NVIDIA rejects "multi", automatically fall back to "en-US".
+        use_auto = self._source_lang == "auto"
+        asr_lang = "multi" if use_auto else lang_map.get(self._source_lang, "en-US")
+        fell_back = False
+
+        def _make_config(lang):
+            return riva.client.RecognitionConfig(
+                encoding=riva.client.AudioEncoding.LINEAR_PCM,
+                sample_rate_hertz=self._sample_rate,
+                language_code=lang,
+                max_alternatives=1,
+                enable_automatic_punctuation=True,
+                audio_channel_count=1
+            )
+
+        config = _make_config(asr_lang)
 
         while self.is_running:
             try:
@@ -162,17 +170,42 @@ class NimApiClient:
                 if chunk is None:
                     break
 
-                response = self.asr_service.offline_recognize(chunk.tobytes(), config)
+                # Try ASR; if "multi" is unavailable fall back to en-US
+                try:
+                    response = self.asr_service.offline_recognize(chunk.tobytes(), config)
+                except Exception as asr_err:
+                    err_str = str(asr_err)
+                    if use_auto and not fell_back and "Unavailable model" in err_str:
+                        print("[ASR] 'multi' unavailable, falling back to en-US.")
+                        asr_lang = "en-US"
+                        config = _make_config(asr_lang)
+                        fell_back = True
+                        # Notify Flutter UI that auto fell back to English
+                        if self._callback:
+                            self._callback("__source_lang_override__:en", False, is_final=False)
+                        try:
+                            response = self.asr_service.offline_recognize(chunk.tobytes(), config)
+                        except Exception as retry_err:
+                            if self._callback:
+                                self._callback(f"ASR Error: {retry_err}", True, is_final=True)
+                            continue
+                    else:
+                        if self._callback:
+                            self._callback(f"ASR Error: {asr_err}", True, is_final=True)
+                        continue
 
                 if response and response.results and response.results[0].alternatives:
                     transcript = response.results[0].alternatives[0].transcript.strip()
                     if not transcript:
                         continue
-                    
-                    clean = self._clean_stutters(transcript)
 
-                    if self._target_lang and self._target_lang != self._source_lang and self._target_lang != 'none':
+                    clean = self._clean_stutters(transcript)
+                    print(f"[ASR] lang={asr_lang} transcript={clean!r}")
+
+                    # Always translate unless target is 'none' (transcription-only mode)
+                    if self._target_lang and self._target_lang != 'none':
                         translated = self._translate_text(clean, self._source_lang, self._target_lang)
+                        print(f"[TRANSLATE] {self._source_lang}→{self._target_lang} result={translated!r}")
                         if self._callback:
                             self._callback(translated, False, is_final=True, original_text=clean)
                     else:

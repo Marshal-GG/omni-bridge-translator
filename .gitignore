@@ -69,3 +69,12 @@ build/
 *.dll
 *.lib
 windows/flutter/ephemeral/
+
+# Firebase configuration & secrets
+firebase_options.dart
+google-services.json
+GoogleService-Info.plist
+firebase-debug.log
+firebase-debug.*.log
+*.firebase
+firebase.json

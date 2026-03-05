@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
+import '../window_manager.dart';
+import 'routes_config.dart';
 
 /// A comprehensive navigator observer for tracking app routing and access control.
+/// It also handles window resizing and positioning based on the current screen.
 class MyNavigatorObserver extends NavigatorObserver {
   /// Track the current user ID or login state
   String? currentUserID;
@@ -10,67 +12,35 @@ class MyNavigatorObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPush(route, previousRoute);
-    _logNavigationEvent('PUSH', route, previousRoute);
-    _checkAccess(route);
-  }
-
-  @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    super.didPop(route, previousRoute);
-    _logNavigationEvent('POP', route, previousRoute);
-  }
-
-  @override
-  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    super.didRemove(route, previousRoute);
-    _logNavigationEvent('REMOVE', route, previousRoute);
+    _handleWindowState(route);
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
-    _logNavigationEvent('REPLACE', newRoute, oldRoute);
     if (newRoute != null) {
-      _checkAccess(newRoute);
+      _handleWindowState(newRoute);
     }
   }
 
-  void _logNavigationEvent(
-    String action,
-    Route<dynamic>? currentRoute,
-    Route<dynamic>? otherRoute,
-  ) {
-    final currentName = _getRouteName(currentRoute);
-    final otherName = _getRouteName(otherRoute);
-
-    debugPrint('[NavObserver] $action: $otherName -> $currentName');
-  }
-
-  void _checkAccess(Route<dynamic> route) {
-    final routeName = _getRouteName(route);
-
-    if (_isProtectedRoute(routeName)) {
-      if (currentUserID == null) {
-        debugPrint(
-          '[NavObserver] WARNING: Unauthenticated access attempt to $routeName',
-        );
-        // Handle redirect logic here
-      } else {
-        debugPrint(
-          '[NavObserver] User $currentUserID accessed protected route: $routeName',
-        );
-      }
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPop(route, previousRoute);
+    if (previousRoute != null) {
+      _handleWindowState(previousRoute);
     }
   }
 
-  String _getRouteName(Route<dynamic>? route) {
-    if (route == null) return 'null';
-    return route.settings.name ?? 'UnnamedRoute';
-  }
+  void _handleWindowState(Route<dynamic> route) {
+    final name = route.settings.name;
+    debugPrint('[NavObserver] Routing to: $name');
 
-  bool _isProtectedRoute(String routeName) {
-    // Example: Routes beginning with '/protected/' or '/admin/'
-    return routeName.startsWith('/protected/') ||
-        routeName.startsWith('/admin/');
+    if (name == '/login') {
+      setToLoginPosition();
+    } else if (name == '/translation-overlay') {
+      setToTranslationPosition();
+    } else if (name == '/history-panel') {
+      setToHistoryPosition();
+    }
   }
 }
