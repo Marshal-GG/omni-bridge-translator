@@ -11,8 +11,6 @@ class ToggleSettingsEvent extends TranslationEvent {}
 
 class ToggleShrinkEvent extends TranslationEvent {}
 
-class LoadDevicesEvent extends TranslationEvent {}
-
 class SourceLangOverrideEvent extends TranslationEvent {
   final String sourceLang;
   const SourceLangOverrideEvent(this.sourceLang);
@@ -21,35 +19,29 @@ class SourceLangOverrideEvent extends TranslationEvent {
   List<Object?> get props => [sourceLang];
 }
 
-class SaveSettingsEvent extends TranslationEvent {}
-
-class SyncTempSettingsEvent extends TranslationEvent {}
-
-// Events for changing temp settings while the panel is open
-class UpdateTempSettingEvent extends TranslationEvent {
-  final String? targetLang;
-  final String? sourceLang;
-  final bool? useMic;
-  final double? fontSize;
-  final bool? isBold;
-  final double? opacity;
+class ApplySettingsEvent extends TranslationEvent {
+  final String targetLang;
+  final String sourceLang;
+  final bool useMic;
+  final double fontSize;
+  final bool isBold;
+  final double opacity;
   final int? inputDeviceIndex;
   final int? outputDeviceIndex;
-  // A flag to determine if the device indices should be cleared (passed as null literally)
-  final bool clearInputDevice;
-  final bool clearOutputDevice;
+  final double desktopVolume;
+  final double micVolume;
 
-  const UpdateTempSettingEvent({
-    this.targetLang,
-    this.sourceLang,
-    this.useMic,
-    this.fontSize,
-    this.isBold,
-    this.opacity,
+  const ApplySettingsEvent({
+    required this.targetLang,
+    required this.sourceLang,
+    required this.useMic,
+    required this.fontSize,
+    required this.isBold,
+    required this.opacity,
     this.inputDeviceIndex,
     this.outputDeviceIndex,
-    this.clearInputDevice = false,
-    this.clearOutputDevice = false,
+    required this.desktopVolume,
+    required this.micVolume,
   });
 
   @override
@@ -62,7 +54,16 @@ class UpdateTempSettingEvent extends TranslationEvent {
     opacity,
     inputDeviceIndex,
     outputDeviceIndex,
-    clearInputDevice,
-    clearOutputDevice,
+    desktopVolume,
+    micVolume,
   ];
+}
+
+/// Fired when the server sends a type:'error' message (API failure / lang issue).
+class LangErrorEvent extends TranslationEvent {
+  final String message;
+  const LangErrorEvent(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }

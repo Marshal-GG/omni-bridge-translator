@@ -3,13 +3,21 @@ import 'package:http/http.dart' as http;
 import '../routes/routes_config.dart';
 import 'asr_text_controller.dart';
 import 'translation_service.dart';
+import '../../screens/translation/bloc/translation_bloc.dart';
+import '../../screens/translation/bloc/translation_event.dart';
 
 /// Connects to the Python flutter_server.py via WebSocket,
 /// sends the start command, and feeds translated captions to [asrTextController].
 class AsrWebSocketClient {
   TranslationService? _service;
+  // Weak reference back to bloc so we can dispatch audio level events
+  TranslationBloc? _bloc;
+
+  void attachBloc(TranslationBloc bloc) => _bloc = bloc;
 
   Stream<CaptionMessage>? get captions => _service?.captions;
+
+  void Function(double inputLevel, double outputLevel)? onAudioLevel;
 
   void start({
     String sourceLang = 'auto',
@@ -25,12 +33,27 @@ class AsrWebSocketClient {
     _service = TranslationService(serverHost: url, serverPort: port);
 
     _service!.captions.listen((msg) {
+      // Audio level update — dispatch via callback
+      if (msg.inputLevel != null || msg.outputLevel != null) {
+        onAudioLevel?.call(msg.inputLevel ?? 0.0, msg.outputLevel ?? 0.0);
+        return;
+      }
+
       // Override signal from backend — handled by the UI layer, not shown in captions
       if (msg.sourceLangOverride != null) return;
 
       if (msg.isError) {
-        debugPrint('ASR error: ${msg.text}');
-        asrTextController.updateInterim('Connection Issue: ${msg.text}');
+        final activeLang = _bloc?.state.activeSourceLang ?? 'unknown';
+        final errMsg = msg.text.trim().isNotEmpty
+            ? msg.text.trim()
+            : 'The server returned an error while processing audio.';
+        _bloc?.add(
+          LangErrorEvent(
+            '⚠ Language error (source: $activeLang): $errMsg. '
+            'Try a different source language in Settings.',
+          ),
+        );
+        asrTextController.value = '[Error] $errMsg';
         return;
       }
       final text = msg.text.trim();
@@ -63,6 +86,8 @@ class AsrWebSocketClient {
     required bool useMic,
     int? inputDeviceIndex,
     int? outputDeviceIndex,
+    double desktopVolume = 1.0,
+    double micVolume = 1.0,
   }) {
     _service?.updateSettings(
       sourceLang: sourceLang,
@@ -70,6 +95,8 @@ class AsrWebSocketClient {
       useMic: useMic,
       inputDeviceIndex: inputDeviceIndex,
       outputDeviceIndex: outputDeviceIndex,
+      desktopVolume: desktopVolume,
+      micVolume: micVolume,
     );
     // Keep HistoryService in sync with the current source/target lang
     HistoryService.instance.configure(
@@ -77,6 +104,17 @@ class AsrWebSocketClient {
       targetLang: targetLang,
       translateFn: (text, src, tgt) async =>
           text, // placeholder; real fn passed by overlay
+    );
+  }
+
+  /// Instantly update audio capture volumes without restarting the pipeline.
+  void liveVolumeUpdate({
+    required double desktopVolume,
+    required double micVolume,
+  }) {
+    _service?.sendVolumeUpdate(
+      desktopVolume: desktopVolume,
+      micVolume: micVolume,
     );
   }
 

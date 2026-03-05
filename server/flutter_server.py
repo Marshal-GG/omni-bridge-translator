@@ -11,6 +11,7 @@ Run with:
 import asyncio
 import json
 import threading
+import time
 import os
 from typing import Set
 
@@ -26,27 +27,53 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import existing modules (must be in same directory)
 from nim_api import NimApiClient
 from audio_capture import AudioCapture
+from audio_meter import AudioMeter
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app):
+    """Capture the running event loop once uvicorn starts, and install a
+    global async exception handler so silent task failures are logged
+    instead of killing the process."""
+    global _event_loop, _pyaudio_lock
+    loop = asyncio.get_running_loop()
+    _event_loop = loop
+    _pyaudio_lock = asyncio.Lock()
+
+    def _handle_exception(loop, context):
+        msg = context.get("exception", context["message"])
+        print(f"[asyncio] Unhandled exception in task: {msg}")
+
+    loop.set_exception_handler(_handle_exception)
+    yield  # server runs here
+
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # --- Active WebSocket connections ---
 active_connections: Set[WebSocket] = set()
 nim_api: NimApiClient = None
 audio_capture: AudioCapture = None
+audio_meter: AudioMeter = AudioMeter()
 is_running = False
 audio_thread = None
+_meter_task = None
+_event_loop: asyncio.AbstractEventLoop = None  # Set on startup; used by sync callbacks
+_pyaudio_lock: asyncio.Lock = None             # Serialises PyAudio opens to avoid WASAPI crash
 
 # Fetch API key securely from environment
 API_KEY = os.getenv("NVIDIA_API_KEY")
 if not API_KEY:
     print("WARNING: NVIDIA_API_KEY is not set in .env!")
 
-current_source_lang = "auto"
-current_target_lang = "en"
-current_use_mic = False
-current_input_device_index = None
-current_output_device_index = None
+current_source_lang: str = "auto"
+current_target_lang: str = "en"
+current_use_mic: bool = False
+current_input_device_index: int | None = None
+current_output_device_index: int | None = None
+current_desktop_volume: float = 1.0
+current_mic_volume: float = 1.0
 
 
 async def broadcast(message: dict):
@@ -61,40 +88,54 @@ async def broadcast(message: dict):
 
 
 def caption_callback(text, is_error, is_final=True, original_text=None):
-    """Called by nim_api on each transcript/translation. Broadcasts to all clients."""
+    """Called by nim_api on each transcript/translation. Broadcasts to all clients.
+    This runs in a background sync thread, so we schedule onto uvicorn's event loop."""
     msg = {
         "type": "error" if is_error else "caption",
         "text": text,
         "original": original_text or "",
         "is_final": is_final,
     }
-    # Schedule coroutine from sync thread
-    asyncio.run(broadcast(msg))
+    if _event_loop and not _event_loop.is_closed():
+        asyncio.run_coroutine_threadsafe(broadcast(msg), _event_loop)
 
 
 def audio_poll_loop():
     """Background thread: polls audio capture queue and feeds to nim_api."""
     global is_running, current_source_lang, current_target_lang
     stream_started = False
+    try:
+        while is_running:
+            item = audio_capture.get_audio_chunk()
+            if item is not None:
+                chunk, sample_rate = item
+                if not stream_started:
+                    nim_api.start_stream(
+                        sample_rate=sample_rate,
+                        source_lang=current_source_lang,
+                        target_lang=current_target_lang,
+                        callback=caption_callback,
+                    )
+                    stream_started = True
+                nim_api.append_audio(chunk)
+            else:
+                time.sleep(0.01)
+    except Exception as e:
+        print(f"[audio_poll_loop] Crashed: {e}")
+        is_running = False
+
+async def audio_level_broadcast_loop():
+    """Broadcast audio RMS levels to all connected Flutter clients ~13 fps."""
     while is_running:
-        item = audio_capture.get_audio_chunk()
-        if item is not None:
-            chunk, sample_rate = item
-            if not stream_started:
-                nim_api.start_stream(
-                    sample_rate=sample_rate,
-                    source_lang=current_source_lang,
-                    target_lang=current_target_lang,
-                    callback=caption_callback,
-                )
-                stream_started = True
-            nim_api.append_audio(chunk)
-        else:
-            import time
-            time.sleep(0.01)
+        msg = {
+            "type": "audio_levels",
+            "input_level": audio_meter.input_level,
+            "output_level": audio_meter.output_level,
+        }
+        await broadcast(msg)
+        await asyncio.sleep(0.075)
 
 
-# ── REST endpoints ──────────────────────────────────────────────────────────
 
 @app.get("/devices")
 async def list_devices():
@@ -104,42 +145,48 @@ async def list_devices():
     outputs = []
     default_input_name = "Default"
     default_output_name = "Default"
-    try:
-        with pyaudio.PyAudio() as p:
-            wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
-            wasapi_index = wasapi_info["index"]
+    # Acquire lock so we don't open PyAudio while audio_capture is initialising
+    async with _pyaudio_lock:
+        try:
+            with pyaudio.PyAudio() as p:
+                wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
+                wasapi_index = wasapi_info["index"]
 
-            # Resolve default input name
-            try:
-                default_in = p.get_default_input_device_info()
-                default_input_name = default_in.get("name", "Default")
-            except Exception:
-                pass
+                # Resolve default input name
+                try:
+                    default_in = p.get_default_input_device_info()
+                    default_input_name = default_in.get("name", "Default")
+                except Exception:
+                    pass
 
-            # Resolve default output loopback name
-            try:
-                default_out_idx = wasapi_info.get("defaultInputDevice") or wasapi_info.get("defaultOutputDevice")
-                default_out = p.get_device_info_by_index(wasapi_info["defaultOutputDevice"])
-                default_output_name = default_out.get("name", "Default")
-            except Exception:
-                pass
+                # Resolve default output loopback name — must bounds-check first;
+                # WASAPI sometimes reports an invalid defaultOutputDevice index which
+                # causes a C-level assertion abort that Python cannot catch.
+                try:
+                    default_out_idx = wasapi_info.get("defaultOutputDevice", -1)
+                    device_count = p.get_device_count()
+                    if 0 <= default_out_idx < device_count:
+                        default_out = p.get_device_info_by_index(default_out_idx)
+                        default_output_name = default_out.get("name", "Default")
+                except Exception:
+                    pass
 
-            # WASAPI input devices only (no duplicates)
-            for i in range(p.get_device_count()):
-                info = p.get_device_info_by_index(i)
-                if (
-                    info.get("hostApi") == wasapi_index
-                    and info.get("maxInputChannels", 0) > 0
-                    and not info.get("isLoopbackDevice", False)
-                ):
-                    inputs.append({"index": i, "name": info["name"]})
+                # WASAPI input devices only (no duplicates)
+                for i in range(p.get_device_count()):
+                    info = p.get_device_info_by_index(i)
+                    if (
+                        info.get("hostApi") == wasapi_index
+                        and info.get("maxInputChannels", 0) > 0
+                        and not info.get("isLoopbackDevice", False)
+                    ):
+                        inputs.append({"index": i, "name": info["name"]})
 
-            # Loopback outputs
-            for loopback in p.get_loopback_device_info_generator():
-                outputs.append({"index": loopback["index"], "name": loopback["name"]})
+                # Loopback outputs
+                for loopback in p.get_loopback_device_info_generator():
+                    outputs.append({"index": loopback["index"], "name": loopback["name"]})
 
-    except Exception as e:
-        print(f"[/devices] Error enumerating devices: {e}")
+        except Exception as e:
+            print(f"[/devices] Error: {e}")
     return {
         "input": inputs,
         "output": outputs,
@@ -156,9 +203,10 @@ async def start_capture(
     input_device_index: int = None,
     output_device_index: int = None,
 ):
-    global nim_api, audio_capture, is_running, audio_thread
+    global nim_api, audio_capture, is_running, audio_thread, _meter_task
     global current_source_lang, current_target_lang, current_use_mic
     global current_input_device_index, current_output_device_index
+    global current_desktop_volume, current_mic_volume
 
     current_source_lang = source_lang
     current_target_lang = target_lang
@@ -166,34 +214,60 @@ async def start_capture(
     current_input_device_index = input_device_index
     current_output_device_index = output_device_index
 
-    if is_running:
-        await stop_capture()
-        await asyncio.sleep(0.5)
+    # Serialise against /devices so two PyAudio instances never open at the same time
+    async with _pyaudio_lock:
+        try:
+            if is_running:
+                await stop_capture()
+                await asyncio.sleep(0.5)
 
-    nim_api = NimApiClient(api_key=API_KEY)
-    audio_capture = AudioCapture(
-        sample_rate=16000,
-        chunk_duration=1.5,
-        use_mic=current_use_mic,
-        input_device_index=current_input_device_index,
-        output_device_index=current_output_device_index,
-    )
-    is_running = True
-    audio_capture.start()
-    audio_thread = threading.Thread(target=audio_poll_loop, daemon=True)
-    audio_thread.start()
-    
-    # Send an override message if we fell back from auto to en-US
-    if source_lang == "auto":
-        asyncio.create_task(broadcast({"type": "source_lang_override", "lang": "en"}))
-    
-    return {"status": "started", "source": source_lang, "target": target_lang, "use_mic": current_use_mic}
+            nim_api = NimApiClient(api_key=API_KEY)
+            audio_capture = AudioCapture(
+                sample_rate=16000,
+                chunk_duration=1.5,
+                use_mic=current_use_mic,
+                input_device_index=current_input_device_index,
+                output_device_index=current_output_device_index,
+                desktop_volume=current_desktop_volume,
+                mic_volume=current_mic_volume,
+            )
+            is_running = True
+            audio_capture.start()
+            audio_thread = threading.Thread(target=audio_poll_loop, daemon=True)
+            audio_thread.start()
+
+            # Delay meter start by 2 s so audio_capture's WASAPI loopback stream
+            # has time to fully open before we try to open a second one in the meter.
+            async def _delayed_meter_start():
+                await asyncio.sleep(2.0)
+                if not is_running:
+                    return
+                audio_meter.configure(
+                    input_device_index=current_input_device_index if current_use_mic else None,
+                    output_device_index=current_output_device_index,
+                )
+                audio_meter.start()
+
+            asyncio.create_task(_delayed_meter_start())
+            _meter_task = asyncio.create_task(audio_level_broadcast_loop())
+
+            return {"status": "started", "source": source_lang, "target": target_lang, "use_mic": current_use_mic}
+
+        except Exception as e:
+            print(f"[start_capture] Error: {e}")
+            is_running = False
+            await broadcast({"type": "error", "text": f"Failed to start capture: {e}", "is_final": True, "original": ""})
+            return {"status": "error", "message": str(e)}
 
 
 @app.post("/stop")
 async def stop_capture():
-    global is_running, nim_api, audio_capture
+    global is_running, nim_api, audio_capture, _meter_task
     is_running = False
+    if _meter_task:
+        _meter_task.cancel()
+        _meter_task = None
+    audio_meter.stop()
     if audio_capture:
         audio_capture.stop()
     if nim_api:
@@ -211,6 +285,7 @@ async def get_status():
 @app.websocket("/captions")
 async def captions_ws(websocket: WebSocket):
     """Flutter connects here and receives captions as JSON frames."""
+    global current_desktop_volume, current_mic_volume
     await websocket.accept()
     active_connections.add(websocket)
     try:
@@ -220,6 +295,9 @@ async def captions_ws(websocket: WebSocket):
             msg = json.loads(data)
             # Flutter can send {"cmd": "start", "source": "auto", "target": "en"}
             if msg.get("cmd") in ("start", "settings_update"):
+                # Parse volume multipliers (1.0 = no change, 0.0 = silence, 2.0 = double)
+                current_desktop_volume = float(msg.get("desktop_volume", 1.0))
+                current_mic_volume = float(msg.get("mic_volume", 1.0))
                 await start_capture(
                     source_lang=msg.get("source", "auto"),
                     target_lang=msg.get("target", "en"),
@@ -227,9 +305,19 @@ async def captions_ws(websocket: WebSocket):
                     input_device_index=msg.get("input_device_index"),
                     output_device_index=msg.get("output_device_index"),
                 )
+            elif msg.get("cmd") == "volume_update":
+                # Lightweight volume change — no restart, just update the running capture
+                current_desktop_volume = float(msg.get("desktop_volume", current_desktop_volume))
+                current_mic_volume = float(msg.get("mic_volume", current_mic_volume))
+                if audio_capture:
+                    audio_capture.desktop_volume = max(0.0, current_desktop_volume)
+                    audio_capture.mic_volume = max(0.0, current_mic_volume)
             elif msg.get("cmd") == "stop":
                 await stop_capture()
     except WebSocketDisconnect:
+        active_connections.discard(websocket)
+    except Exception as exc:
+        print(f"[WebSocket] Unhandled error: {exc}")
         active_connections.discard(websocket)
 
 

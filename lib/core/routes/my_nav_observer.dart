@@ -26,8 +26,17 @@ class MyNavigatorObserver extends NavigatorObserver {
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPop(route, previousRoute);
-    if (previousRoute != null) {
-      _handleWindowState(previousRoute);
+
+    // Only adjust window size if we are returning from an official main app route.
+    // This prevents standard dialog dismissals (like DropdownSearch popups)
+    // from triggering a window reset unexpectedly.
+    final name = route.settings.name;
+    if (name == '/login' ||
+        name == '/translation-overlay' ||
+        name == '/history-panel') {
+      if (previousRoute != null) {
+        _handleWindowState(previousRoute);
+      }
     }
   }
 

@@ -3,33 +3,74 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import '../translation/bloc/translation_bloc.dart';
 import '../translation/bloc/translation_event.dart';
-import '../translation/bloc/translation_state.dart';
+import 'bloc/settings_bloc.dart';
+import 'bloc/settings_event.dart';
+import 'bloc/settings_state.dart';
 import '../../core/constants/languages.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocBuilder<TranslationBloc, TranslationState>(
+    return BlocBuilder<SettingsBloc, SettingsState>(
       builder: (context, state) {
         return Column(
           children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildAudioConfiguration(context, state),
-                    _buildLanguageConfiguration(context, state),
-                    _buildTypographyConfiguration(context, state),
-                    _buildDisplayConfiguration(context, state),
-                  ],
+            // ── Tab bar ───────────────────────────────────────────────────
+            Container(
+              color: const Color(0xFF1A1A1A),
+              child: TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.tealAccent,
+                indicatorWeight: 2,
+                labelColor: Colors.tealAccent,
+                unselectedLabelColor: Colors.white38,
+                labelStyle: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
+                tabs: const [
+                  Tab(text: 'Input & Output'),
+                  Tab(text: 'Languages'),
+                  Tab(text: 'Display'),
+                ],
               ),
             ),
-            // STICKY SAVE/CANCEL BUTTONS
+
+            // ── Tab content ───────────────────────────────────────────────
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildTabContent(_buildInputOutputTab(context, state)),
+                  _buildTabContent(_buildLanguagesTab(context, state)),
+                  _buildTabContent(_buildDisplayTab(context, state)),
+                ],
+              ),
+            ),
+
+            // ── Sticky Save / Cancel ──────────────────────────────────────
             Container(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
               decoration: const BoxDecoration(
@@ -46,22 +87,37 @@ class SettingsScreen extends StatelessWidget {
                         foregroundColor: Colors.white70,
                         side: const BorderSide(color: Colors.white24),
                       ),
-                      child: const Text("Cancel"),
+                      child: const Text('Cancel'),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => context.read<TranslationBloc>().add(
-                        SaveSettingsEvent(),
-                      ),
+                      onPressed: () {
+                        context.read<SettingsBloc>().add(SaveSettingsEvent());
+                        // Apply the saved settings in TranslationBloc via a callback (which we might handle soon) or another event
+                        context.read<TranslationBloc>().add(
+                          ApplySettingsEvent(
+                            targetLang: state.tempTargetLang,
+                            sourceLang: state.tempSourceLang,
+                            useMic: state.tempUseMic,
+                            fontSize: state.tempFontSize,
+                            isBold: state.tempIsBold,
+                            opacity: state.tempOpacity,
+                            inputDeviceIndex: state.tempInputDeviceIndex,
+                            outputDeviceIndex: state.tempOutputDeviceIndex,
+                            desktopVolume: state.tempDesktopVolume,
+                            micVolume: state.tempMicVolume,
+                          ),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.tealAccent,
                         foregroundColor: Colors.black,
                         elevation: 4,
                       ),
                       child: const Text(
-                        "Save",
+                        'Save',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -75,240 +131,306 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  // --- AUDIO CONFIGURATION METHOD ---
-  Widget _buildAudioConfiguration(
-    BuildContext context,
-    TranslationState state,
-  ) {
+  Widget _buildTabContent(Widget child) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+      child: child,
+    );
+  }
+
+  // ─── INPUT & OUTPUT TAB ─────────────────────────────────────────────────────
+
+  Widget _buildInputOutputTab(BuildContext context, SettingsState state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Audio Inputs",
-          style: TextStyle(
-            color: Colors.tealAccent,
-            fontWeight: FontWeight.bold,
+        // ── Microphone section ────────────────────────────────────────────
+        _sectionLabel('Microphone Input'),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white12),
           ),
-        ),
-        const SizedBox(height: 15),
-        SwitchListTile(
-          title: const Text(
-            "Use System Microphone",
-            style: TextStyle(color: Colors.white, fontSize: 14),
-          ),
-          subtitle: const Text(
-            "Translate your own voice instead of desktop audio",
-            style: TextStyle(color: Colors.grey, fontSize: 12),
-          ),
-          value: state.tempUseMic,
-          activeThumbColor: Colors.tealAccent,
-          contentPadding: EdgeInsets.zero,
-          onChanged: (val) => context.read<TranslationBloc>().add(
-            UpdateTempSettingEvent(useMic: val),
+          child: SwitchListTile(
+            title: const Text(
+              'Enable Microphone',
+              style: TextStyle(color: Colors.white, fontSize: 13),
+            ),
+            subtitle: const Text(
+              'Capture audio from your microphone',
+              style: TextStyle(color: Colors.grey, fontSize: 11),
+            ),
+            value: state.tempUseMic,
+            activeThumbColor: Colors.tealAccent,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 2,
+            ),
+            dense: true,
+            onChanged: (val) => context.read<SettingsBloc>().add(
+              UpdateTempSettingEvent(useMic: val),
+            ),
           ),
         ),
         if (state.tempUseMic) ...[
-          const SizedBox(height: 15),
-          const Text(
-            "Input Device",
-            style: TextStyle(color: Colors.white70, fontSize: 12),
-          ),
+          const SizedBox(height: 10),
+          _sublabel('Microphone Device'),
           const SizedBox(height: 5),
-          state.devicesLoading
-              ? const SizedBox(
-                  height: 48,
-                  child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
+          _deviceDropdown(
+            context: context,
+            state: state,
+            items: state.inputDevices,
+            defaultName: state.defaultInputDeviceName,
+            selectedIndex: state.tempInputDeviceIndex,
+            hintText: 'System Default (${state.defaultInputDeviceName})',
+            loading: state.devicesLoading,
+            onChanged: (device) {
+              if (device != null) {
+                context.read<SettingsBloc>().add(
+                  UpdateTempSettingEvent(
+                    inputDeviceIndex: device['index'] as int,
                   ),
-                )
-              : DropdownSearch<Map<String, dynamic>>(
-                  items: state.inputDevices,
-                  itemAsString: (device) => device['name'] as String,
-                  selectedItem: state.tempInputDeviceIndex != null
-                      ? state.inputDevices.firstWhere(
-                          (d) => d['index'] == state.tempInputDeviceIndex,
-                          orElse: () => {
-                            'name': state.defaultInputDeviceName,
-                            'index': -1,
-                          },
-                        )
-                      : null,
-                  onChanged: (device) {
-                    if (device != null) {
-                      context.read<TranslationBloc>().add(
-                        UpdateTempSettingEvent(
-                          inputDeviceIndex: device['index'] as int,
-                        ),
-                      );
-                    } else {
-                      context.read<TranslationBloc>().add(
-                        const UpdateTempSettingEvent(clearInputDevice: true),
-                      );
-                    }
-                  },
-                  popupProps: const PopupProps.menu(
-                    showSearchBox: true,
-                    menuProps: MenuProps(backgroundColor: Color(0xFF2C2C2C)),
-                  ),
-                  dropdownDecoratorProps: const DropDownDecoratorProps(
-                    dropdownSearchDecoration: InputDecoration(
-                      hintText: "System Default",
-                      hintStyle: TextStyle(color: Colors.white70),
-                      filled: true,
-                      fillColor: Colors.white10,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(8)),
-                      ),
-                    ),
-                  ),
-                ),
-        ] else ...[
-          const SizedBox(height: 15),
-          const Text(
-            "Desktop Audio Output Device",
-            style: TextStyle(color: Colors.white70, fontSize: 12),
+                );
+              } else {
+                context.read<SettingsBloc>().add(
+                  const UpdateTempSettingEvent(clearInputDevice: true),
+                );
+              }
+            },
           ),
-          const SizedBox(height: 5),
-          state.devicesLoading
-              ? const SizedBox(
-                  height: 48,
-                  child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              : DropdownSearch<Map<String, dynamic>>(
-                  items: state.outputDevices,
-                  itemAsString: (device) => device['name'] as String,
-                  selectedItem: state.tempOutputDeviceIndex != null
-                      ? state.outputDevices.firstWhere(
-                          (d) => d['index'] == state.tempOutputDeviceIndex,
-                          orElse: () => {
-                            'name': state.defaultOutputDeviceName,
-                            'index': -1,
-                          },
-                        )
-                      : null,
-                  onChanged: (device) {
-                    if (device != null) {
-                      context.read<TranslationBloc>().add(
-                        UpdateTempSettingEvent(
-                          outputDeviceIndex: device['index'] as int,
-                        ),
-                      );
-                    } else {
-                      // Note: using explicit nulls with copyWith pattern in event triggers clear logic
-                      context.read<TranslationBloc>().add(
-                        const UpdateTempSettingEvent(clearOutputDevice: true),
-                      );
-                    }
-                  },
-                  popupProps: const PopupProps.menu(
-                    showSearchBox: true,
-                    menuProps: MenuProps(backgroundColor: Color(0xFF2C2C2C)),
-                  ),
-                  dropdownDecoratorProps: const DropDownDecoratorProps(
-                    dropdownSearchDecoration: InputDecoration(
-                      hintText: "System Default",
-                      hintStyle: TextStyle(color: Colors.white70),
-                      filled: true,
-                      fillColor: Colors.white10,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(8)),
-                      ),
-                    ),
-                  ),
+          _buildDbMeter(
+            level: (state.currentInputVolume * state.tempMicVolume).clamp(
+              0.0,
+              1.0,
+            ),
+            label: 'Mic',
+            color: Colors.tealAccent,
+            active: true,
+          ),
+          const SizedBox(height: 8),
+          _buildVolumeSlider(
+            context: context,
+            label: 'Mic Volume',
+            value: state.tempMicVolume,
+            color: Colors.tealAccent,
+            onChanged: (v) => context.read<SettingsBloc>().add(
+              UpdateTempSettingEvent(micVolume: v),
+            ),
+            onLiveChange: (v) =>
+                context.read<TranslationBloc>().asrClient.liveVolumeUpdate(
+                  desktopVolume: state.tempDesktopVolume,
+                  micVolume: v,
                 ),
+          ),
         ],
+
+        const SizedBox(height: 20),
+
+        // ── Desktop Audio section ─────────────────────────────────────────
+        _sectionLabel('Desktop Audio Output'),
+        const SizedBox(height: 10),
+        _sublabel('Output Device (loopback capture)'),
+        const SizedBox(height: 5),
+        _deviceDropdown(
+          context: context,
+          state: state,
+          items: state.outputDevices,
+          defaultName: state.defaultOutputDeviceName,
+          selectedIndex: state.tempOutputDeviceIndex,
+          hintText: 'System Default (${state.defaultOutputDeviceName})',
+          loading: state.devicesLoading,
+          onChanged: (device) {
+            if (device != null) {
+              context.read<SettingsBloc>().add(
+                UpdateTempSettingEvent(
+                  outputDeviceIndex: device['index'] as int,
+                ),
+              );
+            } else {
+              context.read<SettingsBloc>().add(
+                const UpdateTempSettingEvent(clearOutputDevice: true),
+              );
+            }
+          },
+        ),
+        _buildDbMeter(
+          level: (state.currentOutputVolume * state.tempDesktopVolume).clamp(
+            0.0,
+            1.0,
+          ),
+          label: 'Desktop',
+          color: Colors.purpleAccent,
+          active: true,
+        ),
+        const SizedBox(height: 8),
+        _buildVolumeSlider(
+          context: context,
+          label: 'Desktop Volume',
+          value: state.tempDesktopVolume,
+          color: Colors.purpleAccent,
+          onChanged: (v) => context.read<SettingsBloc>().add(
+            UpdateTempSettingEvent(desktopVolume: v),
+          ),
+          onLiveChange: (v) =>
+              context.read<TranslationBloc>().asrClient.liveVolumeUpdate(
+                desktopVolume: v,
+                micVolume: state.tempMicVolume,
+              ),
+        ),
+
+        const SizedBox(height: 10),
+        Container(
+          margin: const EdgeInsets.only(top: 6),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.tealAccent.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.info_outline,
+                size: 14,
+                color: Colors.tealAccent,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  state.tempUseMic
+                      ? 'Both mic and desktop audio are active. Translation uses whichever source is louder.'
+                      : 'Only desktop audio is captured. Enable mic above to also capture your voice.',
+                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
 
-  // --- LANGUAGE CONFIGURATION METHOD ---
-  Widget _buildLanguageConfiguration(
-    BuildContext context,
-    TranslationState state,
-  ) {
+  // ─── LANGUAGES TAB ──────────────────────────────────────────────────────────
+
+  Widget _buildLanguagesTab(BuildContext context, SettingsState state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 30),
-        const Divider(color: Colors.white24),
+        _sectionLabel('Source Language'),
+        const SizedBox(height: 4),
+        Text(
+          'The language spoken in the captured audio',
+          style: TextStyle(color: Colors.white38, fontSize: 11),
+        ),
         const SizedBox(height: 10),
-        const Text(
-          "Languages",
-          style: TextStyle(
-            color: Colors.tealAccent,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 15),
-        const Text(
-          "Source Language (Spoken audio)",
-          style: TextStyle(color: Colors.white70, fontSize: 12),
-        ),
-        const SizedBox(height: 5),
         DropdownSearch<MapEntry<String, String>>(
-          items: appLanguages.entries.toList(),
+          key: ValueKey(state.tempSourceLang),
+          items: appLanguages.entries
+              .where((e) => e.key != 'none') // 'none' belongs on target
+              .toList(),
           itemAsString: (entry) => entry.value,
           selectedItem: MapEntry(
             state.tempSourceLang,
             appLanguages[state.tempSourceLang] ?? state.tempSourceLang,
           ),
-          onChanged: (entry) => context.read<TranslationBloc>().add(
+          onChanged: (entry) => context.read<SettingsBloc>().add(
             UpdateTempSettingEvent(sourceLang: entry!.key),
           ),
-          popupProps: const PopupProps.menu(
+          popupProps: PopupProps.menu(
             showSearchBox: true,
-            menuProps: MenuProps(backgroundColor: Color(0xFF2C2C2C)),
+            fit: FlexFit.loose,
+            constraints: const BoxConstraints(maxHeight: 300),
+            searchDelay: Duration.zero,
+            searchFieldProps: TextFieldProps(
+              autofocus: true,
+              decoration: _searchDecoration(
+                appLanguages[state.tempSourceLang] ?? 'Search language...',
+              ),
+            ),
+            menuProps: MenuProps(
+              backgroundColor: const Color(0xFF2C2C2C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
           ),
           dropdownDecoratorProps: const DropDownDecoratorProps(
             dropdownSearchDecoration: InputDecoration(
               filled: true,
               fillColor: Colors.white10,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderSide: BorderSide(color: Colors.white12),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderSide: BorderSide(color: Colors.white12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderSide: BorderSide(color: Colors.white24),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 15),
-        const Text(
-          "Target Language (Translation)",
-          style: TextStyle(color: Colors.white70, fontSize: 12),
+        const SizedBox(height: 20),
+        _sectionLabel('Target Language'),
+        const SizedBox(height: 4),
+        Text(
+          'The language to translate captions into',
+          style: TextStyle(color: Colors.white38, fontSize: 11),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 10),
         DropdownSearch<MapEntry<String, String>>(
+          key: ValueKey(state.tempTargetLang),
           items: appLanguages.entries
-              .where((e) => e.key != 'auto' && e.key != 'none')
+              .where((e) => e.key != 'auto') // include 'none' = Original Source
               .toList(),
           itemAsString: (entry) => entry.value,
           selectedItem: MapEntry(
             state.tempTargetLang,
             appLanguages[state.tempTargetLang] ?? state.tempTargetLang,
           ),
-          onChanged: (entry) => context.read<TranslationBloc>().add(
+          onChanged: (entry) => context.read<SettingsBloc>().add(
             UpdateTempSettingEvent(targetLang: entry!.key),
           ),
-          popupProps: const PopupProps.menu(
+          popupProps: PopupProps.menu(
             showSearchBox: true,
-            menuProps: MenuProps(backgroundColor: Color(0xFF2C2C2C)),
+            fit: FlexFit.loose,
+            constraints: const BoxConstraints(maxHeight: 300),
+            searchDelay: Duration.zero,
+            searchFieldProps: TextFieldProps(
+              autofocus: true,
+              decoration: _searchDecoration(
+                appLanguages[state.tempTargetLang] ?? 'Search language...',
+              ),
+            ),
+            menuProps: MenuProps(
+              backgroundColor: const Color(0xFF2C2C2C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
           ),
           dropdownDecoratorProps: const DropDownDecoratorProps(
             dropdownSearchDecoration: InputDecoration(
               filled: true,
               fillColor: Colors.white10,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderSide: BorderSide(color: Colors.white12),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderSide: BorderSide(color: Colors.white12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderSide: BorderSide(color: Colors.white24),
               ),
             ),
           ),
@@ -317,47 +439,44 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  // --- TYPOGRAPHY CONFIGURATION METHOD ---
-  Widget _buildTypographyConfiguration(
-    BuildContext context,
-    TranslationState state,
-  ) {
+  // ─── DISPLAY TAB ────────────────────────────────────────────────────────────
+
+  Widget _buildDisplayTab(BuildContext context, SettingsState state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 25),
-        const Divider(color: Colors.white24),
+        _sectionLabel('Typography'),
         const SizedBox(height: 10),
-        const Text(
-          "Typography",
-          style: TextStyle(
-            color: Colors.tealAccent,
-            fontWeight: FontWeight.bold,
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: SwitchListTile(
+            title: const Text(
+              'Bold Text',
+              style: TextStyle(color: Colors.white, fontSize: 13),
+            ),
+            subtitle: const Text(
+              'Make captions thicker and easier to read',
+              style: TextStyle(color: Colors.grey, fontSize: 11),
+            ),
+            value: state.tempIsBold,
+            activeThumbColor: Colors.tealAccent,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 2,
+            ),
+            dense: true,
+            onChanged: (val) => context.read<SettingsBloc>().add(
+              UpdateTempSettingEvent(isBold: val),
+            ),
           ),
         ),
-        const SizedBox(height: 15),
-        SwitchListTile(
-          title: const Text(
-            "Bold Text",
-            style: TextStyle(color: Colors.white, fontSize: 14),
-          ),
-          subtitle: const Text(
-            "Make captions thicker and easier to read",
-            style: TextStyle(color: Colors.grey, fontSize: 12),
-          ),
-          value: state.tempIsBold,
-          activeThumbColor: Colors.tealAccent,
-          contentPadding: EdgeInsets.zero,
-          onChanged: (val) => context.read<TranslationBloc>().add(
-            UpdateTempSettingEvent(isBold: val),
-          ),
-        ),
-        const SizedBox(height: 15),
-        const Text(
-          "Font Size",
-          style: TextStyle(color: Colors.white70, fontSize: 12),
-        ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 16),
+        _sublabel('Font Size'),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
@@ -368,7 +487,7 @@ class SettingsScreen extends StatelessWidget {
                 divisions: 38,
                 activeColor: Colors.tealAccent,
                 inactiveColor: Colors.white24,
-                onChanged: (val) => context.read<TranslationBloc>().add(
+                onChanged: (val) => context.read<SettingsBloc>().add(
                   UpdateTempSettingEvent(fontSize: val),
                 ),
               ),
@@ -395,7 +514,7 @@ class SettingsScreen extends StatelessWidget {
                 onChanged: (val) {
                   final parsed = double.tryParse(val);
                   if (parsed != null && parsed >= 10 && parsed <= 48) {
-                    context.read<TranslationBloc>().add(
+                    context.read<SettingsBloc>().add(
                       UpdateTempSettingEvent(fontSize: parsed),
                     );
                   }
@@ -404,34 +523,35 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
-      ],
-    );
-  }
 
-  // --- DISPLAY CONFIGURATION METHOD ---
-  Widget _buildDisplayConfiguration(
-    BuildContext context,
-    TranslationState state,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 30),
-        const Divider(color: Colors.white24),
-        const SizedBox(height: 10),
-        const Text(
-          "Display",
-          style: TextStyle(
-            color: Colors.tealAccent,
-            fontWeight: FontWeight.bold,
+        // ── Live Preview ──────────────────────────────────────────────────
+        const SizedBox(height: 20),
+        _sectionLabel('Preview'),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: state.tempFontSize,
+              fontWeight: state.tempIsBold
+                  ? FontWeight.bold
+                  : FontWeight.normal,
+            ),
+            child: const Text('The quick brown fox jumps over the lazy dog'),
           ),
         ),
-        const SizedBox(height: 15),
-        const Text(
-          "Window Opacity",
-          style: TextStyle(color: Colors.white70, fontSize: 12),
-        ),
-        const SizedBox(height: 5),
+
+        const SizedBox(height: 24),
+        _sectionLabel('Window Opacity'),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
@@ -442,7 +562,7 @@ class SettingsScreen extends StatelessWidget {
                 divisions: 18,
                 activeColor: Colors.tealAccent,
                 inactiveColor: Colors.white24,
-                onChanged: (val) => context.read<TranslationBloc>().add(
+                onChanged: (val) => context.read<SettingsBloc>().add(
                   UpdateTempSettingEvent(opacity: val),
                 ),
               ),
@@ -473,7 +593,7 @@ class SettingsScreen extends StatelessWidget {
                 onChanged: (val) {
                   final parsed = int.tryParse(val);
                   if (parsed != null && parsed >= 10 && parsed <= 100) {
-                    context.read<TranslationBloc>().add(
+                    context.read<SettingsBloc>().add(
                       UpdateTempSettingEvent(opacity: parsed / 100.0),
                     );
                   }
@@ -482,11 +602,10 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
         Align(
           alignment: Alignment.centerRight,
           child: TextButton.icon(
-            onPressed: () => context.read<TranslationBloc>().add(
+            onPressed: () => context.read<SettingsBloc>().add(
               const UpdateTempSettingEvent(opacity: 0.7),
             ),
             icon: const Icon(Icons.refresh, size: 14, color: Colors.white38),
@@ -496,8 +615,305 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 8),
       ],
+    );
+  }
+
+  // ─── SHARED HELPERS ─────────────────────────────────────────────────────────
+
+  Widget _sectionLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: Colors.tealAccent,
+        fontWeight: FontWeight.bold,
+        fontSize: 13,
+      ),
+    );
+  }
+
+  Widget _sublabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(color: Colors.white70, fontSize: 12),
+    );
+  }
+
+  InputDecoration _searchDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+      filled: true,
+      fillColor: Colors.black26,
+      isDense: true,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+
+  Widget _deviceDropdown({
+    required BuildContext context,
+    required SettingsState state,
+    required List<Map<String, dynamic>> items,
+    required String defaultName,
+    required int? selectedIndex,
+    required String hintText,
+    required bool loading,
+    required void Function(Map<String, dynamic>?) onChanged,
+  }) {
+    if (loading) {
+      return const SizedBox(
+        height: 48,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    return DropdownSearch<Map<String, dynamic>>(
+      items: items,
+      itemAsString: (device) => device['name'] == defaultName
+          ? '${device['name']} (Default)'
+          : device['name'] as String,
+      selectedItem: selectedIndex != null
+          ? items.firstWhere(
+              (d) => d['index'] == selectedIndex,
+              orElse: () => {'name': defaultName, 'index': -1},
+            )
+          : null,
+      onChanged: onChanged,
+      popupProps: PopupProps.menu(
+        showSearchBox: true,
+        fit: FlexFit.loose,
+        constraints: const BoxConstraints(maxHeight: 300),
+        searchDelay: Duration.zero,
+        searchFieldProps: TextFieldProps(
+          autofocus: true,
+          decoration: _searchDecoration(hintText),
+        ),
+        menuProps: MenuProps(
+          backgroundColor: const Color(0xFF2C2C2C),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+      dropdownDecoratorProps: DropDownDecoratorProps(
+        dropdownSearchDecoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: const TextStyle(color: Colors.white70),
+          filled: true,
+          fillColor: Colors.white10,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 4,
+          ),
+          // Remove default Material border highlight
+          border: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(8)),
+            borderSide: BorderSide(color: Colors.white12),
+          ),
+          enabledBorder: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(8)),
+            borderSide: BorderSide(color: Colors.white12),
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(8)),
+            borderSide: BorderSide(color: Colors.white24),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDbMeter({
+    required double level,
+    required String label,
+    required Color color,
+    required bool active,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.graphic_eq,
+                size: 12,
+                color: active ? color : Colors.white24,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '$label Level',
+                style: TextStyle(
+                  color: active ? Colors.white54 : Colors.white24,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return Stack(
+                children: [
+                  Container(
+                    height: 6,
+                    width: constraints.maxWidth,
+                    decoration: BoxDecoration(
+                      color: Colors.white10,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 80),
+                    curve: Curves.easeOut,
+                    height: 6,
+                    width: constraints.maxWidth * level.clamp(0.0, 1.0),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: level > 0.9
+                            ? [Colors.redAccent, Colors.red]
+                            : level > 0.6
+                            ? [color, Colors.yellowAccent]
+                            : [color.withValues(alpha: 0.7), color],
+                      ),
+                      borderRadius: BorderRadius.circular(3),
+                      boxShadow: active && level > 0.02
+                          ? [
+                              BoxShadow(
+                                color: color.withValues(alpha: 0.5),
+                                blurRadius: 6,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : null,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVolumeSlider({
+    required BuildContext context,
+    required String label,
+    required double value,
+    required Color color,
+    required ValueChanged<double> onChanged,
+    ValueChanged<double>? onLiveChange,
+  }) {
+    return _VolumeSlider(
+      key: ValueKey(label), // stable key — widget is updated not recreated
+      label: label,
+      value: value,
+      color: color,
+      onChangeEnd: onChanged,
+      onLiveChange: onLiveChange,
+    );
+  }
+}
+
+// ─── Volume Slider ─────────────────────────────────────────────────────────────
+// Self-contained StatefulWidget so local drag state is isolated from BlocBuilder.
+// The percentage label updates live on every frame; bloc events fire only on release.
+
+class _VolumeSlider extends StatefulWidget {
+  final String label;
+  final double value;
+  final Color color;
+  final ValueChanged<double> onChangeEnd;
+  final ValueChanged<double>? onLiveChange;
+
+  const _VolumeSlider({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.onChangeEnd,
+    this.onLiveChange,
+  });
+
+  @override
+  State<_VolumeSlider> createState() => _VolumeSliderState();
+}
+
+class _VolumeSliderState extends State<_VolumeSlider> {
+  late double _localValue;
+
+  @override
+  void initState() {
+    super.initState();
+    _localValue = widget.value;
+  }
+
+  @override
+  void didUpdateWidget(_VolumeSlider old) {
+    super.didUpdateWidget(old);
+    // Only sync from bloc if the user isn't actively dragging
+    if (old.value != widget.value) {
+      _localValue = widget.value;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (_localValue * 100).round();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.volume_up_rounded, size: 12, color: widget.color),
+              const SizedBox(width: 4),
+              Text(
+                widget.label,
+                style: const TextStyle(color: Colors.white54, fontSize: 10),
+              ),
+              const Spacer(),
+              Text(
+                '$pct%',
+                style: TextStyle(
+                  color: widget.color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: widget.color,
+              inactiveTrackColor: Colors.white12,
+              thumbColor: widget.color,
+              overlayColor: widget.color.withValues(alpha: 0.15),
+              trackHeight: 3,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+            ),
+            child: Slider(
+              value: _localValue.clamp(0.0, 2.0),
+              min: 0.0,
+              max: 2.0,
+              divisions: 40,
+              // onChanged: update local display + send live to server; no bloc rebuild
+              onChanged: (v) {
+                setState(() => _localValue = v);
+                widget.onLiveChange?.call(v);
+              },
+              // onChangeEnd: dispatch to bloc only once when user lifts finger
+              onChangeEnd: widget.onChangeEnd,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
