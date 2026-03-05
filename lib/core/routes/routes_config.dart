@@ -3,6 +3,7 @@ export '../../screens/translation/translation_screen.dart';
 export '../../screens/settings/settings_screen.dart';
 export '../../screens/login_screen.dart';
 export '../../screens/history_panel.dart';
+export '../../screens/account/account_screen.dart';
 
 // services & models
 export '../services/auth_service.dart';

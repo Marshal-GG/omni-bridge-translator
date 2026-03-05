@@ -50,6 +50,8 @@ class MyNavigatorObserver extends NavigatorObserver {
       setToTranslationPosition();
     } else if (name == '/history-panel') {
       setToHistoryPosition();
+    } else if (name == '/account') {
+      setToAccountPosition();
     }
   }
 }
