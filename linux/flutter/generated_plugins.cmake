@@ -4,10 +4,12 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   bitsdojo_window_linux
+  desktop_webview_auth
   flutter_acrylic
   screen_retriever_linux
   system_tray
   tray_manager
+  url_launcher_linux
   window_manager
 )
 

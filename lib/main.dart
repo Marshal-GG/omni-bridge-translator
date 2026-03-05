@@ -1,20 +1,18 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'app.dart';
 import 'core/routes/routes_config.dart';
 import 'core/tray_manager.dart';
 import 'core/window_manager.dart';
-import 'core/blocs/firebase/app_bloc_observer.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Setup BLoC Observer for Firebase Analytics & Crashlytics
-  Bloc.observer = AppBlocObserver();
+  // Load environment variables from .env file
+  await dotenv.load(fileName: '.env');
 
   try {
     // Initialize Firebase
@@ -22,12 +20,15 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // Catch fatal Flutter errors
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    // Fallback for desktop platforms without native crash tools
+    FlutterError.onError = (details) {
+      debugPrint('Flutter Error: ${details.exceptionAsString()}');
+      debugPrintStack(stackTrace: details.stack);
+    };
 
-    // Catch asynchronous Dart errors
     PlatformDispatcher.instance.onError = (error, stack) {
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      debugPrint('Async Error: $error');
+      debugPrintStack(stackTrace: stack);
       return true;
     };
   } catch (e) {

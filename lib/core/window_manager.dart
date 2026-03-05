@@ -27,12 +27,18 @@ Future<void> initializeWindow() async {
 }
 
 void configureMainWindow() async {
-  // Check common initial state - default to Login dialog size since we start there
   final win = appWindow;
-  win.minSize = const Size(400, 300);
-  win.size = const Size(720, 480);
-  win.alignment = Alignment.center;
   win.title = "Omni Bridge: Live AI Translator";
+
+  if (AuthService.instance.isLoggedIn) {
+    win.minSize = const Size(300, 150);
+    win.size = const Size(730, 150);
+    win.alignment = Alignment.bottomCenter;
+  } else {
+    win.minSize = const Size(400, 300);
+    win.size = const Size(720, 480);
+    win.alignment = Alignment.center;
+  }
 
   windowManager.setAlwaysOnTop(true);
   win.show();

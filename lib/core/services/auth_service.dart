@@ -1,61 +1,91 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-
-/// A Mock User class to replace FirebaseAuth User on Windows
-/// to unblock the build while keeping the dev bypass functional.
-class MockUser {
-  final String uid;
-  final String? email;
-  final String? displayName;
-  final bool isAnonymous;
-
-  MockUser({
-    required this.uid,
-    this.email,
-    this.displayName,
-    this.isAnonymous = false,
-  });
-}
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:omni_bridge/core/utils/auth_html_constants.dart';
 
 class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();
 
   /// Exposes the current signed-in user (or null if not signed in).
-  ValueNotifier<MockUser?> currentUser = ValueNotifier(null);
+  ValueNotifier<User?> currentUser = ValueNotifier(null);
+  StreamSubscription<User?>? _authStateSub;
+
+  late final GoogleSignIn _googleSignIn;
 
   void init() {
-    // No-op for mock
+    _googleSignIn = GoogleSignIn(
+      params: GoogleSignInParams(
+        clientId: dotenv.env['GOOGLE_CLIENT_ID'] ?? '',
+        clientSecret:
+            '', // Provide empty if not using Web Application client type
+        scopes: ['email', 'profile'],
+        customPostAuthPage: customAuthSuccessHtml,
+      ),
+    );
+
+    // Listen to Firebase auth state changes automatically
+    _authStateSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      currentUser.value = user;
+    });
+
+    // Attempt silent sign-in on init
+    _googleSignIn.silentSignIn().then((credentials) async {
+      if (credentials != null && FirebaseAuth.instance.currentUser == null) {
+        final credential = GoogleAuthProvider.credential(
+          accessToken: credentials.accessToken,
+          idToken: credentials.idToken,
+        );
+        await FirebaseAuth.instance.signInWithCredential(credential);
+      }
+    });
   }
 
   void dispose() {
-    // No-op for mock
+    _authStateSub?.cancel();
   }
 
   bool get isLoggedIn => currentUser.value != null;
 
-  /// Google Sign-In Mock.
-  Future<MockUser?> signInWithGoogle() async {
-    // Google Sign-In is unavailable on Windows without the plugin.
-    // We'll treat this as a no-op or return a mock user if you want to test.
-    debugPrint(
-      '[Auth] Google Sign-In is currently stubbed for Windows build compatibility.',
-    );
-    return null;
+  /// Google Sign-In via system browser for Windows
+  Future<User?> signInWithGoogle() async {
+    try {
+      final result = await _googleSignIn.signIn();
+      if (result == null) {
+        debugPrint('[Auth] Google Auth canceled or failed.');
+        return null;
+      }
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: result.accessToken,
+        idToken: result.idToken,
+      );
+
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(
+        credential,
+      );
+      return userCredential.user;
+    } catch (e) {
+      debugPrint('[Auth] Google Sign-In failed: $e');
+      return null;
+    }
   }
 
-  /// Dev bypass: signs in a mock user locally.
-  Future<MockUser?> bypassForDev() async {
-    final mockUser = MockUser(
-      uid: 'dev-user-123',
-      displayName: 'Developer',
-      isAnonymous: true,
-    );
-    currentUser.value = mockUser;
-    return mockUser;
+  /// Dev bypass: signs in a user anonymously
+  Future<User?> bypassForDev() async {
+    try {
+      final userCredential = await FirebaseAuth.instance.signInAnonymously();
+      return userCredential.user;
+    } catch (e) {
+      debugPrint('[Auth] Dev Bypass failed: $e');
+      return null;
+    }
   }
 
   Future<void> signOut() async {
-    currentUser.value = null;
+    await _googleSignIn.signOut();
+    await FirebaseAuth.instance.signOut();
   }
 }
