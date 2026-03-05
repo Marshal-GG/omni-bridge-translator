@@ -47,9 +47,19 @@ void configureMainWindow() async {
 /// Sets the window to a centered dialog style for Login
 Future<void> setToLoginPosition() async {
   await windowManager.setResizable(true);
-  appWindow.minSize = const Size(400, 300); // Clear bitsdojo constraint
+  appWindow.minSize = const Size(400, 300);
   await windowManager.setMinimumSize(const Size(400, 300));
   await windowManager.setSize(const Size(720, 480));
+  await windowManager.center();
+  await windowManager.setAlwaysOnTop(true);
+}
+
+/// Sets window to the Account screen size (same as login)
+Future<void> setToAccountPosition() async {
+  await windowManager.setResizable(true);
+  appWindow.minSize = const Size(400, 380);
+  await windowManager.setMinimumSize(const Size(400, 380));
+  await windowManager.setSize(const Size(520, 560));
   await windowManager.center();
   await windowManager.setAlwaysOnTop(true);
 }

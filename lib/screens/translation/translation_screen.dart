@@ -257,6 +257,18 @@ class DraggableOverlayContent extends StatelessWidget {
             constraints: const BoxConstraints(),
             splashRadius: 16,
           ),
+          IconButton(
+            icon: const Icon(
+              Icons.manage_accounts_rounded,
+              size: 14,
+              color: Colors.white70,
+            ),
+            onPressed: () => Navigator.pushNamed(context, '/account'),
+            tooltip: 'Account',
+            padding: const EdgeInsets.all(8),
+            constraints: const BoxConstraints(),
+            splashRadius: 16,
+          ),
           MinimizeWindowButton(
             colors: WindowButtonColors(iconNormal: Colors.white),
           ),
