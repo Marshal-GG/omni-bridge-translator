@@ -5,6 +5,7 @@ import 'asr_text_controller.dart';
 import 'translation_service.dart';
 import '../../screens/translation/bloc/translation_bloc.dart';
 import '../../screens/translation/bloc/translation_event.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 /// Connects to the Python flutter_server.py via WebSocket,
 /// sends the start command, and feeds translated captions to [asrTextController].
@@ -47,6 +48,16 @@ class AsrWebSocketClient {
         final errMsg = msg.text.trim().isNotEmpty
             ? msg.text.trim()
             : 'The server returned an error while processing audio.';
+
+        // Log Python Server crashes to Crashlytics
+        FirebaseCrashlytics.instance.recordError(
+          Exception(errMsg),
+          StackTrace.current,
+          reason: 'Python Server Error (source: $activeLang)',
+          fatal:
+              false, // Treat as non-fatal on the Flutter side since it didn't crash the Dart VM
+        );
+
         _bloc?.add(
           LangErrorEvent(
             '⚠ Language error (source: $activeLang): $errMsg. '

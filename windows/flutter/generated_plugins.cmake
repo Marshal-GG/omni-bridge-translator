@@ -4,6 +4,8 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   bitsdojo_window_windows
+  cloud_firestore
+  firebase_core
   flutter_acrylic
   screen_retriever_windows
   system_tray
