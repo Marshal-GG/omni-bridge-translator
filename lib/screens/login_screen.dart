@@ -94,8 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Center(
                   child: SingleChildScrollView(
                     child: SizedBox(
-                      width:
-                          400, 
+                      width: 400,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
@@ -128,8 +127,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             const Text(
-                          'Live AI Translator',
-                          style: TextStyle(color: Colors.white54, fontSize: 13),
+                              'Live AI Translator',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 13,
+                              ),
                             ),
                             const SizedBox(height: 48),
 

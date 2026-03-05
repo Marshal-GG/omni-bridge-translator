@@ -14,6 +14,9 @@ class CaptionMessage {
   final bool isError;
   final bool isFinal;
   final String? sourceLangOverride;
+  // Non-null when type == 'audio_levels'
+  final double? inputLevel;
+  final double? outputLevel;
 
   CaptionMessage({
     required this.text,
@@ -21,9 +24,23 @@ class CaptionMessage {
     required this.isError,
     required this.isFinal,
     this.sourceLangOverride,
+    this.inputLevel,
+    this.outputLevel,
   });
 
   factory CaptionMessage.fromJson(Map<String, dynamic> json) {
+    // Audio level packets are handled separately
+    if (json['type'] == 'audio_levels') {
+      return CaptionMessage(
+        text: '',
+        original: '',
+        isError: false,
+        isFinal: false,
+        inputLevel: (json['input_level'] as num?)?.toDouble() ?? 0.0,
+        outputLevel: (json['output_level'] as num?)?.toDouble() ?? 0.0,
+      );
+    }
+
     final text = json['text'] as String? ?? '';
     // nim_api sends this magic string when auto-ASR falls back to a specific lang
     String? magicOverride;
@@ -188,6 +205,8 @@ class TranslationService {
     required bool useMic,
     int? inputDeviceIndex,
     int? outputDeviceIndex,
+    double desktopVolume = 1.0,
+    double micVolume = 1.0,
   }) {
     _sourceLang = sourceLang;
     _targetLang = targetLang;
@@ -201,6 +220,8 @@ class TranslationService {
         'source': sourceLang,
         'target': targetLang,
         'use_mic': useMic,
+        'desktop_volume': desktopVolume,
+        'mic_volume': micVolume,
       };
       if (inputDeviceIndex != null) {
         payload['input_device_index'] = inputDeviceIndex;
@@ -210,6 +231,20 @@ class TranslationService {
       }
       _channel!.sink.add(jsonEncode(payload));
     }
+  }
+
+  /// Instantly update audio capture volumes without restarting the pipeline
+  void sendVolumeUpdate({
+    required double desktopVolume,
+    required double micVolume,
+  }) {
+    _channel?.sink.add(
+      jsonEncode({
+        'cmd': 'volume_update',
+        'desktop_volume': desktopVolume,
+        'mic_volume': micVolume,
+      }),
+    );
   }
 
   /// Send stop command and close WebSocket (no auto-reconnect after this)

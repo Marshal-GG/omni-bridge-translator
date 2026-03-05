@@ -176,7 +176,6 @@ class NimApiClient:
                 except Exception as asr_err:
                     err_str = str(asr_err)
                     if use_auto and not fell_back and "Unavailable model" in err_str:
-                        print("[ASR] 'multi' unavailable, falling back to en-US.")
                         asr_lang = "en-US"
                         config = _make_config(asr_lang)
                         fell_back = True
@@ -200,12 +199,10 @@ class NimApiClient:
                         continue
 
                     clean = self._clean_stutters(transcript)
-                    print(f"[ASR] lang={asr_lang} transcript={clean!r}")
 
                     # Always translate unless target is 'none' (transcription-only mode)
                     if self._target_lang and self._target_lang != 'none':
                         translated = self._translate_text(clean, self._source_lang, self._target_lang)
-                        print(f"[TRANSLATE] {self._source_lang}→{self._target_lang} result={translated!r}")
                         if self._callback:
                             self._callback(translated, False, is_final=True, original_text=clean)
                     else:
