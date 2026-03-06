@@ -76,6 +76,10 @@ Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: st
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
+[UninstallRun]
+; Kill the Python server process during uninstall
+Filename: "taskkill"; Parameters: "/F /IM omni_bridge_server.exe /T"; Flags: runhidden
+
 [Code]
 // ── Pre-install cleanup ─────────────────────────────────────────────────────
 // Runs the existing uninstaller silently (covers both HKLM and HKCU entries),
@@ -88,6 +92,15 @@ begin
     RegDeleteKeyIncludingSubkeys(RootKey, SubKey);
 end;
 
+procedure KillServerProcess();
+var
+  ResultCode: Integer;
+begin
+  // Kill the Python server process if running
+  Exec('taskkill', '/F /IM omni_bridge_server.exe /T', '', SW_HIDE,
+       ewWaitUntilTerminated, ResultCode);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   UninstPath: String;
@@ -98,6 +111,9 @@ var
 begin
   if CurStep = ssInstall then
   begin
+    // 0. Kill stale processes early
+    KillServerProcess();
+
     // 1. Run old uninstaller (HKLM = admin install, HKCU = old user-level install)
     UninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1';
     if RegQueryStringValue(HKLM, UninstPath, 'UninstallString', UninstExe) or
@@ -132,5 +148,14 @@ begin
 
     // 4. Remove leftover user-level install dir (from old lowest-privilege installs)
     DelTree(ExpandConstant('{localappdata}\Programs\{#MyAppName}'), True, True, True);
+
+    // 5. Wipe Persistent Session/Auth Data (Fixes "still logged in" issue)
+    // - AppData Roaming (com.example is the CompanyName from Runner.rc)
+    DelTree(ExpandConstant('{userappdata}\com.example\{#MyAppName}'), True, True, True);
+    // - LocalAppData
+    DelTree(ExpandConstant('{localappdata}\com.example\{#MyAppName}'), True, True, True);
+    // - Firebase/Firestore Caches (Wiping known root cache locations)
+    DelTree(ExpandConstant('{localappdata}\firestore'), True, True, True);
+    DelTree(ExpandConstant('{localappdata}\firebase-heartbeat'), True, True, True);
   end;
 end;

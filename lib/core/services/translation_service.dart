@@ -125,6 +125,7 @@ class TranslationService {
     if (_intentionallyStopped) return;
 
     try {
+      debugPrint('[WS] Attempting to connect to $_wsUrl...');
       _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
 
       // Wait for the handshake to complete (throws if server is down)
@@ -132,7 +133,7 @@ class TranslationService {
 
       // Connected — reset backoff
       _reconnectAttempt = 0;
-      debugPrint('[WS] Connected to $_wsUrl');
+      debugPrint('[WS] Connection established to $_wsUrl');
 
       _sub = _channel!.stream.listen(
         (data) {
@@ -192,7 +193,7 @@ class TranslationService {
     // Exponential backoff: 2s, 4s, 8s … capped at 15s
     final delay = Duration(seconds: (_reconnectAttempt * 2).clamp(2, 15));
     debugPrint(
-      '[WS] Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempt)…',
+      '[WS] Reconnecting to $_wsUrl in ${delay.inSeconds}s (attempt $_reconnectAttempt)…',
     );
 
     _reconnectTimer?.cancel();

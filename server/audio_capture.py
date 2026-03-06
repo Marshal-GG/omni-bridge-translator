@@ -61,66 +61,104 @@ class AudioCapture:
 
     def _get_device_info(self, p):
         """Resolve the loopback output device (desktop audio) for recording."""
-        wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
+        # 1. Resolve WASAPI host API index safely
+        wasapi_index = -1
+        for i in range(p.get_host_api_count()):
+            try:
+                hapi = p.get_host_api_info_by_index(i)
+                if hapi.get("type") == pyaudio.paWASAPI:
+                    wasapi_index = i
+                    break
+            except Exception:
+                continue
+
+        if wasapi_index == -1:
+            raise RuntimeError("WASAPI is required for desktop audio capture.")
 
         if self.output_device_index is not None:
-            target = p.get_device_info_by_index(self.output_device_index)
-            for loopback in p.get_loopback_device_info_generator():
-                if target["name"] in loopback["name"]:
-                    return loopback
-            raise RuntimeError(f"Could not find loopback for device: {target['name']}")
-        else:
-            # Guard: WASAPI sometimes returns a defaultOutputDevice index that
-            # exceeds deviceCount, causing a C-level assertion abort.
-            default_idx = wasapi_info.get("defaultOutputDevice", -1)
-            device_count = p.get_device_count()
-            if not (0 <= default_idx < device_count):
-                raise RuntimeError(
-                    f"WASAPI defaultOutputDevice index {default_idx} is out of range "
-                    f"(device count: {device_count}). Try selecting a device manually."
-                )
-            device_info = p.get_device_info_by_index(default_idx)
-            if not device_info.get("isLoopbackDevice"):
-                for loopback in p.get_loopback_device_info_generator():
-                    if device_info["name"] in loopback["name"]:
-                        device_info = loopback
-                        break
-            return device_info
+            try:
+                # Validate index against current device count
+                if 0 <= self.output_device_index < p.get_device_count():
+                    target = p.get_device_info_by_index(self.output_device_index)
+                    # Ensure it's a loopback device
+                    for loopback in p.get_loopback_device_info_generator():
+                        if loopback["index"] == target["index"] or target["name"] in loopback["name"]:
+                            return loopback
+            except Exception as e:
+                print(f"[AudioCapture] Error resolving manual output device {self.output_device_index}: {e}")
+
+        # Default fallback: Search all WASAPI loopback devices
+        print("[AudioCapture] Searching for default WASAPI loopback device...")
+
+        # Find any WASAPI loopback that isn't a virtual driver
+        for loopback in p.get_loopback_device_info_generator():
+            name = loopback.get("name", "")
+            if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
+                continue
+            print(f"[AudioCapture] Found fallback loopback: {name}")
+            return loopback
+
+        raise RuntimeError("No valid WASAPI loopback (desktop audio) device found.")
 
     def _get_mic_device_info(self, p):
         """Resolve the microphone input device."""
+        wasapi_index = -1
+        for i in range(p.get_host_api_count()):
+            try:
+                hapi = p.get_host_api_info_by_index(i)
+                if hapi.get("type") == pyaudio.paWASAPI:
+                    wasapi_index = i
+                    break
+            except Exception:
+                continue
+
         if self.input_device_index is not None:
-            info = p.get_device_info_by_index(self.input_device_index)
-            return info
-        # Guard: PortAudio may store a defaultInputDevice index that exceeds
-        # deviceCount, causing a C-level assertion abort. Validate first.
-        try:
-            wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
-            default_idx = wasapi_info.get("defaultInputDevice", -1)
-            device_count = p.get_device_count()
-            if 0 <= default_idx < device_count:
-                return p.get_device_info_by_index(default_idx)
-        except Exception:
-            pass
-        # Fallback: find any device with input channels
-        device_count = p.get_device_count()
-        for i in range(device_count):
-            info = p.get_device_info_by_index(i)
-            if info.get("maxInputChannels", 0) > 0:
-                return info
+            try:
+                if 0 <= self.input_device_index < p.get_device_count():
+                    info = p.get_device_info_by_index(self.input_device_index)
+                    if info: return info
+            except Exception:
+                pass
+
+        # Default mic
+        # Fallback: Find any working WASAPI input
+        for i in range(p.get_device_count()):
+            try:
+                info = p.get_device_info_by_index(i)
+                name = info.get("name", "")
+                if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
+                    continue
+                if info.get("hostApi") == wasapi_index and info.get("maxInputChannels", 0) > 0:
+                    return info
+            except Exception:
+                continue
+
+        # If no WASAPI input, find ANY valid input
+        for i in range(p.get_device_count()):
+            try:
+                info = p.get_device_info_by_index(i)
+                name = info.get("name", "")
+                if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
+                    continue
+                if info.get("maxInputChannels", 0) > 0:
+                    return info
+            except Exception:
+                continue
+
         raise RuntimeError("No valid microphone input device found.")
 
     def _record_loop(self):
+        from shared_pyaudio import get_pyaudio
         try:
-            with pyaudio.PyAudio() as p:
-                out_info = self._get_device_info(p)
-                mic_info = self._get_mic_device_info(p) if self.use_mic else None
+            p = get_pyaudio()
+            out_info = self._get_device_info(p)
+            mic_info = self._get_mic_device_info(p) if self.use_mic else None
 
-                self._stream_device(
-                    p=p,
-                    device_info=out_info,
-                    extra_device_info=mic_info,
-                )
+            self._stream_device(
+                p=p,
+                device_info=out_info,
+                extra_device_info=mic_info,
+            )
         except Exception as e:
             print(f"[AudioCapture] Error: {e}")
             self.is_recording = False
@@ -195,25 +233,51 @@ class AudioCapture:
         silence_counter = 0
         in_speech = False
 
+        import time
         while self.is_recording:
-            data = stream.read(1024, exception_on_overflow=False)
-            audio_data_int16 = np.frombuffer(data, dtype=np.int16)
+            read_desktop = False
+            read_mic = False
 
-            # Stereo → mono for output/loopback
-            if channels > 1:
-                audio_data_int16 = (
-                    audio_data_int16.reshape(-1, channels).mean(axis=1).astype(np.int16)
-                )
+            try:
+                if stream.get_read_available() >= 1024:
+                    read_desktop = True
+                if mic_stream is not None and mic_stream.get_read_available() >= 1024:
+                    read_mic = True
+            except Exception as e:
+                print(f"[AudioCapture] Loop error checking streams: {e}")
+                self.is_recording = False
+                break
 
-            # Apply desktop volume
-            if self.desktop_volume != 1.0:
-                audio_data_int16 = np.clip(
-                    audio_data_int16.astype(np.float32) * self.desktop_volume,
-                    -32768, 32767,
-                ).astype(np.int16)
+            if not read_desktop and not read_mic:
+                time.sleep(0.01)
+                continue
 
-            # If mic stream is open, blend it in
-            if mic_stream is not None:
+            if read_desktop:
+                try:
+                    data = stream.read(1024, exception_on_overflow=False)
+                    audio_data_int16 = np.frombuffer(data, dtype=np.int16)
+
+                    # Stereo → mono for output/loopback
+                    if channels > 1:
+                        audio_data_int16 = (
+                            audio_data_int16.reshape(-1, channels).mean(axis=1).astype(np.int16)
+                        )
+
+                    # Apply desktop volume
+                    if self.desktop_volume != 1.0:
+                        audio_data_int16 = np.clip(
+                            audio_data_int16.astype(np.float32) * self.desktop_volume,
+                            -32768, 32767,
+                        ).astype(np.int16)
+                except Exception as e:
+                    print(f"[AudioCapture] Error reading desktop stream: {e}")
+                    self.is_recording = False
+                    break
+            else:
+                audio_data_int16 = np.zeros(1024, dtype=np.int16)
+
+            # If mic stream had data, read and mix it
+            if read_mic:
                 try:
                     mic_data = mic_stream.read(1024, exception_on_overflow=False)
                     mic_int16 = np.frombuffer(mic_data, dtype=np.int16)

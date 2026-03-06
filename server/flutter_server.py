@@ -10,10 +10,19 @@ Run with:
 """
 import asyncio
 import json
+import logging
+import os
+import signal
+import sys
 import threading
 import time
-import os
 from typing import Set
+
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
 
 from dotenv import load_dotenv
 from pathlib import Path
@@ -162,42 +171,67 @@ async def list_devices():
     # Acquire lock so we don't open PyAudio while audio_capture is initialising
     async with _pyaudio_lock:
         try:
-            with pyaudio.PyAudio() as p:
-                wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
-                wasapi_index = wasapi_info["index"]
-
-                # Resolve default input name
+            from shared_pyaudio import get_pyaudio
+            p = get_pyaudio()
+            # 1. Resolve WASAPI host API index safely
+            wasapi_index = -1
+            for i in range(p.get_host_api_count()):
                 try:
-                    default_in = p.get_default_input_device_info()
-                    default_input_name = default_in.get("name", "Default")
+                    hapi = p.get_host_api_info_by_index(i)
+                    if hapi.get("type") == pyaudio.paWASAPI:
+                        wasapi_index = i
+                        break
                 except Exception:
-                    pass
+                    continue
 
-                # Resolve default output loopback name — must bounds-check first;
-                # WASAPI sometimes reports an invalid defaultOutputDevice index which
-                # causes a C-level assertion abort that Python cannot catch.
+            if wasapi_index == -1:
+                return {"input": [], "output": [], "error": "WASAPI not found"}
+
+            # Resolve default input name
+            for i in range(p.get_device_count()):
                 try:
-                    default_out_idx = wasapi_info.get("defaultOutputDevice", -1)
-                    device_count = p.get_device_count()
-                    if 0 <= default_out_idx < device_count:
-                        default_out = p.get_device_info_by_index(default_out_idx)
-                        default_output_name = default_out.get("name", "Default")
-                except Exception:
-                    pass
-
-                # WASAPI input devices only (no duplicates)
-                for i in range(p.get_device_count()):
                     info = p.get_device_info_by_index(i)
+                    name = info.get("name", "")
+                    if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
+                        continue
+                    if info.get("hostApi") == wasapi_index and info.get("maxInputChannels", 0) > 0:
+                        default_input_name = name
+                        break
+                except Exception:
+                    continue
+
+            # Resolve default output loopback name
+            for loopback in p.get_loopback_device_info_generator():
+                name = loopback.get("name", "")
+                if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
+                    continue
+                default_output_name = name
+                break
+
+            # WASAPI input devices only (no duplicates)
+            for i in range(p.get_device_count()):
+                try:
+                    info = p.get_device_info_by_index(i)
+                    name = info.get("name", "")
+                    # Filter out virtual mappings that cause PortAudio drift/assertions
+                    if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
+                        continue
+
                     if (
                         info.get("hostApi") == wasapi_index
                         and info.get("maxInputChannels", 0) > 0
                         and not info.get("isLoopbackDevice", False)
                     ):
-                        inputs.append({"index": i, "name": info["name"]})
+                        inputs.append({"index": i, "name": name})
+                except Exception:
+                    continue
 
-                # Loopback outputs
-                for loopback in p.get_loopback_device_info_generator():
-                    outputs.append({"index": loopback["index"], "name": loopback["name"]})
+            # Loopback outputs
+            for loopback in p.get_loopback_device_info_generator():
+                name = loopback.get("name", "")
+                if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
+                    continue
+                outputs.append({"index": loopback["index"], "name": name})
 
         except Exception as e:
             print(f"[/devices] Error: {e}")
@@ -338,5 +372,38 @@ async def captions_ws(websocket: WebSocket):
         active_connections.discard(websocket)
 
 
+def kill_other_instances():
+    """Find and kill other running instances of this server to prevent port conflicts."""
+    if not HAS_PSUTIL:
+        print("[Main] Warning: psutil not installed. Skipping instance check.")
+        return
+
+    current_pid = os.getpid()
+    target_exe = "omni_bridge_server.exe"
+
+    print(f"[Main] Checking for existing instances (Current PID: {current_pid})...")
+    
+    for proc in psutil.process_iter(['pid', 'name']):
+        try:
+            pinfo = proc.info
+            pid = pinfo['pid']
+            name = pinfo['name']
+
+            if pid == current_pid:
+                continue
+
+            # ONLY kill the packaged EXE. User requested not to touch python.exe.
+            if name == target_exe:
+                print(f"[Main] Terminating stale instance: {name} (PID: {pid})")
+                proc.terminate()
+                try:
+                    proc.wait(timeout=3)
+                except psutil.TimeoutExpired:
+                    print(f"[Main] Force killing PID {pid}")
+                    proc.kill()
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+
 if __name__ == "__main__":
+    kill_other_instances()
     uvicorn.run(app, host="127.0.0.1", port=8765)

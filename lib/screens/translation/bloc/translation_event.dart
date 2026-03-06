@@ -11,6 +11,21 @@ class ToggleSettingsEvent extends TranslationEvent {}
 
 class ToggleShrinkEvent extends TranslationEvent {}
 
+/// Dispatched on every caption update while in shrunk mode so the bloc
+/// can measure line count and resize the window to snugly fit the text.
+class CaptionTextChangedEvent extends TranslationEvent {
+  final String text;
+  final double windowWidth;
+
+  const CaptionTextChangedEvent({
+    required this.text,
+    required this.windowWidth,
+  });
+
+  @override
+  List<Object?> get props => [text, windowWidth];
+}
+
 class LoadSettingsEvent extends TranslationEvent {}
 
 class SourceLangOverrideEvent extends TranslationEvent {

@@ -131,6 +131,7 @@ class NimApiClient:
                     if use_auto and not fell_back:
                         print(f"[ASR] Auto mode failed ({err_str[:120]}), falling back to en-US")
                         asr_lang = "en-US"
+                        self._source_lang = "en"
                         config = self.riva.make_asr_config(self._sample_rate, asr_lang)
                         fell_back = True
                         if self._callback:
