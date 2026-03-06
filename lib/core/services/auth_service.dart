@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:omni_bridge/core/utils/auth_html_constants.dart';
+import 'package:omni_bridge/core/constants/auth_html_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -22,13 +22,20 @@ class AuthService {
   Completer<String?>? _authCodeCompleter;
 
   void init() {
+    // Inject the redirect URL if provided in the environment variables
+    final redirectUrl = dotenv.env['AUTH_SUCCESS_REDIRECT_URL'] ?? '';
+    final customHtml = customAuthSuccessHtml.replaceFirst(
+      '{{REDIRECT_URL}}',
+      redirectUrl,
+    );
+
     _googleSignIn = GoogleSignIn(
       params: GoogleSignInParams(
         clientId: dotenv.env['GOOGLE_CLIENT_ID'] ?? '',
         clientSecret:
             '', // Provide empty if not using Web Application client type
         scopes: ['email', 'profile'],
-        customPostAuthPage: customAuthSuccessHtml,
+        customPostAuthPage: customHtml,
       ),
     );
 

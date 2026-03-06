@@ -45,55 +45,65 @@ class _SettingsScreenState extends State<SettingsScreen>
             width: 1,
             child: Container(
               color: const Color(0xFF121212),
-              child: Column(
-                children: [
-                  Container(
-                    color: const Color(0xFF1A1A1A),
-                    child: TabBar(
-                      controller: _tabController,
-                      indicatorColor: Colors.tealAccent,
-                      indicatorWeight: 2,
-                      labelColor: Colors.tealAccent,
-                      unselectedLabelColor: Colors.white38,
-                      labelStyle: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      tabs: const [
-                        Tab(text: 'Input & Output'),
-                        Tab(text: 'Languages'),
-                        Tab(text: 'Display'),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                          child: buildInputOutputTab(context, state),
-                        ),
-                        SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              buildLanguagesTab(context, state),
-                              const SizedBox(height: 28),
-                              buildAiEngineSelector(context, state),
-                            ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Hide content while the window is transitioning to a larger size
+                  // to prevent RenderFlex overflow errors during the animation.
+                  if (constraints.maxHeight < 200) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return Column(
+                    children: [
+                      Container(
+                        color: const Color(0xFF1A1A1A),
+                        child: TabBar(
+                          controller: _tabController,
+                          indicatorColor: Colors.tealAccent,
+                          indicatorWeight: 2,
+                          labelColor: Colors.tealAccent,
+                          unselectedLabelColor: Colors.white38,
+                          labelStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
                           ),
+                          tabs: const [
+                            Tab(text: 'Input & Output'),
+                            Tab(text: 'Languages'),
+                            Tab(text: 'Display'),
+                          ],
                         ),
-                        SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                          child: buildDisplayTab(context, state),
+                      ),
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          children: [
+                            SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                              child: buildInputOutputTab(context, state),
+                            ),
+                            SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  buildLanguagesTab(context, state),
+                                  const SizedBox(height: 28),
+                                  buildAiEngineSelector(context, state),
+                                ],
+                              ),
+                            ),
+                            SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                              child: buildDisplayTab(context, state),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  buildSettingsFooter(context, state),
-                ],
+                      ),
+                      buildSettingsFooter(context, state),
+                    ],
+                  );
+                },
               ),
             ),
           ),

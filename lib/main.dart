@@ -8,7 +8,7 @@ import 'core/tray_manager.dart';
 import 'core/window_manager.dart';
 import 'firebase_options.dart';
 import 'core/services/tracking_service.dart';
-import 'core/services/auth_service.dart';
+
 import 'package:protocol_handler/protocol_handler.dart';
 import 'package:app_links/app_links.dart';
 import 'package:windows_single_instance/windows_single_instance.dart';
