@@ -32,6 +32,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         tempFontSize: event.fontSize,
         tempIsBold: event.isBold,
         tempOpacity: event.opacity,
+        tempAiEngine: event.aiEngine,
         tempInputDeviceIndex: event.inputDeviceIndex,
         tempOutputDeviceIndex: event.outputDeviceIndex,
         tempDesktopVolume: event.desktopVolume,
@@ -52,6 +53,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         tempFontSize: event.fontSize,
         tempIsBold: event.isBold,
         tempOpacity: event.opacity,
+        tempAiEngine: event.aiEngine,
         tempInputDeviceIndex: event.clearInputDevice
             ? null
             : (event.inputDeviceIndex ?? state.tempInputDeviceIndex),

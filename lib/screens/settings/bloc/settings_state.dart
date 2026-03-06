@@ -12,6 +12,7 @@ class SettingsState extends Equatable {
   final int? tempOutputDeviceIndex;
   final double tempDesktopVolume;
   final double tempMicVolume;
+  final String tempAiEngine;
 
   // Audio Levels (live during settings open)
   final double currentInputVolume;
@@ -35,6 +36,7 @@ class SettingsState extends Equatable {
     this.tempOutputDeviceIndex,
     required this.tempDesktopVolume,
     required this.tempMicVolume,
+    required this.tempAiEngine,
     required this.currentInputVolume,
     required this.currentOutputVolume,
     required this.devicesLoading,
@@ -56,6 +58,7 @@ class SettingsState extends Equatable {
       tempOutputDeviceIndex: null,
       tempDesktopVolume: 1.0,
       tempMicVolume: 1.0,
+      tempAiEngine: 'riva',
       currentInputVolume: 0.0,
       currentOutputVolume: 0.0,
       devicesLoading: false,
@@ -77,6 +80,7 @@ class SettingsState extends Equatable {
     int? tempOutputDeviceIndex,
     double? tempDesktopVolume,
     double? tempMicVolume,
+    String? tempAiEngine,
     double? currentInputVolume,
     double? currentOutputVolume,
     bool? devicesLoading,
@@ -97,6 +101,7 @@ class SettingsState extends Equatable {
           tempOutputDeviceIndex ?? this.tempOutputDeviceIndex,
       tempDesktopVolume: tempDesktopVolume ?? this.tempDesktopVolume,
       tempMicVolume: tempMicVolume ?? this.tempMicVolume,
+      tempAiEngine: tempAiEngine ?? this.tempAiEngine,
       currentInputVolume: currentInputVolume ?? this.currentInputVolume,
       currentOutputVolume: currentOutputVolume ?? this.currentOutputVolume,
       devicesLoading: devicesLoading ?? this.devicesLoading,
@@ -121,6 +126,7 @@ class SettingsState extends Equatable {
     tempOutputDeviceIndex,
     tempDesktopVolume,
     tempMicVolume,
+    tempAiEngine,
     currentInputVolume,
     currentOutputVolume,
     devicesLoading,

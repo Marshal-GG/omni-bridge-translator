@@ -92,8 +92,23 @@ class AudioCapture:
         if self.input_device_index is not None:
             info = p.get_device_info_by_index(self.input_device_index)
             return info
-        info = p.get_default_input_device_info()
-        return info
+        # Guard: PortAudio may store a defaultInputDevice index that exceeds
+        # deviceCount, causing a C-level assertion abort. Validate first.
+        try:
+            wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
+            default_idx = wasapi_info.get("defaultInputDevice", -1)
+            device_count = p.get_device_count()
+            if 0 <= default_idx < device_count:
+                return p.get_device_info_by_index(default_idx)
+        except Exception:
+            pass
+        # Fallback: find any device with input channels
+        device_count = p.get_device_count()
+        for i in range(device_count):
+            info = p.get_device_info_by_index(i)
+            if info.get("maxInputChannels", 0) > 0:
+                return info
+        raise RuntimeError("No valid microphone input device found.")
 
     def _record_loop(self):
         try:
@@ -110,36 +125,61 @@ class AudioCapture:
             print(f"[AudioCapture] Error: {e}")
             self.is_recording = False
 
+    def _open_stream_robust(self, p, device_info, is_mic=False):
+        native_rate = int(device_info["defaultSampleRate"])
+        
+        # WASAPI Loopbacks often report 0 input channels, so you must use their output channel count
+        if not is_mic and device_info.get("maxInputChannels", 0) == 0 and device_info.get("maxOutputChannels", 0) > 0:
+            channels = int(device_info.get("maxOutputChannels", 2))
+        else:
+            channels = int(device_info.get("maxInputChannels", 2))
+            
+        if channels < 1:
+            channels = 2
+
+        try:
+            stream = p.open(
+                format=pyaudio.paInt16,
+                channels=channels,
+                rate=native_rate,
+                frames_per_buffer=1024,
+                input=True,
+                input_device_index=device_info["index"],
+            )
+            return stream, channels, native_rate
+        except Exception as e:
+            fallback = 1 if channels >= 2 else 2
+            print(f"[AudioCapture] Warning: failed opening {device_info['name']} with {channels} channels: {e}. Trying {fallback} channels...")
+            try:
+                stream = p.open(
+                    format=pyaudio.paInt16,
+                    channels=fallback,
+                    rate=native_rate,
+                    frames_per_buffer=1024,
+                    input=True,
+                    input_device_index=device_info["index"],
+                )
+                return stream, fallback, native_rate
+            except Exception as e2:
+                print(f"[AudioCapture] Error: complete failure opening device {device_info['name']}: {e2}")
+                raise e
+
     def _stream_device(self, p, device_info, extra_device_info=None):
         """Open stream(s) and apply VAD-based chunking."""
-        channels = max(1, device_info.get("maxInputChannels", 1))
-        native_rate = int(device_info["defaultSampleRate"])
-
-        stream = p.open(
-            format=pyaudio.paInt16,
-            channels=channels,
-            rate=native_rate,
-            frames_per_buffer=1024,
-            input=True,
-            input_device_index=device_info["index"],
-        )
+        try:
+            stream, channels, native_rate = self._open_stream_robust(p, device_info, is_mic=False)
+        except Exception:
+            self.is_recording = False
+            return
 
         mic_stream = None
         mic_channels = 1
         mic_rate = native_rate
         if extra_device_info is not None:
             try:
-                mic_channels = max(1, extra_device_info.get("maxInputChannels", 1))
-                mic_rate = int(extra_device_info["defaultSampleRate"])
-                mic_stream = p.open(
-                    format=pyaudio.paInt16,
-                    channels=mic_channels,
-                    rate=mic_rate,
-                    frames_per_buffer=1024,
-                    input=True,
-                    input_device_index=extra_device_info["index"],
-                )
+                mic_stream, mic_channels, mic_rate = self._open_stream_robust(p, extra_device_info, is_mic=True)
             except Exception as e:
+                print(f"[AudioCapture] Mic ignored due to error: {e}")
                 mic_stream = None
 
         SILENCE_THRESHOLD = 150

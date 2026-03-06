@@ -16,6 +16,7 @@ class TranslationState extends Equatable {
   final int? activeOutputDeviceIndex;
   final double activeDesktopVolume;
   final double activeMicVolume;
+  final String activeAiEngine;
 
   // Auto-detect warning – set when server overrides 'auto' with a detected lang
   final String? autoDetectWarning;
@@ -33,6 +34,7 @@ class TranslationState extends Equatable {
     this.activeOutputDeviceIndex,
     required this.activeDesktopVolume,
     required this.activeMicVolume,
+    required this.activeAiEngine,
     this.autoDetectWarning,
   });
 
@@ -51,6 +53,7 @@ class TranslationState extends Equatable {
       activeOutputDeviceIndex: null,
       activeDesktopVolume: 1.0,
       activeMicVolume: 1.0,
+      activeAiEngine: 'riva',
       autoDetectWarning: null,
     );
   }
@@ -68,6 +71,7 @@ class TranslationState extends Equatable {
     int? activeOutputDeviceIndex,
     double? activeDesktopVolume,
     double? activeMicVolume,
+    String? activeAiEngine,
     Object? autoDetectWarning = _sentinel,
   }) {
     return TranslationState(
@@ -85,6 +89,7 @@ class TranslationState extends Equatable {
           activeOutputDeviceIndex ?? this.activeOutputDeviceIndex,
       activeDesktopVolume: activeDesktopVolume ?? this.activeDesktopVolume,
       activeMicVolume: activeMicVolume ?? this.activeMicVolume,
+      activeAiEngine: activeAiEngine ?? this.activeAiEngine,
       autoDetectWarning: autoDetectWarning == _sentinel
           ? this.autoDetectWarning
           : autoDetectWarning as String?,
@@ -105,6 +110,7 @@ class TranslationState extends Equatable {
     activeOutputDeviceIndex,
     activeDesktopVolume,
     activeMicVolume,
+    activeAiEngine,
     autoDetectWarning,
   ];
 }

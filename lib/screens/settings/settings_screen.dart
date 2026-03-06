@@ -40,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             outputDeviceIndex: transState.activeOutputDeviceIndex,
             desktopVolume: transState.activeDesktopVolume,
             micVolume: transState.activeMicVolume,
+            aiEngine: transState.activeAiEngine,
           ),
         );
         context.read<SettingsBloc>().add(LoadDevicesEvent());
@@ -86,7 +87,16 @@ class _SettingsScreenState extends State<SettingsScreen>
                 controller: _tabController,
                 children: [
                   _buildTabContent(_buildInputOutputTab(context, state)),
-                  _buildTabContent(_buildLanguagesTab(context, state)),
+                  _buildTabContent(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLanguagesTab(context, state),
+                        const SizedBox(height: 28),
+                        _buildAiEngineSelector(context, state),
+                      ],
+                    ),
+                  ),
                   _buildTabContent(_buildDisplayTab(context, state)),
                 ],
               ),
@@ -130,6 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                             outputDeviceIndex: state.tempOutputDeviceIndex,
                             desktopVolume: state.tempDesktopVolume,
                             micVolume: state.tempMicVolume,
+                            aiEngine: state.tempAiEngine,
                           ),
                         );
                       },
@@ -432,12 +443,6 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
         ),
         const SizedBox(height: 20),
-        _sectionLabel('Target Language'),
-        const SizedBox(height: 4),
-        Text(
-          'The language to translate captions into',
-          style: TextStyle(color: Colors.white38, fontSize: 11),
-        ),
         const SizedBox(height: 10),
         DropdownSearch<MapEntry<String, String>>(
           items: appLanguages.entries
@@ -470,6 +475,76 @@ class _SettingsScreenState extends State<SettingsScreen>
                 appLanguages[state.tempTargetLang] ?? 'Search language...',
               ),
             ),
+            menuProps: MenuProps(
+              backgroundColor: const Color(0xFF2C2C2C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+          dropdownDecoratorProps: const DropDownDecoratorProps(
+            dropdownSearchDecoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white10,
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderSide: BorderSide(color: Colors.white12),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderSide: BorderSide(color: Colors.white12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderSide: BorderSide(color: Colors.white24),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── AI ENGINE TAB ────────────────────────────────────────────────────────
+
+  Widget _buildAiEngineSelector(BuildContext context, SettingsState state) {
+    const aiEngines = {
+      'riva': 'NVIDIA Riva (Fast, High Quality)',
+      'llama': 'Llama 3.1 8B (Accurate, Slower)',
+      'google': 'Google Translate',
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('AI Translation Engine'),
+        const SizedBox(height: 4),
+        const Text(
+          'Select the backend engine used to translate your speech',
+          style: TextStyle(color: Colors.white38, fontSize: 11),
+        ),
+        const SizedBox(height: 10),
+        DropdownSearch<MapEntry<String, String>>(
+          items: aiEngines.entries.toList(),
+          itemAsString: (entry) => entry.value,
+          selectedItem: MapEntry(
+            state.tempAiEngine,
+            aiEngines[state.tempAiEngine] ?? state.tempAiEngine,
+          ),
+          compareFn: (item, selectedItem) => item.key == selectedItem.key,
+          onChanged: (entry) {
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (context.mounted) {
+                context.read<SettingsBloc>().add(
+                  UpdateTempSettingEvent(aiEngine: entry!.key),
+                );
+              }
+            });
+          },
+          popupProps: PopupProps.menu(
+            fit: FlexFit.loose,
+            constraints: const BoxConstraints(maxHeight: 200),
             menuProps: MenuProps(
               backgroundColor: const Color(0xFF2C2C2C),
               shape: RoundedRectangleBorder(

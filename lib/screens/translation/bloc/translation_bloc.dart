@@ -79,6 +79,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       final isBold = settings['isBold'] as bool? ?? state.activeIsBold;
       final opacity =
           (settings['opacity'] as num?)?.toDouble() ?? state.activeOpacity;
+      final aiEngine = settings['aiEngine'] as String? ?? state.activeAiEngine;
 
       // Update BLoC state natively
       emit(
@@ -89,6 +90,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           activeFontSize: fontSize,
           activeIsBold: isBold,
           activeOpacity: opacity,
+          activeAiEngine: aiEngine,
         ),
       );
 
@@ -101,6 +103,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         outputDeviceIndex: state.activeOutputDeviceIndex,
         desktopVolume: state.activeDesktopVolume,
         micVolume: state.activeMicVolume,
+        aiEngine: state.activeAiEngine,
       );
     }
   }
@@ -166,6 +169,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         activeOutputDeviceIndex: event.outputDeviceIndex,
         activeDesktopVolume: event.desktopVolume,
         activeMicVolume: event.micVolume,
+        activeAiEngine: event.aiEngine,
       ),
     );
 
@@ -177,6 +181,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       outputDeviceIndex: event.outputDeviceIndex,
       desktopVolume: event.desktopVolume,
       micVolume: event.micVolume,
+      aiEngine: event.aiEngine,
     );
 
     // Sync settings to Firestore
@@ -187,6 +192,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       'fontSize': event.fontSize,
       'isBold': event.isBold,
       'opacity': event.opacity,
+      'aiEngine': event.aiEngine,
     });
 
     add(ToggleSettingsEvent());

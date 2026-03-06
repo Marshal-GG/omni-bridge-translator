@@ -69,6 +69,7 @@ if not API_KEY:
 
 current_source_lang: str = "auto"
 current_target_lang: str = "en"
+current_ai_engine: str = "riva"
 current_use_mic: bool = False
 current_input_device_index: int | None = None
 current_output_device_index: int | None = None
@@ -114,6 +115,7 @@ def audio_poll_loop():
                         sample_rate=sample_rate,
                         source_lang=current_source_lang,
                         target_lang=current_target_lang,
+                        ai_engine=current_ai_engine,
                         callback=caption_callback,
                     )
                     stream_started = True
@@ -199,17 +201,19 @@ async def list_devices():
 async def start_capture(
     source_lang: str = "auto",
     target_lang: str = "en",
+    ai_engine: str = "riva",
     use_mic: bool = False,
     input_device_index: int = None,
     output_device_index: int = None,
 ):
     global nim_api, audio_capture, is_running, audio_thread, _meter_task
-    global current_source_lang, current_target_lang, current_use_mic
+    global current_source_lang, current_target_lang, current_ai_engine, current_use_mic
     global current_input_device_index, current_output_device_index
     global current_desktop_volume, current_mic_volume
 
     current_source_lang = source_lang
     current_target_lang = target_lang
+    current_ai_engine = ai_engine
     current_use_mic = use_mic
     current_input_device_index = input_device_index
     current_output_device_index = output_device_index
@@ -301,6 +305,7 @@ async def captions_ws(websocket: WebSocket):
                 await start_capture(
                     source_lang=msg.get("source", "auto"),
                     target_lang=msg.get("target", "en"),
+                    ai_engine=msg.get("ai_engine", "riva"),
                     use_mic=msg.get("use_mic", False),
                     input_device_index=msg.get("input_device_index"),
                     output_device_index=msg.get("output_device_index"),
