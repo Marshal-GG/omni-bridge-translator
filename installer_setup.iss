@@ -1,7 +1,7 @@
 ; Omni Bridge - Inno Setup Installer Script
 
 #define MyAppName "Omni Bridge - Live AI Translator"
-#define MyAppVersion "1.2.0"
+#define MyAppVersion "1.2.1"
 #define MyAppPublisher "Marshal"
 #define MyAppExeName "omni_bridge.exe"
 #define MyAppURL "https://github.com/Marshal-GG/omni-bridge-translator"
@@ -75,6 +75,13 @@ Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: st
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[Registry]
+; Register custom URL scheme for deep linking (omni-bridge://) - needed for Google Sign-In redirect
+Root: HKCR; Subkey: "omni-bridge"; ValueType: string; ValueData: "URL:omni-bridge Protocol"; Flags: uninsdeletekey
+Root: HKCR; Subkey: "omni-bridge"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCR; Subkey: "omni-bridge\DefaultIcon"; ValueType: string; ValueData: "{app}\{#MyAppExeName},0"
+Root: HKCR; Subkey: "omni-bridge\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
 [UninstallRun]
 ; Kill the Python server process during uninstall
