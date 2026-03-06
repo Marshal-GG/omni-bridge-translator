@@ -170,16 +170,25 @@ class NimApiClient:
                 if chunk is None:
                     break
 
-                # Try ASR; if "multi" is unavailable fall back to en-US
+                # Try ASR; on any error in auto mode, fall back to en-US.
+                # Log full error to file so we can see it even in the compiled exe.
                 try:
                     response = self.asr_service.offline_recognize(chunk.tobytes(), config)
                 except Exception as asr_err:
                     err_str = str(asr_err)
-                    if use_auto and not fell_back and "Unavailable model" in err_str:
+                    # Always write the full error to a log file for debugging
+                    try:
+                        with open("asr_error.log", "a") as f:
+                            f.write(f"[ASR ERROR] lang={asr_lang} err={err_str}\n")
+                    except Exception:
+                        pass
+
+                    if use_auto and not fell_back:
+                        # Fall back to en-US on ANY error when in auto mode
+                        print(f"[ASR] Auto mode failed ({err_str[:120]}), falling back to en-US")
                         asr_lang = "en-US"
                         config = _make_config(asr_lang)
                         fell_back = True
-                        # Notify Flutter UI that auto fell back to English
                         if self._callback:
                             self._callback("__source_lang_override__:en", False, is_final=False)
                         try:
@@ -190,7 +199,7 @@ class NimApiClient:
                             continue
                     else:
                         if self._callback:
-                            self._callback(f"ASR Error: {asr_err}", True, is_final=True)
+                            self._callback(f"ASR Error: {err_str[:200]}", True, is_final=True)
                         continue
 
                 if response and response.results and response.results[0].alternatives:

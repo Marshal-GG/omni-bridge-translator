@@ -23,6 +23,10 @@ class _SettingsScreenState extends State<SettingsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    // Load devices as soon as the settings screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<SettingsBloc>().add(LoadDevicesEvent());
+    });
   }
 
   @override
@@ -229,7 +233,33 @@ class _SettingsScreenState extends State<SettingsScreen>
         const SizedBox(height: 20),
 
         // ── Desktop Audio section ─────────────────────────────────────────
-        _sectionLabel('Desktop Audio Output'),
+        Row(
+          children: [
+            Expanded(child: _sectionLabel('Desktop Audio Output')),
+            if (state.devicesLoading)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.tealAccent,
+                ),
+              )
+            else
+              IconButton(
+                icon: const Icon(
+                  Icons.refresh,
+                  color: Colors.white38,
+                  size: 18,
+                ),
+                tooltip: 'Refresh devices',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () =>
+                    context.read<SettingsBloc>().add(LoadDevicesEvent()),
+              ),
+          ],
+        ),
         const SizedBox(height: 10),
         _sublabel('Output Device (loopback capture)'),
         const SizedBox(height: 5),
