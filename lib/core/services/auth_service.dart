@@ -29,8 +29,22 @@ class AuthService {
     );
 
     // Listen to Firebase auth state changes automatically
-    _authStateSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+    _authStateSub = FirebaseAuth.instance.authStateChanges().listen((
+      user,
+    ) async {
       currentUser.value = user;
+      if (user != null) {
+        if (!TrackingService.instance.hasActiveSession) {
+          await TrackingService.instance.startSession();
+          await TrackingService.instance.logEvent(
+            'App Opened (Restored Session)',
+          );
+        }
+      } else {
+        if (TrackingService.instance.hasActiveSession) {
+          await TrackingService.instance.endSession();
+        }
+      }
     });
 
     // Attempt silent sign-in on init

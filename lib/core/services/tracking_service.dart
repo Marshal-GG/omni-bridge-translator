@@ -13,6 +13,9 @@ class TrackingService {
   DateTime? _sessionStartTime;
   Timer? _heartbeatTimer;
 
+  /// Check if a session is currently active
+  bool get hasActiveSession => _currentSessionId != null;
+
   /// Get current user ID
   String? get uid => FirebaseAuth.instance.currentUser?.uid;
 
@@ -21,6 +24,14 @@ class TrackingService {
     if (uid == null) {
       debugPrint(
         '[Tracking] Cannot start session: UID is null. User not signed in.',
+      );
+      return;
+    }
+
+    // Prevent starting a new session if one is already actively running
+    if (_currentSessionId != null) {
+      debugPrint(
+        '[Tracking] Session $_currentSessionId already running. Ignoring startSession call.',
       );
       return;
     }
@@ -218,7 +229,8 @@ class TrackingService {
   /// Push high-frequency Live Caption data to Realtime Database
   /// This prevents huge Firestore write costs for live streaming translations
   Future<void> syncLiveCaption(
-    String text,
+    String originalText,
+    String translatedText,
     String sourceLang,
     String targetLang,
     bool isFinal,
@@ -236,7 +248,8 @@ class TrackingService {
       await http.post(
         url,
         body: jsonEncode({
-          'text': text,
+          'originalText': originalText,
+          'translatedText': translatedText,
           'sourceLang': sourceLang,
           'targetLang': targetLang,
           'isFinal': isFinal,

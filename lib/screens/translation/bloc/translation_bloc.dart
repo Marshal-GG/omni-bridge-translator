@@ -41,6 +41,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       }
       if (msg.text.trim().isNotEmpty) {
         TrackingService.instance.syncLiveCaption(
+          msg.original,
           msg.text,
           msg.sourceLangOverride ?? state.activeSourceLang,
           state.activeTargetLang,
