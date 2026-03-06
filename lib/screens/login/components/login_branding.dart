@@ -3,18 +3,7 @@ import 'package:flutter/material.dart';
 Widget buildLoginBranding() {
   return Column(
     children: [
-      Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.tealAccent.withValues(alpha: 0.1),
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(
-          Icons.translate_rounded,
-          size: 44,
-          color: Colors.tealAccent,
-        ),
-      ),
+      Image.asset('assets/icon.png', width: 72, height: 72),
       const SizedBox(height: 20),
       const Text(
         'Omni Bridge',

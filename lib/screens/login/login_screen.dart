@@ -99,6 +99,30 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(
+        () => _error = 'Enter your email above, then tap Forgot Password.',
+      );
+      return;
+    }
+    try {
+      await AuthService.instance.sendPasswordReset(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Password reset email sent to $email'),
+          backgroundColor: Colors.teal,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message ?? 'Failed to send reset email.');
+    }
+  }
+
   Future<void> _bypassForDev() async {
     setState(() {
       _isLoading = true;
@@ -123,8 +147,8 @@ class _LoginScreenState extends State<LoginScreen> {
               buildLoginHeader(),
               const Divider(height: 1, color: Colors.white10),
               Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
+                child: SingleChildScrollView(
+                  child: Center(
                     child: SizedBox(
                       width: 400,
                       child: Padding(
@@ -147,7 +171,31 @@ class _LoginScreenState extends State<LoginScreen> {
                                 emailController: _emailController,
                                 passwordController: _passwordController,
                               ),
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 4),
+
+                              // Forgot Password — only visible in login mode
+                              if (_isLoginMode)
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: _forgotPassword,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.tealAccent,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 2,
+                                      ),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: const Text(
+                                      'Forgot password?',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(height: 16),
 
                               LoginButton(
                                 icon: _isLoginMode
@@ -209,12 +257,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(height: 16),
 
-                              LoginButton(
-                                icon: Icons.g_mobiledata_rounded,
-                                label: 'Continue with Google',
-                                onPressed: _signInWithGoogle,
-                                isPrimary: false,
-                              ),
+                              // Google button with proper logo
+                              _GoogleSignInButton(onPressed: _signInWithGoogle),
                               const SizedBox(height: 12),
 
                               LoginButton(
@@ -241,6 +285,55 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Google Sign-In button with the proper four-color Google G logo.
+class _GoogleSignInButton extends StatefulWidget {
+  const _GoogleSignInButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  State<_GoogleSignInButton> createState() => _GoogleSignInButtonState();
+}
+
+class _GoogleSignInButtonState extends State<_GoogleSignInButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: double.infinity,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.white10.withValues(alpha: _isHovered ? 0.15 : 0.10),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset('assets/google-logo.png', width: 20, height: 20),
+              const SizedBox(width: 10),
+              const Text(
+                'Continue with Google',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],

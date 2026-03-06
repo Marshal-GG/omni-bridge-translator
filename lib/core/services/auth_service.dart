@@ -138,6 +138,11 @@ class AuthService {
     return userCredential.user;
   }
 
+  Future<void> sendPasswordReset(String email) async {
+    await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+    await TrackingService.instance.logEvent('Password Reset Requested');
+  }
+
   Future<User?> bypassForDev() async {
     try {
       final userCredential = await FirebaseAuth.instance.signInAnonymously();
