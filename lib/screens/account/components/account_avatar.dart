@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+String _providerLabel(bool isAnon, User? user) {
+  if (isAnon) return 'Guest Mode';
+  final providerId = user?.providerData.firstOrNull?.providerId ?? '';
+  switch (providerId) {
+    case 'google.com':
+      return 'Google Account';
+    case 'password':
+      return 'Email Account';
+    default:
+      return providerId.isNotEmpty ? providerId : 'Signed In';
+  }
+}
+
 Widget buildAccountAvatar(User? user, bool isAnon) {
   return Column(
     children: [
@@ -41,7 +54,7 @@ Widget buildAccountAvatar(User? user, bool isAnon) {
           border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3)),
         ),
         child: Text(
-          isAnon ? 'Guest Mode' : 'Google Account',
+          _providerLabel(isAnon, user),
           style: const TextStyle(
             color: Colors.tealAccent,
             fontSize: 11,
