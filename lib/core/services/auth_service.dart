@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:omni_bridge/core/utils/auth_html_constants.dart';
+import 'tracking_service.dart';
 
 class AuthService {
   AuthService._();
@@ -39,6 +41,8 @@ class AuthService {
           idToken: credentials.idToken,
         );
         await FirebaseAuth.instance.signInWithCredential(credential);
+        await TrackingService.instance.startSession();
+        await TrackingService.instance.logEvent('Silent Sign In via Init');
       }
     });
   }
@@ -79,6 +83,11 @@ class AuthService {
       final userCredential = await FirebaseAuth.instance.signInWithCredential(
         credential,
       );
+      if (userCredential.user != null) {
+        await _saveUserToFirestore(userCredential.user!);
+        await TrackingService.instance.startSession();
+        await TrackingService.instance.logEvent('Sign In With Google');
+      }
       debugPrint('[Auth] Step 5: Done → ${userCredential.user?.email}');
       return userCredential.user;
     } catch (e) {
@@ -87,30 +96,42 @@ class AuthService {
     }
   }
 
-  /// Sign in with Email and Password
   Future<User?> signInWithEmailAndPassword(
     String email,
     String password,
   ) async {
     final userCredential = await FirebaseAuth.instance
         .signInWithEmailAndPassword(email: email, password: password);
+    if (userCredential.user != null) {
+      await _saveUserToFirestore(userCredential.user!);
+      await TrackingService.instance.startSession();
+      await TrackingService.instance.logEvent('Sign In With Email/Password');
+    }
     return userCredential.user;
   }
 
-  /// Register with Email and Password
   Future<User?> registerWithEmailAndPassword(
     String email,
     String password,
   ) async {
     final userCredential = await FirebaseAuth.instance
         .createUserWithEmailAndPassword(email: email, password: password);
+    if (userCredential.user != null) {
+      await _saveUserToFirestore(userCredential.user!);
+      await TrackingService.instance.startSession();
+      await TrackingService.instance.logEvent('Registered With Email/Password');
+    }
     return userCredential.user;
   }
 
-  /// Dev bypass: signs in a user anonymously
   Future<User?> bypassForDev() async {
     try {
       final userCredential = await FirebaseAuth.instance.signInAnonymously();
+      if (userCredential.user != null) {
+        await _saveUserToFirestore(userCredential.user!);
+        await TrackingService.instance.startSession();
+        await TrackingService.instance.logEvent('Sign In Dev Bypass');
+      }
       return userCredential.user;
     } catch (e) {
       debugPrint('[Auth] Dev Bypass failed: $e');
@@ -121,6 +142,38 @@ class AuthService {
   Future<void> signOut() async {
     // Do NOT call _googleSignIn.signOut() — it corrupts the package's
     // internal HTTP server state, causing the next signIn() to hang.
+    await TrackingService.instance.logEvent('User Signed Out');
+    await TrackingService.instance.endSession();
     await FirebaseAuth.instance.signOut();
+  }
+
+  Future<void> _saveUserToFirestore(User user) async {
+    try {
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
+      final docSnapshot = await userRef.get();
+
+      final Map<String, dynamic> data = {
+        'uid': user.uid,
+        'email': user.email,
+        'displayName': user.displayName,
+        'photoURL': user.photoURL,
+        'phoneNumber': user.phoneNumber,
+        'lastSignInTime': user.metadata.lastSignInTime?.toIso8601String(),
+        'creationTime': user.metadata.creationTime?.toIso8601String(),
+      };
+
+      if (!docSnapshot.exists) {
+        data['createdAt'] = FieldValue.serverTimestamp();
+      }
+
+      data['lastLoginAt'] = FieldValue.serverTimestamp();
+
+      await userRef.set(data, SetOptions(merge: true));
+      debugPrint('[Auth] Saved user data to Firestore');
+    } catch (e) {
+      debugPrint('[Auth] Error saving user to Firestore: $e');
+    }
   }
 }

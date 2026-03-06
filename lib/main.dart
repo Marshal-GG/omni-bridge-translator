@@ -7,6 +7,7 @@ import 'core/routes/routes_config.dart';
 import 'core/tray_manager.dart';
 import 'core/window_manager.dart';
 import 'firebase_options.dart';
+import 'core/services/tracking_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,11 +24,16 @@ void main() async {
     // Fallback for desktop platforms without native crash tools
     FlutterError.onError = (details) {
       debugPrint('Flutter Error: ${details.exceptionAsString()}');
+      TrackingService.instance.logError(
+        'Flutter Error: ${details.exceptionAsString()}',
+        details.stack,
+      );
       debugPrintStack(stackTrace: details.stack);
     };
 
     PlatformDispatcher.instance.onError = (error, stack) {
       debugPrint('Async Error: $error');
+      TrackingService.instance.logError('Async Error', error);
       debugPrintStack(stackTrace: stack);
       return true;
     };
@@ -41,6 +47,9 @@ void main() async {
   // Initialize the window and tray manager
   await initializeWindow();
   await initializeTray();
+
+  // Log App Launch Strategy
+  TrackingService.instance.logEvent('App Started (Dart Main)');
 
   runApp(const MyApp());
 

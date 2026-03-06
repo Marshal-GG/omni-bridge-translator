@@ -1,5 +1,6 @@
 import 'routes/routes_config.dart';
 import 'services/python_server_manager.dart';
+import 'services/tracking_service.dart';
 
 Future<void> initializeWindow() async {
   await Window.initialize();
@@ -90,6 +91,9 @@ Future<void> setToHistoryPosition() async {
 class _AppWindowListener extends WindowListener {
   @override
   void onWindowClose() async {
+    // End the Firebase tracing session gracefully before closing
+    await TrackingService.instance.endSession();
+
     // Stop the Python server when the window is closed
     PythonServerManager.stopServer();
 
