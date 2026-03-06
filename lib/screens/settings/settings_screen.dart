@@ -92,7 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       ],
                     ),
                   ),
-                  SettingsFooter(state: state),
+                  buildSettingsFooter(context, state),
                 ],
               ),
             ),

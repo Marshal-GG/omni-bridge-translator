@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../translation/bloc/translation_bloc.dart';
-import '../../translation/bloc/translation_event.dart';
-import '../../../core/window_manager.dart';
 
-Widget buildSettingsHeader(BuildContext context) {
+Widget buildLoginHeader() {
   return SizedBox(
     height: 32,
     child: Row(
       children: [
         const SizedBox(width: 12),
-        const Icon(Icons.settings_rounded, size: 14, color: Colors.white38),
+        const Icon(Icons.security_rounded, size: 14, color: Colors.white38),
         const SizedBox(width: 8),
         const Text(
-          'Settings',
+          "Authentication Required",
           style: TextStyle(
             color: Colors.white38,
             fontSize: 11,
@@ -30,12 +26,7 @@ Widget buildSettingsHeader(BuildContext context) {
             iconNormal: Colors.white38,
             mouseOver: Colors.redAccent,
           ),
-          onPressed: () async {
-            await setToTranslationPosition();
-            if (context.mounted) {
-              context.read<TranslationBloc>().add(ToggleSettingsEvent());
-            }
-          },
+          onPressed: () => appWindow.close(),
         ),
       ],
     ),
