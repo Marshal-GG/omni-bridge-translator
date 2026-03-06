@@ -42,7 +42,7 @@ class _AccountScreenState extends State<AccountScreen> {
       _message = null;
     });
     try {
-      await AuthService.instance.currentUser.value?.updateDisplayName(newName);
+      await AuthService.instance.updateDisplayName(newName);
       if (!mounted) return;
       setState(() {
         _isSaving = false;
@@ -116,8 +116,8 @@ class _AccountScreenState extends State<AccountScreen> {
 
               // ── Content ───────────────────────────────────────────────────
               Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
+                child: SingleChildScrollView(
+                  child: Center(
                     child: SizedBox(
                       width: 400,
                       child: Padding(

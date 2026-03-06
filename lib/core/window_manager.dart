@@ -58,9 +58,9 @@ Future<void> setToLoginPosition() async {
 /// Sets window to the Account screen size (same as login)
 Future<void> setToAccountPosition() async {
   await windowManager.setResizable(true);
-  appWindow.minSize = const Size(400, 380);
-  await windowManager.setMinimumSize(const Size(400, 380));
-  await windowManager.setSize(const Size(520, 560));
+  appWindow.minSize = const Size(500, 400);
+  await windowManager.setMinimumSize(const Size(500, 400));
+  await windowManager.setSize(const Size(600, 560));
   await windowManager.center();
   await windowManager.setAlwaysOnTop(true);
 }
