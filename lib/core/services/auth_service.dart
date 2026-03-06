@@ -153,6 +153,23 @@ class AuthService {
     }
   }
 
+  Future<void> updateDisplayName(String newName) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await user.updateDisplayName(newName);
+      await user.reload();
+      final updatedUser = FirebaseAuth.instance.currentUser;
+      currentUser.value = updatedUser;
+
+      // Sync the updated name to the users collection
+      if (updatedUser != null) {
+        await _saveUserToFirestore(updatedUser);
+      }
+
+      await TrackingService.instance.logEvent('Display Name Updated');
+    }
+  }
+
   Future<void> signOut() async {
     // Do NOT call _googleSignIn.signOut() — it corrupts the package's
     // internal HTTP server state, causing the next signIn() to hang.
