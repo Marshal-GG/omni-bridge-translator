@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
@@ -10,17 +11,54 @@ class PythonServerManager {
     if (_serverProcess != null) return;
 
     try {
+      // 1. Check if a server is already running externally (e.g. manually in dev mode)
+      try {
+        final checkResponse = await http
+            .get(Uri.parse('http://127.0.0.1:8765/status'))
+            .timeout(const Duration(seconds: 1));
+        if (checkResponse.statusCode == 200) {
+          debugPrint(
+            '[PythonManager] Python server is already running externally.',
+          );
+          return;
+        }
+      } catch (_) {
+        // Not running, proceed
+      }
+
       final String appDir = path.dirname(Platform.resolvedExecutable);
       final String pyPath = path.join(appDir, 'omni_bridge_server.exe');
 
       if (File(pyPath).existsSync()) {
+        // Kill any stray server processes before starting fresh (only if we found the bundled one)
+        if (Platform.isWindows) {
+          debugPrint(
+            '[PythonManager] Killing stale server instances before start...',
+          );
+          Process.runSync('taskkill', [
+            '/F',
+            '/IM',
+            'omni_bridge_server.exe',
+            '/T',
+          ]);
+        }
+
         debugPrint('Starting bundled Python server: $pyPath');
         _serverProcess = await Process.start(pyPath, []);
+
+        // Pipe Python stdout/stderr to Flutter console for visibility
+        _serverProcess!.stdout.transform(utf8.decoder).listen((data) {
+          debugPrint('[Python Server STDOUT] ${data.trim()}');
+        });
+        _serverProcess!.stderr.transform(utf8.decoder).listen((data) {
+          debugPrint('[Python Server STDERR] ${data.trim()}');
+        });
 
         // Wait for the server to be ready before allowing the app to proceed
         debugPrint('Waiting for server boot...');
         bool isReady = false;
-        for (int i = 0; i < 20; i++) {
+        // Increase timeout to 30 attempts (15 seconds)
+        for (int i = 0; i < 30; i++) {
           try {
             final response = await http.get(
               Uri.parse('http://127.0.0.1:8765/status'),

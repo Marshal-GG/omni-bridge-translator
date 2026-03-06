@@ -10,3 +10,4 @@ pyaudiowpatch
 PyAudio
 openai
 nvidia-riva-client
+psutil

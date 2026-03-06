@@ -12,11 +12,13 @@ import '../../../core/window_manager.dart';
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final AsrWebSocketClient asrClient;
   StreamSubscription? _captionSub;
+  int _lastLineCount = 0;
 
   TranslationBloc({required this.asrClient})
     : super(TranslationState.initial()) {
     on<ToggleSettingsEvent>(_onToggleSettings);
     on<ToggleShrinkEvent>(_onToggleShrink);
+    on<CaptionTextChangedEvent>(_onCaptionTextChanged);
     on<SourceLangOverrideEvent>(_onSourceLangOverride);
     on<ApplySettingsEvent>(_onApplySettings);
     on<LoadSettingsEvent>(_onLoadSettings);
@@ -127,6 +129,42 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     }
   }
 
+  Future<void> _onCaptionTextChanged(
+    CaptionTextChangedEvent event,
+    Emitter<TranslationState> emit,
+  ) async {
+    if (!state.isShrunk) return;
+
+    const double hPad = 16 * 2;
+    const double vPad = 20;
+    const double minHeight = 60.0;
+
+    final availableWidth = (event.windowWidth - hPad).clamp(100.0, 10000.0);
+
+    final painter = TextPainter(
+      text: TextSpan(
+        text: event.text.isEmpty ? 'Listening...' : event.text,
+        style: TextStyle(
+          fontSize: state.activeFontSize,
+          fontWeight: state.activeIsBold ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      maxLines: 2,
+    )..layout(maxWidth: availableWidth);
+
+    final lineCount = painter.computeLineMetrics().length.clamp(1, 2);
+
+    if (lineCount != _lastLineCount) {
+      _lastLineCount = lineCount;
+      final newHeight = (state.activeFontSize * lineCount * 1.6 + vPad).clamp(
+        minHeight,
+        300.0,
+      );
+      await windowManager.setSize(Size(event.windowWidth, newHeight));
+    }
+  }
+
   Future<void> _onToggleShrink(
     ToggleShrinkEvent event,
     Emitter<TranslationState> emit,
@@ -135,9 +173,12 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     emit(state.copyWith(isShrunk: willShrink));
 
     if (willShrink) {
+      double shrinkHeight = state.activeFontSize * 3 + 30;
+      if (shrinkHeight < 70) shrinkHeight = 70;
+
       appWindow.minSize = const Size(100, 20);
       await windowManager.setMinimumSize(const Size(100, 20));
-      await windowManager.setSize(const Size(730, 80));
+      await windowManager.setSize(Size(730, shrinkHeight));
     } else {
       appWindow.minSize = const Size(300, 150);
       await windowManager.setMinimumSize(const Size(400, 150));
@@ -165,6 +206,13 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         activeAiEngine: event.aiEngine,
       ),
     );
+
+    // 2. If already shrunk, resize to match the new font size
+    if (state.isShrunk) {
+      double shrinkHeight = event.fontSize * 3 + 30;
+      if (shrinkHeight < 70) shrinkHeight = 70;
+      await windowManager.setSize(Size(730, shrinkHeight));
+    }
 
     asrClient.updateSettings(
       targetLang: event.targetLang,

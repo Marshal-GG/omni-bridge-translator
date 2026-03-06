@@ -79,41 +79,62 @@ class AudioMeter:
 
     def _measure_loop(self, is_input: bool):
         """Open a pyaudio stream and continuously read RMS levels."""
+        from shared_pyaudio import get_pyaudio
         try:
-            with pyaudio.PyAudio() as p:
-                device_info = self._resolve_device(p, is_input)
-                if device_info is None:
-                    return
+            p = get_pyaudio()
+            device_info = self._resolve_device(p, is_input)
+            if device_info is None:
+                return
 
-                channels = max(1, device_info.get("maxInputChannels", 1))
-                rate = int(device_info.get("defaultSampleRate", 44100))
+            channels = max(1, device_info.get("maxInputChannels", 1))
+            rate = int(device_info.get("defaultSampleRate", 44100))
 
-                stream = p.open(
-                    format=pyaudio.paInt16,
-                    channels=channels,
-                    rate=rate,
-                    input=True,
-                    frames_per_buffer=_FRAMES,
-                    input_device_index=device_info["index"],
-                )
+            stream = p.open(
+                format=pyaudio.paInt16,
+                channels=channels,
+                rate=rate,
+                input=True,
+                frames_per_buffer=_FRAMES,
+                input_device_index=device_info["index"],
+            )
 
-                while self._running:
+            import time
+            while self._running:
+                try:
+                    if not stream.is_active():
+                        time.sleep(0.1)
+                        continue
+                        
                     try:
                         data = stream.read(_FRAMES, exception_on_overflow=False)
-                        arr = np.frombuffer(data, dtype=np.int16).astype(np.float32)
-                        if channels > 1:
-                            arr = arr.reshape(-1, channels).mean(axis=1)
-                        rms = float(np.sqrt(np.mean(arr ** 2)))
-                        level = min(rms / _MAX_RMS, 1.0)
-                        if is_input:
-                            self._input_level = level
-                        else:
-                            self._output_level = level
-                    except Exception:
-                        break
+                    except IOError:
+                        time.sleep(0.1)
+                        continue
 
-                stream.stop_stream()
-                stream.close()
+                    arr = np.frombuffer(data, dtype=np.int16).astype(np.float32)
+                    if channels > 1:
+                        arr = arr.reshape(-1, channels).mean(axis=1)
+                        
+                    # Calculate true RMS
+                    rms = float(np.sqrt(np.mean(arr ** 2)))
+                    
+                    if rms > 1.0:  # Ignore microscopic noise floor
+                        db = 20 * np.log10(rms / 32768.0)
+                        # Map roughly -50dB (quiet) to 0.0, and 0dB (loud) to 1.0
+                        level = (db + 50.0) / 50.0
+                        level = max(0.0, min(level, 1.0))
+                    else:
+                        level = 0.0
+
+                    if is_input:
+                        self._input_level = level
+                    else:
+                        self._output_level = level
+                except Exception:
+                    break
+
+            stream.stop_stream()
+            stream.close()
 
         except Exception as e:
             print(f"[AudioMeter] {'input' if is_input else 'output'} error: {e}")
@@ -126,25 +147,66 @@ class AudioMeter:
     def _resolve_device(self, p: pyaudio.PyAudio, is_input: bool):
         """Return the device_info dict to open, or None on failure."""
         try:
+            # 1. Resolve WASAPI host API index safely (avoid get_host_api_info_by_type)
+            wasapi_index = -1
+            for i in range(p.get_host_api_count()):
+                try:
+                    hapi = p.get_host_api_info_by_index(i)
+                    if hapi.get("type") == pyaudio.paWASAPI:
+                        wasapi_index = i
+                        break
+                except Exception:
+                    continue
+
             if is_input:
                 if self._input_device_index is not None:
-                    return p.get_device_info_by_index(self._input_device_index)
-                return p.get_default_input_device_info()
+                    try:
+                        info = p.get_device_info_by_index(self._input_device_index)
+                        if info: return info
+                    except Exception: pass
+                
+                # Default input (WASAPI preferred)
+                # Find any WASAPI input
+                for i in range(p.get_device_count()):
+                    try:
+                        info = p.get_device_info_by_index(i)
+                        name = info.get("name", "")
+                        if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
+                            continue
+                        if info.get("hostApi") == wasapi_index and info.get("maxInputChannels", 0) > 0:
+                            return info
+                    except Exception: continue
+                # Fallback: find ANY input
+                for i in range(p.get_device_count()):
+                    try:
+                        info = p.get_device_info_by_index(i)
+                        name = info.get("name", "")
+                        if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
+                            continue
+                        if info.get("maxInputChannels", 0) > 0:
+                            return info
+                    except Exception: continue
+                return None
             else:
-                wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
+                # Loopback output selection
                 if self._output_device_index is not None:
-                    target = p.get_device_info_by_index(self._output_device_index)
-                    for lb in p.get_loopback_device_info_generator():
-                        if target["name"] in lb["name"]:
-                            return lb
-                    return None
+                    try:
+                        target = p.get_device_info_by_index(self._output_device_index)
+                        # We MUST use a loopback version of the target for WASAPI
+                        for lb in p.get_loopback_device_info_generator():
+                            if target["name"] in lb["name"]:
+                                return lb
+                    except Exception: pass
+
                 # Default loopback
-                dev = p.get_device_info_by_index(wasapi_info["defaultOutputDevice"])
-                if not dev.get("isLoopbackDevice"):
-                    for lb in p.get_loopback_device_info_generator():
-                        if dev["name"] in lb["name"]:
-                            return lb
-                return dev
+
+                # Fallback: Search all WASAPI loopbacks, avoiding virtual drivers
+                for lb in p.get_loopback_device_info_generator():
+                    name = lb.get("name", "")
+                    if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
+                        continue
+                    return lb
+                return None
         except Exception as e:
             print(f"[AudioMeter] resolve_device error: {e}")
             return None
