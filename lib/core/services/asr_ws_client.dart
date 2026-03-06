@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../routes/routes_config.dart';
 import 'asr_text_controller.dart';
+import 'tracking_service.dart';
 import 'translation_service.dart';
 import '../../screens/translation/bloc/translation_bloc.dart';
 import '../../screens/translation/bloc/translation_event.dart';
@@ -36,6 +37,12 @@ class AsrWebSocketClient {
       // Audio level update — dispatch via callback
       if (msg.inputLevel != null || msg.outputLevel != null) {
         onAudioLevel?.call(msg.inputLevel ?? 0.0, msg.outputLevel ?? 0.0);
+        return;
+      }
+
+      // Usage stats — log to Firestore
+      if (msg.usageStats != null) {
+        TrackingService.instance.logModelUsage(msg.usageStats!);
         return;
       }
 

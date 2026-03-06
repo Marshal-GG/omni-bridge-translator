@@ -34,6 +34,8 @@ dependencies:
   google_sign_in_all_platforms: ^2.0.2
   flutter_dotenv: ^6.0.0
   firebase_database: ^12.1.4
+  device_info_plus: ^12.3.0
+  network_info_plus: ^7.0.0
 
 dev_dependencies:
   flutter_test:

@@ -153,9 +153,9 @@ class NimApiClient:
 
                 # ── Translation ──────────────────────────────────────────
                 if self._target_lang and self._target_lang != "none":
-                    translated = self._translate(clean, self._source_lang, self._target_lang)
+                    translated, usage_stats = self._translate(clean, self._source_lang, self._target_lang)
                     if self._callback:
-                        self._callback(translated, False, is_final=True, original_text=clean)
+                        self._callback(translated, False, is_final=True, original_text=clean, usage_stats=usage_stats)
                 else:
                     if self._callback:
                         self._callback(clean, False, is_final=True)
@@ -168,16 +168,20 @@ class NimApiClient:
 
     # ── Translation dispatcher ────────────────────────────────────────────────
 
-    def _translate(self, text: str, source_lang: str, target_lang: str) -> str:
-        """Route translation to the active engine, with Llama as final fallback."""
+    def _translate(self, text: str, source_lang: str, target_lang: str) -> tuple[str, dict]:
+        """Route translation to the active engine, with Llama as final fallback.
+        Returns (translated_text, usage_stats).
+        """
 
         # Google engine
         if self._ai_engine == "google":
-            result = self.google.translate(text, source_lang, target_lang)
+            result, stats = self.google.translate(text, source_lang, target_lang)
             if result:
-                return result
+                return result, stats
             print("Google Translate failed, falling back to Llama...")
-            return self.llama.translate(text, target_lang)
+            result, stats = self.llama.translate(text, target_lang)
+            stats["fallback_from"] = "google"
+            return result, stats
 
         # Llama engine (direct)
         if self._ai_engine == "llama":
@@ -188,7 +192,9 @@ class NimApiClient:
             return self.riva.translate(text, source_lang, target_lang)
         except Exception as e:
             print(f"Riva translation error ({e}), falling back to Llama...")
-            return self.llama.translate(text, target_lang)
+            result, stats = self.llama.translate(text, target_lang)
+            stats["fallback_from"] = "riva"
+            return result, stats
 
     # ── Utilities ─────────────────────────────────────────────────────────────
 

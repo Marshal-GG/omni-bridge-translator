@@ -5,6 +5,7 @@ Riva Translate or Llama fallback (both served through NVIDIA NIM).
 """
 
 import re
+import time
 import riva.client
 from openai import OpenAI
 
@@ -72,8 +73,10 @@ class RivaModel:
 
     # ── Translation ──────────────────────────────────────────────────────────
 
-    def translate(self, text: str, source_lang: str, target_lang: str) -> str:
-        """Translate using Riva Translate model, or Llama if unsupported langs."""
+    def translate(self, text: str, source_lang: str, target_lang: str) -> tuple[str, dict]:
+        """Translate using Riva Translate model, or Llama if unsupported langs.
+        Returns (translated_text, usage_stats).
+        """
         if (
             source_lang == "auto"
             or source_lang not in RIVA_SUPPORTED_LANGS
@@ -94,6 +97,7 @@ class RivaModel:
                 "Output only the translated text with no labels, no explanations, no extra words."
             )
 
+        start = time.monotonic()
         completion = self.translate_client.chat.completions.create(
             model=model_name,
             messages=[
@@ -103,6 +107,8 @@ class RivaModel:
             temperature=0,
             max_tokens=512,
         )
+        latency_ms = int((time.monotonic() - start) * 1000)
+        usage = completion.usage
         result = completion.choices[0].message.content.strip()
         # Strip common model preamble artifacts
         result = re.sub(
@@ -113,4 +119,15 @@ class RivaModel:
         ).strip()
         if result.startswith('"') and result.endswith('"'):
             result = result[1:-1].strip()
-        return result
+
+        stats = {
+            "engine": "riva",
+            "model": model_name,
+            "latency_ms": latency_ms,
+            "prompt_tokens": usage.prompt_tokens if usage else 0,
+            "completion_tokens": usage.completion_tokens if usage else 0,
+            "total_tokens": usage.total_tokens if usage else 0,
+            "input_chars": len(text),
+            "output_chars": len(result),
+        }
+        return result, stats

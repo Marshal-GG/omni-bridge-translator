@@ -17,6 +17,8 @@ class CaptionMessage {
   // Non-null when type == 'audio_levels'
   final double? inputLevel;
   final double? outputLevel;
+  // Non-null when type == 'usage_stats'
+  final Map<String, dynamic>? usageStats;
 
   CaptionMessage({
     required this.text,
@@ -26,10 +28,11 @@ class CaptionMessage {
     this.sourceLangOverride,
     this.inputLevel,
     this.outputLevel,
+    this.usageStats,
   });
 
   factory CaptionMessage.fromJson(Map<String, dynamic> json) {
-    // Audio level packets are handled separately
+    // Audio level packets
     if (json['type'] == 'audio_levels') {
       return CaptionMessage(
         text: '',
@@ -38,6 +41,17 @@ class CaptionMessage {
         isFinal: false,
         inputLevel: (json['input_level'] as num?)?.toDouble() ?? 0.0,
         outputLevel: (json['output_level'] as num?)?.toDouble() ?? 0.0,
+      );
+    }
+
+    // Usage stats packet
+    if (json['type'] == 'usage_stats') {
+      return CaptionMessage(
+        text: '',
+        original: '',
+        isError: false,
+        isFinal: false,
+        usageStats: Map<String, dynamic>.from(json),
       );
     }
 

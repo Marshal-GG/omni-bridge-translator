@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:network_info_plus/network_info_plus.dart';
 
 class TrackingService {
   TrackingService._();
@@ -18,6 +20,39 @@ class TrackingService {
 
   /// Get current user ID
   String? get uid => FirebaseAuth.instance.currentUser?.uid;
+
+  /// Collects device hardware and network info.
+  Future<Map<String, dynamic>> _getDeviceInfo() async {
+    final info = <String, dynamic>{'platform': 'Windows Desktop'};
+
+    try {
+      final deviceInfo = DeviceInfoPlugin();
+      final win = await deviceInfo.windowsInfo;
+      info['computer_name'] = win.computerName;
+      info['user_name'] = win.userName;
+      info['os_version'] =
+          '${win.majorVersion}.${win.minorVersion}.${win.buildNumber}';
+      info['product_name'] = win.productName;
+      info['system_memory_mb'] = win.systemMemoryInMegabytes;
+    } catch (e) {
+      debugPrint('[Tracking] device_info error: $e');
+    }
+
+    try {
+      final net = NetworkInfo();
+      info['wifi_ip'] = await net.getWifiIP() ?? 'N/A';
+      info['wifi_name'] = await net.getWifiName() ?? 'N/A';
+      info['wifi_bssid'] =
+          await net.getWifiBSSID() ?? 'N/A'; // MAC of access point
+      info['wifi_ipv6'] = await net.getWifiIPv6() ?? 'N/A';
+      info['wifi_gateway'] = await net.getWifiGatewayIP() ?? 'N/A';
+      info['wifi_submask'] = await net.getWifiSubmask() ?? 'N/A';
+    } catch (e) {
+      debugPrint('[Tracking] network_info error: $e');
+    }
+
+    return info;
+  }
 
   /// Start an app session
   Future<void> startSession() async {
@@ -38,6 +73,9 @@ class TrackingService {
 
     _sessionStartTime = DateTime.now();
 
+    // Collect device and network info before creating the session doc
+    final deviceInfo = await _getDeviceInfo();
+
     // Create a new master session document (could be per-launch or per-login)
     final sessionRef = FirebaseFirestore.instance
         .collection('users')
@@ -52,9 +90,8 @@ class TrackingService {
         'sessionId': _currentSessionId,
         'startTime': FieldValue.serverTimestamp(),
         'lastPingAt': FieldValue.serverTimestamp(),
-        'deviceInfo':
-            'Windows Desktop', // Extend as needed with device_info_plus
         'isEnded': false,
+        'device': deviceInfo,
       });
       debugPrint('[Tracking] Session $_currentSessionId started');
 
@@ -234,6 +271,7 @@ class TrackingService {
     String sourceLang,
     String targetLang,
     bool isFinal,
+    String aiEngine,
   ) async {
     if (uid == null) return;
 
@@ -252,6 +290,7 @@ class TrackingService {
           'translatedText': translatedText,
           'sourceLang': sourceLang,
           'targetLang': targetLang,
+          'aiEngine': aiEngine,
           'isFinal': isFinal,
           'timestamp': {
             '.sv': 'timestamp',
@@ -262,6 +301,59 @@ class TrackingService {
     } catch (e) {
       // Don't log this to Firestore to avoid loop, just local console
       debugPrint('[Tracking] Error pushing live caption to RTDB REST API: $e');
+    }
+  }
+
+  /// Log AI model translation usage stats to Firestore.
+  /// Writes two documents per translation:
+  ///  1. Individual log  → users/{uid}/model_usage/{auto-id}
+  ///  2. Engine totals   → users/{uid}/model_stats/{engine}  (atomic increment)
+  Future<void> logModelUsage(Map<String, dynamic> stats) async {
+    if (uid == null) return;
+
+    final engine = stats['engine'] as String? ?? 'unknown';
+    final totalTokens = (stats['total_tokens'] as num?)?.toInt() ?? 0;
+    final latencyMs = (stats['latency_ms'] as num?)?.toInt() ?? 0;
+    final inputChars = (stats['input_chars'] as num?)?.toInt() ?? 0;
+    final outputChars = (stats['output_chars'] as num?)?.toInt() ?? 0;
+
+    final userDoc = FirebaseFirestore.instance.collection('users').doc(uid);
+
+    try {
+      // 1. Individual usage log entry
+      await userDoc.collection('model_usage').add({
+        'engine': engine,
+        'model': stats['model'] ?? 'unknown',
+        'latency_ms': latencyMs,
+        'prompt_tokens': stats['prompt_tokens'] ?? 0,
+        'completion_tokens': stats['completion_tokens'] ?? 0,
+        'total_tokens': totalTokens,
+        'input_chars': inputChars,
+        'output_chars': outputChars,
+        'source_lang': stats['source_lang'] ?? 'unknown',
+        'target_lang': stats['target_lang'] ?? 'unknown',
+        'fallback_from': stats['fallback_from'],
+        'error': stats['error'],
+        'sessionId': _currentSessionId,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      // 2. Per-engine running totals — atomic increments, safe for concurrent writes
+      await userDoc.collection('model_stats').doc(engine).set({
+        'engine': engine,
+        'total_calls': FieldValue.increment(1),
+        'total_tokens': FieldValue.increment(totalTokens),
+        'total_latency_ms': FieldValue.increment(latencyMs),
+        'total_input_chars': FieldValue.increment(inputChars),
+        'total_output_chars': FieldValue.increment(outputChars),
+        'last_used': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      debugPrint(
+        '[Tracking] Logged model usage: $engine (tokens: $totalTokens)',
+      );
+    } catch (e) {
+      debugPrint('[Tracking] Failed to log model usage: $e');
     }
   }
 }
