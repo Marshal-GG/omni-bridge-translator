@@ -1,33 +1,40 @@
 ; Omni Bridge - Inno Setup Installer Script
 
 #define MyAppName "Omni Bridge - Live AI Translator"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "Marshal"
 #define MyAppExeName "omni_bridge.exe"
 #define MyAppURL "https://github.com/Marshal-GG/omni-bridge-translator"
+#define MyAppCopyright "Copyright (C) 2026 Marshal"
 
 [Setup]
 AppId={{D9BEBE4B-A480-4D46-A223-952F3DB6D5D1}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
+AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
+AppCopyright={#MyAppCopyright}
 DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
+; Restrict installer to 64-bit Windows only (required for Flutter x64 builds)
+ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 SetupIconFile=assets\icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
-; Install for current user only (no UAC prompt required)
-PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
+; Require admin so the app installs to C:\Program Files (system-wide)
+PrivilegesRequired=admin
+; Close any running instance before installing to prevent file-lock errors
+CloseApplications=yes
+RestartApplications=no
 OutputDir=installers
 OutputBaseFilename=OmniBridge_Setup_v{#MyAppVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-; Minimum Windows 10
+; Minimum Windows 10 (1809 / RS5 — build 17763)
 MinVersion=10.0.17763
 
 [Languages]
@@ -68,3 +75,62 @@ Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: st
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+// ── Pre-install cleanup ─────────────────────────────────────────────────────
+// Runs the existing uninstaller silently (covers both HKLM and HKCU entries),
+// wipes Flutter SharedPreferences from the registry, and removes PyInstaller
+// %TEMP% extractions so a truly fresh version is always loaded.
+
+procedure DeleteRegKeyIfExists(RootKey: Integer; SubKey: String);
+begin
+  if RegKeyExists(RootKey, SubKey) then
+    RegDeleteKeyIncludingSubkeys(RootKey, SubKey);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  UninstPath: String;
+  UninstExe:  String;
+  ResultCode: Integer;
+  TempDir:    String;
+  FindRec:    TFindRec;
+begin
+  if CurStep = ssInstall then
+  begin
+    // 1. Run old uninstaller (HKLM = admin install, HKCU = old user-level install)
+    UninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1';
+    if RegQueryStringValue(HKLM, UninstPath, 'UninstallString', UninstExe) or
+       RegQueryStringValue(HKCU, UninstPath, 'UninstallString', UninstExe) then
+    begin
+      // /VERYSILENT — no UI; /NORESTART — do not reboot
+      Exec(RemoveQuotes(UninstExe), '/VERYSILENT /NORESTART', '', SW_HIDE,
+           ewWaitUntilTerminated, ResultCode);
+    end;
+
+    // 2. Wipe Flutter Windows SharedPreferences
+    // Flutter usually stores these in HKCU\Software\<app_name>
+    DeleteRegKeyIfExists(HKCU, 'Software\omni_bridge');
+    DeleteRegKeyIfExists(HKCU, 'Software\com.marshal.omni_bridge');
+
+    // 3. Delete any PyInstaller %TEMP%\omni_bridge* extractions from old runs
+    TempDir := ExpandConstant('{tmp}');
+    TempDir := ExtractFilePath(TempDir); // Parent of {tmp} is the actual %TEMP%
+    if FindFirst(TempDir + 'omni_bridge*', FindRec) then
+    begin
+      repeat
+        if (FindRec.Name <> '.') and (FindRec.Name <> '..') then
+        begin
+          if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+            DelTree(TempDir + FindRec.Name, True, True, True)
+          else
+            DeleteFile(TempDir + FindRec.Name);
+        end;
+      until not FindNext(FindRec);
+      FindClose(FindRec);
+    end;
+
+    // 4. Remove leftover user-level install dir (from old lowest-privilege installs)
+    DelTree(ExpandConstant('{localappdata}\Programs\{#MyAppName}'), True, True, True);
+  end;
+end;

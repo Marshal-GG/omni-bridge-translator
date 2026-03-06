@@ -46,6 +46,7 @@ app.*.map.json
 
 # Environment variables
 .env
+server/.env
 local.env
 
 # Python Server related
