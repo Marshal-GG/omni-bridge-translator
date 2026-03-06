@@ -111,66 +111,67 @@ class _AccountScreenState extends State<AccountScreen> {
           child: Column(
             children: [
               // ── Draggable Header ──────────────────────────────────────────
-              buildAccountHeader(),
+              buildAccountHeader(
+                onBack: () async {
+                  final nav = Navigator.of(context);
+                  await setToTranslationPosition();
+                  nav.pop();
+                },
+              ),
               const Divider(height: 1, color: Colors.white10),
 
               // ── Content ───────────────────────────────────────────────────
               Expanded(
-                child: SingleChildScrollView(
-                  child: Center(
-                    child: SizedBox(
-                      width: 400,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 24,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Avatar
-                            buildAccountAvatar(user, isAnon),
-                            const SizedBox(height: 36),
-
-                            if (!isAnon) ...[
-                              // ── Display Name Editor ─────────────────────
-                              buildAccountNameEditor(
-                                controller: _nameController,
-                                isSaving: _isSaving,
-                                message: _message,
-                                messageIsError: _messageIsError,
-                                onSave: _updateName,
-                              ),
-                              const SizedBox(height: 24),
-
-                              // ── Email (read-only) ──────────────────────
-                              buildAccountEmailInfo(user),
-                              const SizedBox(height: 32),
-                            ],
-
-                            if (isAnon) const SizedBox(height: 16),
-
-                            // ── Sign Out──────────────────────────────────
-                            AccountButton(
-                              icon: Icons.logout,
-                              label: 'Sign Out',
-                              onPressed: _signOut,
-                              isDanger: true,
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: Center(
+                        child: SizedBox(
+                          width: 400,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 24,
                             ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Avatar
+                                buildAccountAvatar(user, isAnon),
+                                const SizedBox(height: 36),
 
-                            const SizedBox(height: 12),
-                            // ── Back ────────────────────────────────────
-                            AccountButton(
-                              icon: Icons.arrow_back_rounded,
-                              label: 'Back to Translator',
-                              onPressed: () async {
-                                final nav = Navigator.of(context);
-                                await setToTranslationPosition();
-                                nav.pop();
-                              },
-                              isDanger: false,
+                                if (!isAnon) ...[
+                                  // ── Display Name Editor ─────────────────────
+                                  buildAccountNameEditor(
+                                    controller: _nameController,
+                                    isSaving: _isSaving,
+                                    message: _message,
+                                    messageIsError: _messageIsError,
+                                    onSave: _updateName,
+                                  ),
+                                  const SizedBox(height: 24),
+
+                                  // ── Email (read-only) ──────────────────────
+                                  buildAccountEmailInfo(user),
+                                  const SizedBox(height: 32),
+                                ],
+
+                                if (isAnon) const SizedBox(height: 16),
+
+                                // ── Sign Out──────────────────────────────────
+                                AccountButton(
+                                  icon: Icons.logout,
+                                  label: 'Sign Out',
+                                  onPressed: _signOut,
+                                  isDanger: true,
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
