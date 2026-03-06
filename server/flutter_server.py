@@ -205,7 +205,7 @@ async def list_devices():
                 name = loopback.get("name", "")
                 if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
                     continue
-                default_output_name = name
+                default_output_name = name.replace(" [Loopback]", "").strip()
                 break
 
             # WASAPI input devices only (no duplicates)
@@ -231,7 +231,8 @@ async def list_devices():
                 name = loopback.get("name", "")
                 if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
                     continue
-                outputs.append({"index": loopback["index"], "name": name})
+                clean_name = name.replace(" [Loopback]", "").strip()
+                outputs.append({"index": loopback["index"], "name": clean_name})
 
         except Exception as e:
             print(f"[/devices] Error: {e}")

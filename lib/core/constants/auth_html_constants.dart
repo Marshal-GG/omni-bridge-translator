@@ -43,6 +43,11 @@ const String customAuthSuccessHtml = '''
             color: #b0b0c0;
             margin: 0;
         }
+        .redirect-msg {
+            font-size: 0.9rem;
+            margin-top: 15px;
+            opacity: 0.7;
+        }
         .pulse {
             display: inline-block;
             width: 12px;
@@ -69,8 +74,24 @@ const String customAuthSuccessHtml = '''
         <div class="logo">🌉</div>
         <h1>Authentication Successful</h1>
         <p>You can securely close this tab and return to OmniBridge.</p>
+        <div id="redirect-container" class="redirect-msg" style="display: none;">
+            Redirecting to website...
+        </div>
         <div class="pulse"></div>
     </div>
+
+    <script>
+        // Check for a redirect parameter in the URL or a global variable replacement
+        // This is a template that AuthService can optionally inject a URL into
+        const REDIRECT_URL = '{{REDIRECT_URL}}';
+        
+        if (REDIRECT_URL && !REDIRECT_URL.startsWith('{{')) {
+            document.getElementById('redirect-container').style.display = 'block';
+            setTimeout(() => {
+                window.location.href = REDIRECT_URL;
+            }, 2000); // 2 second delay so they see the success message
+        }
+    </script>
 </body>
 </html>
 ''';
