@@ -3,17 +3,20 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  app_links
   bitsdojo_window_windows
   cloud_firestore
   desktop_webview_auth
   firebase_auth
   firebase_core
   flutter_acrylic
+  protocol_handler_windows
   screen_retriever_windows
   system_tray
   tray_manager
   url_launcher_windows
   window_manager
+  windows_single_instance
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
