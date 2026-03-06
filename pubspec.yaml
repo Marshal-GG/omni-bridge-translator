@@ -32,9 +32,13 @@ dependencies:
   firebase_auth: ^6.2.0
   desktop_webview_auth: ^0.0.16
   google_sign_in_all_platforms: ^2.0.2
+  protocol_handler: ^0.2.0
+  app_links: ^6.3.2
+  url_launcher: ^6.3.1
+  windows_single_instance: ^1.0.1
   flutter_dotenv: ^6.0.0
   firebase_database: ^12.1.4
-  device_info_plus: ^12.3.0
+  device_info_plus: ^11.3.0
   network_info_plus: ^7.0.0
 
 dev_dependencies:

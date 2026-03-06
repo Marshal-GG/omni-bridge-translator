@@ -5,6 +5,9 @@ import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:omni_bridge/core/utils/auth_html_constants.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'tracking_service.dart';
 
 class AuthService {
@@ -16,6 +19,7 @@ class AuthService {
   StreamSubscription<User?>? _authStateSub;
 
   late final GoogleSignIn _googleSignIn;
+  Completer<String?>? _authCodeCompleter;
 
   void init() {
     _googleSignIn = GoogleSignIn(
@@ -67,6 +71,15 @@ class AuthService {
 
   bool get isLoggedIn => currentUser.value != null;
 
+  /// Handles the incoming authentication redirect from the custom protocol.
+  void handleAuthRedirect(Uri uri) {
+    debugPrint('[Auth] handleAuthRedirect: $uri');
+    final code = uri.queryParameters['code'];
+    if (_authCodeCompleter != null && !_authCodeCompleter!.isCompleted) {
+      _authCodeCompleter!.complete(code);
+    }
+  }
+
   /// Google Sign-In via system browser for Windows.
   /// Tries silent sign-in (cached credentials) first to avoid the browser
   /// OAuth flow, which can hang when the local HTTP callback server is blocked.
@@ -74,19 +87,83 @@ class AuthService {
     try {
       debugPrint('[Auth] Step 1: Trying silentSignIn...');
       GoogleSignInCredentials? result = await _googleSignIn.silentSignIn();
-      debugPrint(
-        '[Auth] Step 2: silentSignIn → ${result == null ? 'no cache, opening browser' : 'got cached credentials'}',
-      );
 
-      // If no cached credentials, fall back to the full browser flow
-      result ??= await _googleSignIn.signIn();
-      debugPrint(
-        '[Auth] Step 3: signIn result → ${result == null ? 'NULL (canceled)' : 'credentials received'}',
-      );
+      if (result != null) {
+        debugPrint('[Auth] Got cached credentials.');
+      } else {
+        debugPrint(
+          '[Auth] No cache, performing manual OAuth flow with custom redirect...',
+        );
 
-      if (result == null) {
-        debugPrint('[Auth] Google Auth canceled or failed.');
-        return null;
+        final clientId = dotenv.env['GOOGLE_CLIENT_ID'] ?? '';
+        _authCodeCompleter = Completer<String?>();
+
+        final scopes = ['email', 'profile'].join(' ');
+
+        // If it's an iOS client ID, we use the custom scheme redirect
+        // format: com.googleusercontent.apps.XXX:/oauth2redirect
+        String redirectUri = 'omni-bridge://auth';
+        if (clientId.contains('.apps.googleusercontent.com')) {
+          final scheme = clientId.split('.').reversed.join('.');
+          redirectUri = '$scheme:/oauth2redirect';
+        }
+
+        final authUrl =
+            'https://accounts.google.com/o/oauth2/v2/auth'
+            '?client_id=$clientId'
+            '&redirect_uri=$redirectUri'
+            '&response_type=code'
+            '&scope=$scopes';
+
+        if (await canLaunchUrl(Uri.parse(authUrl))) {
+          await launchUrl(
+            Uri.parse(authUrl),
+            mode: LaunchMode.externalApplication,
+          );
+        } else {
+          throw 'Could not launch $authUrl';
+        }
+
+        final code = await _authCodeCompleter!.future;
+        _authCodeCompleter = null;
+
+        if (code == null) {
+          debugPrint('[Auth] Auth failed or canceled.');
+          return null;
+        }
+
+        debugPrint('[Auth] Exchange code for tokens...');
+        // Note: For Windows desktop apps with custom schemes, we use the loopback server or
+        // a manual exchange. In this case, we use the google_sign_in_all_platforms' internal
+        // machinery if possible, but since we are doing it manually, we need to hit the token endpoint.
+        // However, we can also use the desktop_webview_auth for the exchange part if it supports it,
+        // but it's simpler to just do the HTTP POST.
+
+        // Actually, we can use the result of the exchange to sign into Firebase.
+        // For simplicity and dependency management, I'll attempt to use the existing _googleSignIn
+        // if it can handle the code, but it usually doesn't expose that.
+
+        // Let's use a standard token exchange.
+        final response = await http.post(
+          Uri.parse('https://oauth2.googleapis.com/token'),
+          body: {
+            'code': code,
+            'client_id': clientId,
+            'redirect_uri': redirectUri,
+            'grant_type': 'authorization_code',
+          },
+        );
+
+        if (response.statusCode != 200) {
+          debugPrint('[Auth] Token exchange failed: ${response.body}');
+          return null;
+        }
+
+        final tokenData = jsonDecode(response.body);
+        result = GoogleSignInCredentials(
+          accessToken: tokenData['access_token'],
+          idToken: tokenData['id_token'],
+        );
       }
 
       debugPrint('[Auth] Step 4: Signing into Firebase...');
