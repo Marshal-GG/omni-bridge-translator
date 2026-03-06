@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../core/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -10,8 +11,35 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoginMode = true; // true for login, false for register
+
   bool _isLoading = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    // Navigate as soon as Firebase confirms the user — works even when
+    // signIn() is still blocking waiting for the OAuth callback URL.
+    AuthService.instance.currentUser.addListener(_onAuthChanged);
+  }
+
+  @override
+  void dispose() {
+    AuthService.instance.currentUser.removeListener(_onAuthChanged);
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _onAuthChanged() {
+    if (!mounted) return;
+    if (AuthService.instance.currentUser.value != null) {
+      Navigator.pushReplacementNamed(context, '/translation-overlay');
+    }
+  }
 
   Future<void> _signInWithGoogle() async {
     setState(() {
@@ -26,6 +54,57 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isLoading = false;
         _error = 'Sign-in cancelled or failed.';
+      });
+    }
+  }
+
+  Future<void> _submitEmailPassword() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Please enter email and password.');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      User? user;
+      if (_isLoginMode) {
+        user = await AuthService.instance.signInWithEmailAndPassword(
+          email,
+          password,
+        );
+      } else {
+        user = await AuthService.instance.registerWithEmailAndPassword(
+          email,
+          password,
+        );
+      }
+      if (!mounted) return;
+      if (user != null) {
+        Navigator.pushReplacementNamed(context, '/translation-overlay');
+      } else {
+        setState(() {
+          _isLoading = false;
+          _error = 'Sign-in failed.';
+        });
+      }
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = e.message ?? 'Authentication failed.';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = 'An unexpected error occurred: $e';
       });
     }
   }
@@ -140,14 +219,145 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: Colors.tealAccent,
                               )
                             else ...[
-                              // Primary Sign In
+                              // Email Field
+                              TextField(
+                                controller: _emailController,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                                decoration: InputDecoration(
+                                  labelText: 'Email',
+                                  labelStyle: const TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 13,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white10,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.email_outlined,
+                                    color: Colors.white60,
+                                    size: 20,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 0,
+                                    horizontal: 16,
+                                  ),
+                                ),
+                                keyboardType: TextInputType.emailAddress,
+                              ),
+                              const SizedBox(height: 12),
+                              // Password Field
+                              TextField(
+                                controller: _passwordController,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                                obscureText: true,
+                                decoration: InputDecoration(
+                                  labelText: 'Password',
+                                  labelStyle: const TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 13,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white10,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.lock_outline,
+                                    color: Colors.white60,
+                                    size: 20,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 0,
+                                    horizontal: 16,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Email action button
                               _LoginButton(
-                                icon: Icons.login_rounded,
-                                label: 'Sign in with Google',
-                                onPressed: _signInWithGoogle,
+                                icon: _isLoginMode
+                                    ? Icons.login_rounded
+                                    : Icons.person_add_rounded,
+                                label: _isLoginMode
+                                    ? 'Sign In'
+                                    : 'Create Account',
+                                onPressed: _submitEmailPassword,
                                 isPrimary: true,
                               ),
+                              const SizedBox(height: 12),
+
+                              // Toggle Login / Register
+                              TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _isLoginMode = !_isLoginMode;
+                                    _error = null;
+                                  });
+                                },
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.tealAccent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: Text(
+                                  _isLoginMode
+                                      ? "Don't have an account? Sign Up"
+                                      : "Already have an account? Sign In",
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                ),
+                              ),
                               const SizedBox(height: 16),
+
+                              // Divider
+                              const Row(
+                                children: [
+                                  Expanded(
+                                    child: Divider(color: Colors.white10),
+                                  ),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    child: Text(
+                                      'OR',
+                                      style: TextStyle(
+                                        color: Colors.white38,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Divider(color: Colors.white10),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Primary Sign In (Google)
+                              _LoginButton(
+                                icon: Icons
+                                    .g_mobiledata_rounded, // or any other google icon representation
+                                label: 'Continue with Google',
+                                onPressed: _signInWithGoogle,
+                                isPrimary: false,
+                              ),
+                              const SizedBox(height: 12),
 
                               // Secondary Bypass
                               _LoginButton(
