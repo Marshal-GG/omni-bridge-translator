@@ -7,6 +7,7 @@ import 'translation_event.dart';
 import 'translation_state.dart';
 import '../../../core/services/asr_ws_client.dart';
 import '../../../core/services/tracking_service.dart';
+import '../../../core/window_manager.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final AsrWebSocketClient asrClient;
@@ -117,21 +118,12 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     emit(state.copyWith(isSettingsOpen: willOpen));
 
     if (willOpen) {
-      // Un-shrink if we are opening settings from a shrunk state
       if (state.isShrunk) {
         emit(state.copyWith(isShrunk: false));
       }
-
-      appWindow.minSize = const Size(600, 300);
-      await windowManager.setMinimumSize(const Size(600, 300));
-      await windowManager.setSize(const Size(600, 700));
-      appWindow.alignment = Alignment.center;
+      await setToSettingsPosition();
     } else {
-      // Closing settings manually (without saving) just resizes window back down.
-      appWindow.minSize = const Size(300, 150);
-      await windowManager.setMinimumSize(const Size(400, 150));
-      await windowManager.setSize(const Size(730, 150));
-      appWindow.alignment = Alignment.bottomCenter;
+      await setToTranslationPosition();
     }
   }
 

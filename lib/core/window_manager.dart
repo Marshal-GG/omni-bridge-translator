@@ -88,6 +88,16 @@ Future<void> setToHistoryPosition() async {
   await windowManager.setAlwaysOnTop(false);
 }
 
+/// Sets the window to a centered panel for the Settings screen
+Future<void> setToSettingsPosition() async {
+  await windowManager.setResizable(true);
+  appWindow.minSize = const Size(560, 480);
+  await windowManager.setMinimumSize(const Size(560, 480));
+  await windowManager.setSize(const Size(720, 620));
+  await windowManager.center();
+  await windowManager.setAlwaysOnTop(false);
+}
+
 class _AppWindowListener extends WindowListener {
   @override
   void onWindowClose() async {
