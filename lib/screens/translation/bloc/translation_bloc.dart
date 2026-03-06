@@ -46,6 +46,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           msg.sourceLangOverride ?? state.activeSourceLang,
           state.activeTargetLang,
           msg.isFinal,
+          state.activeAiEngine,
         );
       }
     });

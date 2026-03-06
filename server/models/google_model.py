@@ -3,6 +3,7 @@ Google Translate model via deep-translator.
 Used when 'google' engine is selected.
 """
 
+import time
 from deep_translator import GoogleTranslator
 
 
@@ -12,15 +13,34 @@ class GoogleModel:
     def is_ready(self) -> bool:
         return True  # Always available — no API key needed
 
-    def translate(self, text: str, source_lang: str, target_lang: str) -> str | None:
+    def translate(self, text: str, source_lang: str, target_lang: str) -> tuple[str | None, dict]:
         """
         Translate *text* from *source_lang* to *target_lang*.
-        Returns the translated string, or None on failure.
+        Returns (translated_text_or_None, usage_stats).
         """
+        start = time.monotonic()
         try:
             src = source_lang if source_lang != "auto" else "auto"
             result = GoogleTranslator(source=src, target=target_lang).translate(text)
-            return result if result else None
+            latency_ms = int((time.monotonic() - start) * 1000)
+            stats = {
+                "engine": "google",
+                "model": "google-translate",
+                "latency_ms": latency_ms,
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+                "input_chars": len(text),
+                "output_chars": len(result) if result else 0,
+            }
+            return (result if result else None), stats
         except Exception as e:
             print(f"Google Translate error: {e}")
-            return None
+            latency_ms = int((time.monotonic() - start) * 1000)
+            return None, {
+                "engine": "google",
+                "model": "google-translate",
+                "latency_ms": latency_ms,
+                "error": str(e),
+                "input_chars": len(text),
+            }

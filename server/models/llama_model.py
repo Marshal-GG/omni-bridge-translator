@@ -4,6 +4,7 @@ Used either directly when 'llama' engine is selected or as a
 reliable fallback from other engines.
 """
 
+import time
 from openai import OpenAI
 
 
@@ -39,8 +40,12 @@ class LlamaModel:
 
     # ── Translation ──────────────────────────────────────────────────────────
 
-    def translate(self, text: str, target_lang: str) -> str:
-        """Translate *text* to *target_lang* using Llama 3.1 8B."""
+    def translate(self, text: str, target_lang: str) -> tuple[str, dict]:
+        """
+        Translate *text* to *target_lang* using Llama 3.1 8B.
+        Returns (translated_text, usage_stats).
+        """
+        start = time.monotonic()
         try:
             completion = self.client.chat.completions.create(
                 model=self.MODEL_ID,
@@ -58,7 +63,27 @@ class LlamaModel:
                 temperature=0,
                 max_tokens=512,
             )
-            return completion.choices[0].message.content.strip()
+            latency_ms = int((time.monotonic() - start) * 1000)
+            usage = completion.usage
+            result = completion.choices[0].message.content.strip()
+            stats = {
+                "engine": "llama",
+                "model": self.MODEL_ID,
+                "latency_ms": latency_ms,
+                "prompt_tokens": usage.prompt_tokens if usage else 0,
+                "completion_tokens": usage.completion_tokens if usage else 0,
+                "total_tokens": usage.total_tokens if usage else 0,
+                "input_chars": len(text),
+                "output_chars": len(result),
+            }
+            return result, stats
         except Exception as e:
             print(f"Llama translation error: {e}")
-            return text  # Return original if all else fails
+            latency_ms = int((time.monotonic() - start) * 1000)
+            return text, {
+                "engine": "llama",
+                "model": self.MODEL_ID,
+                "latency_ms": latency_ms,
+                "error": str(e),
+                "input_chars": len(text),
+            }
