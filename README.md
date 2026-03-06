@@ -105,19 +105,27 @@ To create a standalone installer that bundles both the Python server and the Flu
 ## 💡 Usage
 1. Make sure the Python server is running (`start_server.bat`).
 2. Launch the Omni Bridge: Live AI Translator Flutter app.
-3. Click the **Gear (Settings)** icon in the top right of the overlay.
-4. (Optional) Toggle **Microphone Translation** to translate your mic input instead of system audio.
-5. Select your **Source Language** (or leave as Auto-Detect).
-6. Select your **Target Language**. You can select **Original Source (Transcription)** to bypass translation and only transcribe the speech.
-7. Close the settings panel. Omni Bridge: Live AI Translator will connect to the server and begin displaying live translations or transcriptions for any audio playing on your PC (or from your microphone).
+3. Sign in with **Email/Password** or continue as a **Guest**.
+4. Click the **Gear (Settings)** icon in the top right of the overlay.
+5. (Optional) Toggle **Microphone Translation** to translate your mic input instead of system audio.
+6. Select your **Source Language** (or leave as Auto-Detect).
+7. Select your **Target Language**. You can select **Original Source (Transcription)** to bypass translation and only transcribe the speech.
+8. Close the settings panel. Omni Bridge: Live AI Translator will connect to the server and begin displaying live translations or transcriptions for any audio playing on your PC (or from your microphone).
 
-## 📦 Dependencies
+### � Account Screen
+- Access your account via the **person icon** on the translator overlay.
+- Displays your **display name**, **email**, and a badge showing your sign-in method (e.g. *Email Account*, *Google Account*, or *Guest Mode*).
+- Edit your **display name** and save it directly from the account panel.
+- The back arrow in the **top-left of the header** returns you to the translator overlay.
+
+## �📦 Dependencies
 
 **Flutter (`pubspec.yaml`)**:
 - `web_socket_channel`: WebSocket communication.
 - `dropdown_search`: Searchable language selection UI.
 - `bitsdojo_window` & `window_manager`: Frameless, draggable desktop overlay.
 - `flutter_acrylic`: Transparent background support.
+- `firebase_auth` & `firebase_core`: User authentication (Email/Password, Google, Anonymous).
 
 **Python (`server/requirements.txt`)**:
 - `fastapi`, `uvicorn`, `websockets`
