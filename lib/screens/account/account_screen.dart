@@ -84,9 +84,10 @@ class _AccountScreenState extends State<AccountScreen> {
       ),
     );
     if (confirm == true && mounted) {
+      final nav = Navigator.of(context);
       await AuthService.instance.signOut();
       await setToLoginPosition();
-      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      nav.pushNamedAndRemoveUntil('/login', (route) => false);
     }
   }
 
@@ -407,8 +408,9 @@ class _AccountScreenState extends State<AccountScreen> {
                               icon: Icons.arrow_back_rounded,
                               label: 'Back to Translator',
                               onPressed: () async {
+                                final nav = Navigator.of(context);
                                 await setToTranslationPosition();
-                                if (mounted) Navigator.pop(context);
+                                nav.pop();
                               },
                               isDanger: false,
                             ),

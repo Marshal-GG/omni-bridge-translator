@@ -1,112 +1,64 @@
-import os
+"""
+nim_api.py — Central orchestrator for AI translation engines.
+
+Imports each engine from the `models/` package and routes
+ASR + translation work to the one the user selected.
+
+Engines:
+  - 'riva'   → NVIDIA Riva ASR + Riva/Llama NIM translation  (models/riva_model.py)
+  - 'llama'  → Llama 3.1 8B via NVIDIA NIM                   (models/llama_model.py)
+  - 'google' → Google Translate via deep-translator           (models/google_model.py)
+"""
+
 import threading
 import queue
-import riva.client
+
+from models.riva_model import RivaModel
+from models.llama_model import LlamaModel
+from models.google_model import GoogleModel
+
 
 class NimApiClient:
-    def __init__(self, api_key):
+    """
+    Orchestrates speech recognition and translation across multiple AI engines.
+    The active engine is set per-session via `start_stream(ai_engine=...)`.
+    """
+
+    def __init__(self, api_key: str):
         self.api_key = api_key
-        self.uri = "grpc.nvcf.nvidia.com:443"
         self.is_running = False
-        self.audio_queue = queue.Queue()
-        self._setup_riva()
+        self.audio_queue: queue.Queue = queue.Queue()
 
-    def _setup_riva(self):
-        try:
-            if not self.api_key:
-                return
-            
-            auth_asr = riva.client.Auth(
-                None,
-                use_ssl=True,
-                uri=self.uri,
-                metadata_args=[
-                    ("authorization", f"Bearer {self.api_key}"),
-                    ("function-id", "71203149-d3b7-4460-8231-1be2543a1fca")
-                ]
-            )
-            self.asr_service = riva.client.ASRService(auth_asr)
-            
-            from openai import OpenAI
-            self.translate_client = OpenAI(
-                base_url="https://integrate.api.nvidia.com/v1",
-                api_key=self.api_key
-            )
-        except Exception as e:
-            print(f"Riva setup failed: {e}")
+        # Instantiate all engines upfront
+        self.riva = RivaModel(api_key)
+        self.llama = LlamaModel(api_key)
+        self.google = GoogleModel()
 
-    def set_api_key(self, api_key):
+        # Active session state
+        self._ai_engine = "riva"
+        self._source_lang = "auto"
+        self._target_lang = None
+        self._sample_rate = 16000
+        self._callback = None
+
+    # ── Key management ───────────────────────────────────────────────────────
+
+    def set_api_key(self, api_key: str):
         self.api_key = api_key
-        self._setup_riva()
+        self.riva.reload(api_key)
+        self.llama.reload(api_key)
 
-    def _clean_stutters(self, text):
-        """Remove words repeated 3+ times consecutively (stutter removal)."""
-        words = text.split()
-        cleaned = []
-        for w in words:
-            if len(cleaned) >= 2 and cleaned[-1] == w and cleaned[-2] == w:
-                continue
-            cleaned.append(w)
-        return " ".join(cleaned)
+    # ── Stream lifecycle ─────────────────────────────────────────────────────
 
-    def _translate_text(self, text, source_lang, target_lang):
-        try:
-            riva_supported = {"en", "de", "es", "fr", "pt", "ru", "zh", "ja", "ko", "ar"}
-
-            if source_lang == "auto" or source_lang not in riva_supported or target_lang not in riva_supported:
-                model_name = "meta/llama-3.1-8b-instruct"
-                system_prompt = (
-                    f"Translate to {target_lang}. "
-                    "Output ONLY the translated sentence. "
-                    "Do NOT add any explanation, commentary, punctuation changes, or prefix. "
-                    "Never say 'Here is', 'Translation:', or anything similar. "
-                    "Respond with the translated text and nothing else."
-                )
-            else:
-                model_name = "nvidia/riva-translate-4b-instruct-v1.1"
-                system_prompt = (
-                    f"Translate from {source_lang} to {target_lang}. "
-                    "Output only the translated text with no labels, no explanations, no extra words."
-                )
-
-            completion = self.translate_client.chat.completions.create(
-                model=model_name,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": text}
-                ],
-                temperature=0,
-                max_tokens=512,
-            )
-            result = completion.choices[0].message.content.strip()
-            import re
-            result = re.sub(
-                r'^(translation[:\s]+|translated text[:\s]+|here is.*?:|output[:\s]+|in [a-z]+[:\s]+|sure[!,\s]+)',
-                '', result, flags=re.IGNORECASE
-            ).strip()
-            # Strip surrounding quotes if model wrapped the translation
-            if result.startswith('"') and result.endswith('"'):
-                result = result[1:-1].strip()
-            return result
-        except Exception as e:
-            print(f"Translation error ({e}), falling back to Llama...")
-            try:
-                completion = self.translate_client.chat.completions.create(
-                    model="meta/llama-3.1-8b-instruct",
-                    messages=[
-                        {"role": "system", "content": f"Translate to {target_lang}. Output ONLY the translated text. No explanations, no labels, no extra words."},
-                        {"role": "user", "content": text}
-                    ],
-                    temperature=0,
-                    max_tokens=512,
-                )
-                return completion.choices[0].message.content
-            except Exception as e2:
-                print(f"Fallback translation error: {e2}")
-        return text
-
-    def start_stream(self, sample_rate, source_lang="auto", target_lang=None, callback=None):
-        if not hasattr(self, 'asr_service') or not self.api_key:
+    def start_stream(
+        self,
+        sample_rate: int,
+        source_lang: str = "auto",
+        target_lang: str | None = None,
+        ai_engine: str = "riva",
+        callback=None,
+    ):
+        if not self.riva.is_ready() and ai_engine != "google":
             if callback:
                 callback("Error: API Key or Riva setup is missing.", True, is_final=True)
             return
@@ -117,13 +69,17 @@ class NimApiClient:
         self.is_running = True
         self._source_lang = source_lang
         self._target_lang = target_lang
+        self._ai_engine = ai_engine
         self._callback = callback
         self._sample_rate = sample_rate
-        
+
+        # Drain stale audio
         while not self.audio_queue.empty():
-            try: self.audio_queue.get_nowait()
-            except: break
-        
+            try:
+                self.audio_queue.get_nowait()
+            except Exception:
+                break
+
         for _ in range(2):
             t = threading.Thread(target=self._worker, daemon=True)
             t.start()
@@ -137,32 +93,23 @@ class NimApiClient:
         if self.is_running:
             self.audio_queue.put(audio_data)
 
+    # ── Audio worker ─────────────────────────────────────────────────────────
+
     def _worker(self):
+        # Language code map for Riva ASR
         lang_map = {
             "en": "en-US", "es": "es-US", "fr": "fr-FR", "de": "de-DE",
             "zh": "zh-CN", "ja": "ja-JP", "ko": "ko-KR", "ru": "ru-RU",
             "pt": "pt-BR", "it": "it-IT", "ar": "ar-AR", "hi": "hi-IN",
             "nl": "nl-NL", "tr": "tr-TR", "vi": "vi-VN", "pl": "pl-PL",
-            "id": "id-ID", "th": "th-TH", "bn": "bn-IN"
+            "id": "id-ID", "th": "th-TH", "bn": "bn-IN",
         }
 
-        # When set to "auto", try Parakeet multi-language detection first.
-        # If NVIDIA rejects "multi", automatically fall back to "en-US".
         use_auto = self._source_lang == "auto"
         asr_lang = "multi" if use_auto else lang_map.get(self._source_lang, "en-US")
         fell_back = False
 
-        def _make_config(lang):
-            return riva.client.RecognitionConfig(
-                encoding=riva.client.AudioEncoding.LINEAR_PCM,
-                sample_rate_hertz=self._sample_rate,
-                language_code=lang,
-                max_alternatives=1,
-                enable_automatic_punctuation=True,
-                audio_channel_count=1
-            )
-
-        config = _make_config(asr_lang)
+        config = self.riva.make_asr_config(self._sample_rate, asr_lang)
 
         while self.is_running:
             try:
@@ -170,13 +117,11 @@ class NimApiClient:
                 if chunk is None:
                     break
 
-                # Try ASR; on any error in auto mode, fall back to en-US.
-                # Log full error to file so we can see it even in the compiled exe.
+                # ── ASR (always via Riva) ────────────────────────────────
                 try:
-                    response = self.asr_service.offline_recognize(chunk.tobytes(), config)
+                    transcript = self.riva.transcribe(chunk.tobytes(), config)
                 except Exception as asr_err:
                     err_str = str(asr_err)
-                    # Always write the full error to a log file for debugging
                     try:
                         with open("asr_error.log", "a") as f:
                             f.write(f"[ASR ERROR] lang={asr_lang} err={err_str}\n")
@@ -184,15 +129,14 @@ class NimApiClient:
                         pass
 
                     if use_auto and not fell_back:
-                        # Fall back to en-US on ANY error when in auto mode
                         print(f"[ASR] Auto mode failed ({err_str[:120]}), falling back to en-US")
                         asr_lang = "en-US"
-                        config = _make_config(asr_lang)
+                        config = self.riva.make_asr_config(self._sample_rate, asr_lang)
                         fell_back = True
                         if self._callback:
                             self._callback("__source_lang_override__:en", False, is_final=False)
                         try:
-                            response = self.asr_service.offline_recognize(chunk.tobytes(), config)
+                            transcript = self.riva.transcribe(chunk.tobytes(), config)
                         except Exception as retry_err:
                             if self._callback:
                                 self._callback(f"ASR Error: {retry_err}", True, is_final=True)
@@ -202,24 +146,59 @@ class NimApiClient:
                             self._callback(f"ASR Error: {err_str[:200]}", True, is_final=True)
                         continue
 
-                if response and response.results and response.results[0].alternatives:
-                    transcript = response.results[0].alternatives[0].transcript.strip()
-                    if not transcript:
-                        continue
+                if not transcript:
+                    continue
 
-                    clean = self._clean_stutters(transcript)
+                clean = self._clean_stutters(transcript)
 
-                    # Always translate unless target is 'none' (transcription-only mode)
-                    if self._target_lang and self._target_lang != 'none':
-                        translated = self._translate_text(clean, self._source_lang, self._target_lang)
-                        if self._callback:
-                            self._callback(translated, False, is_final=True, original_text=clean)
-                    else:
-                        if self._callback:
-                            self._callback(clean, False, is_final=True)
+                # ── Translation ──────────────────────────────────────────
+                if self._target_lang and self._target_lang != "none":
+                    translated = self._translate(clean, self._source_lang, self._target_lang)
+                    if self._callback:
+                        self._callback(translated, False, is_final=True, original_text=clean)
+                else:
+                    if self._callback:
+                        self._callback(clean, False, is_final=True)
 
             except queue.Empty:
                 continue
             except Exception as e:
                 if self._callback:
                     self._callback(f"ASR Error: {e}", True, is_final=True)
+
+    # ── Translation dispatcher ────────────────────────────────────────────────
+
+    def _translate(self, text: str, source_lang: str, target_lang: str) -> str:
+        """Route translation to the active engine, with Llama as final fallback."""
+
+        # Google engine
+        if self._ai_engine == "google":
+            result = self.google.translate(text, source_lang, target_lang)
+            if result:
+                return result
+            print("Google Translate failed, falling back to Llama...")
+            return self.llama.translate(text, target_lang)
+
+        # Llama engine (direct)
+        if self._ai_engine == "llama":
+            return self.llama.translate(text, target_lang)
+
+        # Riva engine (default) — falls back to Llama internally for unsupported langs
+        try:
+            return self.riva.translate(text, source_lang, target_lang)
+        except Exception as e:
+            print(f"Riva translation error ({e}), falling back to Llama...")
+            return self.llama.translate(text, target_lang)
+
+    # ── Utilities ─────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _clean_stutters(text: str) -> str:
+        """Remove words repeated 3+ times consecutively (stutter removal)."""
+        words = text.split()
+        cleaned = []
+        for w in words:
+            if len(cleaned) >= 2 and cleaned[-1] == w and cleaned[-2] == w:
+                continue
+            cleaned.append(w)
+        return " ".join(cleaned)

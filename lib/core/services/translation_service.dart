@@ -78,6 +78,7 @@ class TranslationService {
   bool _useMic = false;
   int? _inputDeviceIndex;
   int? _outputDeviceIndex;
+  String _aiEngine = 'riva';
 
   String get _wsUrl => 'ws://$serverHost:$serverPort/captions';
 
@@ -93,6 +94,7 @@ class TranslationService {
     bool useMic = false,
     int? inputDeviceIndex,
     int? outputDeviceIndex,
+    String aiEngine = 'riva',
   }) async {
     _intentionallyStopped = false;
     _sourceLang = sourceLang;
@@ -100,6 +102,7 @@ class TranslationService {
     _useMic = useMic;
     _inputDeviceIndex = inputDeviceIndex;
     _outputDeviceIndex = outputDeviceIndex;
+    _aiEngine = aiEngine;
     _reconnectAttempt = 0;
     await _connect();
   }
@@ -188,6 +191,7 @@ class TranslationService {
       'source': _sourceLang,
       'target': _targetLang,
       'use_mic': _useMic,
+      'ai_engine': _aiEngine,
     };
     if (_inputDeviceIndex != null) {
       payload['input_device_index'] = _inputDeviceIndex;
@@ -207,12 +211,14 @@ class TranslationService {
     int? outputDeviceIndex,
     double desktopVolume = 1.0,
     double micVolume = 1.0,
+    required String aiEngine,
   }) {
     _sourceLang = sourceLang;
     _targetLang = targetLang;
     _useMic = useMic;
     _inputDeviceIndex = inputDeviceIndex;
     _outputDeviceIndex = outputDeviceIndex;
+    _aiEngine = aiEngine;
 
     if (_channel != null) {
       final payload = <String, dynamic>{
@@ -222,6 +228,7 @@ class TranslationService {
         'use_mic': useMic,
         'desktop_volume': desktopVolume,
         'mic_volume': micVolume,
+        'ai_engine': aiEngine,
       };
       if (inputDeviceIndex != null) {
         payload['input_device_index'] = inputDeviceIndex;

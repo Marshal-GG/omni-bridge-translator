@@ -32,6 +32,7 @@ class ApplySettingsEvent extends TranslationEvent {
   final int? outputDeviceIndex;
   final double desktopVolume;
   final double micVolume;
+  final String aiEngine;
 
   const ApplySettingsEvent({
     required this.targetLang,
@@ -41,9 +42,10 @@ class ApplySettingsEvent extends TranslationEvent {
     required this.isBold,
     required this.opacity,
     this.inputDeviceIndex,
-    this.outputDeviceIndex,
+    required this.outputDeviceIndex,
     required this.desktopVolume,
     required this.micVolume,
+    required this.aiEngine,
   });
 
   @override
@@ -58,6 +60,7 @@ class ApplySettingsEvent extends TranslationEvent {
     outputDeviceIndex,
     desktopVolume,
     micVolume,
+    aiEngine,
   ];
 }
 

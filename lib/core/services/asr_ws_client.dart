@@ -91,6 +91,7 @@ class AsrWebSocketClient {
     int? outputDeviceIndex,
     double desktopVolume = 1.0,
     double micVolume = 1.0,
+    required String aiEngine,
   }) {
     _service?.updateSettings(
       sourceLang: sourceLang,
@@ -100,6 +101,7 @@ class AsrWebSocketClient {
       outputDeviceIndex: outputDeviceIndex,
       desktopVolume: desktopVolume,
       micVolume: micVolume,
+      aiEngine: aiEngine,
     );
     // Keep HistoryService in sync with the current source/target lang
     HistoryService.instance.configure(
