@@ -33,6 +33,7 @@ dependencies:
   desktop_webview_auth: ^0.0.16
   google_sign_in_all_platforms: ^2.0.2
   flutter_dotenv: ^6.0.0
+  firebase_database: ^12.1.4
 
 dev_dependencies:
   flutter_test:

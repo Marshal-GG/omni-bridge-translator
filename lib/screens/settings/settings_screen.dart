@@ -23,9 +23,27 @@ class _SettingsScreenState extends State<SettingsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    // Load devices as soon as the settings screen opens
+
+    // Sync current TranslationBloc state into SettingsBloc and load devices
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<SettingsBloc>().add(LoadDevicesEvent());
+      if (mounted) {
+        final transState = context.read<TranslationBloc>().state;
+        context.read<SettingsBloc>().add(
+          SyncTempSettingsEvent(
+            targetLang: transState.activeTargetLang,
+            sourceLang: transState.activeSourceLang,
+            useMic: transState.activeUseMic,
+            fontSize: transState.activeFontSize,
+            isBold: transState.activeIsBold,
+            opacity: transState.activeOpacity,
+            inputDeviceIndex: transState.activeInputDeviceIndex,
+            outputDeviceIndex: transState.activeOutputDeviceIndex,
+            desktopVolume: transState.activeDesktopVolume,
+            micVolume: transState.activeMicVolume,
+          ),
+        );
+        context.read<SettingsBloc>().add(LoadDevicesEvent());
+      }
     });
   }
 
@@ -364,6 +382,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             state.tempSourceLang,
             appLanguages[state.tempSourceLang] ?? state.tempSourceLang,
           ),
+          compareFn: (item, selectedItem) => item.key == selectedItem.key,
           onChanged: (entry) {
             // Delay updating bloc so DropdownSearch finishes closing without unmounting mid-frame
             Future.delayed(const Duration(milliseconds: 100), () {
@@ -429,6 +448,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             state.tempTargetLang,
             appLanguages[state.tempTargetLang] ?? state.tempTargetLang,
           ),
+          compareFn: (item, selectedItem) => item.key == selectedItem.key,
           onChanged: (entry) {
             // Delay updating bloc so DropdownSearch finishes closing without unmounting mid-frame
             Future.delayed(const Duration(milliseconds: 100), () {
@@ -722,6 +742,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               orElse: () => {'name': defaultName, 'index': -1},
             )
           : null,
+      compareFn: (item, selectedItem) => item['index'] == selectedItem['index'],
       onChanged: (device) {
         // Delay updating bloc so DropdownSearch finishes closing without unmounting mid-frame
         Future.delayed(const Duration(milliseconds: 100), () {

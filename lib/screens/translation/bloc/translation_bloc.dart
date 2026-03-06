@@ -6,6 +6,7 @@ import 'package:window_manager/window_manager.dart';
 import 'translation_event.dart';
 import 'translation_state.dart';
 import '../../../core/services/asr_ws_client.dart';
+import '../../../core/services/tracking_service.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final AsrWebSocketClient asrClient;
@@ -17,12 +18,14 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     on<ToggleShrinkEvent>(_onToggleShrink);
     on<SourceLangOverrideEvent>(_onSourceLangOverride);
     on<ApplySettingsEvent>(_onApplySettings);
+    on<LoadSettingsEvent>(_onLoadSettings);
     on<LangErrorEvent>(_onLangError);
 
     _initAsr();
   }
 
   void _initAsr() {
+    add(LoadSettingsEvent());
     asrClient.attachBloc(this);
     asrClient.start(
       sourceLang: state.activeSourceLang,
@@ -35,6 +38,14 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     _captionSub = asrClient.captions?.listen((msg) {
       if (msg.sourceLangOverride != null && !isClosed) {
         add(SourceLangOverrideEvent(msg.sourceLangOverride!));
+      }
+      if (msg.text.trim().isNotEmpty) {
+        TrackingService.instance.syncLiveCaption(
+          msg.text,
+          msg.sourceLangOverride ?? state.activeSourceLang,
+          state.activeTargetLang,
+          msg.isFinal,
+        );
       }
     });
   }
@@ -49,6 +60,48 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   void _onLangError(LangErrorEvent event, Emitter<TranslationState> emit) {
     emit(state.copyWith(autoDetectWarning: event.message));
     emit(state.copyWith(autoDetectWarning: null));
+  }
+
+  Future<void> _onLoadSettings(
+    LoadSettingsEvent event,
+    Emitter<TranslationState> emit,
+  ) async {
+    final settings = await TrackingService.instance.getSettings();
+    if (settings != null) {
+      final targetLang =
+          settings['targetLang'] as String? ?? state.activeTargetLang;
+      final sourceLang =
+          settings['sourceLang'] as String? ?? state.activeSourceLang;
+      final useMic = settings['useMic'] as bool? ?? state.activeUseMic;
+      final fontSize =
+          (settings['fontSize'] as num?)?.toDouble() ?? state.activeFontSize;
+      final isBold = settings['isBold'] as bool? ?? state.activeIsBold;
+      final opacity =
+          (settings['opacity'] as num?)?.toDouble() ?? state.activeOpacity;
+
+      // Update BLoC state natively
+      emit(
+        state.copyWith(
+          activeTargetLang: targetLang,
+          activeSourceLang: sourceLang,
+          activeUseMic: useMic,
+          activeFontSize: fontSize,
+          activeIsBold: isBold,
+          activeOpacity: opacity,
+        ),
+      );
+
+      // Tell underlying ASR engine we changed things on init load
+      asrClient.updateSettings(
+        targetLang: targetLang,
+        sourceLang: sourceLang,
+        useMic: useMic,
+        inputDeviceIndex: state.activeInputDeviceIndex,
+        outputDeviceIndex: state.activeOutputDeviceIndex,
+        desktopVolume: state.activeDesktopVolume,
+        micVolume: state.activeMicVolume,
+      );
+    }
   }
 
   Future<void> _onToggleSettings(
@@ -124,6 +177,16 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       desktopVolume: event.desktopVolume,
       micVolume: event.micVolume,
     );
+
+    // Sync settings to Firestore
+    TrackingService.instance.syncSettings({
+      'targetLang': event.targetLang,
+      'sourceLang': event.sourceLang,
+      'useMic': event.useMic,
+      'fontSize': event.fontSize,
+      'isBold': event.isBold,
+      'opacity': event.opacity,
+    });
 
     add(ToggleSettingsEvent());
   }

@@ -11,6 +11,8 @@ class ToggleSettingsEvent extends TranslationEvent {}
 
 class ToggleShrinkEvent extends TranslationEvent {}
 
+class LoadSettingsEvent extends TranslationEvent {}
+
 class SourceLangOverrideEvent extends TranslationEvent {
   final String sourceLang;
   const SourceLangOverrideEvent(this.sourceLang);
