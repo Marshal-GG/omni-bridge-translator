@@ -16,9 +16,12 @@ import os
 from typing import Set
 
 from dotenv import load_dotenv
+from pathlib import Path
 
-# Load environment variables securely
-load_dotenv()
+# Load environment variables from .env next to this script,
+# regardless of the working directory the process was launched from.
+_ENV_FILE = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=_ENV_FILE)
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
