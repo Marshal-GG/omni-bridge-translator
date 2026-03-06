@@ -65,7 +65,7 @@ class _OverlayContent extends StatelessWidget {
                 : state.activeOpacity;
 
             if (state.isShrunk) {
-              return _ShrunkView(state: state, opacity: opacity);
+              return buildShrunkView(context, state, opacity);
             }
 
             return Container(
@@ -75,7 +75,7 @@ class _OverlayContent extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  TranslationHeader(state: state),
+                  buildTranslationHeader(context, state),
                   const Divider(height: 1),
                   Expanded(
                     child: state.isSettingsOpen
@@ -92,51 +92,48 @@ class _OverlayContent extends StatelessWidget {
   }
 }
 
-class _ShrunkView extends StatelessWidget {
-  final TranslationState state;
-  final double opacity;
-  const _ShrunkView({required this.state, required this.opacity});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.read<TranslationBloc>().add(ToggleShrinkEvent()),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: opacity),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white12),
-        ),
-        child: Stack(
-          children: [
-            MoveWindow(),
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: ValueListenableBuilder<String>(
-                  valueListenable: asrTextController,
-                  builder: (_, text, _) => Text(
-                    text.isEmpty ? 'Listening...' : text,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: state.activeFontSize,
-                      fontWeight: state.activeIsBold
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      color: Colors.white,
-                      shadows: const [
-                        Shadow(offset: Offset(1, 1), blurRadius: 3),
-                      ],
-                    ),
+Widget buildShrunkView(
+  BuildContext context,
+  TranslationState state,
+  double opacity,
+) {
+  return GestureDetector(
+    onTap: () => context.read<TranslationBloc>().add(ToggleShrinkEvent()),
+    child: Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: opacity),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Stack(
+        children: [
+          MoveWindow(),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ValueListenableBuilder<String>(
+                valueListenable: asrTextController,
+                builder: (_, text, _) => Text(
+                  text.isEmpty ? 'Listening...' : text,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: state.activeFontSize,
+                    fontWeight: state.activeIsBold
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: Colors.white,
+                    shadows: const [
+                      Shadow(offset: Offset(1, 1), blurRadius: 3),
+                    ],
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }
