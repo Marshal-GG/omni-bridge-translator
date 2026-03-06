@@ -36,8 +36,8 @@ void configureMainWindow() async {
     win.size = const Size(730, 150);
     win.alignment = Alignment.bottomCenter;
   } else {
-    win.minSize = const Size(400, 300);
-    win.size = const Size(720, 480);
+    win.minSize = const Size(600, 500);
+    win.size = const Size(880, 700);
     win.alignment = Alignment.center;
   }
 
@@ -48,9 +48,9 @@ void configureMainWindow() async {
 /// Sets the window to a centered dialog style for Login
 Future<void> setToLoginPosition() async {
   await windowManager.setResizable(true);
-  appWindow.minSize = const Size(400, 300);
-  await windowManager.setMinimumSize(const Size(400, 300));
-  await windowManager.setSize(const Size(720, 480));
+  appWindow.minSize = const Size(600, 500);
+  await windowManager.setMinimumSize(const Size(600, 500));
+  await windowManager.setSize(const Size(880, 700));
   await windowManager.center();
   await windowManager.setAlwaysOnTop(true);
 }
