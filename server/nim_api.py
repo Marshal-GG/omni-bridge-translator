@@ -16,6 +16,8 @@ import queue
 from models.riva_model import RivaModel
 from models.llama_model import LlamaModel
 from models.google_model import GoogleModel
+from models.speech_recognition_model import SpeechRecognitionModel
+from models.whisper_model import WhisperModel
 
 
 class NimApiClient:
@@ -24,8 +26,9 @@ class NimApiClient:
     The active engine is set per-session via `start_stream(ai_engine=...)`.
     """
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, transcription_engine: str = "online"):
         self.api_key = api_key
+        self.transcription_engine = transcription_engine
         self.is_running = False
         self.audio_queue: queue.Queue = queue.Queue()
 
@@ -33,6 +36,8 @@ class NimApiClient:
         self.riva = RivaModel(api_key)
         self.llama = LlamaModel(api_key)
         self.google = GoogleModel()
+        self.speech_recognition = SpeechRecognitionModel()
+        self.whisper = WhisperModel()
 
         # Active session state
         self._ai_engine = "riva"
@@ -55,12 +60,23 @@ class NimApiClient:
         sample_rate: int,
         source_lang: str = "auto",
         target_lang: str | None = None,
-        ai_engine: str = "riva",
+        ai_engine: str = "google",
+        transcription_engine: str = "online",
         callback=None,
     ):
-        if not self.riva.is_ready() and ai_engine != "google":
+        # Guard: Riva/Llama engines always need a key for ASR
+        if ai_engine in ("riva", "llama") and not self.riva.is_ready():
             if callback:
-                callback("Error: API Key or Riva setup is missing.", True, is_final=True)
+                callback("Error: API Key is missing for Riva ASR.", True, is_final=True)
+            return
+
+        # Guard: Whisper engine must be downloaded first
+        if ai_engine == "google" and transcription_engine == "whisper" and not self.whisper.is_downloaded():
+            if callback:
+                callback(
+                    "⚠ Whisper model is not downloaded. Open Settings → Languages → download the Offline model.",
+                    True, is_final=True,
+                )
             return
 
         if self.is_running:
@@ -70,6 +86,7 @@ class NimApiClient:
         self._source_lang = source_lang
         self._target_lang = target_lang
         self._ai_engine = ai_engine
+        self._transcription_engine = transcription_engine
         self._callback = callback
         self._sample_rate = sample_rate
 
@@ -109,7 +126,9 @@ class NimApiClient:
         asr_lang = "multi" if use_auto else lang_map.get(self._source_lang, "en-US")
         fell_back = False
 
-        config = self.riva.make_asr_config(self._sample_rate, asr_lang)
+        # Only build Riva ASR config when Riva engine is used
+        use_riva_asr = self._ai_engine in ("riva", "llama")
+        config = self.riva.make_asr_config(self._sample_rate, asr_lang) if use_riva_asr else None
 
         while self.is_running:
             try:
@@ -117,9 +136,17 @@ class NimApiClient:
                 if chunk is None:
                     break
 
-                # ── ASR (always via Riva) ────────────────────────────────
+                # ── ASR ─────────────────────────────────────────────────────
                 try:
-                    transcript = self.riva.transcribe(chunk.tobytes(), config)
+                    if use_riva_asr:
+                        # Riva/Llama: always use Riva ASR
+                        transcript = self.riva.transcribe(chunk.tobytes(), config)
+                    elif self._transcription_engine == "whisper":
+                        # Google engine + Whisper offline
+                        transcript = self.whisper.transcribe(chunk.tobytes(), self._sample_rate)
+                    else:
+                        # Google engine + Online SpeechRecognition
+                        transcript = self.speech_recognition.transcribe(chunk.tobytes(), self._sample_rate)
                 except Exception as asr_err:
                     err_str = str(asr_err)
                     try:
@@ -128,7 +155,7 @@ class NimApiClient:
                     except Exception:
                         pass
 
-                    if use_auto and not fell_back:
+                    if use_riva_asr and use_auto and not fell_back:
                         print(f"[ASR] Auto mode failed ({err_str[:120]}), falling back to en-US")
                         asr_lang = "en-US"
                         self._source_lang = "en"

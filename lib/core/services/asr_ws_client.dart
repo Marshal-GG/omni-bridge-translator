@@ -26,6 +26,9 @@ class AsrWebSocketClient {
     bool useMic = false,
     int? inputDeviceIndex,
     int? outputDeviceIndex,
+    String aiEngine = 'google',
+    String apiKey = '',
+    String transcriptionEngine = 'online',
   }) {
     const url = '127.0.0.1';
     const port = 8765;
@@ -87,6 +90,9 @@ class AsrWebSocketClient {
       useMic: useMic,
       inputDeviceIndex: inputDeviceIndex,
       outputDeviceIndex: outputDeviceIndex,
+      aiEngine: aiEngine,
+      apiKey: apiKey,
+      transcriptionEngine: transcriptionEngine,
     );
   }
 
@@ -99,6 +105,8 @@ class AsrWebSocketClient {
     double desktopVolume = 1.0,
     double micVolume = 1.0,
     required String aiEngine,
+    String apiKey = '',
+    String transcriptionEngine = 'online',
   }) {
     _service?.updateSettings(
       sourceLang: sourceLang,
@@ -109,6 +117,8 @@ class AsrWebSocketClient {
       desktopVolume: desktopVolume,
       micVolume: micVolume,
       aiEngine: aiEngine,
+      apiKey: apiKey,
+      transcriptionEngine: transcriptionEngine,
     );
     // Keep HistoryService in sync with the current source/target lang
     HistoryService.instance.configure(

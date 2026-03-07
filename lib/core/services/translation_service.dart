@@ -92,7 +92,9 @@ class TranslationService {
   bool _useMic = false;
   int? _inputDeviceIndex;
   int? _outputDeviceIndex;
-  String _aiEngine = 'riva';
+  String _aiEngine = 'google';
+  String _apiKey = '';
+  String _transcriptionEngine = 'online';
 
   String get _wsUrl => 'ws://$serverHost:$serverPort/captions';
 
@@ -108,7 +110,9 @@ class TranslationService {
     bool useMic = false,
     int? inputDeviceIndex,
     int? outputDeviceIndex,
-    String aiEngine = 'riva',
+    String aiEngine = 'google',
+    String apiKey = '',
+    String transcriptionEngine = 'online',
   }) async {
     _intentionallyStopped = false;
     _sourceLang = sourceLang;
@@ -117,6 +121,8 @@ class TranslationService {
     _inputDeviceIndex = inputDeviceIndex;
     _outputDeviceIndex = outputDeviceIndex;
     _aiEngine = aiEngine;
+    _apiKey = apiKey;
+    _transcriptionEngine = transcriptionEngine;
     _reconnectAttempt = 0;
     await _connect();
   }
@@ -207,6 +213,8 @@ class TranslationService {
       'target': _targetLang,
       'use_mic': _useMic,
       'ai_engine': _aiEngine,
+      'transcription_engine': _transcriptionEngine,
+      if (_apiKey.isNotEmpty) 'api_key': _apiKey,
     };
     if (_inputDeviceIndex != null) {
       payload['input_device_index'] = _inputDeviceIndex;
@@ -227,6 +235,8 @@ class TranslationService {
     double desktopVolume = 1.0,
     double micVolume = 1.0,
     required String aiEngine,
+    String apiKey = '',
+    String transcriptionEngine = 'online',
   }) {
     _sourceLang = sourceLang;
     _targetLang = targetLang;
@@ -234,6 +244,8 @@ class TranslationService {
     _inputDeviceIndex = inputDeviceIndex;
     _outputDeviceIndex = outputDeviceIndex;
     _aiEngine = aiEngine;
+    _apiKey = apiKey;
+    _transcriptionEngine = transcriptionEngine;
 
     if (_channel != null) {
       final payload = <String, dynamic>{
@@ -244,6 +256,8 @@ class TranslationService {
         'desktop_volume': desktopVolume,
         'mic_volume': micVolume,
         'ai_engine': aiEngine,
+        'transcription_engine': transcriptionEngine,
+        if (apiKey.isNotEmpty) 'api_key': apiKey,
       };
       if (inputDeviceIndex != null) {
         payload['input_device_index'] = inputDeviceIndex;

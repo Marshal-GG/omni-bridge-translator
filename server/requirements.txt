@@ -11,3 +11,6 @@ PyAudio
 openai
 nvidia-riva-client
 psutil
+SpeechRecognition
+openai-whisper
+deep-translator

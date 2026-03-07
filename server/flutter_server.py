@@ -40,6 +40,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from nim_api import NimApiClient
 from audio_capture import AudioCapture
 from audio_meter import AudioMeter
+from models.whisper_model import (
+    get_download_status,
+    start_download as whisper_start_download,
+    delete_model as whisper_delete_model,
+)
 
 from contextlib import asynccontextmanager
 
@@ -81,7 +86,9 @@ if not API_KEY:
 
 current_source_lang: str = "auto"
 current_target_lang: str = "en"
-current_ai_engine: str = "riva"
+current_ai_engine: str = "google"
+current_transcription_engine: str = "online"  # "online" | "whisper"
+current_api_key: str = ""  # Overridden per-session by the Flutter client
 current_use_mic: bool = False
 current_input_device_index: int | None = None
 current_output_device_index: int | None = None
@@ -158,6 +165,34 @@ async def audio_level_broadcast_loop():
         await broadcast(msg)
         await asyncio.sleep(0.075)
 
+
+# ── Whisper model management endpoints ────────────────────────────────────────
+
+@app.get("/whisper/status")
+async def whisper_status():
+    """Return Whisper model download status."""
+    return get_download_status()
+
+
+@app.post("/whisper/download")
+async def whisper_download():
+    """Start background download of the Whisper base model."""
+    started = whisper_start_download()
+    status = get_download_status()
+    return {"status": "started" if started else status["status"], **status}
+
+
+@app.get("/whisper/progress")
+async def whisper_progress():
+    """Return current download progress (0–100)."""
+    return get_download_status()
+
+
+@app.delete("/whisper/model")
+async def whisper_delete():
+    """Delete the cached Whisper model."""
+    success = whisper_delete_model()
+    return {"status": "deleted" if success else "error"}
 
 
 @app.get("/devices")
@@ -248,15 +283,17 @@ async def list_devices():
 async def start_capture(
     source_lang: str = "auto",
     target_lang: str = "en",
-    ai_engine: str = "riva",
+    ai_engine: str = "google",
     use_mic: bool = False,
     input_device_index: int = None,
     output_device_index: int = None,
+    api_key: str = "",
+    transcription_engine: str = "online",
 ):
     global nim_api, audio_capture, is_running, audio_thread, _meter_task
     global current_source_lang, current_target_lang, current_ai_engine, current_use_mic
     global current_input_device_index, current_output_device_index
-    global current_desktop_volume, current_mic_volume
+    global current_desktop_volume, current_mic_volume, current_api_key, current_transcription_engine
 
     current_source_lang = source_lang
     current_target_lang = target_lang
@@ -264,6 +301,19 @@ async def start_capture(
     current_use_mic = use_mic
     current_input_device_index = input_device_index
     current_output_device_index = output_device_index
+    current_transcription_engine = transcription_engine
+    # Use the user-supplied key if non-empty, otherwise fall back to .env
+    current_api_key = api_key if api_key else (API_KEY or "")
+
+    # Guard: Riva and Llama require an API key. Reject early with a friendly message.
+    if current_ai_engine in ("riva", "llama") and not current_api_key:
+        await broadcast({
+            "type": "error",
+            "text": f"⚠ {current_ai_engine.capitalize()} requires an API key. Open Settings → Languages → AI Engine and paste your NVIDIA NIM key.",
+            "is_final": True,
+            "original": "",
+        })
+        return {"status": "error", "message": "API key missing"}
 
     # Serialise against /devices so two PyAudio instances never open at the same time
     async with _pyaudio_lock:
@@ -272,7 +322,10 @@ async def start_capture(
                 await stop_capture()
                 await asyncio.sleep(0.5)
 
-            nim_api = NimApiClient(api_key=API_KEY)
+            nim_api = NimApiClient(
+                api_key=current_api_key,
+                transcription_engine=current_transcription_engine,
+            )
             audio_capture = AudioCapture(
                 sample_rate=16000,
                 chunk_duration=1.5,
@@ -352,10 +405,12 @@ async def captions_ws(websocket: WebSocket):
                 await start_capture(
                     source_lang=msg.get("source", "auto"),
                     target_lang=msg.get("target", "en"),
-                    ai_engine=msg.get("ai_engine", "riva"),
+                    ai_engine=msg.get("ai_engine", "google"),
                     use_mic=msg.get("use_mic", False),
                     input_device_index=msg.get("input_device_index"),
                     output_device_index=msg.get("output_device_index"),
+                    api_key=msg.get("api_key", ""),
+                    transcription_engine=msg.get("transcription_engine", "online"),
                 )
             elif msg.get("cmd") == "volume_update":
                 # Lightweight volume change — no restart, just update the running capture
@@ -373,17 +428,42 @@ async def captions_ws(websocket: WebSocket):
         active_connections.discard(websocket)
 
 
+def kill_process_on_port(port: int):
+    """Kill any process listening on the given port using netstat + taskkill (Windows).
+    Works without psutil."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["netstat", "-ano"],
+            capture_output=True, text=True, timeout=5
+        )
+        current_pid = str(os.getpid())
+        for line in result.stdout.splitlines():
+            if f":{port}" in line and "LISTENING" in line:
+                parts = line.split()
+                pid = parts[-1]
+                if pid == current_pid:
+                    continue
+                print(f"[Main] Killing process on port {port} (PID: {pid})")
+                subprocess.run(["taskkill", "/F", "/PID", pid],
+                               capture_output=True, timeout=5)
+    except Exception as e:
+        print(f"[Main] Port cleanup failed: {e}")
+
+
 def kill_other_instances():
     """Find and kill other running instances of this server to prevent port conflicts."""
+    # Always free the port first — works without psutil
+    kill_process_on_port(8765)
+
     if not HAS_PSUTIL:
-        print("[Main] Warning: psutil not installed. Skipping instance check.")
         return
 
     current_pid = os.getpid()
     target_exe = "omni_bridge_server.exe"
 
     print(f"[Main] Checking for existing instances (Current PID: {current_pid})...")
-    
+
     for proc in psutil.process_iter(['pid', 'name']):
         try:
             pinfo = proc.info
