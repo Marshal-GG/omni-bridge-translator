@@ -83,6 +83,13 @@ Root: HKCR; Subkey: "omni-bridge"; ValueType: string; ValueName: "URL Protocol";
 Root: HKCR; Subkey: "omni-bridge\DefaultIcon"; ValueType: string; ValueData: "{app}\{#MyAppExeName},0"
 Root: HKCR; Subkey: "omni-bridge\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
+; Register the reversed Google Client ID as a second protocol
+; This is mandatory for Google OAuth redirect to trigger the "Open App" prompt in browsers
+Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-c3h4v2pha56t4939hld31sdhllg1tcc9"; ValueType: string; ValueData: "URL:Google Auth Protocol"; Flags: uninsdeletekey
+Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-c3h4v2pha56t4939hld31sdhllg1tcc9"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-c3h4v2pha56t4939hld31sdhllg1tcc9\DefaultIcon"; ValueType: string; ValueData: "{app}\{#MyAppExeName},0"
+Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-c3h4v2pha56t4939hld31sdhllg1tcc9\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
+
 [UninstallRun]
 ; Kill the Python server process during uninstall
 Filename: "taskkill"; Parameters: "/F /IM omni_bridge_server.exe /T"; Flags: runhidden

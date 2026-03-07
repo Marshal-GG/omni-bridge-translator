@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'core/routes/my_nav_observer.dart';
 import 'core/routes/router.dart';
-import 'core/services/auth_service.dart';
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String initialRoute;
+  const MyApp({super.key, required this.initialRoute});
 
   @override
   Widget build(BuildContext context) {
-    // Decide initial route based on current auth state
-    final startRoute = AuthService.instance.isLoggedIn
-        ? '/translation-overlay'
-        : '/login';
+    // The Splash Screen handles routing to Onboarding or Login/Home
+    final startRoute = initialRoute;
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,

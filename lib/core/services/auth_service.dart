@@ -23,8 +23,10 @@ class AuthService {
   Completer<String?>? _authCodeCompleter;
 
   void init() {
-    // We delay the actual initialization until after the first frame to ensure
-    // the platform channel and native bridge are fully ready on Windows.
+    // Immediate initialization of currentUser for route determination
+    currentUser.value = FirebaseAuth.instance.currentUser;
+
+    // We delay the full initialization until after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initialize();
     });
@@ -92,9 +94,22 @@ class AuthService {
   /// Handles the incoming authentication redirect from the custom protocol.
   void handleAuthRedirect(Uri uri) {
     debugPrint('[Auth] handleAuthRedirect: $uri');
-    final code = uri.queryParameters['code'];
-    if (_authCodeCompleter != null && !_authCodeCompleter!.isCompleted) {
-      _authCodeCompleter!.complete(code);
+    // The code might be in queryParameters or fragmented depending on the browser behavior
+    String? code = uri.queryParameters['code'];
+    
+    // Fallback: search raw query string if queryParameters failed (sometimes happens with single slash)
+    if (code == null && uri.hasQuery) {
+      final matches = RegExp(r'code=([^&]+)').firstMatch(uri.toString());
+      code = matches?.group(1);
+    }
+
+    if (code != null) {
+      debugPrint('[Auth] Extracted code: ${code.substring(0, code.length > 5 ? 5 : code.length)}...');
+      if (_authCodeCompleter != null && !_authCodeCompleter!.isCompleted) {
+        _authCodeCompleter!.complete(code);
+      }
+    } else {
+      debugPrint('[Auth] No code found in URI: $uri');
     }
   }
 
@@ -121,25 +136,28 @@ class AuthService {
         // If it's an iOS client ID, we use the custom scheme redirect
         // format: com.googleusercontent.apps.XXX:/oauth2redirect
         String redirectUri = 'omni-bridge://auth';
-        if (clientId.contains('.apps.googleusercontent.com')) {
+        if (clientId.isNotEmpty && clientId.contains('.apps.googleusercontent.com')) {
           final scheme = clientId.split('.').reversed.join('.');
+          // Using :/ instead of :// to match Google's strict requirements for desktop/iOS redirects
           redirectUri = '$scheme:/oauth2redirect';
         }
 
-        final authUrl =
-            'https://accounts.google.com/o/oauth2/v2/auth'
-            '?client_id=$clientId'
-            '&redirect_uri=$redirectUri'
-            '&response_type=code'
-            '&scope=$scopes';
+        final authUri = Uri.https('accounts.google.com', '/o/oauth2/v2/auth', {
+          'client_id': clientId,
+          'redirect_uri': redirectUri,
+          'response_type': 'code',
+          'scope': scopes,
+        });
 
-        if (await canLaunchUrl(Uri.parse(authUrl))) {
+        debugPrint('[Auth] Launching Auth URL: $authUri');
+
+        if (await canLaunchUrl(authUri)) {
           await launchUrl(
-            Uri.parse(authUrl),
+            authUri,
             mode: LaunchMode.externalApplication,
           );
         } else {
-          throw 'Could not launch $authUrl';
+          throw 'Could not launch $authUri';
         }
 
         final code = await _authCodeCompleter!.future;

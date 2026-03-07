@@ -1,4 +1,6 @@
 // screens
+export '../../screens/startup/splash_screen.dart';
+export '../../screens/startup/onboarding_screen.dart';
 export '../../screens/translation/translation_screen.dart';
 export '../../screens/settings/settings_screen.dart';
 export '../../screens/login/login_screen.dart';

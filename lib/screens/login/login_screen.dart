@@ -267,6 +267,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onPressed: _bypassForDev,
                                 isPrimary: false,
                               ),
+                              const SizedBox(height: 12),
+
+                              // View Tutorial button
+                              TextButton.icon(
+                                onPressed: () => Navigator.pushNamed(context, '/onboarding'),
+                                icon: const Icon(Icons.help_outline_rounded, size: 16),
+                                label: const Text('View Tutorial'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.white54,
+                                  textStyle: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
                             ],
 
                             if (_error != null) ...[
