@@ -4,8 +4,8 @@
 
 | Database | Used For |
 |---|---|
-| **Cloud Firestore** | Session tracking, settings, logs, model usage stats |
-| **Realtime Database (RTDB)** | High-frequency live caption streaming |
+| **Cloud Firestore** | Session tracking, settings |
+| **Realtime Database (RTDB)** | High-frequency live caption streaming, logs, model usage stats |
 
 ---
 
@@ -20,7 +20,7 @@ users/{uid}/
 
 ### 1. Sessions — `users/{uid}/sessions/{sessionId}`
 
-Created on every app launch. Updated every **5 minutes** (heartbeat) and on close.
+Created on first login per device. Local storage pins the session to the hardware. Resumes on app launch unless `forceLogout` or `isEnded` is true. Updated every **5 minutes** (heartbeat) and on close.
 
 ```json
 {
@@ -30,6 +30,7 @@ Created on every app launch. Updated every **5 minutes** (heartbeat) and on clos
   "lastPingAt": "2026-03-06T09:05:00Z",
   "durationSeconds": 5880,
   "isEnded": true,
+  "forceLogout": false,
   "device": {
     "platform": "Windows Desktop",
     "computer_name": "MARSH-PC",
@@ -54,7 +55,9 @@ Created on every app launch. Updated every **5 minutes** (heartbeat) and on clos
 | `endTime` | `Timestamp` | Server timestamp on app close |
 | `lastPingAt` | `Timestamp` | Updated every 5 min while app is open |
 | `durationSeconds` | `number` | `endTime - startTime` in seconds |
-| `isEnded` | `bool` | `false` while running, `true` after close |
+| `isEnded` | `bool` | `false` while running, `true` after user logs out |
+| `forceLogout` | `bool` | `true` triggers a remote logout on the client |
+| `appReopenedAt` | `Timestamp?` | Appended when an existing session is resumed |
 | `device.*` | `map` | OS + network snapshot at session start |
 
 ---
@@ -99,9 +102,13 @@ Single document synced whenever the user saves settings.
 | `desktopVolume` | `number` | Desktop audio gain (0–2) |
 | `lastUpdated` | `Timestamp` | Server timestamp of last save |
 
-### 3. Model Usage Log — `users/{uid}/model_usage/{auto-id}`
+## Realtime Database (RTDB) Structure
 
-One document written **per translation call**. Never updated after creation.
+Written via RTDB REST POSTs. Avoids Firestore write cost for high-frequency streaming data and logs.
+
+### 1. Model Usage Log — `users/{uid}/model_usage/{push-id}`
+
+One node written **per translation call**. Never updated after creation.
 
 ```json
 {
@@ -118,7 +125,7 @@ One document written **per translation call**. Never updated after creation.
   "fallback_from": null,
   "error": null,
   "sessionId": "abc123xyz",
-  "timestamp": "2026-03-06T08:15:03Z"
+  "timestamp": 1741239303000
 }
 ```
 
@@ -136,13 +143,14 @@ One document written **per translation call**. Never updated after creation.
 | `output_chars` | `number` | Character count of translated text |
 | `fallback_from` | `string?` | Set if this was a retry after engine failure |
 | `error` | `string?` | Error message if the translation failed |
-| `sessionId` | `string` | Links back to the session document |
+| `sessionId` | `string` | Links back to the Firestore session document |
+| `timestamp` | `number` | RTDB server timestamp (ms since epoch) |
 
 ---
 
-### 4. Model Stats (Totals) — `users/{uid}/model_stats/{engine}`
+### 2. Model Stats (Totals) — `users/{uid}/model_stats/{engine}`
 
-One document **per engine**, updated atomically on every translation. Use this to answer *"how much has this user used each engine?"*
+One node **per engine**, updated atomically on every translation. Use this to answer *"how much has this user used each engine?"*
 
 ```json
 // users/{uid}/model_stats/riva
@@ -153,7 +161,7 @@ One document **per engine**, updated atomically on every translation. Use this t
   "total_latency_ms": 622440,
   "total_input_chars": 128940,
   "total_output_chars": 139200,
-  "last_used": "2026-03-06T09:09:55Z"
+  "last_used": 1741244995000
 }
 
 // users/{uid}/model_stats/llama
@@ -164,7 +172,7 @@ One document **per engine**, updated atomically on every translation. Use this t
   "total_latency_ms": 306000,
   "total_input_chars": 2890,
   "total_output_chars": 3100,
-  "last_used": "2026-03-05T14:22:10Z"
+  "last_used": 1741243330000
 }
 
 // users/{uid}/model_stats/google
@@ -175,7 +183,7 @@ One document **per engine**, updated atomically on every translation. Use this t
   "total_latency_ms": 89040,
   "total_input_chars": 18200,
   "total_output_chars": 19500,
-  "last_used": "2026-03-06T07:55:30Z"
+  "last_used": 1741240530000
 }
 
 // users/{uid}/model_stats/mymemory
@@ -186,7 +194,7 @@ One document **per engine**, updated atomically on every translation. Use this t
   "total_latency_ms": 32000,
   "total_input_chars": 4500,
   "total_output_chars": 4550,
-  "last_used": "2026-03-07T10:30:00Z"
+  "last_used": 1741249800000
 }
 
 // users/{uid}/model_stats/whisper
@@ -197,15 +205,15 @@ One document **per engine**, updated atomically on every translation. Use this t
   "total_latency_ms": 96000,
   "total_input_chars": 12000,
   "total_output_chars": 0,
-  "last_used": "2026-03-07T11:00:00Z"
+  "last_used": 1741251600000
 }
 ```
 
-> All counters use **atomic `FieldValue.increment()`** — safe for concurrent writes.
+> All counters use **atomic increments** via RTDB REST ServerValue syntax (`{".sv": {"increment": amount}}`) — safe for concurrent writes.
 
 ---
 
-### 5. Event Logs — `users/{uid}/logs/{auto-id}`
+### 3. Event Logs — `users/{uid}/logs/{push-id}`
 
 General lifecycle events (app open, settings changed, engine switched, etc.).
 
@@ -217,14 +225,14 @@ General lifecycle events (app open, settings changed, engine switched, etc.).
     "transcriptionModel": "google",
     "targetLang": "fr"
   },
-  "timestamp": "2026-03-06T08:03:11Z",
+  "timestamp": 1741238591000,
   "sessionId": "abc123xyz"
 }
 ```
 
 ---
 
-### 6. Error Logs — `users/{uid}/error_logs/{auto-id}`
+### 4. Error Logs — `users/{uid}/error_logs/{push-id}`
 
 Exceptions caught at runtime. Filtered — noisy widget lifecycle errors are suppressed.
 
@@ -232,18 +240,14 @@ Exceptions caught at runtime. Filtered — noisy widget lifecycle errors are sup
 {
   "message": "Failed to connect to Riva ASR server",
   "error": "SocketException: Connection refused (OS Error: 111)",
-  "timestamp": "2026-03-06T08:18:44Z",
+  "timestamp": 1741239524000,
   "sessionId": "abc123xyz"
 }
 ```
 
 ---
 
-## Realtime Database (RTDB) Structure
-
-Path: `users/{uid}/captions/{auto-push-id}`
-
-Written via a REST POST on every caption event. Avoids Firestore write cost for high-frequency streaming data.
+### 5. Live Captions — `users/{uid}/captions/{auto-push-id}`
 
 ```json
 {
@@ -271,28 +275,19 @@ Written via a REST POST on every caption event. Avoids Firestore write cost for 
 
 ---
 
-## Quick Reference — All Firestore Paths
+## Quick Reference — All Paths
 
-```
-users/
-└── {uid}/
-    ├── sessions/
-    │   └── {sessionId}            ← one doc per app launch
-    ├── settings/
-    │   └── app_preferences        ← single settings doc
-    ├── model_usage/
-    │   └── {auto-id}              ← one doc per translation call
-    ├── model_stats/
-    │   ├── riva                   ← engine totals (atomic increments)
-    │   ├── llama
-    │   ├── google
-    │   ├── mymemory
-    │   └── whisper
-    ├── logs/
-    │   └── {auto-id}              ← general events
-    └── error_logs/
-        └── {auto-id}              ← runtime exceptions
+```text
+Firestore:
+users/{uid}/
+    ├── sessions/{sessionId}       ← one doc per app launch
+    └── settings/app_preferences   ← single settings doc
 
 RTDB:
-users/{uid}/captions/{push-id}     ← live caption stream
+users/{uid}/
+    ├── captions/{push-id}         ← live caption stream
+    ├── logs/{push-id}             ← general events
+    ├── error_logs/{push-id}       ← runtime exceptions
+    ├── model_usage/{push-id}      ← one node per translation call
+    └── model_stats/{engine}       ← engine totals (atomic increments via REST)
 ```
