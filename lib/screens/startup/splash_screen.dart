@@ -116,7 +116,9 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF3B82F6).withValues(alpha: 0.5),
+                                color: const Color(
+                                  0xFF3B82F6,
+                                ).withValues(alpha: 0.5),
                                 blurRadius: 32,
                                 spreadRadius: 8,
                               ),

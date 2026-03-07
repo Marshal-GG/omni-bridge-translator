@@ -271,8 +271,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
                               // View Tutorial button
                               TextButton.icon(
-                                onPressed: () => Navigator.pushNamed(context, '/onboarding'),
-                                icon: const Icon(Icons.help_outline_rounded, size: 16),
+                                onPressed: () =>
+                                    Navigator.pushNamed(context, '/onboarding'),
+                                icon: const Icon(
+                                  Icons.help_outline_rounded,
+                                  size: 16,
+                                ),
                                 label: const Text('View Tutorial'),
                                 style: TextButton.styleFrom(
                                   foregroundColor: Colors.white54,

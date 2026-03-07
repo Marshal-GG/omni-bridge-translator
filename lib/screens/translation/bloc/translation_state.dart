@@ -52,7 +52,7 @@ class TranslationState extends Equatable {
       activeUseMic: false,
       activeFontSize: 18.0,
       activeIsBold: false,
-      activeOpacity: 0.7,
+      activeOpacity: 0.85,
       activeInputDeviceIndex: null,
       activeOutputDeviceIndex: null,
       activeDesktopVolume: 1.0,

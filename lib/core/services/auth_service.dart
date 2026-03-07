@@ -96,7 +96,7 @@ class AuthService {
     debugPrint('[Auth] handleAuthRedirect: $uri');
     // The code might be in queryParameters or fragmented depending on the browser behavior
     String? code = uri.queryParameters['code'];
-    
+
     // Fallback: search raw query string if queryParameters failed (sometimes happens with single slash)
     if (code == null && uri.hasQuery) {
       final matches = RegExp(r'code=([^&]+)').firstMatch(uri.toString());
@@ -104,7 +104,9 @@ class AuthService {
     }
 
     if (code != null) {
-      debugPrint('[Auth] Extracted code: ${code.substring(0, code.length > 5 ? 5 : code.length)}...');
+      debugPrint(
+        '[Auth] Extracted code: ${code.substring(0, code.length > 5 ? 5 : code.length)}...',
+      );
       if (_authCodeCompleter != null && !_authCodeCompleter!.isCompleted) {
         _authCodeCompleter!.complete(code);
       }
@@ -136,7 +138,8 @@ class AuthService {
         // If it's an iOS client ID, we use the custom scheme redirect
         // format: com.googleusercontent.apps.XXX:/oauth2redirect
         String redirectUri = 'omni-bridge://auth';
-        if (clientId.isNotEmpty && clientId.contains('.apps.googleusercontent.com')) {
+        if (clientId.isNotEmpty &&
+            clientId.contains('.apps.googleusercontent.com')) {
           final scheme = clientId.split('.').reversed.join('.');
           // Using :/ instead of :// to match Google's strict requirements for desktop/iOS redirects
           redirectUri = '$scheme:/oauth2redirect';
@@ -152,10 +155,7 @@ class AuthService {
         debugPrint('[Auth] Launching Auth URL: $authUri');
 
         if (await canLaunchUrl(authUri)) {
-          await launchUrl(
-            authUri,
-            mode: LaunchMode.externalApplication,
-          );
+          await launchUrl(authUri, mode: LaunchMode.externalApplication);
         } else {
           throw 'Could not launch $authUri';
         }

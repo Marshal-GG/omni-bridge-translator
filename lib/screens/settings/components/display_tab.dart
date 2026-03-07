@@ -92,23 +92,45 @@ Widget buildDisplayTab(BuildContext context, SettingsState state) {
       const SizedBox(height: 20),
       sectionLabel('Preview'),
       const SizedBox(height: 8),
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white12),
-        ),
-        child: AnimatedDefaultTextStyle(
-          duration: const Duration(milliseconds: 200),
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: state.tempFontSize,
-            fontWeight: state.tempIsBold ? FontWeight.bold : FontWeight.normal,
+      Stack(
+        children: [
+          // Simulated Desktop Background
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF2B5876), Color(0xFF4E4376)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+            ),
           ),
-          child: const Text('The quick brown fox jumps over the lazy dog'),
-        ),
+          // Actual Preview Content
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: state.tempOpacity),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: state.tempFontSize,
+                fontWeight: state.tempIsBold
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+              ),
+              child: const Text('The quick brown fox jumps over the lazy dog'),
+            ),
+          ),
+        ],
       ),
 
       const SizedBox(height: 24),

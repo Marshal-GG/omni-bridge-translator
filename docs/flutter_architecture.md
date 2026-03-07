@@ -20,9 +20,10 @@ lib/
 │   ├── account/        # User profile and account management
 │   ├── home/           # Main landing screen
 │   ├── settings/       # Settings control (Audio devices, Languages, Models)
+│   ├── startup/        # Splash and Onboarding experience
 │   └── translation/    # The transparent translation overlay and logic
-├── firebase_options.dart # Firebase initialization config
-└── main.dart           # Application entry point
+├── app.dart            # Main MaterialApp wrapper (handles initial routing)
+└── main.dart           # Application entry point (initializes Firebase, Auth, and SingleInstance)
 ```
 
 ## Key Components
@@ -45,13 +46,19 @@ Services handle the business logic and external communication:
 - **Translation Overlay**: Uses desktop window management plugins (`bitsdojo_window`, `window_manager`) to display a borderless, always-on-top, click-through overlay showing the live translated captions.
 
 ## Application Flow
-1. **Launch**: App boots, initializes Firebase, and checks authentication state.
+1. **Launch**: 
+   - App boots and ensures it is the only instance running on Windows.
+   - Initializes Firebase and environment variables.
+   - Binds `AuthService` state and checks `SharedPreferences` for onboarding status.
+   - **Conditional Routing**: 
+       - Skip **Splash** if the user is already logged in for faster access.
+       - Show **Splash** -> **Onboarding** for new users.
+       - Show **Splash** -> **Login** for existing logged-out users.
 2. **Setup**: The user configures settings (Languages, Mic/Desktop Audio, AI Models) in the Settings Tab.
 3. **Start Translation**:
    - The user clicks "Start" on the Home Tab.
-   - `TranslationBloc` sends a REST POST request to the Python backend `/start` endpoint with the selected configuration (e.g., `transcription_model`, `translation_model`, `targetLang`).
-   - The Python server starts capturing audio and begins processing.
-   - `AsrWsClient` connects to the WebSocket endpoint to listen for incoming JSON caption payloads.
-   - The Flutter App opens the Translation Overlay window to display the stream.
-4. **Live Stream**: The Python server streams JSON packets containing `originalText`, `translatedText`, and `isFinal` flags to the Flutter app's WebSocket which updates the UI in real-time.
-5. **Stop**: `TranslationBloc` stops the stream, closes the WebSocket, hides the overlay, and updates the `TrackingService` with final session statistics.
+   - `TranslationBloc` sends a REST POST request to the Python backend `/start`.
+   - `AsrWsClient` connects via WebSocket (`ws://`) to listen for incoming JSON packets.
+   - The Flutter App opens the **Translation Overlay** window using `bitsdojo_window`.
+4. **Live Stream**: The Python server streams JSON payloads containing `originalText`, `translatedText`, and `isFinal` flags to the Flutter app's WebSocket.
+5. **Stop**: `TranslationBloc` stops the stream, hides the overlay, and updates the `TrackingService` with final session statistics on Firebase RTDB.

@@ -113,7 +113,9 @@ class TrackingService {
               'appReopenedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
 
-            debugPrint('[Tracking] Resumed existing session $_currentSessionId');
+            debugPrint(
+              '[Tracking] Resumed existing session $_currentSessionId',
+            );
           }
         }
       } catch (e) {

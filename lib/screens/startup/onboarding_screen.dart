@@ -110,7 +110,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             return _OnboardingPageView(pageData: _pages[index]);
                           },
                         ),
-                        
+
                         // Bottom Controls
                         Positioned(
                           bottom: 48,
@@ -131,14 +131,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   ),
                                 ),
                               ),
-                              
+
                               // Indicators
                               Row(
                                 children: List.generate(
                                   _pages.length,
                                   (index) => AnimatedContainer(
                                     duration: const Duration(milliseconds: 300),
-                                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
                                     height: 8,
                                     width: _currentPage == index ? 24 : 8,
                                     decoration: BoxDecoration(
@@ -150,7 +152,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   ),
                                 ),
                               ),
-      
+
                               // Next / Finish Button
                               ElevatedButton(
                                 onPressed: _onNext,
@@ -239,14 +241,10 @@ class _OnboardingPageView extends StatelessWidget {
                 ),
               ],
             ),
-            child: Icon(
-              pageData.icon,
-              size: 80,
-              color: Colors.white,
-            ),
+            child: Icon(pageData.icon, size: 80, color: Colors.white),
           ),
           const SizedBox(height: 64),
-          
+
           // Title
           Text(
             pageData.title,
@@ -259,7 +257,7 @@ class _OnboardingPageView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Description
           Text(
             pageData.description,

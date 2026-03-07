@@ -57,7 +57,7 @@ class SettingsState extends Equatable {
       tempUseMic: false,
       tempFontSize: 18.0,
       tempIsBold: false,
-      tempOpacity: 0.7,
+      tempOpacity: 0.85,
       tempInputDeviceIndex: null,
       tempOutputDeviceIndex: null,
       tempDesktopVolume: 1.0,
