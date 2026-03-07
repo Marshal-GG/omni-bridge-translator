@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dropdown_search/dropdown_search.dart';
@@ -13,50 +15,79 @@ Widget buildLanguagesTab(BuildContext context, SettingsState state) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      sectionLabel('Source Language'),
-      const SizedBox(height: 4),
-      const Text(
-        'The language spoken in the captured audio',
-        style: TextStyle(color: Colors.white38, fontSize: 11),
-      ),
-      const SizedBox(height: 10),
-      _langDropdown(
-        context: context,
-        items: appLanguages.entries.where((e) => e.key != 'none').toList(),
-        selected: MapEntry(
-          state.tempSourceLang,
-          appLanguages[state.tempSourceLang] ?? state.tempSourceLang,
-        ),
-        hint: appLanguages[state.tempSourceLang] ?? 'Search language...',
-        onChanged: (entry) {
-          Future.delayed(const Duration(milliseconds: 100), () {
-            if (context.mounted) {
-              context.read<SettingsBloc>().add(
-                UpdateTempSettingEvent(sourceLang: entry!.key),
-              );
-            }
-          });
-        },
-      ),
-      const SizedBox(height: 20),
-      const SizedBox(height: 10),
-      _langDropdown(
-        context: context,
-        items: appLanguages.entries.where((e) => e.key != 'auto').toList(),
-        selected: MapEntry(
-          state.tempTargetLang,
-          appLanguages[state.tempTargetLang] ?? state.tempTargetLang,
-        ),
-        hint: appLanguages[state.tempTargetLang] ?? 'Search language...',
-        onChanged: (entry) {
-          Future.delayed(const Duration(milliseconds: 100), () {
-            if (context.mounted) {
-              context.read<SettingsBloc>().add(
-                UpdateTempSettingEvent(targetLang: entry!.key),
-              );
-            }
-          });
-        },
+      Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                sectionLabel('Source'),
+                const SizedBox(height: 6),
+                _langDropdown(
+                  context: context,
+                  items: appLanguages.entries
+                      .where((e) => e.key != 'none')
+                      .toList(),
+                  selected: MapEntry(
+                    state.tempSourceLang,
+                    appLanguages[state.tempSourceLang] ?? state.tempSourceLang,
+                  ),
+                  hint:
+                      appLanguages[state.tempSourceLang] ??
+                      'Search language...',
+                  onChanged: (entry) {
+                    Future.delayed(const Duration(milliseconds: 100), () {
+                      if (context.mounted) {
+                        context.read<SettingsBloc>().add(
+                          UpdateTempSettingEvent(sourceLang: entry!.key),
+                        );
+                      }
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(12, 24, 12, 0),
+            child: Icon(
+              Icons.arrow_forward_rounded,
+              size: 16,
+              color: Colors.white24,
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                sectionLabel('Target'),
+                const SizedBox(height: 6),
+                _langDropdown(
+                  context: context,
+                  items: appLanguages.entries
+                      .where((e) => e.key != 'auto')
+                      .toList(),
+                  selected: MapEntry(
+                    state.tempTargetLang,
+                    appLanguages[state.tempTargetLang] ?? state.tempTargetLang,
+                  ),
+                  hint:
+                      appLanguages[state.tempTargetLang] ??
+                      'Search language...',
+                  onChanged: (entry) {
+                    Future.delayed(const Duration(milliseconds: 100), () {
+                      if (context.mounted) {
+                        context.read<SettingsBloc>().add(
+                          UpdateTempSettingEvent(targetLang: entry!.key),
+                        );
+                      }
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     ],
   );
@@ -115,12 +146,52 @@ Widget _langDropdown({
 
 // ─── Translation Model Selector ───────────────────────────────────────────────────────
 
+Widget _buildRecommendedBadge({required bool isActive}) {
+  final color = isActive ? Colors.greenAccent : Colors.white38;
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(4),
+      border: Border.all(color: color.withValues(alpha: 0.4)),
+    ),
+    child: Text(
+      'Recommended',
+      style: TextStyle(
+        color: color,
+        fontSize: 9,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
+}
+
+Widget _buildDownloadedBadge() {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+      color: Colors.blueAccent.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(4),
+      border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.4)),
+    ),
+    child: const Text(
+      'Downloaded',
+      style: TextStyle(
+        color: Colors.blueAccent,
+        fontSize: 9,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
+}
+
 Widget buildTranslationModelSelector(
   BuildContext context,
   SettingsState state,
 ) {
   const translationModels = {
     'google': 'Google Translate',
+    'mymemory': 'MyMemory',
     'riva': 'NVIDIA Riva (Fast, High Quality)',
     'llama': 'Llama 3.1 8B (Accurate, Slower)',
   };
@@ -134,15 +205,23 @@ Widget buildTranslationModelSelector(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       sectionLabel('AI Translation Engine'),
-      const SizedBox(height: 4),
-      const Text(
-        'Select the backend engine used to translate your speech',
-        style: TextStyle(color: Colors.white38, fontSize: 11),
-      ),
-      const SizedBox(height: 10),
+      const SizedBox(height: 8),
       DropdownSearch<MapEntry<String, String>>(
         items: translationModels.entries.toList(),
         itemAsString: (entry) => entry.value,
+        dropdownBuilder: (context, selectedItem) {
+          if (selectedItem == null) return const SizedBox();
+          final isRecommended = selectedItem.key == 'google';
+          return Row(
+            children: [
+              Text(selectedItem.value, style: const TextStyle(fontSize: 14)),
+              if (isRecommended) ...[
+                const SizedBox(width: 8),
+                _buildRecommendedBadge(isActive: true),
+              ],
+            ],
+          );
+        },
         selectedItem: MapEntry(
           state.tempTranslationModel,
           translationModels[state.tempTranslationModel] ??
@@ -161,12 +240,40 @@ Widget buildTranslationModelSelector(
         popupProps: PopupProps.menu(
           fit: FlexFit.loose,
           constraints: const BoxConstraints(maxHeight: 200),
-          menuProps: MenuProps(
-            backgroundColor: const Color(0xFF2C2C2C),
+          menuProps: const MenuProps(
+            backgroundColor: Color(0xFF2C2C2C),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.all(Radius.circular(10)),
             ),
           ),
+          itemBuilder: (context, item, isSelected) {
+            final isRecommended = item.key == 'google';
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: isSelected ? Colors.tealAccent.withValues(alpha: 0.1) : Colors.transparent,
+              child: Row(
+                children: [
+                   Expanded(
+                    child: Text(
+                      item.value,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white70,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                  if (isSelected) ...[
+                    const SizedBox(width: 8),
+                    const Icon(Icons.check, color: Colors.tealAccent, size: 18),
+                  ],
+                  if (isRecommended) ...[
+                    const SizedBox(width: 8),
+                    _buildRecommendedBadge(isActive: isSelected),
+                  ],
+                ],
+              ),
+            );
+          },
         ),
         dropdownDecoratorProps: const DropDownDecoratorProps(
           dropdownSearchDecoration: InputDecoration(
@@ -190,7 +297,7 @@ Widget buildTranslationModelSelector(
       ),
       if (needsKey) ...[
         const SizedBox(height: 16),
-        _buildApiKeySection(context, state),
+        _ApiKeySection(state: state),
       ],
       const SizedBox(height: 20),
       _buildTranscriptionModelSection(context, state),
@@ -208,55 +315,53 @@ Widget _buildTranscriptionModelSection(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       sectionLabel('Transcription Method'),
-      const SizedBox(height: 4),
-      const Text(
-        'How your speech is converted to text before translation',
-        style: TextStyle(color: Colors.white38, fontSize: 11),
-      ),
-      const SizedBox(height: 8),
-
-      // Online option
-      _TranscriptionOption(
-        value: 'online',
-        groupValue: state.tempTranscriptionModel,
-        label: 'Online (Google)',
-        description: 'No download required · needs internet',
-        onChanged: (v) => context.read<SettingsBloc>().add(
-          UpdateTempSettingEvent(transcriptionModel: v),
-        ),
-      ),
-
-      const SizedBox(height: 6),
-
-      // Riva ASR option
-      _TranscriptionOption(
-        value: 'riva',
-        groupValue: state.tempTranscriptionModel,
-        label: 'Online (NVIDIA Riva)',
-        description: 'Fast, high quality (20+ languages) · requires API key',
-        onChanged: (v) => context.read<SettingsBloc>().add(
-          UpdateTempSettingEvent(transcriptionModel: v),
-        ),
-      ),
-
-      const SizedBox(height: 6),
-
-      // Whisper offline option
-      _TranscriptionOption(
-        value: state.tempTranscriptionModel.startsWith('whisper')
-            ? state.tempTranscriptionModel
-            : 'whisper-base',
-        groupValue: state.tempTranscriptionModel,
-        label: 'Offline (Whisper)',
-        description: 'Runs locally · fits on device',
-        onChanged: (v) => context.read<SettingsBloc>().add(
-          UpdateTempSettingEvent(transcriptionModel: v),
-        ),
+      const SizedBox(height: 10),
+      Row(
+        children: [
+          Expanded(
+            child: _TranscriptionOption(
+              value: 'online',
+              groupValue: state.tempTranscriptionModel,
+              label: 'Google Online',
+              icon: Icons.cloud_outlined,
+              onChanged: (v) => context.read<SettingsBloc>().add(
+                UpdateTempSettingEvent(transcriptionModel: v),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _TranscriptionOption(
+              value: 'riva',
+              groupValue: state.tempTranscriptionModel,
+              label: 'NVIDIA Riva',
+              isRecommended: true,
+              icon: Icons.bolt_rounded,
+              onChanged: (v) => context.read<SettingsBloc>().add(
+                UpdateTempSettingEvent(transcriptionModel: v),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _TranscriptionOption(
+              value: state.tempTranscriptionModel.startsWith('whisper')
+                  ? state.tempTranscriptionModel
+                  : 'whisper-base',
+              groupValue: state.tempTranscriptionModel,
+              label: 'Whisper Offline',
+              icon: Icons.offline_bolt_outlined,
+              onChanged: (v) => context.read<SettingsBloc>().add(
+                UpdateTempSettingEvent(transcriptionModel: v),
+              ),
+            ),
+          ),
+        ],
       ),
 
       // Whisper model manager (shown when offline is selected)
       if (state.tempTranscriptionModel.startsWith('whisper')) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         _WhisperModelCard(
           selectedModel: state.tempTranscriptionModel,
           onModelChanged: (newModel) {
@@ -276,20 +381,21 @@ class _TranscriptionOption extends StatelessWidget {
   final String value;
   final String groupValue;
   final String label;
-  final String description;
+  final IconData icon;
+  final bool isRecommended;
   final ValueChanged<String> onChanged;
 
   const _TranscriptionOption({
     required this.value,
     required this.groupValue,
     required this.label,
-    required this.description,
+    required this.icon,
+    this.isRecommended = false,
     required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    // If value is whisper-something and groupValue is whisper-something else, it's still "selected"
     final isSelected =
         value == groupValue ||
         (value.startsWith('whisper') && groupValue.startsWith('whisper'));
@@ -297,11 +403,11 @@ class _TranscriptionOption extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       onTap: () => onChanged(value),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.tealAccent.withValues(alpha: 0.08)
-              : Colors.white.withValues(alpha: 0.03),
+              ? Colors.tealAccent.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected
@@ -309,50 +415,27 @@ class _TranscriptionOption extends StatelessWidget {
                 : Colors.white12,
           ),
         ),
-        child: Row(
+        child: Column(
           children: [
-            // Custom radio indicator (Radio.groupValue/.onChanged deprecated in 3.32)
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? Colors.tealAccent : Colors.white38,
-                  width: 2,
-                ),
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? Colors.tealAccent : Colors.white38,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.white38,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.tealAccent,
-                        ),
-                      ),
-                    )
-                  : null,
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(width: 6),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  description,
-                  style: const TextStyle(color: Colors.white38, fontSize: 11),
-                ),
-              ],
-            ),
+            if (isRecommended) ...[
+              const SizedBox(height: 6),
+              _buildRecommendedBadge(isActive: isSelected),
+            ],
           ],
         ),
       ),
@@ -383,6 +466,7 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
     'status': 'idle',
     'size_mb': 0.0,
   };
+  final Map<String, bool> _downloadedModels = {};
   Timer? _pollTimer;
 
   String get _currentSize => widget.selectedModel.split('-').last;
@@ -410,8 +494,27 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
   Future<void> _refresh() async {
     final s = await _svc.getStatus(_currentSize);
     if (!mounted) return;
-    setState(() => _status = s);
+    setState(() {
+      _status = s;
+      _downloadedModels[_currentSize] = s['downloaded'] == true;
+    });
     _startPollingIfNeeded();
+    _refreshAll();
+  }
+
+  Future<void> _refreshAll() async {
+    final sizes = ['tiny', 'base', 'small', 'medium'];
+    for (final s in sizes) {
+      if (s != _currentSize) {
+        _svc.getStatus(s).then((stats) {
+          if (mounted) {
+            setState(() {
+              _downloadedModels[s] = stats['downloaded'] == true;
+            });
+          }
+        });
+      }
+    }
   }
 
   void _startPollingIfNeeded() {
@@ -478,7 +581,7 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
 
     final modelOptions = {
       'tiny': 'Tiny (~75 MB) - Fastest',
-      'base': 'Base (~145 MB) - Fast (Recommended)',
+      'base': 'Base (~145 MB) - Fast',
       'small': 'Small (~460 MB) - Balanced',
       'medium': 'Medium (~1.5 GB) - High Accuracy',
     };
@@ -581,11 +684,46 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
                   }
                 },
                 items: modelOptions.entries.map((e) {
+                  final isRecommended = e.key == 'base';
+                  final isDownloaded = _downloadedModels[e.key] == true;
                   return DropdownMenuItem<String>(
                     value: e.key,
-                    child: Text(e.value),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(e.value),
+                        if (isRecommended) ...[
+                          const SizedBox(width: 8),
+                          _buildRecommendedBadge(isActive: e.key == _currentSize),
+                        ],
+                        if (isDownloaded) ...[
+                          const SizedBox(width: 8),
+                          _buildDownloadedBadge(),
+                        ],
+                      ],
+                    ),
                   );
                 }).toList(),
+                selectedItemBuilder: (BuildContext context) {
+                  return modelOptions.entries.map((e) {
+                    final isRecommended = e.key == 'base';
+                    final isDownloaded = _downloadedModels[e.key] == true;
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(e.value),
+                        if (isRecommended) ...[
+                          const SizedBox(width: 8),
+                          _buildRecommendedBadge(isActive: true),
+                        ],
+                        if (isDownloaded) ...[
+                          const SizedBox(width: 8),
+                          _buildDownloadedBadge(),
+                        ],
+                      ],
+                    );
+                  }).toList();
+                },
               ),
             ),
           ),
@@ -683,80 +821,296 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
 
 // ─── API Key Section ──────────────────────────────────────────────────────────
 
-Widget _buildApiKeySection(BuildContext context, SettingsState state) {
-  final instructions = _apiKeyInstructions(
-    state.tempTranslationModel,
-    state.tempTranscriptionModel,
-  );
+enum ApiKeyStatus { missing, verifying, valid, invalidFormat, invalidKey }
 
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(
+class _ApiKeySection extends StatefulWidget {
+  final SettingsState state;
+
+  const _ApiKeySection({required this.state});
+
+  @override
+  State<_ApiKeySection> createState() => _ApiKeySectionState();
+}
+
+class _ApiKeySectionState extends State<_ApiKeySection> {
+  late TextEditingController _controller;
+  bool _obscure = true;
+  Timer? _debounce;
+  ApiKeyStatus _status = ApiKeyStatus.missing;
+  bool _isEditing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.state.tempApiKey);
+    _validateKey(_controller.text, immediate: true);
+  }
+
+  @override
+  void didUpdateWidget(_ApiKeySection old) {
+    super.didUpdateWidget(old);
+    if (old.state.tempApiKey != widget.state.tempApiKey &&
+        _controller.text != widget.state.tempApiKey) {
+      _controller.text = widget.state.tempApiKey;
+      _validateKey(_controller.text, immediate: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _validateKey(String key, {bool immediate = false}) async {
+    _debounce?.cancel();
+
+    if (key.trim().isEmpty) {
+      setState(() {
+        _status = ApiKeyStatus.missing;
+        _isEditing = true;
+      });
+      return;
+    }
+
+    if (!key.trim().startsWith('nvapi-') || key.trim().length < 50) {
+      setState(() {
+        _status = ApiKeyStatus.invalidFormat;
+        _isEditing = true;
+      });
+      return;
+    }
+
+    setState(() => _status = ApiKeyStatus.verifying);
+
+    Future<void> action() async {
+      try {
+        final res = await http.get(
+          Uri.parse('https://integrate.api.nvidia.com/v1/models'),
+          headers: {'Authorization': 'Bearer ${key.trim()}'},
+        );
+        if (mounted) {
+          setState(() {
+            if (res.statusCode == 200) {
+              _status = ApiKeyStatus.valid;
+              _isEditing = false;
+            } else {
+              _status = ApiKeyStatus.invalidKey;
+              _isEditing = true;
+            }
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _status = ApiKeyStatus.invalidKey;
+            _isEditing = true;
+          });
+        }
+      }
+    }
+
+    if (immediate) {
+      action();
+    } else {
+      _debounce = Timer(const Duration(milliseconds: 800), action);
+    }
+  }
+
+  Widget _buildStatusBadge() {
+    Color color;
+    String text;
+
+    switch (_status) {
+      case ApiKeyStatus.missing:
+        color = Colors.orange;
+        text = 'Required';
+        break;
+      case ApiKeyStatus.verifying:
+        color = Colors.blueGrey;
+        text = 'Checking...';
+        break;
+      case ApiKeyStatus.valid:
+        color = Colors.greenAccent;
+        text = 'Valid';
+        break;
+      case ApiKeyStatus.invalidFormat:
+      case ApiKeyStatus.invalidKey:
+        color = Colors.redAccent;
+        text = 'Invalid Key';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_status == ApiKeyStatus.valid && !_isEditing) {
+      return Row(
         children: [
           sectionLabel('API Key'),
           const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.orange.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+          _buildStatusBadge(),
+          const SizedBox(width: 12),
+          const Text(
+            '••••••••••••••••••••••••••••••••',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+              letterSpacing: 2,
             ),
-            child: const Text(
-              'Required',
-              style: TextStyle(
-                color: Colors.orange,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
+          ),
+          const Spacer(),
+          TextButton.icon(
+            onPressed: () => setState(() => _isEditing = true),
+            icon: const Icon(Icons.edit, size: 14, color: Colors.tealAccent),
+            label: const Text(
+              'Edit',
+              style: TextStyle(color: Colors.tealAccent, fontSize: 12),
             ),
           ),
         ],
-      ),
-      const SizedBox(height: 4),
-      Text(
-        instructions.description,
-        style: const TextStyle(color: Colors.white38, fontSize: 11),
-      ),
-      const SizedBox(height: 4),
-      GestureDetector(
-        onTap: () async {
-          // Open URL — no url_launcher needed, just show a tooltip or copy link
-        },
-        child: Row(
+      );
+    }
+
+    final instructions = _apiKeyInstructions(
+      widget.state.tempTranslationModel,
+      widget.state.tempTranscriptionModel,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            const Icon(Icons.open_in_new, size: 11, color: Colors.tealAccent),
-            const SizedBox(width: 4),
-            Flexible(
-              child: SelectableText(
-                instructions.link,
-                style: const TextStyle(
-                  color: Colors.tealAccent,
-                  fontSize: 11,
-                  decoration: TextDecoration.underline,
-                  decorationColor: Colors.tealAccent,
+            sectionLabel('API Key'),
+            const SizedBox(width: 8),
+            _buildStatusBadge(),
+            if (_status == ApiKeyStatus.valid) ...[
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () => setState(() => _isEditing = false),
+                icon: const Icon(Icons.close, size: 14, color: Colors.white54),
+                label: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
               ),
-            ),
+            ],
           ],
         ),
-      ),
-      const SizedBox(height: 8),
-      _ApiKeyField(
-        initialValue: state.tempApiKey,
-        onChanged: (val) {
-          context.read<SettingsBloc>().add(UpdateTempSettingEvent(apiKey: val));
-        },
-      ),
-    ],
-  );
+        const SizedBox(height: 4),
+        Text(
+          instructions.description,
+          style: const TextStyle(color: Colors.white38, fontSize: 11),
+        ),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: () => launchUrl(Uri.parse(instructions.url)),
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.tealAccent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: Colors.tealAccent.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.open_in_new,
+                  size: 10,
+                  color: Colors.tealAccent,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  instructions.label,
+                  style: const TextStyle(
+                    color: Colors.tealAccent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _controller,
+          obscureText: _obscure,
+          onChanged: (val) {
+            context.read<SettingsBloc>().add(
+              UpdateTempSettingEvent(apiKey: val),
+            );
+            _validateKey(val);
+          },
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white10,
+            hintText: 'nvapi-xxxxxxxxxxxxxxxxxxxxxxxx',
+            hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+            border: const OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+              borderSide: BorderSide(color: Colors.white12),
+            ),
+            enabledBorder: const OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+              borderSide: BorderSide(color: Colors.white12),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+              borderSide: BorderSide(color: Colors.tealAccent, width: 1.5),
+            ),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscure ? Icons.visibility_off : Icons.visibility,
+                color: Colors.white38,
+                size: 18,
+              ),
+              onPressed: () => setState(() => _obscure = !_obscure),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _ApiKeyInstructions {
   final String description;
-  final String link;
-  const _ApiKeyInstructions({required this.description, required this.link});
+  final String label;
+  final String url;
+  const _ApiKeyInstructions({
+    required this.description,
+    required this.label,
+    required this.url,
+  });
 }
 
 _ApiKeyInstructions _apiKeyInstructions(
@@ -766,92 +1120,20 @@ _ApiKeyInstructions _apiKeyInstructions(
   if (translationEngine == 'riva' || transcriptionEngine == 'riva') {
     return const _ApiKeyInstructions(
       description: 'Generate a free NVIDIA NIM API key.',
-      link: 'https://build.nvidia.com → Sign In → API Keys',
+      label: 'https://build.nvidia.com/settings/api-keys',
+      url: 'https://build.nvidia.com/settings/api-keys',
     );
   } else if (translationEngine == 'llama') {
     return const _ApiKeyInstructions(
       description: 'Generate a free NVIDIA NIM API key to access Llama 3.1 8B.',
-      link: 'https://build.nvidia.com → Sign In → API Keys',
+      label: 'https://build.nvidia.com/settings/api-keys',
+      url: 'https://build.nvidia.com/settings/api-keys',
     );
   } else {
-    return const _ApiKeyInstructions(description: '', link: '');
-  }
-}
-
-class _ApiKeyField extends StatefulWidget {
-  final String initialValue;
-  final ValueChanged<String> onChanged;
-
-  const _ApiKeyField({required this.initialValue, required this.onChanged});
-
-  @override
-  State<_ApiKeyField> createState() => _ApiKeyFieldState();
-}
-
-class _ApiKeyFieldState extends State<_ApiKeyField> {
-  late final TextEditingController _controller;
-  bool _obscure = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialValue);
-  }
-
-  @override
-  void didUpdateWidget(_ApiKeyField old) {
-    super.didUpdateWidget(old);
-    // Update text if the parent rebuilds with a different initial value
-    // (e.g., loaded from Firebase), but don't disturb the cursor.
-    if (old.initialValue != widget.initialValue &&
-        _controller.text != widget.initialValue) {
-      _controller.text = widget.initialValue;
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: _controller,
-      obscureText: _obscure,
-      onChanged: widget.onChanged,
-      style: const TextStyle(color: Colors.white, fontSize: 13),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white10,
-        hintText: 'nvapi-xxxxxxxxxxxxxxxxxxxxxxxx',
-        hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
-        ),
-        border: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
-          borderSide: BorderSide(color: Colors.white12),
-        ),
-        enabledBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
-          borderSide: BorderSide(color: Colors.white12),
-        ),
-        focusedBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
-          borderSide: BorderSide(color: Colors.tealAccent, width: 1.5),
-        ),
-        suffixIcon: IconButton(
-          icon: Icon(
-            _obscure ? Icons.visibility_off : Icons.visibility,
-            color: Colors.white38,
-            size: 18,
-          ),
-          onPressed: () => setState(() => _obscure = !_obscure),
-        ),
-      ),
+    return const _ApiKeyInstructions(
+      description: '',
+      label: '',
+      url: 'https://build.nvidia.com/settings/api-keys',
     );
   }
 }

@@ -44,7 +44,7 @@ class MyMemoryModel:
 
             latency_ms = int((time.monotonic() - start) * 1000)
             return result, {
-                "engine": "mymemory",
+                "engine": "mymemory-translate",
                 "model": "mymemory-free",
                 "latency_ms": latency_ms,
                 "input_chars": len(text),
@@ -55,7 +55,7 @@ class MyMemoryModel:
             print(f"[MyMemory] Translation error: {e}")
             latency_ms = int((time.monotonic() - start) * 1000)
             return None, {
-                "engine": "mymemory",
+                "engine": "mymemory-translate",
                 "model": "mymemory-free",
                 "latency_ms": latency_ms,
                 "error": str(e),

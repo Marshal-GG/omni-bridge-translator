@@ -63,14 +63,15 @@ class SpeechRecognitionModel:
             with sr.AudioFile(wav_buf) as source:
                 audio = self._recognizer.record(source)
 
-            lang_tag = None if source_lang == "auto" else _LANG_MAP.get(source_lang)
+            # Google's recognize_google requires a string for language, so default to en-US for "auto"
+            lang_tag = "en-US" if source_lang == "auto" else _LANG_MAP.get(source_lang, "en-US")
             result = self._recognizer.recognize_google(audio, language=lang_tag)
             transcript = result.strip() if result else None
             stats = None
             if transcript:
                 latency_ms = int((time.monotonic() - start) * 1000)
                 stats = {
-                    "engine": "google",
+                    "engine": "google-asr",
                     "model": "speech_recognition",
                     "latency_ms": latency_ms,
                     "input_chars": len(transcript),

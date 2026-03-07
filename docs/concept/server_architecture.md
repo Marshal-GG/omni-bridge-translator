@@ -8,6 +8,7 @@ Omni Bridge uses a **hybrid two-server architecture**:
 |---|---|---|
 | **Local Python Server** | User's PC (bundled in installer) | Capture Windows audio, manage devices, perform **Offline Whisper ASR**, relay to cloud |
 | **Cloud Server** | Google Cloud Run | Hold API keys, call NVIDIA Riva (ASR/NMT) + Llama (NIM), return captions |
+| **GitHub API** | Remote | Provides latest release metadata for the **Auto-Update Service** |
 | **Flutter Frontend** | User's PC | Display captions, send settings via WebSocket |
 
 ```
@@ -61,11 +62,13 @@ omni_bridge/
 │   ├── core/
 │   │   ├── services/
 │   │   │   ├── auth_service.dart  # Firebase Authentication logic
-│   │   │   └── tracking_service.dart  # Firestore session tracking
+│   │   │   ├── tracking_service.dart  # Firestore session tracking
+│   │   │   └── update_service.dart  # GitHub release auto-update checker
 │   │   └── ...
 │   └── screens/
 │       ├── login/                 # Login screen
 │       ├── settings/              # Device & language settings
+│       ├── about/                 # About screen & Update checker UI
 │       └── ...
 │
 ├── .env                           # Flutter app env vars (shipped in installer)
@@ -112,7 +115,7 @@ The local server runs on the user's PC after installation. For development:
 cd server
 
 # 2. Activate virtual environment
-..\server_env\Scripts\activate
+..\.venv\Scripts\activate
 
 # 3. Set your env vars (copy example and fill in)
 copy .env.example .env
@@ -182,7 +185,7 @@ The installer bundles the Flutter app + local Python server EXE.
 ```powershell
 # Step 1: Build the local Python server EXE
 cd server
-..\server_env\Scripts\python.exe -m PyInstaller --noconfirm --clean omni_bridge_server.spec
+..\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean omni_bridge_server.spec
 
 # Step 2: Build the Flutter Windows release
 cd ..
@@ -201,7 +204,7 @@ flutter build windows
 |---|---|---|---|
 | `online` | Google Free ASR | (Any selected) | Default online ASR. |
 | `riva` | NVIDIA Riva | NVIDIA NIM / Riva | Best quality. Requires Riva key. |
-| `whisper` | Offline Whisper | (Any selected) | Local ASR. Supports 4 sizes. |
+| `whisper` | Offline Whisper | (Any selected) | Local ASR logic. Supports **Tiny, Base, Small, Medium**. Dynamically downloads `.pt` files to `~/.cache/whisper`. |
 | --- | --- | --- | --- |
 | `google` | (Any ASR) | Google Translate | Free translation. |
 | `mymemory` | (Any ASR) | MyMemory API | Alternative free translation. |

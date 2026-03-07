@@ -9,6 +9,7 @@ Route<dynamic> generateRoute(RouteSettings settings) {
     '/settings-overlay': (_) => const SettingsScreen(),
     '/history-panel': (_) => const HistoryPanel(),
     '/account': (_) => const AccountScreen(),
+    '/about': (_) => const AboutScreen(),
   };
   final WidgetBuilder? builder = routes[settings.name];
 

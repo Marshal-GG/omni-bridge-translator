@@ -75,7 +75,7 @@ class LlamaModel:
                 flags=re.IGNORECASE,
             ).strip()
             stats = {
-                "engine": "llama",
+                "engine": "llama-translate",
                 "model": self.MODEL_ID,
                 "latency_ms": latency_ms,
                 "prompt_tokens": usage.prompt_tokens if usage else 0,
@@ -89,7 +89,7 @@ class LlamaModel:
             print(f"Llama translation error: {e}")
             latency_ms = int((time.monotonic() - start) * 1000)
             return text, {
-                "engine": "llama",
+                "engine": "llama-translate",
                 "model": self.MODEL_ID,
                 "latency_ms": latency_ms,
                 "error": str(e),

@@ -11,6 +11,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<SyncTempSettingsEvent>(_onSyncTempSettings);
     on<LoadDevicesEvent>(_onLoadDevices);
     on<UpdateAudioLevelsEvent>(_onUpdateAudioLevels);
+    on<ResetIODefaultsEvent>(_onResetIODefaults);
     on<SaveSettingsEvent>(_onSaveSettings);
 
     asrClient.onAudioLevel = (inputLevel, outputLevel) {
@@ -60,12 +61,10 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         tempApiKey: event.apiKey ?? state.tempApiKey,
         tempTranscriptionModel:
             event.transcriptionModel ?? state.tempTranscriptionModel,
-        tempInputDeviceIndex: event.clearInputDevice
-            ? null
-            : (event.inputDeviceIndex ?? state.tempInputDeviceIndex),
-        tempOutputDeviceIndex: event.clearOutputDevice
-            ? null
-            : (event.outputDeviceIndex ?? state.tempOutputDeviceIndex),
+        clearInputDevice: event.clearInputDevice,
+        tempInputDeviceIndex: event.inputDeviceIndex,
+        clearOutputDevice: event.clearOutputDevice,
+        tempOutputDeviceIndex: event.outputDeviceIndex,
         tempDesktopVolume: event.desktopVolume,
         tempMicVolume: event.micVolume,
       ),
@@ -110,5 +109,20 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     // handled elsewhere by syncing to TranslationBloc using BlocListener or by letting TranslationBloc handle save directly
+  }
+
+  void _onResetIODefaults(
+    ResetIODefaultsEvent event,
+    Emitter<SettingsState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        tempUseMic: false, // Default is mic off
+        tempMicVolume: 1.0,
+        tempDesktopVolume: 1.0,
+        clearInputDevice: true,
+        clearOutputDevice: true,
+      ),
+    );
   }
 }

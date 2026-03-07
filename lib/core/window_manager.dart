@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'routes/routes_config.dart';
 import 'services/python_server_manager.dart';
 import 'services/tracking_service.dart';
@@ -31,7 +32,8 @@ void configureMainWindow() async {
   final win = appWindow;
   win.title = "Omni Bridge: Live AI Translator";
 
-  if (AuthService.instance.isLoggedIn) {
+  // Use FirebaseAuth directly since AuthService might not have initialized its ValueNotifier yet
+  if (FirebaseAuth.instance.currentUser != null) {
     win.minSize = const Size(300, 150);
     win.size = const Size(730, 150);
     win.alignment = Alignment.bottomCenter;
@@ -71,6 +73,16 @@ Future<void> setToAccountPosition() async {
   appWindow.minSize = const Size(600, 500);
   await windowManager.setMinimumSize(const Size(600, 500));
   await windowManager.setSize(const Size(800, 660));
+  await windowManager.center();
+  await windowManager.setAlwaysOnTop(true);
+}
+
+/// Sets the window to the About screen size (same as login)
+Future<void> setToAboutPosition() async {
+  await windowManager.setResizable(true);
+  appWindow.minSize = const Size(600, 500);
+  await windowManager.setMinimumSize(const Size(600, 500));
+  await windowManager.setSize(const Size(880, 700));
   await windowManager.center();
   await windowManager.setAlwaysOnTop(true);
 }

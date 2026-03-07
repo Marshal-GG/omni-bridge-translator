@@ -11,61 +11,70 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      // ── Microphone section ────────────────────────────────────────────
-      sectionLabel('Microphone Input'),
-      const SizedBox(height: 10),
-      Container(
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white12),
-        ),
-        child: SwitchListTile(
-          title: const Text(
-            'Enable Microphone',
-            style: TextStyle(color: Colors.white, fontSize: 13),
+      Row(
+        children: [
+          Expanded(child: sectionLabel('Microphone Input')),
+          Transform.scale(
+            scale: 0.7,
+            child: Switch(
+              value: state.tempUseMic,
+              activeThumbColor: Colors.tealAccent,
+              onChanged: (val) => context.read<SettingsBloc>().add(
+                UpdateTempSettingEvent(useMic: val),
+              ),
+            ),
           ),
-          subtitle: const Text(
-            'Capture audio from your microphone',
-            style: TextStyle(color: Colors.grey, fontSize: 11),
-          ),
-          value: state.tempUseMic,
-          activeThumbColor: Colors.tealAccent,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 2,
-          ),
-          dense: true,
-          onChanged: (val) => context.read<SettingsBloc>().add(
-            UpdateTempSettingEvent(useMic: val),
-          ),
-        ),
+        ],
       ),
+      const SizedBox(height: 4),
       if (state.tempUseMic) ...[
-        const SizedBox(height: 10),
-        sublabel('Microphone Device'),
-        const SizedBox(height: 5),
-        buildDeviceDropdown(
-          context: context,
-          state: state,
-          items: state.inputDevices,
-          defaultName: state.defaultInputDeviceName,
-          selectedIndex: state.tempInputDeviceIndex,
-          hintText: 'System Default (${state.defaultInputDeviceName})',
-          loading: state.devicesLoading,
-          onChanged: (device) {
-            if (device != null) {
-              context.read<SettingsBloc>().add(
-                UpdateTempSettingEvent(
-                  inputDeviceIndex: device['index'] as int,
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: buildDeviceDropdown(
+                context: context,
+                state: state,
+                items: state.inputDevices,
+                defaultName: state.defaultInputDeviceName,
+                selectedIndex: state.tempInputDeviceIndex,
+                hintText: 'System Default',
+                loading: state.devicesLoading,
+                onChanged: (device) {
+                  if (device != null) {
+                    context.read<SettingsBloc>().add(
+                      UpdateTempSettingEvent(
+                        inputDeviceIndex: device['index'] as int,
+                      ),
+                    );
+                  } else {
+                    context.read<SettingsBloc>().add(
+                      const UpdateTempSettingEvent(clearInputDevice: true),
+                    );
+                  }
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 4,
+              child: VolumeSlider(
+                key: const ValueKey('Mic Volume'),
+                label: 'Volume',
+                value: state.tempMicVolume,
+                color: Colors.tealAccent,
+                onChangeEnd: (v) => context.read<SettingsBloc>().add(
+                  UpdateTempSettingEvent(micVolume: v),
                 ),
-              );
-            } else {
-              context.read<SettingsBloc>().add(
-                const UpdateTempSettingEvent(clearInputDevice: true),
-              );
-            }
-          },
+                onLiveChange: (v) =>
+                    context.read<TranslationBloc>().asrClient.liveVolumeUpdate(
+                      desktopVolume: state.tempDesktopVolume,
+                      micVolume: v,
+                    ),
+              ),
+            ),
+          ],
         ),
         buildDbMeter(
           level: (state.currentInputVolume * state.tempMicVolume).clamp(
@@ -76,71 +85,56 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
           color: Colors.tealAccent,
           active: true,
         ),
-        const SizedBox(height: 8),
-        VolumeSlider(
-          key: const ValueKey('Mic Volume'),
-          label: 'Mic Volume',
-          value: state.tempMicVolume,
-          color: Colors.tealAccent,
-          onChangeEnd: (v) => context.read<SettingsBloc>().add(
-            UpdateTempSettingEvent(micVolume: v),
-          ),
-          onLiveChange: (v) =>
-              context.read<TranslationBloc>().asrClient.liveVolumeUpdate(
-                desktopVolume: state.tempDesktopVolume,
-                micVolume: v,
-              ),
-        ),
       ],
 
-      const SizedBox(height: 20),
+      const SizedBox(height: 16),
 
       // ── Desktop Audio section ─────────────────────────────────────────
+      sectionLabel('Desktop Audio Output'),
+      const SizedBox(height: 4),
       Row(
         children: [
-          Expanded(child: sectionLabel('Desktop Audio Output')),
-          if (state.devicesLoading)
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.tealAccent,
-              ),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white38, size: 18),
-              tooltip: 'Refresh devices',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              onPressed: () =>
-                  context.read<SettingsBloc>().add(LoadDevicesEvent()),
+          Expanded(
+            flex: 3,
+            child: buildDeviceDropdown(
+              context: context,
+              state: state,
+              items: state.outputDevices,
+              defaultName: state.defaultOutputDeviceName,
+              selectedIndex: state.tempOutputDeviceIndex,
+              hintText: 'System Default',
+              loading: state.devicesLoading,
+              onChanged: (device) {
+                if (device != null) {
+                  context.read<SettingsBloc>().add(
+                    UpdateTempSettingEvent(outputDeviceIndex: device['index'] as int),
+                  );
+                } else {
+                  context.read<SettingsBloc>().add(
+                    const UpdateTempSettingEvent(clearOutputDevice: true),
+                  );
+                }
+              },
             ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 4,
+            child: VolumeSlider(
+              key: const ValueKey('Desktop Volume'),
+              label: 'Volume',
+              value: state.tempDesktopVolume,
+              color: Colors.purpleAccent,
+              onChangeEnd: (v) => context.read<SettingsBloc>().add(
+                UpdateTempSettingEvent(desktopVolume: v),
+              ),
+              onLiveChange: (v) => context
+                  .read<TranslationBloc>()
+                  .asrClient
+                  .liveVolumeUpdate(desktopVolume: v, micVolume: state.tempMicVolume),
+            ),
+          ),
         ],
-      ),
-      const SizedBox(height: 10),
-      sublabel('Output Device (loopback capture)'),
-      const SizedBox(height: 5),
-      buildDeviceDropdown(
-        context: context,
-        state: state,
-        items: state.outputDevices,
-        defaultName: state.defaultOutputDeviceName,
-        selectedIndex: state.tempOutputDeviceIndex,
-        hintText: 'System Default (${state.defaultOutputDeviceName})',
-        loading: state.devicesLoading,
-        onChanged: (device) {
-          if (device != null) {
-            context.read<SettingsBloc>().add(
-              UpdateTempSettingEvent(outputDeviceIndex: device['index'] as int),
-            );
-          } else {
-            context.read<SettingsBloc>().add(
-              const UpdateTempSettingEvent(clearOutputDevice: true),
-            );
-          }
-        },
       ),
       buildDbMeter(
         level: (state.currentOutputVolume * state.tempDesktopVolume).clamp(
@@ -150,20 +144,6 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
         label: 'Desktop',
         color: Colors.purpleAccent,
         active: true,
-      ),
-      const SizedBox(height: 8),
-      VolumeSlider(
-        key: const ValueKey('Desktop Volume'),
-        label: 'Desktop Volume',
-        value: state.tempDesktopVolume,
-        color: Colors.purpleAccent,
-        onChangeEnd: (v) => context.read<SettingsBloc>().add(
-          UpdateTempSettingEvent(desktopVolume: v),
-        ),
-        onLiveChange: (v) => context
-            .read<TranslationBloc>()
-            .asrClient
-            .liveVolumeUpdate(desktopVolume: v, micVolume: state.tempMicVolume),
       ),
 
       const SizedBox(height: 10),
@@ -189,6 +169,56 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
             ),
           ],
         ),
+      ),
+      const SizedBox(height: 16),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          TextButton.icon(
+            onPressed: state.devicesLoading
+                ? null
+                : () => context.read<SettingsBloc>().add(ResetIODefaultsEvent()),
+            icon: const Icon(Icons.restore, size: 16, color: Colors.white70),
+            label: const Text(
+              'Reset Defaults',
+              style: TextStyle(color: Colors.white70),
+            ),
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.white.withValues(alpha: 0.05),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          TextButton.icon(
+            onPressed: state.devicesLoading
+                ? null
+                : () => context.read<SettingsBloc>().add(LoadDevicesEvent()),
+            icon: state.devicesLoading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white54,
+                    ),
+                  )
+                : const Icon(Icons.refresh, size: 16, color: Colors.white70),
+            label: Text(
+              state.devicesLoading ? 'Refreshing Devices...' : 'Refresh Devices',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.white.withValues(alpha: 0.05),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
       ),
     ],
   );
@@ -248,18 +278,19 @@ Widget buildDeviceDropdown({
         hintText: hintText,
         hintStyle: const TextStyle(color: Colors.white70),
         filled: true,
-        fillColor: Colors.white10,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        fillColor: Colors.white.withValues(alpha: 0.05),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         border: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
+          borderRadius: BorderRadius.all(Radius.circular(6)),
           borderSide: BorderSide(color: Colors.white12),
         ),
         enabledBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
+          borderRadius: BorderRadius.all(Radius.circular(6)),
           borderSide: BorderSide(color: Colors.white12),
         ),
         focusedBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
+          borderRadius: BorderRadius.all(Radius.circular(6)),
           borderSide: BorderSide(color: Colors.white24),
         ),
       ),

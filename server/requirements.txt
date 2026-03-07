@@ -14,3 +14,4 @@ psutil
 SpeechRecognition
 openai-whisper
 deep-translator
+resampy

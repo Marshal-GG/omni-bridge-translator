@@ -24,6 +24,9 @@ server/
 └── requirements.txt            # Python environment dependencies
 ```
 
+**Cache Locations**:
+- **Whisper Models**: `~/.cache/whisper/` (Cached as `.pt` files).
+
 ## Key Components
 
 ### 1. `flutter_server.py`
@@ -45,7 +48,7 @@ Utilizes libraries to hook directly into the user's OS audio system.
 ### 4. Language Models (`models/`)
 Modular implementations representing different vendor layers:
 - **`SpeechRecognitionModel`**: Standard Python API proxy connecting to cloud ASR services like Google.
-- **`WhisperModel`**: A self-dependent transcription implementation capable of dynamically downloading and loading OpenAI Whisper variants (tiny, base, small, medium) directly into server RAM.
+- **`WhisperModel`**: An offline ASR implementation supporting dynamic loading and background downloading of OpenAI Whisper variants. Uses `resampy` for audio resampling to 16kHz and `requests` for progress-tracked model fetching.
 - **`LlamaModel`, `RivaModel`**: Adapters communicating natively with the NVIDIA NIM endpoints using `openai` API patterns.
 - **`GoogleModel`, `MyMemoryModel`**: Abstracted clients translating unstructured text chunks over generalized web APIs.
 

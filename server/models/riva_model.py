@@ -94,7 +94,7 @@ class RivaModel:
         stats = None
         if transcript:
             stats = {
-                "engine": "riva",
+                "engine": "riva-asr",
                 "model": model_name,
                 "latency_ms": int((time.monotonic() - start) * 1000),
                 "input_chars": len(transcript),
@@ -162,7 +162,7 @@ class RivaModel:
             result = result[1:-1].strip()
 
         stats = {
-            "engine": "riva",
+            "engine": "riva-translate",
             "model": model_name,
             "latency_ms": latency_ms,
             "prompt_tokens": usage.prompt_tokens if usage else 0,
