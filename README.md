@@ -106,7 +106,7 @@ To create a standalone installer that bundles both the Python server and the Flu
 ## 💡 Usage
 1. Make sure the Python server is running (`start_server.bat`).
 2. Launch the Omni Bridge: Live AI Translator Flutter app.
-3. Sign in with **Email/Password** or continue as a **Guest**.
+3. Sign in with **Google**, **Email/Password**, or continue as a **Guest**. (Google Sign-In uses your system browser and the `omni-bridge://` custom URL scheme).
 4. Click the **Gear (Settings)** icon in the top right of the overlay.
 5. (Optional) Toggle **Microphone Translation** to translate your mic input instead of system audio.
 6. Select your **Speech Recognition** model:
@@ -133,7 +133,8 @@ To create a standalone installer that bundles both the Python server and the Flu
 - `dropdown_search`: Searchable language selection UI.
 - `bitsdojo_window` & `window_manager`: Frameless, draggable desktop overlay.
 - `flutter_acrylic`: Transparent background support.
-- `firebase_auth` & `firebase_core`: User authentication (Email/Password, Google, Anonymous).
+- `firebase_auth` & `firebase_core`: User authentication.
+- `app_links`: Custom URL scheme (`omni-bridge://`) handling for Windows Google Sign-In.
 
 **Python (`server/requirements.txt`)**:
 - `fastapi`, `uvicorn`, `websockets`

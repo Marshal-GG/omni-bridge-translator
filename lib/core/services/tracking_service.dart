@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:network_info_plus/network_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TrackingService {
   TrackingService._();
@@ -14,12 +15,25 @@ class TrackingService {
   String? _currentSessionId;
   DateTime? _sessionStartTime;
   Timer? _heartbeatTimer;
+  StreamSubscription<DocumentSnapshot>? _sessionSub;
+
+  static const String _rtdbBaseUrl =
+      'https://omni-bridge-ai-translator-default-rtdb.firebaseio.com';
 
   /// Check if a session is currently active
   bool get hasActiveSession => _currentSessionId != null;
 
   /// Get current user ID
   String? get uid => FirebaseAuth.instance.currentUser?.uid;
+
+  /// Helper to get authenticated RTDB URL
+  Future<Uri?> _getRTDBUrl(String path) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || uid == null) return null;
+
+    final idToken = await user.getIdToken();
+    return Uri.parse('$_rtdbBaseUrl/users/$uid/$path.json?auth=$idToken');
+  }
 
   /// Collects device hardware and network info.
   Future<Map<String, dynamic>> _getDeviceInfo() async {
@@ -63,7 +77,6 @@ class TrackingService {
       return;
     }
 
-    // Prevent starting a new session if one is already actively running
     if (_currentSessionId != null) {
       debugPrint(
         '[Tracking] Session $_currentSessionId already running. Ignoring startSession call.',
@@ -71,38 +84,92 @@ class TrackingService {
       return;
     }
 
-    _sessionStartTime = DateTime.now();
+    final prefs = await SharedPreferences.getInstance();
+    final cachedSessionId = prefs.getString('current_session_id_$uid');
 
-    // Collect device and network info before creating the session doc
+    _sessionStartTime = DateTime.now();
     final deviceInfo = await _getDeviceInfo();
 
-    // Create a new master session document (could be per-launch or per-login)
-    final sessionRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('sessions')
-        .doc();
+    DocumentReference? sessionRef;
+    bool isNewSession = true;
 
-    _currentSessionId = sessionRef.id;
+    if (cachedSessionId != null) {
+      sessionRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('sessions')
+          .doc(cachedSessionId);
 
-    try {
-      await sessionRef.set({
-        'sessionId': _currentSessionId,
-        'startTime': FieldValue.serverTimestamp(),
-        'lastPingAt': FieldValue.serverTimestamp(),
-        'isEnded': false,
-        'device': deviceInfo,
-      });
-      debugPrint('[Tracking] Session $_currentSessionId started');
+      try {
+        final doc = await sessionRef.get();
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>? ?? {};
+          if (data['isEnded'] != true && data['forceLogout'] != true) {
+            isNewSession = false;
+            _currentSessionId = cachedSessionId;
 
-      // Start the heartbeat to let the server know we're still alive
-      _heartbeatTimer?.cancel();
-      _heartbeatTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-        _pingSession();
-      });
-    } catch (e) {
-      logError('Failed to start session', e);
+            await sessionRef.set({
+              'lastPingAt': FieldValue.serverTimestamp(),
+              'appReopenedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+
+            debugPrint('[Tracking] Resumed existing session $_currentSessionId');
+          }
+        }
+      } catch (e) {
+        debugPrint('[Tracking] Failed to check existing session: $e');
+      }
     }
+
+    if (isNewSession) {
+      sessionRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('sessions')
+          .doc();
+
+      _currentSessionId = sessionRef.id;
+      await prefs.setString('current_session_id_$uid', _currentSessionId!);
+
+      try {
+        await sessionRef.set({
+          'sessionId': _currentSessionId,
+          'startTime': FieldValue.serverTimestamp(),
+          'lastPingAt': FieldValue.serverTimestamp(),
+          'isEnded': false,
+          'forceLogout': false,
+          'device': deviceInfo,
+        });
+        debugPrint('[Tracking] Session $_currentSessionId started');
+      } catch (e) {
+        logError('Failed to start session', e);
+      }
+    }
+
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      _pingSession();
+    });
+
+    _sessionSub?.cancel();
+    _sessionSub = sessionRef?.snapshots().listen((snapshot) {
+      if (snapshot.exists) {
+        final data = snapshot.data() as Map<String, dynamic>? ?? {};
+        if (data['forceLogout'] == true) {
+          debugPrint(
+            '[Tracking] Remote forceLogout detected for $_currentSessionId',
+          );
+          _handleRemoteLogout();
+        }
+      }
+    });
+  }
+
+  void _handleRemoteLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('current_session_id_$uid');
+    // Auth state listener handles the rest
+    await FirebaseAuth.instance.signOut();
   }
 
   /// End an app session
@@ -113,6 +180,9 @@ class TrackingService {
     }
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('current_session_id_$uid');
+
       final sessionRef = FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
@@ -136,6 +206,8 @@ class TrackingService {
       _sessionStartTime = null;
       _heartbeatTimer?.cancel();
       _heartbeatTimer = null;
+      _sessionSub?.cancel();
+      _sessionSub = null;
     }
   }
 
@@ -209,62 +281,59 @@ class TrackingService {
     return null;
   }
 
-  /// Write general app logs and system usage information to a universal FireStore log
+  /// Write general app logs to RTDB via REST API
   Future<void> logEvent(String eventName, [Map<String, dynamic>? data]) async {
-    if (uid == null) {
-      debugPrint('[Tracking] Cannot log event $eventName: UID is null.');
-      return;
-    }
+    if (uid == null) return;
 
     try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('logs')
-          .add({
-            'event': eventName,
-            'data': data ?? {},
-            'timestamp': FieldValue.serverTimestamp(),
-            'sessionId': _currentSessionId,
-          });
-      debugPrint('[Tracking] Logged event: $eventName');
+      final url = await _getRTDBUrl('logs');
+      if (url == null) return;
+
+      await http.post(
+        url,
+        body: jsonEncode({
+          'event': eventName,
+          'data': data ?? {},
+          'timestamp': {'.sv': 'timestamp'},
+          'sessionId': _currentSessionId,
+        }),
+      );
+      debugPrint('[Tracking] Logged event to RTDB: $eventName');
     } catch (e) {
-      debugPrint('[Tracking] Error logging event: $e');
+      debugPrint('[Tracking] Error logging event to RTDB: $e');
     }
   }
 
-  /// Log an error to Firestore
+  /// Log an error to RTDB via REST API
   Future<void> logError(String message, [Object? error]) async {
-    if (uid == null) {
-      debugPrint('[Tracking] Cannot log error $message: UID is null.');
-      return;
-    }
+    if (uid == null) return;
 
     final errorStr = error?.toString() ?? '';
     if (message.contains('setState() called after dispose()') ||
         errorStr.contains('setState() called after dispose()')) {
-      return; // Filter out noisy and harmless widget lifecycle errors
+      return;
     }
 
     try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('error_logs')
-          .add({
-            'message': message,
-            'error': error?.toString(),
-            'timestamp': FieldValue.serverTimestamp(),
-            'sessionId': _currentSessionId,
-          });
-      debugPrint('[Tracking] Logged error: $message');
+      final url = await _getRTDBUrl('error_logs');
+      if (url == null) return;
+
+      await http.post(
+        url,
+        body: jsonEncode({
+          'message': message,
+          'error': errorStr,
+          'timestamp': {'.sv': 'timestamp'},
+          'sessionId': _currentSessionId,
+        }),
+      );
+      debugPrint('[Tracking] Logged error to RTDB: $message');
     } catch (e) {
-      debugPrint('[Tracking] Failed to log error: $e');
+      debugPrint('[Tracking] Failed to log error to RTDB: $e');
     }
   }
 
-  /// Push high-frequency Live Caption data to Realtime Database
-  /// This prevents huge Firestore write costs for live streaming translations
+  /// Push high-frequency Live Caption data to RTDB via REST API
   Future<void> syncLiveCaption(
     String originalText,
     String translatedText,
@@ -276,12 +345,8 @@ class TrackingService {
     if (uid == null) return;
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      final idToken = await user?.getIdToken();
-
-      final url = Uri.parse(
-        'https://omni-bridge-ai-translator-default-rtdb.firebaseio.com/users/$uid/captions.json?auth=$idToken',
-      );
+      final url = await _getRTDBUrl('captions');
+      if (url == null) return;
 
       await http.post(
         url,
@@ -292,22 +357,16 @@ class TrackingService {
           'targetLang': targetLang,
           'translationModel': translationModel,
           'isFinal': isFinal,
-          'timestamp': {
-            '.sv': 'timestamp',
-          }, // RTDB ServerValue.timestamp equivalent
+          'timestamp': {'.sv': 'timestamp'},
           'sessionId': _currentSessionId ?? 'unknown',
         }),
       );
     } catch (e) {
-      // Don't log this to Firestore to avoid loop, just local console
-      debugPrint('[Tracking] Error pushing live caption to RTDB REST API: $e');
+      debugPrint('[Tracking] Error pushing live caption to RTDB: $e');
     }
   }
 
-  /// Log AI model translation usage stats to Firestore.
-  /// Writes two documents per translation:
-  ///  1. Individual log  → users/{uid}/model_usage/{auto-id}
-  ///  2. Engine totals   → users/{uid}/model_stats/{engine}  (atomic increment)
+  /// Log AI model translation usage stats to RTDB via REST API
   Future<void> logModelUsage(Map<String, dynamic> stats) async {
     if (uid == null) return;
 
@@ -317,43 +376,63 @@ class TrackingService {
     final inputChars = (stats['input_chars'] as num?)?.toInt() ?? 0;
     final outputChars = (stats['output_chars'] as num?)?.toInt() ?? 0;
 
-    final userDoc = FirebaseFirestore.instance.collection('users').doc(uid);
-
     try {
       // 1. Individual usage log entry
-      await userDoc.collection('model_usage').add({
-        'engine': engine,
-        'model': stats['model'] ?? 'unknown',
-        'latency_ms': latencyMs,
-        'prompt_tokens': stats['prompt_tokens'] ?? 0,
-        'completion_tokens': stats['completion_tokens'] ?? 0,
-        'total_tokens': totalTokens,
-        'input_chars': inputChars,
-        'output_chars': outputChars,
-        'source_lang': stats['source_lang'] ?? 'unknown',
-        'target_lang': stats['target_lang'] ?? 'unknown',
-        'fallback_from': stats['fallback_from'],
-        'error': stats['error'],
-        'sessionId': _currentSessionId,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+      final usageUrl = await _getRTDBUrl('model_usage');
+      if (usageUrl != null) {
+        await http.post(
+          usageUrl,
+          body: jsonEncode({
+            'engine': engine,
+            'model': stats['model'] ?? 'unknown',
+            'latency_ms': latencyMs,
+            'prompt_tokens': stats['prompt_tokens'] ?? 0,
+            'completion_tokens': stats['completion_tokens'] ?? 0,
+            'total_tokens': totalTokens,
+            'input_chars': inputChars,
+            'output_chars': outputChars,
+            'source_lang': stats['source_lang'] ?? 'unknown',
+            'target_lang': stats['target_lang'] ?? 'unknown',
+            'fallback_from': stats['fallback_from'],
+            'error': stats['error'],
+            'sessionId': _currentSessionId,
+            'timestamp': {'.sv': 'timestamp'},
+          }),
+        );
+      }
 
-      // 2. Per-engine running totals — atomic increments, safe for concurrent writes
-      await userDoc.collection('model_stats').doc(engine).set({
-        'engine': engine,
-        'total_calls': FieldValue.increment(1),
-        'total_tokens': FieldValue.increment(totalTokens),
-        'total_latency_ms': FieldValue.increment(latencyMs),
-        'total_input_chars': FieldValue.increment(inputChars),
-        'total_output_chars': FieldValue.increment(outputChars),
-        'last_used': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      // 2. Per-engine running totals — RTDB atomic increments via REST
+      final statsUrl = await _getRTDBUrl('model_stats/$engine');
+      if (statsUrl != null) {
+        await http.patch(
+          statsUrl,
+          body: jsonEncode({
+            'engine': engine,
+            'total_calls': {
+              '.sv': {'increment': 1},
+            },
+            'total_tokens': {
+              '.sv': {'increment': totalTokens},
+            },
+            'total_latency_ms': {
+              '.sv': {'increment': latencyMs},
+            },
+            'total_input_chars': {
+              '.sv': {'increment': inputChars},
+            },
+            'total_output_chars': {
+              '.sv': {'increment': outputChars},
+            },
+            'last_used': {'.sv': 'timestamp'},
+          }),
+        );
+      }
 
       debugPrint(
-        '[Tracking] Logged model usage: $engine (tokens: $totalTokens)',
+        '[Tracking] Logged model usage to RTDB: $engine (tokens: $totalTokens)',
       );
     } catch (e) {
-      debugPrint('[Tracking] Failed to log model usage: $e');
+      debugPrint('[Tracking] Failed to log model usage to RTDB: $e');
     }
   }
 }

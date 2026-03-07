@@ -78,7 +78,6 @@ class AuthService {
           idToken: credentials.idToken,
         );
         await FirebaseAuth.instance.signInWithCredential(credential);
-        await TrackingService.instance.startSession();
         await TrackingService.instance.logEvent('Silent Sign In via Init');
       }
     });
@@ -195,7 +194,6 @@ class AuthService {
       );
       if (userCredential.user != null) {
         await _saveUserToFirestore(userCredential.user!);
-        await TrackingService.instance.startSession();
         await TrackingService.instance.logEvent('Sign In With Google');
       }
       debugPrint('[Auth] Step 5: Done → ${userCredential.user?.email}');
@@ -214,7 +212,6 @@ class AuthService {
         .signInWithEmailAndPassword(email: email, password: password);
     if (userCredential.user != null) {
       await _saveUserToFirestore(userCredential.user!);
-      await TrackingService.instance.startSession();
       await TrackingService.instance.logEvent('Sign In With Email/Password');
     }
     return userCredential.user;
@@ -228,7 +225,6 @@ class AuthService {
         .createUserWithEmailAndPassword(email: email, password: password);
     if (userCredential.user != null) {
       await _saveUserToFirestore(userCredential.user!);
-      await TrackingService.instance.startSession();
       await TrackingService.instance.logEvent('Registered With Email/Password');
     }
     return userCredential.user;
@@ -244,7 +240,6 @@ class AuthService {
       final userCredential = await FirebaseAuth.instance.signInAnonymously();
       if (userCredential.user != null) {
         await _saveUserToFirestore(userCredential.user!);
-        await TrackingService.instance.startSession();
         await TrackingService.instance.logEvent('Sign In Dev Bypass');
       }
       return userCredential.user;

@@ -164,16 +164,17 @@ class NimApiClient:
 
                 # ── ASR ─────────────────────────────────────────────────────
                 try:
+                    asr_stats = None
                     if use_riva_asr:
-                        transcript = self.riva.transcribe(chunk.tobytes(), config)
+                        transcript, asr_stats = self.riva.transcribe(chunk.tobytes(), config)
                     elif use_whisper:
-                        transcript = self.whisper.transcribe(
+                        transcript, asr_stats = self.whisper.transcribe(
                             chunk.tobytes(), self._sample_rate,
                             source_lang=self._source_lang,
                         )
                     else:
                         # Online Google free ASR
-                        transcript = self.speech_recognition.transcribe(
+                        transcript, asr_stats = self.speech_recognition.transcribe(
                             chunk.tobytes(),
                             self._sample_rate,
                             source_lang=self._source_lang,
@@ -195,7 +196,7 @@ class NimApiClient:
                         if self._callback:
                             self._callback("__source_lang_override__:en", False, is_final=False)
                         try:
-                            transcript = self.riva.transcribe(chunk.tobytes(), config)
+                            transcript, asr_stats = self.riva.transcribe(chunk.tobytes(), config)
                         except Exception as retry_err:
                             if self._callback:
                                 self._callback(f"ASR Error: {retry_err}", True, is_final=True)
@@ -212,12 +213,18 @@ class NimApiClient:
 
                 # ── Translation ──────────────────────────────────────────
                 if self._target_lang and self._target_lang != "none":
-                    translated, usage_stats = self._translate(clean, self._source_lang, self._target_lang)
+                    translated, trans_stats = self._translate(clean, self._source_lang, self._target_lang)
+                    stats_list = []
+                    if asr_stats:
+                        stats_list.append(asr_stats)
+                    if trans_stats:
+                        stats_list.append(trans_stats)
                     if self._callback:
-                        self._callback(translated, False, is_final=True, original_text=clean, usage_stats=usage_stats)
+                        self._callback(translated, False, is_final=True, original_text=clean, usage_stats=stats_list if stats_list else None)
                 else:
+                    stats_list = [asr_stats] if asr_stats else None
                     if self._callback:
-                        self._callback(clean, False, is_final=True)
+                        self._callback(clean, False, is_final=True, original_text=clean, usage_stats=stats_list)
 
             except queue.Empty:
                 continue

@@ -85,3 +85,7 @@ firebase-debug.log
 firebase-debug.*.log
 *.firebase
 firebase.json
+
+# Additional ignores
+task.md
+update_docs.py
