@@ -47,9 +47,9 @@ class ApplySettingsEvent extends TranslationEvent {
   final int? outputDeviceIndex;
   final double desktopVolume;
   final double micVolume;
-  final String aiEngine;
+  final String translationModel;
   final String apiKey;
-  final String transcriptionEngine;
+  final String transcriptionModel;
 
   const ApplySettingsEvent({
     required this.targetLang,
@@ -62,9 +62,9 @@ class ApplySettingsEvent extends TranslationEvent {
     required this.outputDeviceIndex,
     required this.desktopVolume,
     required this.micVolume,
-    required this.aiEngine,
+    required this.translationModel,
     this.apiKey = '',
-    this.transcriptionEngine = 'online',
+    this.transcriptionModel = 'online',
   });
 
   @override
@@ -79,9 +79,9 @@ class ApplySettingsEvent extends TranslationEvent {
     outputDeviceIndex,
     desktopVolume,
     micVolume,
-    aiEngine,
+    translationModel,
     apiKey,
-    transcriptionEngine,
+    transcriptionModel,
   ];
 }
 

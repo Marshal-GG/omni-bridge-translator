@@ -92,9 +92,9 @@ class TranslationService {
   bool _useMic = false;
   int? _inputDeviceIndex;
   int? _outputDeviceIndex;
-  String _aiEngine = 'google';
+  String _translationModel = 'google';
   String _apiKey = '';
-  String _transcriptionEngine = 'online';
+  String _transcriptionModel = 'online';
 
   String get _wsUrl => 'ws://$serverHost:$serverPort/captions';
 
@@ -110,9 +110,9 @@ class TranslationService {
     bool useMic = false,
     int? inputDeviceIndex,
     int? outputDeviceIndex,
-    String aiEngine = 'google',
+    String translationModel = 'google',
     String apiKey = '',
-    String transcriptionEngine = 'online',
+    String transcriptionModel = 'online',
   }) async {
     _intentionallyStopped = false;
     _sourceLang = sourceLang;
@@ -120,9 +120,9 @@ class TranslationService {
     _useMic = useMic;
     _inputDeviceIndex = inputDeviceIndex;
     _outputDeviceIndex = outputDeviceIndex;
-    _aiEngine = aiEngine;
+    _translationModel = translationModel;
     _apiKey = apiKey;
-    _transcriptionEngine = transcriptionEngine;
+    _transcriptionModel = transcriptionModel;
     _reconnectAttempt = 0;
     await _connect();
   }
@@ -212,8 +212,8 @@ class TranslationService {
       'source': _sourceLang,
       'target': _targetLang,
       'use_mic': _useMic,
-      'ai_engine': _aiEngine,
-      'transcription_engine': _transcriptionEngine,
+      'translation_model': _translationModel,
+      'transcription_model': _transcriptionModel,
       if (_apiKey.isNotEmpty) 'api_key': _apiKey,
     };
     if (_inputDeviceIndex != null) {
@@ -234,18 +234,18 @@ class TranslationService {
     int? outputDeviceIndex,
     double desktopVolume = 1.0,
     double micVolume = 1.0,
-    required String aiEngine,
+    required String translationModel,
     String apiKey = '',
-    String transcriptionEngine = 'online',
+    String transcriptionModel = 'online',
   }) {
     _sourceLang = sourceLang;
     _targetLang = targetLang;
     _useMic = useMic;
     _inputDeviceIndex = inputDeviceIndex;
     _outputDeviceIndex = outputDeviceIndex;
-    _aiEngine = aiEngine;
+    _translationModel = translationModel;
     _apiKey = apiKey;
-    _transcriptionEngine = transcriptionEngine;
+    _transcriptionModel = transcriptionModel;
 
     if (_channel != null) {
       final payload = <String, dynamic>{
@@ -255,8 +255,8 @@ class TranslationService {
         'use_mic': useMic,
         'desktop_volume': desktopVolume,
         'mic_volume': micVolume,
-        'ai_engine': aiEngine,
-        'transcription_engine': transcriptionEngine,
+        'translation_model': translationModel,
+        'transcription_model': transcriptionModel,
         if (apiKey.isNotEmpty) 'api_key': apiKey,
       };
       if (inputDeviceIndex != null) {

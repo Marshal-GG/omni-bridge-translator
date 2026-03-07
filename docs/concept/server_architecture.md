@@ -6,8 +6,8 @@ Omni Bridge uses a **hybrid two-server architecture**:
 
 | Layer | Where It Runs | Responsibility |
 |---|---|---|
-| **Local Python Server** | User's PC (bundled in installer) | Capture Windows audio, manage devices, relay audio to cloud |
-| **Cloud Server** | Google Cloud Run | Hold API keys, call NVIDIA Riva + OpenAI, return captions |
+| **Local Python Server** | User's PC (bundled in installer) | Capture Windows audio, manage devices, perform **Offline Whisper ASR**, relay to cloud |
+| **Cloud Server** | Google Cloud Run | Hold API keys, call NVIDIA Riva (ASR/NMT) + Llama (NIM), return captions |
 | **Flutter Frontend** | User's PC | Display captions, send settings via WebSocket |
 
 ```
@@ -23,8 +23,9 @@ User PC
          Google Cloud Run
          ┌─────────────────────────┐
          │  Cloud Server           │
-         │  - NVIDIA Riva (ASR)    │
-         │  - OpenAI/Llama (trans) │
+         │  - NVIDIA Riva (ASR/NMT)│
+         │  - Llama 3.1 (trans)    │
+         │  - MyMemory (API)       │
          │  - API keys stored here │
          └─────────────────────────┘
 ```
@@ -44,8 +45,9 @@ omni_bridge/
 │   ├── audio_meter.py             # Real-time RMS metering (local-only)
 │   ├── shared_pyaudio.py          # Singleton PyAudio instance
 │   ├── models/
-│   │   ├── riva_model.py          # NVIDIA Riva ASR + translation
+│   │   ├── riva_model.py          # NVIDIA Riva ASR + Translation (NMT)
 │   │   ├── llama_model.py         # Llama 3.1 8B via NVIDIA NIM
+│   │   ├── whisper_model.py       # Offline Whisper (Tiny, Base, Small, Medium)
 │   │   └── google_model.py        # Google Translate fallback
 │   ├── requirements.txt           # Local server dependencies (includes pyaudiowpatch)
 │   ├── requirements_cloud.txt     # Cloud server dependencies (no Windows libs)
@@ -197,6 +199,11 @@ flutter build windows
 
 | Engine Key | ASR | Translation | Notes |
 |---|---|---|---|
-| `riva` | NVIDIA Riva | NVIDIA NIM / Riva | Default. Best quality. Falls back to Llama. |
-| `llama` | NVIDIA Riva | Llama 3.1 8B | Direct Llama translation. |
-| `google` | NVIDIA Riva | Google Translate | Free. Falls back to Llama on failure. |
+| `online` | Google Free ASR | (Any selected) | Default online ASR. |
+| `riva` | NVIDIA Riva | NVIDIA NIM / Riva | Best quality. Requires Riva key. |
+| `whisper` | Offline Whisper | (Any selected) | Local ASR. Supports 4 sizes. |
+| --- | --- | --- | --- |
+| `google` | (Any ASR) | Google Translate | Free translation. |
+| `mymemory` | (Any ASR) | MyMemory API | Alternative free translation. |
+| `llama` | (Any ASR) | Llama 3.1 8B | AI-powered translation. |
+| `riva` | (Any ASR) | NVIDIA Riva NMT | Low-latency neural translation. |

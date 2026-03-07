@@ -33,7 +33,7 @@ _ENV_FILE = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=_ENV_FILE)
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import existing modules (must be in same directory)
@@ -86,8 +86,9 @@ if not API_KEY:
 
 current_source_lang: str = "auto"
 current_target_lang: str = "en"
-current_ai_engine: str = "google"
-current_transcription_engine: str = "online"  # "online" | "whisper"
+current_ai_engine: str = "google"            # kept for legacy compat
+current_transcription_model: str = "online"  # online | whisper-tiny | whisper-base | whisper-small | whisper-medium
+current_translation_model: str = "google"    # google | mymemory | riva | llama
 current_api_key: str = ""  # Overridden per-session by the Flutter client
 current_use_mic: bool = False
 current_input_device_index: int | None = None
@@ -144,6 +145,8 @@ def audio_poll_loop():
                         source_lang=current_source_lang,
                         target_lang=current_target_lang,
                         ai_engine=current_ai_engine,
+                        transcription_model=current_transcription_model,
+                        translation_model=current_translation_model,
                         callback=caption_callback,
                     )
                     stream_started = True
@@ -169,29 +172,37 @@ async def audio_level_broadcast_loop():
 # ── Whisper model management endpoints ────────────────────────────────────────
 
 @app.get("/whisper/status")
-async def whisper_status():
+async def whisper_status(size: str = "base"):
     """Return Whisper model download status."""
-    return get_download_status()
+    return get_download_status(size)
 
 
 @app.post("/whisper/download")
-async def whisper_download():
-    """Start background download of the Whisper base model."""
-    started = whisper_start_download()
-    status = get_download_status()
+async def whisper_download(request: Request):
+    """Start background download of a Whisper model."""
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    size = body.get("size", "base")
+    started = whisper_start_download(size)
+    status = get_download_status(size)
     return {"status": "started" if started else status["status"], **status}
 
 
 @app.get("/whisper/progress")
-async def whisper_progress():
-    """Return current download progress (0–100)."""
-    return get_download_status()
+async def whisper_progress(request: Request):
+    """Return current download progress (0–100) for a given model size."""
+    size = request.query_params.get("size", "base")
+    return get_download_status(size)
 
 
 @app.delete("/whisper/model")
-async def whisper_delete():
-    """Delete the cached Whisper model."""
-    success = whisper_delete_model()
+async def whisper_delete(request: Request):
+    """Delete the cached Whisper model for a given size."""
+    size = request.query_params.get("size", "base")
+    success = whisper_delete_model(size)
     return {"status": "deleted" if success else "error"}
 
 
@@ -288,12 +299,14 @@ async def start_capture(
     input_device_index: int = None,
     output_device_index: int = None,
     api_key: str = "",
-    transcription_engine: str = "online",
+    transcription_model: str = "online",
+    translation_model: str = "",
 ):
     global nim_api, audio_capture, is_running, audio_thread, _meter_task
     global current_source_lang, current_target_lang, current_ai_engine, current_use_mic
     global current_input_device_index, current_output_device_index
-    global current_desktop_volume, current_mic_volume, current_api_key, current_transcription_engine
+    global current_desktop_volume, current_mic_volume, current_api_key
+    global current_transcription_model, current_translation_model
 
     current_source_lang = source_lang
     current_target_lang = target_lang
@@ -301,15 +314,16 @@ async def start_capture(
     current_use_mic = use_mic
     current_input_device_index = input_device_index
     current_output_device_index = output_device_index
-    current_transcription_engine = transcription_engine
+    current_transcription_model = transcription_model
+    current_translation_model = translation_model or ai_engine  # fallback to ai_engine
     # Use the user-supplied key if non-empty, otherwise fall back to .env
     current_api_key = api_key if api_key else (API_KEY or "")
 
-    # Guard: Riva and Llama require an API key. Reject early with a friendly message.
-    if current_ai_engine in ("riva", "llama") and not current_api_key:
+    # Guard: Riva/Llama translation requires an API key
+    if current_translation_model in ("riva", "llama") and not current_api_key:
         await broadcast({
             "type": "error",
-            "text": f"⚠ {current_ai_engine.capitalize()} requires an API key. Open Settings → Languages → AI Engine and paste your NVIDIA NIM key.",
+            "text": f"⚠ {current_translation_model.capitalize()} requires an API key. Open Settings → Translation Engine and paste your NVIDIA NIM key.",
             "is_final": True,
             "original": "",
         })
@@ -324,7 +338,6 @@ async def start_capture(
 
             nim_api = NimApiClient(
                 api_key=current_api_key,
-                transcription_engine=current_transcription_engine,
             )
             audio_capture = AudioCapture(
                 sample_rate=16000,
@@ -410,7 +423,8 @@ async def captions_ws(websocket: WebSocket):
                     input_device_index=msg.get("input_device_index"),
                     output_device_index=msg.get("output_device_index"),
                     api_key=msg.get("api_key", ""),
-                    transcription_engine=msg.get("transcription_engine", "online"),
+                    transcription_model=msg.get("transcription_model", "online"),
+                    translation_model=msg.get("translation_model", ""),
                 )
             elif msg.get("cmd") == "volume_update":
                 # Lightweight volume change — no restart, just update the running capture

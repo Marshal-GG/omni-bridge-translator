@@ -271,7 +271,7 @@ class TrackingService {
     String sourceLang,
     String targetLang,
     bool isFinal,
-    String aiEngine,
+    String translationModel,
   ) async {
     if (uid == null) return;
 
@@ -290,7 +290,7 @@ class TrackingService {
           'translatedText': translatedText,
           'sourceLang': sourceLang,
           'targetLang': targetLang,
-          'aiEngine': aiEngine,
+          'translationModel': translationModel,
           'isFinal': isFinal,
           'timestamp': {
             '.sv': 'timestamp',

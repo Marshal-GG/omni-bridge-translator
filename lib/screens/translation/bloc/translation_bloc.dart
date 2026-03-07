@@ -36,9 +36,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       useMic: state.activeUseMic,
       inputDeviceIndex: state.activeInputDeviceIndex,
       outputDeviceIndex: state.activeOutputDeviceIndex,
-      aiEngine: state.activeAiEngine,
+      translationModel: state.activeTranslationModel,
       apiKey: state.activeApiKey,
-      transcriptionEngine: state.activeTranscriptionEngine,
+      transcriptionModel: state.activeTranscriptionModel,
     );
 
     _captionSub = asrClient.captions?.listen((msg) {
@@ -52,7 +52,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           msg.sourceLangOverride ?? state.activeSourceLang,
           state.activeTargetLang,
           msg.isFinal,
-          state.activeAiEngine,
+          state.activeTranslationModel,
         );
       }
     });
@@ -86,10 +86,19 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       final isBold = settings['isBold'] as bool? ?? state.activeIsBold;
       final opacity =
           (settings['opacity'] as num?)?.toDouble() ?? state.activeOpacity;
-      final aiEngine = settings['aiEngine'] as String? ?? state.activeAiEngine;
+      final translationModel =
+          settings['translationModel'] as String? ??
+          settings['aiEngine'] as String? ??
+          state.activeTranslationModel;
       final apiKey = settings['apiKey'] as String? ?? '';
-      final transcriptionEngine =
-          settings['transcriptionEngine'] as String? ?? 'online';
+      var transcriptionModel =
+          settings['transcriptionModel'] as String? ??
+          settings['transcriptionEngine'] as String? ??
+          'online';
+
+      if (transcriptionModel == 'whisper') {
+        transcriptionModel = 'whisper-base';
+      }
 
       // Update BLoC state natively
       emit(
@@ -100,9 +109,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           activeFontSize: fontSize,
           activeIsBold: isBold,
           activeOpacity: opacity,
-          activeAiEngine: aiEngine,
+          activeTranslationModel: translationModel,
           activeApiKey: apiKey,
-          activeTranscriptionEngine: transcriptionEngine,
+          activeTranscriptionModel: transcriptionModel,
         ),
       );
 
@@ -115,9 +124,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         outputDeviceIndex: state.activeOutputDeviceIndex,
         desktopVolume: state.activeDesktopVolume,
         micVolume: state.activeMicVolume,
-        aiEngine: aiEngine,
+        translationModel: translationModel,
         apiKey: apiKey,
-        transcriptionEngine: transcriptionEngine,
+        transcriptionModel: transcriptionModel,
       );
     }
   }
@@ -213,9 +222,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         activeOutputDeviceIndex: event.outputDeviceIndex,
         activeDesktopVolume: event.desktopVolume,
         activeMicVolume: event.micVolume,
-        activeAiEngine: event.aiEngine,
+        activeTranslationModel: event.translationModel,
         activeApiKey: event.apiKey,
-        activeTranscriptionEngine: event.transcriptionEngine,
+        activeTranscriptionModel: event.transcriptionModel,
       ),
     );
 
@@ -234,9 +243,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       outputDeviceIndex: event.outputDeviceIndex,
       desktopVolume: event.desktopVolume,
       micVolume: event.micVolume,
-      aiEngine: event.aiEngine,
+      translationModel: event.translationModel,
       apiKey: event.apiKey,
-      transcriptionEngine: event.transcriptionEngine,
+      transcriptionModel: event.transcriptionModel,
     );
 
     // Sync settings to Firestore
@@ -247,9 +256,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       'fontSize': event.fontSize,
       'isBold': event.isBold,
       'opacity': event.opacity,
-      'aiEngine': event.aiEngine,
+      'translationModel': event.translationModel,
       'apiKey': event.apiKey,
-      'transcriptionEngine': event.transcriptionEngine,
+      'transcriptionModel': event.transcriptionModel,
     });
 
     add(ToggleSettingsEvent());

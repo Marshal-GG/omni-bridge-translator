@@ -28,7 +28,9 @@ class RivaModel:
         try:
             if not self.api_key:
                 return
-            auth = riva.client.Auth(
+            
+            # Parakeet Multilingual (supports en-US, hi-IN, bn-IN, and 'multi' / 'auto')
+            auth_parakeet = riva.client.Auth(
                 None,
                 use_ssl=True,
                 uri="grpc.nvcf.nvidia.com:443",
@@ -37,7 +39,20 @@ class RivaModel:
                     ("function-id", "71203149-d3b7-4460-8231-1be2543a1fca"),
                 ],
             )
-            self.asr_service = riva.client.ASRService(auth)
+            self.asr_parakeet = riva.client.ASRService(auth_parakeet)
+
+            # Canary (supports everything else: es, fr, de, zh, ja, ko, ru, pt, it, ar, nl, tr, vi, pl, id, th)
+            auth_canary = riva.client.Auth(
+                None,
+                use_ssl=True,
+                uri="grpc.nvcf.nvidia.com:443",
+                metadata_args=[
+                    ("authorization", f"Bearer {self.api_key}"),
+                    ("function-id", "b0e8b4a5-217c-40b7-9b96-17d84e666317"),
+                ],
+            )
+            self.asr_canary = riva.client.ASRService(auth_canary)
+
             self.translate_client = OpenAI(
                 base_url="https://integrate.api.nvidia.com/v1",
                 api_key=self.api_key,
@@ -50,13 +65,23 @@ class RivaModel:
         self._setup()
 
     def is_ready(self) -> bool:
-        return self.asr_service is not None and bool(self.api_key)
+        return getattr(self, "asr_parakeet", None) is not None and bool(self.api_key)
 
     # ── ASR ──────────────────────────────────────────────────────────────────
 
     def transcribe(self, audio_bytes: bytes, config) -> str | None:
         """Run offline ASR and return the transcript, or None if empty."""
-        response = self.asr_service.offline_recognize(audio_bytes, config)
+        # Route to the appropriate model function ID
+        lang = config.language_code
+        if lang in ("multi", "bn-IN", "hi-IN", "en-US"):
+            service = getattr(self, "asr_parakeet", None)
+        else:
+            service = getattr(self, "asr_canary", None)
+
+        if not service:
+            return None
+
+        response = service.offline_recognize(audio_bytes, config)
         if response and response.results and response.results[0].alternatives:
             return response.results[0].alternatives[0].transcript.strip() or None
         return None

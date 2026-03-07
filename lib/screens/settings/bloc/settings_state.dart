@@ -12,9 +12,9 @@ class SettingsState extends Equatable {
   final int? tempOutputDeviceIndex;
   final double tempDesktopVolume;
   final double tempMicVolume;
-  final String tempAiEngine;
+  final String tempTranslationModel;
   final String tempApiKey;
-  final String tempTranscriptionEngine;
+  final String tempTranscriptionModel;
 
   // Audio Levels (live during settings open)
   final double currentInputVolume;
@@ -38,9 +38,9 @@ class SettingsState extends Equatable {
     this.tempOutputDeviceIndex,
     required this.tempDesktopVolume,
     required this.tempMicVolume,
-    required this.tempAiEngine,
+    required this.tempTranslationModel,
     required this.tempApiKey,
-    required this.tempTranscriptionEngine,
+    required this.tempTranscriptionModel,
     required this.currentInputVolume,
     required this.currentOutputVolume,
     required this.devicesLoading,
@@ -62,9 +62,9 @@ class SettingsState extends Equatable {
       tempOutputDeviceIndex: null,
       tempDesktopVolume: 1.0,
       tempMicVolume: 1.0,
-      tempAiEngine: 'google',
+      tempTranslationModel: 'google',
       tempApiKey: '',
-      tempTranscriptionEngine: 'online',
+      tempTranscriptionModel: 'online',
       currentInputVolume: 0.0,
       currentOutputVolume: 0.0,
       devicesLoading: false,
@@ -86,9 +86,9 @@ class SettingsState extends Equatable {
     int? tempOutputDeviceIndex,
     double? tempDesktopVolume,
     double? tempMicVolume,
-    String? tempAiEngine,
+    String? tempTranslationModel,
     String? tempApiKey,
-    String? tempTranscriptionEngine,
+    String? tempTranscriptionModel,
     double? currentInputVolume,
     double? currentOutputVolume,
     bool? devicesLoading,
@@ -109,10 +109,10 @@ class SettingsState extends Equatable {
           tempOutputDeviceIndex ?? this.tempOutputDeviceIndex,
       tempDesktopVolume: tempDesktopVolume ?? this.tempDesktopVolume,
       tempMicVolume: tempMicVolume ?? this.tempMicVolume,
-      tempAiEngine: tempAiEngine ?? this.tempAiEngine,
+      tempTranslationModel: tempTranslationModel ?? this.tempTranslationModel,
       tempApiKey: tempApiKey ?? this.tempApiKey,
-      tempTranscriptionEngine:
-          tempTranscriptionEngine ?? this.tempTranscriptionEngine,
+      tempTranscriptionModel:
+          tempTranscriptionModel ?? this.tempTranscriptionModel,
       currentInputVolume: currentInputVolume ?? this.currentInputVolume,
       currentOutputVolume: currentOutputVolume ?? this.currentOutputVolume,
       devicesLoading: devicesLoading ?? this.devicesLoading,
@@ -137,9 +137,9 @@ class SettingsState extends Equatable {
     tempOutputDeviceIndex,
     tempDesktopVolume,
     tempMicVolume,
-    tempAiEngine,
+    tempTranslationModel,
     tempApiKey,
-    tempTranscriptionEngine,
+    tempTranscriptionModel,
     currentInputVolume,
     currentOutputVolume,
     devicesLoading,
