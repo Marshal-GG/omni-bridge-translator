@@ -113,18 +113,22 @@ Widget _langDropdown({
   );
 }
 
-// ─── AI Engine Selector ───────────────────────────────────────────────────────
+// ─── Translation Model Selector ───────────────────────────────────────────────────────
 
-Widget buildAiEngineSelector(BuildContext context, SettingsState state) {
-  const aiEngines = {
+Widget buildTranslationModelSelector(
+  BuildContext context,
+  SettingsState state,
+) {
+  const translationModels = {
     'google': 'Google Translate',
     'riva': 'NVIDIA Riva (Fast, High Quality)',
     'llama': 'Llama 3.1 8B (Accurate, Slower)',
   };
 
   const enginesThatNeedKey = {'riva', 'llama'};
-  final needsKey = enginesThatNeedKey.contains(state.tempAiEngine);
-  final isGoogle = state.tempAiEngine == 'google';
+  final needsKey =
+      enginesThatNeedKey.contains(state.tempTranslationModel) ||
+      state.tempTranscriptionModel == 'riva';
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,18 +141,19 @@ Widget buildAiEngineSelector(BuildContext context, SettingsState state) {
       ),
       const SizedBox(height: 10),
       DropdownSearch<MapEntry<String, String>>(
-        items: aiEngines.entries.toList(),
+        items: translationModels.entries.toList(),
         itemAsString: (entry) => entry.value,
         selectedItem: MapEntry(
-          state.tempAiEngine,
-          aiEngines[state.tempAiEngine] ?? state.tempAiEngine,
+          state.tempTranslationModel,
+          translationModels[state.tempTranslationModel] ??
+              state.tempTranslationModel,
         ),
         compareFn: (a, b) => a.key == b.key,
         onChanged: (entry) {
           Future.delayed(const Duration(milliseconds: 100), () {
             if (context.mounted) {
               context.read<SettingsBloc>().add(
-                UpdateTempSettingEvent(aiEngine: entry!.key),
+                UpdateTempSettingEvent(translationModel: entry!.key),
               );
             }
           });
@@ -187,17 +192,15 @@ Widget buildAiEngineSelector(BuildContext context, SettingsState state) {
         const SizedBox(height: 16),
         _buildApiKeySection(context, state),
       ],
-      if (isGoogle) ...[
-        const SizedBox(height: 20),
-        _buildTranscriptionEngineSection(context, state),
-      ],
+      const SizedBox(height: 20),
+      _buildTranscriptionModelSection(context, state),
     ],
   );
 }
 
 // ─── Transcription Engine Section ─────────────────────────────────────────────
 
-Widget _buildTranscriptionEngineSection(
+Widget _buildTranscriptionModelSection(
   BuildContext context,
   SettingsState state,
 ) {
@@ -215,11 +218,24 @@ Widget _buildTranscriptionEngineSection(
       // Online option
       _TranscriptionOption(
         value: 'online',
-        groupValue: state.tempTranscriptionEngine,
+        groupValue: state.tempTranscriptionModel,
         label: 'Online (Google)',
         description: 'No download required · needs internet',
         onChanged: (v) => context.read<SettingsBloc>().add(
-          UpdateTempSettingEvent(transcriptionEngine: v),
+          UpdateTempSettingEvent(transcriptionModel: v),
+        ),
+      ),
+
+      const SizedBox(height: 6),
+
+      // Riva ASR option
+      _TranscriptionOption(
+        value: 'riva',
+        groupValue: state.tempTranscriptionModel,
+        label: 'Online (NVIDIA Riva)',
+        description: 'Fast, high quality (20+ languages) · requires API key',
+        onChanged: (v) => context.read<SettingsBloc>().add(
+          UpdateTempSettingEvent(transcriptionModel: v),
         ),
       ),
 
@@ -227,19 +243,28 @@ Widget _buildTranscriptionEngineSection(
 
       // Whisper offline option
       _TranscriptionOption(
-        value: 'whisper',
-        groupValue: state.tempTranscriptionEngine,
+        value: state.tempTranscriptionModel.startsWith('whisper')
+            ? state.tempTranscriptionModel
+            : 'whisper-base',
+        groupValue: state.tempTranscriptionModel,
         label: 'Offline (Whisper)',
-        description: 'Runs locally · ~145 MB one-time download',
+        description: 'Runs locally · fits on device',
         onChanged: (v) => context.read<SettingsBloc>().add(
-          UpdateTempSettingEvent(transcriptionEngine: v),
+          UpdateTempSettingEvent(transcriptionModel: v),
         ),
       ),
 
       // Whisper model manager (shown when offline is selected)
-      if (state.tempTranscriptionEngine == 'whisper') ...[
+      if (state.tempTranscriptionModel.startsWith('whisper')) ...[
         const SizedBox(height: 8),
-        _WhisperModelCard(),
+        _WhisperModelCard(
+          selectedModel: state.tempTranscriptionModel,
+          onModelChanged: (newModel) {
+            context.read<SettingsBloc>().add(
+              UpdateTempSettingEvent(transcriptionModel: newModel),
+            );
+          },
+        ),
       ],
     ],
   );
@@ -264,7 +289,10 @@ class _TranscriptionOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isSelected = value == groupValue;
+    // If value is whisper-something and groupValue is whisper-something else, it's still "selected"
+    final isSelected =
+        value == groupValue ||
+        (value.startsWith('whisper') && groupValue.startsWith('whisper'));
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: () => onChanged(value),
@@ -335,7 +363,13 @@ class _TranscriptionOption extends StatelessWidget {
 // ─── Whisper model download / delete card ─────────────────────────────────────
 
 class _WhisperModelCard extends StatefulWidget {
-  const _WhisperModelCard();
+  final String selectedModel;
+  final ValueChanged<String> onModelChanged;
+
+  const _WhisperModelCard({
+    required this.selectedModel,
+    required this.onModelChanged,
+  });
 
   @override
   State<_WhisperModelCard> createState() => _WhisperModelCardState();
@@ -351,10 +385,20 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
   };
   Timer? _pollTimer;
 
+  String get _currentSize => widget.selectedModel.split('-').last;
+
   @override
   void initState() {
     super.initState();
     _refresh();
+  }
+
+  @override
+  void didUpdateWidget(_WhisperModelCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedModel != widget.selectedModel) {
+      _refresh();
+    }
   }
 
   @override
@@ -364,7 +408,7 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
   }
 
   Future<void> _refresh() async {
-    final s = await _svc.getStatus();
+    final s = await _svc.getStatus(_currentSize);
     if (!mounted) return;
     setState(() => _status = s);
     _startPollingIfNeeded();
@@ -384,7 +428,7 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
   }
 
   Future<void> _startDownload() async {
-    await _svc.startDownload();
+    await _svc.startDownload(_currentSize);
     await _refresh();
   }
 
@@ -397,9 +441,9 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
           'Delete Whisper Model',
           style: TextStyle(color: Colors.white),
         ),
-        content: const Text(
-          'This will delete the downloaded model (~145 MB). You can re-download it anytime.',
-          style: TextStyle(color: Colors.white70),
+        content: Text(
+          'This will delete the "${_currentSize.toUpperCase()}" model (~${_status['size_mb'] ?? 0} MB). You can re-download it anytime.',
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
@@ -418,7 +462,7 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
       ),
     );
     if (confirmed == true) {
-      await _svc.deleteModel();
+      await _svc.deleteModel(_currentSize);
       await _refresh();
     }
   }
@@ -431,6 +475,13 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
     final progress = (_status['progress'] as num? ?? 0).toDouble() / 100.0;
     final sizeMb = (_status['size_mb'] as num? ?? 0).toDouble();
     final isError = statusStr == 'error';
+
+    final modelOptions = {
+      'tiny': 'Tiny (~75 MB) - Fastest',
+      'base': 'Base (~145 MB) - Fast (Recommended)',
+      'small': 'Small (~460 MB) - Balanced',
+      'medium': 'Medium (~1.5 GB) - High Accuracy',
+    };
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -445,11 +496,11 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
           Row(
             children: [
               const Icon(Icons.memory_rounded, size: 14, color: Colors.white38),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               const Text(
-                'Whisper base model',
+                'Model Size',
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: Colors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -500,31 +551,47 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
                   onPressed: _deleteModel,
                 ),
               ],
-              if (!isDownloaded && !isDownloading)
-                OutlinedButton.icon(
-                  onPressed: _startDownload,
-                  icon: const Icon(Icons.download_rounded, size: 14),
-                  label: const Text('Download', style: TextStyle(fontSize: 12)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.tealAccent,
-                    side: const BorderSide(
-                      color: Colors.tealAccent,
-                      width: 0.8,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
             ],
           ),
+          const SizedBox(height: 10),
 
-          // Progress bar
+          // Size Selection Dropdown
+          DropdownButtonHideUnderline(
+            child: Container(
+              height: 36,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: DropdownButton<String>(
+                value: _currentSize,
+                dropdownColor: const Color(0xFF2C2C2C),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 18,
+                  color: Colors.white38,
+                ),
+                isExpanded: true,
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+                onChanged: (val) {
+                  if (val != null) {
+                    widget.onModelChanged('whisper-$val');
+                  }
+                },
+                items: modelOptions.entries.map((e) {
+                  return DropdownMenuItem<String>(
+                    value: e.key,
+                    child: Text(e.value),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+
           if (isDownloading) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -548,35 +615,64 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
               ],
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Downloading Whisper base model…',
-              style: TextStyle(color: Colors.white38, fontSize: 10),
+            Text(
+              'Downloading Whisper ${_currentSize.toUpperCase()} model…',
+              style: const TextStyle(color: Colors.white38, fontSize: 10),
             ),
           ],
 
-          // Error
-          if (isError) ...[
-            const SizedBox(height: 6),
-            const Text(
-              '⚠ Download failed. Check your connection and try again.',
-              style: TextStyle(color: Colors.orangeAccent, fontSize: 11),
-            ),
-            const SizedBox(height: 4),
-            TextButton(
-              onPressed: _startDownload,
-              child: const Text(
-                'Retry',
-                style: TextStyle(color: Colors.tealAccent, fontSize: 12),
+          if (!isDownloaded && !isDownloading && !isError) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _startDownload,
+                icon: const Icon(Icons.download_rounded, size: 14),
+                label: Text(
+                  'Download ${_currentSize.toUpperCase()} Model',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.tealAccent,
+                  side: const BorderSide(color: Colors.tealAccent, width: 0.8),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
               ),
             ),
           ],
 
-          // Hint when not downloaded
-          if (!isDownloaded && !isDownloading && !isError) ...[
-            const SizedBox(height: 6),
-            const Text(
-              '~145 MB · runs offline on CPU · no API key needed',
-              style: TextStyle(color: Colors.white30, fontSize: 10),
+          if (isError) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.orangeAccent,
+                  size: 14,
+                ),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    'Download failed. Check your connection.',
+                    style: TextStyle(color: Colors.orangeAccent, fontSize: 11),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _startDownload,
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'Retry',
+                    style: TextStyle(color: Colors.tealAccent, fontSize: 12),
+                  ),
+                ),
+              ],
             ),
           ],
         ],
@@ -588,7 +684,10 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
 // ─── API Key Section ──────────────────────────────────────────────────────────
 
 Widget _buildApiKeySection(BuildContext context, SettingsState state) {
-  final instructions = _apiKeyInstructions(state.tempAiEngine);
+  final instructions = _apiKeyInstructions(
+    state.tempTranslationModel,
+    state.tempTranscriptionModel,
+  );
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -660,22 +759,22 @@ class _ApiKeyInstructions {
   const _ApiKeyInstructions({required this.description, required this.link});
 }
 
-_ApiKeyInstructions _apiKeyInstructions(String engine) {
-  switch (engine) {
-    case 'riva':
-      return const _ApiKeyInstructions(
-        description:
-            'Generate a free NVIDIA NIM API key. No credit card needed for trial credits.',
-        link: 'https://build.nvidia.com → Sign In → API Keys',
-      );
-    case 'llama':
-      return const _ApiKeyInstructions(
-        description:
-            'Generate a free NVIDIA NIM API key to access Llama 3.1 8B. No credit card for trial.',
-        link: 'https://build.nvidia.com → Sign In → API Keys',
-      );
-    default:
-      return const _ApiKeyInstructions(description: '', link: '');
+_ApiKeyInstructions _apiKeyInstructions(
+  String translationEngine,
+  String transcriptionEngine,
+) {
+  if (translationEngine == 'riva' || transcriptionEngine == 'riva') {
+    return const _ApiKeyInstructions(
+      description: 'Generate a free NVIDIA NIM API key.',
+      link: 'https://build.nvidia.com → Sign In → API Keys',
+    );
+  } else if (translationEngine == 'llama') {
+    return const _ApiKeyInstructions(
+      description: 'Generate a free NVIDIA NIM API key to access Llama 3.1 8B.',
+      link: 'https://build.nvidia.com → Sign In → API Keys',
+    );
+  } else {
+    return const _ApiKeyInstructions(description: '', link: '');
   }
 }
 

@@ -220,23 +220,26 @@ class AudioCapture:
                 print(f"[AudioCapture] Mic ignored due to error: {e}")
                 mic_stream = None
 
-        SILENCE_THRESHOLD = 150
-        SILENCE_DURATION = 0.33
-        MIN_SPEECH_DURATION = 0.4
-        MAX_CHUNK_DURATION = 2.5
+        # ── VAD + Time-based chunking ─────────────────────────────────────
+        # Primary: flush every MAX_CHUNK_DURATION seconds (guaranteed captions)
+        # Secondary: flush early when silence follows speech (lower latency)
+        SILENCE_THRESHOLD = 300      # RMS below this = silence  (tune if needed)
+        SILENCE_DURATION  = 0.35     # seconds of silence to trigger early flush
+        MIN_SPEECH_DURATION = 0.4    # don't flush if chunk is shorter than this
+        MAX_CHUNK_DURATION  = 2.0    # always flush after this many seconds
 
         silence_frames_needed = int(native_rate * SILENCE_DURATION)
-        min_speech_frames = int(native_rate * MIN_SPEECH_DURATION)
-        max_chunk_frames = int(native_rate * MAX_CHUNK_DURATION)
+        min_speech_frames     = int(native_rate * MIN_SPEECH_DURATION)
+        max_chunk_frames      = int(native_rate * MAX_CHUNK_DURATION)
 
-        speech_buffer = []
+        speech_buffer   = []
         silence_counter = 0
-        in_speech = False
+        in_speech       = False
 
         import time
         while self.is_recording:
             read_desktop = False
-            read_mic = False
+            read_mic     = False
 
             try:
                 if stream.get_read_available() >= 1024:
@@ -276,65 +279,65 @@ class AudioCapture:
             else:
                 audio_data_int16 = np.zeros(1024, dtype=np.int16)
 
-            # If mic stream had data, read and mix it
+            # Mix mic if available
             if read_mic:
                 try:
-                    mic_data = mic_stream.read(1024, exception_on_overflow=False)
+                    mic_data  = mic_stream.read(1024, exception_on_overflow=False)
                     mic_int16 = np.frombuffer(mic_data, dtype=np.int16)
                     if mic_channels > 1:
                         mic_int16 = mic_int16.reshape(-1, mic_channels).mean(axis=1).astype(np.int16)
 
-                    # Apply mic volume
                     if self.mic_volume != 1.0:
                         mic_int16 = np.clip(
                             mic_int16.astype(np.float32) * self.mic_volume,
                             -32768, 32767,
                         ).astype(np.int16)
 
-                    # Resample mic if rate differs
                     if mic_rate != native_rate:
                         mic_int16 = resample_audio(mic_int16, mic_rate, native_rate)
 
-                    # Mix: take the louder signal sample-by-sample
                     min_len = min(len(audio_data_int16), len(mic_int16))
-                    mixed = np.maximum(
+                    audio_data_int16 = np.maximum(
                         audio_data_int16[:min_len].astype(np.float32),
                         mic_int16[:min_len].astype(np.float32),
                     ).astype(np.int16)
-                    audio_data_int16 = mixed
                 except Exception:
-                    pass  # don't crash if mic read fails
+                    pass
 
-            rms = np.sqrt(np.mean(audio_data_int16.astype(np.float32) ** 2))
+            rms       = np.sqrt(np.mean(audio_data_int16.astype(np.float32) ** 2))
             is_silent = rms < SILENCE_THRESHOLD
 
             speech_buffer.extend(audio_data_int16.tolist())
 
             if not is_silent:
-                in_speech = True
+                in_speech       = True
                 silence_counter = 0
             elif in_speech:
                 silence_counter += len(audio_data_int16)
 
+            # Decide whether to flush
             should_flush = False
+            buf_len      = len(speech_buffer)
 
-            if (
+            # 1. Time-based: always flush at max duration (guaranteed captions)
+            if buf_len >= max_chunk_frames:
+                should_flush = True
+
+            # 2. VAD-based: flush early when silence follows enough speech
+            elif (
                 in_speech
-                and len(speech_buffer) >= min_speech_frames
+                and buf_len >= min_speech_frames
                 and silence_counter >= silence_frames_needed
             ):
                 should_flush = True
 
-            if len(speech_buffer) >= max_chunk_frames:
-                should_flush = True
-
             if should_flush:
-                chunk = np.array(speech_buffer, dtype=np.int16)
+                chunk     = np.array(speech_buffer, dtype=np.int16)
                 chunk_16k = resample_audio(chunk, native_rate, self.sample_rate)
                 self.audio_queue.put((chunk_16k, self.sample_rate))
-                speech_buffer = []
+                speech_buffer   = []
                 silence_counter = 0
-                in_speech = False
+                in_speech       = False
 
         if speech_buffer and in_speech:
             chunk = np.array(speech_buffer, dtype=np.int16)

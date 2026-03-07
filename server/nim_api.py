@@ -1,13 +1,12 @@
 """
 nim_api.py — Central orchestrator for AI translation engines.
 
-Imports each engine from the `models/` package and routes
-ASR + translation work to the one the user selected.
+Transcription (ASR) and translation are now fully decoupled:
+  - transcription_model: 'online' | 'whisper-tiny' | 'whisper-base' | 'whisper-small' | 'whisper-medium'
+  - translation_model:   'google' | 'mymemory' | 'riva' | 'llama'
 
-Engines:
-  - 'riva'   → NVIDIA Riva ASR + Riva/Llama NIM translation  (models/riva_model.py)
-  - 'llama'  → Llama 3.1 8B via NVIDIA NIM                   (models/llama_model.py)
-  - 'google' → Google Translate via deep-translator           (models/google_model.py)
+Legacy `ai_engine` parameter is still accepted for backward compat
+(determines translation engine when translation_model is absent).
 """
 
 import threading
@@ -16,19 +15,22 @@ import queue
 from models.riva_model import RivaModel
 from models.llama_model import LlamaModel
 from models.google_model import GoogleModel
+from models.mymemory_model import MyMemoryModel
 from models.speech_recognition_model import SpeechRecognitionModel
 from models.whisper_model import WhisperModel
+
+# Valid transcription model IDs
+_WHISPER_SIZES = {"whisper-tiny", "whisper-base", "whisper-small", "whisper-medium"}
 
 
 class NimApiClient:
     """
     Orchestrates speech recognition and translation across multiple AI engines.
-    The active engine is set per-session via `start_stream(ai_engine=...)`.
+    Transcription and translation are now independently configurable.
     """
 
-    def __init__(self, api_key: str, transcription_engine: str = "online"):
+    def __init__(self, api_key: str):
         self.api_key = api_key
-        self.transcription_engine = transcription_engine
         self.is_running = False
         self.audio_queue: queue.Queue = queue.Queue()
 
@@ -36,14 +38,16 @@ class NimApiClient:
         self.riva = RivaModel(api_key)
         self.llama = LlamaModel(api_key)
         self.google = GoogleModel()
+        self.mymemory = MyMemoryModel()
         self.speech_recognition = SpeechRecognitionModel()
-        self.whisper = WhisperModel()
+        self.whisper = WhisperModel("base")   # model_size updated per session
 
-        # Active session state
-        self._ai_engine = "riva"
-        self._source_lang = "auto"
-        self._target_lang = None
-        self._sample_rate = 16000
+        # Active session state (set in start_stream)
+        self._transcription_model: str = "online"
+        self._translation_model: str = "google"
+        self._source_lang: str = "auto"
+        self._target_lang: str | None = None
+        self._sample_rate: int = 16000
         self._callback = None
 
     # ── Key management ───────────────────────────────────────────────────────
@@ -60,35 +64,58 @@ class NimApiClient:
         sample_rate: int,
         source_lang: str = "auto",
         target_lang: str | None = None,
-        ai_engine: str = "google",
-        transcription_engine: str = "online",
+        ai_engine: str = "google",          # legacy compat
+        transcription_model: str = "online",
+        translation_model: str = "",        # empty → derive from ai_engine
         callback=None,
     ):
-        # Guard: Riva/Llama engines always need a key for ASR
-        if ai_engine in ("riva", "llama") and not self.riva.is_ready():
+        # Derive translation_model from legacy ai_engine if not provided
+        if not translation_model:
+            translation_model = {
+                "google": "google",
+                "llama":  "llama",
+                "riva":   "riva",
+            }.get(ai_engine, "google")
+
+        # Normalise whisper-* IDs
+        transcription_model = transcription_model.lower().strip()
+        translation_model = translation_model.lower().strip()
+
+        # Guards
+        use_riva_asr = transcription_model == "riva"
+        use_whisper  = transcription_model in _WHISPER_SIZES
+
+        if use_riva_asr and not self.riva.is_ready():
             if callback:
                 callback("Error: API Key is missing for Riva ASR.", True, is_final=True)
             return
 
-        # Guard: Whisper engine must be downloaded first
-        if ai_engine == "google" and transcription_engine == "whisper" and not self.whisper.is_downloaded():
+        if use_whisper:
+            whisper_size = transcription_model.split("-", 1)[1]  # e.g. "base"
+            self.whisper.model_size = whisper_size
+            if not self.whisper.is_downloaded():
+                if callback:
+                    callback(
+                        f"⚠ Whisper {whisper_size} model not downloaded. Open Settings → Speech Recognition to download it.",
+                        True, is_final=True,
+                    )
+                return
+
+        if translation_model in ("riva", "llama") and not self.riva.is_ready():
             if callback:
-                callback(
-                    "⚠ Whisper model is not downloaded. Open Settings → Languages → download the Offline model.",
-                    True, is_final=True,
-                )
+                callback("Error: API Key is missing for the selected translation engine.", True, is_final=True)
             return
 
         if self.is_running:
             return
 
         self.is_running = True
-        self._source_lang = source_lang
-        self._target_lang = target_lang
-        self._ai_engine = ai_engine
-        self._transcription_engine = transcription_engine
-        self._callback = callback
-        self._sample_rate = sample_rate
+        self._transcription_model = transcription_model
+        self._translation_model   = translation_model
+        self._source_lang  = source_lang
+        self._target_lang  = target_lang
+        self._sample_rate  = sample_rate
+        self._callback     = callback
 
         # Drain stale audio
         while not self.audio_queue.empty():
@@ -113,7 +140,6 @@ class NimApiClient:
     # ── Audio worker ─────────────────────────────────────────────────────────
 
     def _worker(self):
-        # Language code map for Riva ASR
         lang_map = {
             "en": "en-US", "es": "es-US", "fr": "fr-FR", "de": "de-DE",
             "zh": "zh-CN", "ja": "ja-JP", "ko": "ko-KR", "ru": "ru-RU",
@@ -122,12 +148,12 @@ class NimApiClient:
             "id": "id-ID", "th": "th-TH", "bn": "bn-IN",
         }
 
-        use_auto = self._source_lang == "auto"
-        asr_lang = "multi" if use_auto else lang_map.get(self._source_lang, "en-US")
-        fell_back = False
+        use_auto    = self._source_lang == "auto"
+        asr_lang    = "multi" if use_auto else lang_map.get(self._source_lang, "en-US")
+        fell_back   = False
+        use_riva_asr = self._transcription_model == "riva"
+        use_whisper  = self._transcription_model in _WHISPER_SIZES
 
-        # Only build Riva ASR config when Riva engine is used
-        use_riva_asr = self._ai_engine in ("riva", "llama")
         config = self.riva.make_asr_config(self._sample_rate, asr_lang) if use_riva_asr else None
 
         while self.is_running:
@@ -139,19 +165,24 @@ class NimApiClient:
                 # ── ASR ─────────────────────────────────────────────────────
                 try:
                     if use_riva_asr:
-                        # Riva/Llama: always use Riva ASR
                         transcript = self.riva.transcribe(chunk.tobytes(), config)
-                    elif self._transcription_engine == "whisper":
-                        # Google engine + Whisper offline
-                        transcript = self.whisper.transcribe(chunk.tobytes(), self._sample_rate)
+                    elif use_whisper:
+                        transcript = self.whisper.transcribe(
+                            chunk.tobytes(), self._sample_rate,
+                            source_lang=self._source_lang,
+                        )
                     else:
-                        # Google engine + Online SpeechRecognition
-                        transcript = self.speech_recognition.transcribe(chunk.tobytes(), self._sample_rate)
+                        # Online Google free ASR
+                        transcript = self.speech_recognition.transcribe(
+                            chunk.tobytes(),
+                            self._sample_rate,
+                            source_lang=self._source_lang,
+                        )
                 except Exception as asr_err:
                     err_str = str(asr_err)
                     try:
                         with open("asr_error.log", "a") as f:
-                            f.write(f"[ASR ERROR] lang={asr_lang} err={err_str}\n")
+                            f.write(f"[ASR ERROR] model={self._transcription_model} lang={asr_lang} err={err_str}\n")
                     except Exception:
                         pass
 
@@ -197,32 +228,37 @@ class NimApiClient:
     # ── Translation dispatcher ────────────────────────────────────────────────
 
     def _translate(self, text: str, source_lang: str, target_lang: str) -> tuple[str, dict]:
-        """Route translation to the active engine, with Llama as final fallback.
-        Returns (translated_text, usage_stats).
-        """
+        """Route translation to the selected translation_model."""
 
-        # Google engine
-        if self._ai_engine == "google":
-            result, stats = self.google.translate(text, source_lang, target_lang)
+        if self._translation_model == "mymemory":
+            result, stats = self.mymemory.translate(text, source_lang, target_lang)
             if result:
                 return result, stats
-            print("Google Translate failed, falling back to Llama...")
-            result, stats = self.llama.translate(text, target_lang)
-            stats["fallback_from"] = "google"
-            return result, stats
+            # Fallback to Google
+            result, stats = self.google.translate(text, source_lang, target_lang)
+            stats["fallback_from"] = "mymemory"
+            return result or text, stats
 
-        # Llama engine (direct)
-        if self._ai_engine == "llama":
+        if self._translation_model == "llama":
             return self.llama.translate(text, target_lang)
 
-        # Riva engine (default) — falls back to Llama internally for unsupported langs
-        try:
-            return self.riva.translate(text, source_lang, target_lang)
-        except Exception as e:
-            print(f"Riva translation error ({e}), falling back to Llama...")
-            result, stats = self.llama.translate(text, target_lang)
-            stats["fallback_from"] = "riva"
+        if self._translation_model == "riva":
+            try:
+                return self.riva.translate(text, source_lang, target_lang)
+            except Exception as e:
+                print(f"Riva translation error ({e}), falling back to Llama...")
+                result, stats = self.llama.translate(text, target_lang)
+                stats["fallback_from"] = "riva"
+                return result, stats
+
+        # Default: Google Translate
+        result, stats = self.google.translate(text, source_lang, target_lang)
+        if result:
             return result, stats
+        print("Google Translate failed, falling back to Llama...")
+        result, stats = self.llama.translate(text, target_lang)
+        stats["fallback_from"] = "google"
+        return result, stats
 
     # ── Utilities ─────────────────────────────────────────────────────────────
 

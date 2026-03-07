@@ -89,7 +89,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                                 children: [
                                   buildLanguagesTab(context, state),
                                   const SizedBox(height: 28),
-                                  buildAiEngineSelector(context, state),
+                                  buildTranslationModelSelector(context, state),
                                 ],
                               ),
                             ),

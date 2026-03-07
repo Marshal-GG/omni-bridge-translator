@@ -71,9 +71,9 @@ Single document synced whenever the user saves settings.
   "fontSize": 22.0,
   "isBold": false,
   "opacity": 0.7,
-  "aiEngine": "google",
+  "translationModel": "google",
   "apiKey": "",
-  "transcriptionEngine": "online",
+  "transcriptionModel": "google",
   "inputDeviceIndex": 1,
   "outputDeviceIndex": 0,
   "micVolume": 1.0,
@@ -90,9 +90,9 @@ Single document synced whenever the user saves settings.
 | `fontSize` | `number` | Caption font size in pts |
 | `isBold` | `bool` | Caption bold toggle |
 | `opacity` | `number` | Window background opacity (0–1) |
-| `aiEngine` | `string` | Selected engine: `google` (default) \| `riva` \| `llama` |
-| `apiKey` | `string` | NVIDIA NIM API key (empty for Google Translate). Stored as plaintext; readable only by the owner via Firestore security rules. |
-| `transcriptionEngine` | `string` | ASR backend when Google engine is active: `online` (default) \| `whisper` |
+| `translationModel` | `string` | Selected engine: `google` (default) \| `riva` \| `llama` \| `mymemory` |
+| `apiKey` | `string` | NVIDIA NIM API key (empty for Google Translate / MyMemory). Stored as plaintext; readable only by the owner via Firestore security rules. |
+| `transcriptionModel` | `string` | ASR backend: `google` (default) \| `whisper-tiny` \| `whisper-base` \| `whisper-small` \| `whisper-medium` |
 | `inputDeviceIndex` | `number?` | Mic device index (null = system default) |
 | `outputDeviceIndex` | `number?` | Desktop audio device index (null = default) |
 | `micVolume` | `number` | Mic capture gain (0–2) |
@@ -124,7 +124,7 @@ One document written **per translation call**. Never updated after creation.
 
 > For Llama / Google, `prompt_tokens`, `completion_tokens` and `total_tokens` are populated.
 
-**Engines:** `riva` | `llama` | `google`
+**Engines:** `riva` | `llama` | `google` | `mymemory` | `whisper`
 
 | Field | Type | Notes |
 |---|---|---|
@@ -177,6 +177,28 @@ One document **per engine**, updated atomically on every translation. Use this t
   "total_output_chars": 19500,
   "last_used": "2026-03-06T07:55:30Z"
 }
+
+// users/{uid}/model_stats/mymemory
+{
+  "engine": "mymemory",
+  "total_calls": 45,
+  "total_tokens": 0,
+  "total_latency_ms": 32000,
+  "total_input_chars": 4500,
+  "total_output_chars": 4550,
+  "last_used": "2026-03-07T10:30:00Z"
+}
+
+// users/{uid}/model_stats/whisper
+{
+  "engine": "whisper",
+  "total_calls": 120,
+  "total_tokens": 0,
+  "total_latency_ms": 96000,
+  "total_input_chars": 12000,
+  "total_output_chars": 0,
+  "last_used": "2026-03-07T11:00:00Z"
+}
 ```
 
 > All counters use **atomic `FieldValue.increment()`** — safe for concurrent writes.
@@ -191,7 +213,8 @@ General lifecycle events (app open, settings changed, engine switched, etc.).
 {
   "event": "settings_saved",
   "data": {
-    "aiEngine": "llama",
+    "translationModel": "llama",
+    "transcriptionModel": "google",
     "targetLang": "fr"
   },
   "timestamp": "2026-03-06T08:03:11Z",
@@ -228,7 +251,7 @@ Written via a REST POST on every caption event. Avoids Firestore write cost for 
   "translatedText": "सभी को सुप्रभात",
   "sourceLang": "en",
   "targetLang": "hi",
-  "aiEngine": "riva",
+  "translationModel": "riva",
   "isFinal": true,
   "timestamp": 1741239600000,
   "sessionId": "abc123xyz"
@@ -241,7 +264,7 @@ Written via a REST POST on every caption event. Avoids Firestore write cost for 
 | `translatedText` | `string` | Output from the AI engine |
 | `sourceLang` | `string` | ISO 639-1 code, e.g. `"en"` |
 | `targetLang` | `string` | ISO 639-1 code, e.g. `"hi"` |
-| `aiEngine` | `string` | `riva` / `llama` / `google` |
+| `translationModel` | `string` | `riva` / `llama` / `google` / `mymemory` / `whisper` |
 | `isFinal` | `bool` | `false` = partial result, `true` = committed |
 | `timestamp` | `number` | RTDB server timestamp (ms since epoch) |
 | `sessionId` | `string` | Links back to the Firestore session |
@@ -262,7 +285,9 @@ users/
     ├── model_stats/
     │   ├── riva                   ← engine totals (atomic increments)
     │   ├── llama
-    │   └── google
+    │   ├── google
+    │   ├── mymemory
+    │   └── whisper
     ├── logs/
     │   └── {auto-id}              ← general events
     └── error_logs/

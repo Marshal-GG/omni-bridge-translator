@@ -47,9 +47,9 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
                   outputDeviceIndex: state.tempOutputDeviceIndex,
                   desktopVolume: state.tempDesktopVolume,
                   micVolume: state.tempMicVolume,
-                  aiEngine: state.tempAiEngine,
+                  translationModel: state.tempTranslationModel,
                   apiKey: state.tempApiKey,
-                  transcriptionEngine: state.tempTranscriptionEngine,
+                  transcriptionModel: state.tempTranscriptionModel,
                 ),
               );
               await setToTranslationPosition();

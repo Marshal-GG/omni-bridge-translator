@@ -6,12 +6,12 @@ class WhisperService {
   static const _base = 'http://127.0.0.1:8765';
   static const _timeout = Duration(seconds: 10);
 
-  /// Returns current model status:
+  /// Returns current model status for a specific size:
   /// { downloaded: bool, size_mb: double, progress: double, status: String }
-  Future<Map<String, dynamic>> getStatus() async {
+  Future<Map<String, dynamic>> getStatus(String size) async {
     try {
       final resp = await http
-          .get(Uri.parse('$_base/whisper/status'))
+          .get(Uri.parse('$_base/whisper/status?size=$size'))
           .timeout(_timeout);
       if (resp.statusCode == 200) {
         return jsonDecode(resp.body) as Map<String, dynamic>;
@@ -26,10 +26,14 @@ class WhisperService {
   }
 
   /// Starts the model download (no-op if already downloaded).
-  Future<Map<String, dynamic>> startDownload() async {
+  Future<Map<String, dynamic>> startDownload(String size) async {
     try {
       final resp = await http
-          .post(Uri.parse('$_base/whisper/download'))
+          .post(
+            Uri.parse('$_base/whisper/download'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'size': size}),
+          )
           .timeout(_timeout);
       if (resp.statusCode == 200) {
         return jsonDecode(resp.body) as Map<String, dynamic>;
@@ -38,11 +42,11 @@ class WhisperService {
     return {'status': 'error'};
   }
 
-  /// Polls download progress.
-  Future<Map<String, dynamic>> getProgress() async {
+  /// Polls download progress for a specific size.
+  Future<Map<String, dynamic>> getProgress(String size) async {
     try {
       final resp = await http
-          .get(Uri.parse('$_base/whisper/progress'))
+          .get(Uri.parse('$_base/whisper/progress?size=$size'))
           .timeout(_timeout);
       if (resp.statusCode == 200) {
         return jsonDecode(resp.body) as Map<String, dynamic>;
@@ -52,10 +56,10 @@ class WhisperService {
   }
 
   /// Deletes the cached model.
-  Future<bool> deleteModel() async {
+  Future<bool> deleteModel(String size) async {
     try {
       final resp = await http
-          .delete(Uri.parse('$_base/whisper/model'))
+          .delete(Uri.parse('$_base/whisper/model?size=$size'))
           .timeout(_timeout);
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;

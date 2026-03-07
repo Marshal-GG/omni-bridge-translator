@@ -1,6 +1,6 @@
 # Omni Bridge: Live AI Translator 🌉
 
-Omni Bridge: Live AI Translator is a real-time translating live-caption overlay built with Flutter and Python. It captures system audio (or microphone input) on Windows, sends it to a local Python WebSocket server, processes the audio using NVIDIA Riva/NIM and OpenAI for translation or transcription, and streams the captions back to a transparent, draggable, always-on-top desktop widget.
+Omni Bridge: Live AI Translator is a real-time translating live-caption overlay built with Flutter and Python. It captures system audio (or microphone input) on Windows, sends it to a local Python WebSocket server, processes the audio using **NVIDIA Riva**, **Whisper (Offline)**, or **Google Free ASR**, and translates or transcribes captions using **OpenAI (Llama)**, **Google Translate**, **MyMemory**, or **Riva NMT**, streaming them back to a transparent, draggable, always-on-top desktop widget.
 
 <div align="center">
 
@@ -18,10 +18,11 @@ Omni Bridge: Live AI Translator is a real-time translating live-caption overlay 
 
 The project is split into two main components:
 1. **Python Backend (`server/`)**: 
-   - Uses `fastapi` and `websockets` to host a local server (`ws://localhost:8765/captions`).
    - Uses `pyaudiowpatch` to capture Windows system audio via WASAPI loopback.
-   - Streams audio chunks to an NVIDIA Riva ASR service.
-   - Translates transcribed text using an OpenAI-compatible endpoint (Llama fallback).
+   - **Decoupled Engine Architecture**:
+     - **ASR**: NVIDIA Riva (Multilingual), Whisper (Offline - 4 sizes), Google Speech-to-Text.
+     - **Translation**: Google Translate, MyMemory (Free), NVIDIA Riva NMT, Llama (via OpenAI compatible endpoint).
+   - High-performance WebSocket streaming for real-time captions.
 2. **Flutter Frontend (`lib/`)**:
    - Built using Desktop window management plugins (`bitsdojo_window`, `window_manager`) to create a transparent, frameless overlay.
    - Connects to the Python server via `web_socket_channel`.
@@ -108,9 +109,16 @@ To create a standalone installer that bundles both the Python server and the Flu
 3. Sign in with **Email/Password** or continue as a **Guest**.
 4. Click the **Gear (Settings)** icon in the top right of the overlay.
 5. (Optional) Toggle **Microphone Translation** to translate your mic input instead of system audio.
-6. Select your **Source Language** (or leave as Auto-Detect).
-7. Select your **Target Language**. You can select **Original Source (Transcription)** to bypass translation and only transcribe the speech.
-8. Close the settings panel. Omni Bridge: Live AI Translator will connect to the server and begin displaying live translations or transcriptions for any audio playing on your PC (or from your microphone).
+6. Select your **Speech Recognition** model:
+   - **Online (Google)**: Standard fast ASR.
+   - **NVIDIA Riva**: High-performance multilingual ASR (requires Riva key).
+   - **Offline (Whisper)**: Run locally without internet. Supports **Tiny, Base, Small, and Medium** models which can be downloaded directly from the settings.
+7. Select your **Translation Engine**:
+   - **Google Translate**: Standard online translation.
+   - **MyMemory**: Alternative free translation service.
+   - **Llama / Riva**: AI-powered translation (requires API keys).
+8. Select your **Target Language**. You can select **Original Source (Transcription)** to bypass translation and only transcribe the speech.
+9. Close the settings panel. Omni Bridge: Live AI Translator will connect to the server and begin displaying live translations or transcriptions for any audio playing on your PC (or from your microphone).
 
 ### � Account Screen
 - Access your account via the **person icon** on the translator overlay.
