@@ -2,6 +2,8 @@ import 'routes_config.dart';
 
 Route<dynamic> generateRoute(RouteSettings settings) {
   final Map<String, WidgetBuilder> routes = {
+    '/splash': (_) => const SplashScreen(),
+    '/onboarding': (_) => const OnboardingScreen(),
     '/login': (_) => const LoginScreen(),
     '/translation-overlay': (_) => const TranslationScreen(),
     '/settings-overlay': (_) => const SettingsScreen(),

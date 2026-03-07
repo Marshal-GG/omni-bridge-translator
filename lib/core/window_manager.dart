@@ -55,6 +55,16 @@ Future<void> setToLoginPosition() async {
   await windowManager.setAlwaysOnTop(true);
 }
 
+/// Sets the window to a centered dialog style for Startup/Splash
+Future<void> setToStartupPosition() async {
+  await windowManager.setResizable(true);
+  appWindow.minSize = const Size(600, 500);
+  await windowManager.setMinimumSize(const Size(600, 500));
+  await windowManager.setSize(const Size(880, 700));
+  await windowManager.center();
+  await windowManager.setAlwaysOnTop(true);
+}
+
 /// Sets window to the Account screen size (same as login)
 Future<void> setToAccountPosition() async {
   await windowManager.setResizable(true);

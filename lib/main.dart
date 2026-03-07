@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'core/routes/routes_config.dart';
@@ -26,30 +27,24 @@ void main(List<String> args) async {
           '[SingleInstance] Second window detected with args: $newArgs',
         );
         if (newArgs.isNotEmpty) {
-          final potentialUri = Uri.tryParse(newArgs.last);
-          debugPrint(
-            '[SingleInstance] Potential URI from second window: $potentialUri',
-          );
-          if (potentialUri != null) {
-            final isGoogleRedirect =
-                potentialUri.path.contains('oauth2redirect') ||
-                potentialUri.host == 'oauth2redirect';
-            final isAppRedirect = potentialUri.scheme == 'omni-bridge';
+          for (final arg in newArgs) {
+            String sanitized = arg.replaceAll('"', '').trim();
+            if (sanitized.isEmpty) continue;
 
-            if (isGoogleRedirect || isAppRedirect) {
-              debugPrint(
-                '[SingleInstance] Handling auth redirect for URI: $potentialUri',
-              );
-              AuthService.instance.handleAuthRedirect(potentialUri);
-            } else {
-              debugPrint(
-                '[SingleInstance] URI did not match redirect patterns: $potentialUri',
-              );
+            final potentialUri = Uri.tryParse(sanitized);
+            if (potentialUri != null && potentialUri.hasScheme) {
+              final uriStr = potentialUri.toString();
+              final isGoogleRedirect = uriStr.contains('oauth2redirect');
+              final isAppRedirect = potentialUri.scheme == 'omni-bridge';
+
+              if (isGoogleRedirect || isAppRedirect) {
+                debugPrint(
+                  '[SingleInstance] Found matching redirect URI in args: $potentialUri',
+                );
+                AuthService.instance.handleAuthRedirect(potentialUri);
+                break; // Found it
+              }
             }
-          } else {
-            debugPrint(
-              '[SingleInstance] Could not parse URI from newArgs.last: ${newArgs.last}',
-            );
           }
         } else {
           debugPrint(
@@ -117,8 +112,8 @@ void main(List<String> args) async {
   // 1. Handle links while the app is already running
   appLinks.uriLinkStream.listen((uri) {
     debugPrint('[DeepLink] Stream received: $uri');
-    final isGoogleRedirect =
-        uri.path.contains('oauth2redirect') || uri.host == 'oauth2redirect';
+    final uriStr = uri.toString();
+    final isGoogleRedirect = uriStr.contains('oauth2redirect');
     final isAppRedirect = uri.scheme == 'omni-bridge';
 
     if (isGoogleRedirect || isAppRedirect) {
@@ -132,9 +127,8 @@ void main(List<String> args) async {
     final initialUri = await appLinks.getInitialLink();
     if (initialUri != null) {
       debugPrint('[DeepLink] Initial URI caught: $initialUri');
-      final isGoogleRedirect =
-          initialUri.path.contains('oauth2redirect') ||
-          initialUri.host == 'oauth2redirect';
+      final uriStr = initialUri.toString();
+      final isGoogleRedirect = uriStr.contains('oauth2redirect');
       final isAppRedirect = initialUri.scheme == 'omni-bridge';
 
       if (isGoogleRedirect || isAppRedirect) {
@@ -149,7 +143,17 @@ void main(List<String> args) async {
   // Log App Launch Strategy
   TrackingService.instance.logEvent('App Started (Dart Main)');
 
-  runApp(const MyApp());
+  // Determine initial route
+  final prefs = await SharedPreferences.getInstance();
+  final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
+  final isLoggedIn = AuthService.instance.isLoggedIn;
+
+  String initialRoute = '/splash';
+  if (hasSeenOnboarding && isLoggedIn) {
+    initialRoute = '/translation-overlay';
+  }
+
+  runApp(MyApp(initialRoute: initialRoute));
 
   // Configure the main window once it is ready
   doWhenWindowReady(() {
