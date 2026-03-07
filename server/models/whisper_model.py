@@ -185,6 +185,10 @@ class WhisperModel:
         try:
             self._ensure_loaded()
             audio_np = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+            
+            if audio_np.size == 0:
+                return None, None
+                
             if sample_rate != 16000:
                 import resampy
                 audio_np = resampy.resample(audio_np, sample_rate, 16000)
@@ -198,7 +202,7 @@ class WhisperModel:
             if transcript:
                 latency_ms = int((time.monotonic() - start) * 1000)
                 stats = {
-                    "engine": "whisper",
+                    "engine": "whisper-asr",
                     "model": f"whisper-{self._size}",
                     "latency_ms": latency_ms,
                     "input_chars": len(transcript),
@@ -206,5 +210,7 @@ class WhisperModel:
                 }
             return transcript, stats
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"[WhisperModel] Transcribe error ({self._size}): {e}")
             return None, None

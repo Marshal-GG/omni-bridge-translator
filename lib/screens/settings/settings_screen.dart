@@ -60,6 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       const Divider(height: 1, color: Colors.white10),
                       Container(
                         color: const Color(0xFF1A1A1A),
+                        height: 38, // Added fixed height to shrink tabs
                         child: Center(
                           child: SizedBox(
                             width: 500,
@@ -70,9 +71,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                               labelColor: Colors.tealAccent,
                               unselectedLabelColor: Colors.white38,
                               labelStyle: const TextStyle(
-                                fontSize: 12,
+                                fontSize: 11, // Shrunk from 12
                                 fontWeight: FontWeight.w600,
                               ),
+                              labelPadding: EdgeInsets.zero, // Compact padding
                               tabs: const [
                                 Tab(text: 'Translation'),
                                 Tab(text: 'Display'),

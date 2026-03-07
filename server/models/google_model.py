@@ -32,7 +32,7 @@ class GoogleModel:
             result = self._translators[key].translate(text)
             latency_ms = int((time.monotonic() - start) * 1000)
             stats = {
-                "engine": "google",
+                "engine": "google-translate",
                 "model": "google-translate",
                 "latency_ms": latency_ms,
                 "prompt_tokens": 0,
@@ -46,7 +46,7 @@ class GoogleModel:
             print(f"Google Translate error: {e}")
             latency_ms = int((time.monotonic() - start) * 1000)
             return None, {
-                "engine": "google",
+                "engine": "google-translate",
                 "model": "google-translate",
                 "latency_ms": latency_ms,
                 "error": str(e),

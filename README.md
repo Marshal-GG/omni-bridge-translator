@@ -44,13 +44,13 @@ The Python backend requires its own virtual environment and dependencies.
    ```ps1
    cd server
    ```
-2. Create a virtual environment named `server_env`:
+2. Create a virtual environment named `.venv`:
    ```ps1
-   python -m venv server_env
+   python -m venv .venv
    ```
 3. Activate the environment:
    ```ps1
-   .\server_env\Scripts\activate
+   .\.venv\Scripts\activate
    ```
 4. Install the required dependencies:
    ```ps1
@@ -68,7 +68,7 @@ The easiest way to start the backend is to double-click the **`start_server.bat`
 Alternatively, if you want to run it from the command line, make sure your virtual environment is activated:
 ```ps1
 cd server
-.\server_env\Scripts\activate
+.\.venv\Scripts\activate
 python main.py
 ```
 *(Note: Replace `main.py` with your actual entry point script, e.g. `flutter_server.py`)*
@@ -89,7 +89,7 @@ To create a standalone installer that bundles both the Python server and the Flu
    Open a terminal in the `server` directory, activate the environment, and use PyInstaller.
    ```ps1
    cd server
-   .\server_env\Scripts\activate
+   .\.venv\Scripts\activate
    pyinstaller --noconfirm --clean omni_bridge_server.spec
    ```
    This generates `dist/omni_bridge_server.exe`.
@@ -115,13 +115,25 @@ To create a standalone installer that bundles both the Python server and the Flu
 8. Select your **Speech Recognition** model:
    - **Online (Google)**: Standard fast ASR.
    - **NVIDIA Riva**: High-performance multilingual ASR (requires Riva key).
-   - **Offline (Whisper)**: Run locally without internet. Supports **Tiny, Base, Small, and Medium** models which can be downloaded directly from the settings.
+   - **Offline (Whisper)**: Run locally without internet. Supports **Tiny, Base, Small, and Medium** models. Models are downloaded and cached dynamically from the settings panel.
 9. Select your **Translation Engine**:
    - **Google Translate**: Standard online translation.
    - **MyMemory**: Alternative free translation service.
    - **Llama / Riva**: AI-powered translation (requires API keys).
 10. Select your **Target Language**. You can select **Original Source (Transcription)** to bypass translation and only transcribe the speech.
 11. Close the settings panel. Omni Bridge: Live AI Translator will connect to the server and begin displaying live translations or transcriptions for any audio playing on your PC (or from your microphone).
+
+### 🚀 Auto-Update System
+Omni Bridge features a built-in update checker that hits the GitHub API to detect new releases.
+- If a new version is available, a badge/prompt will appear in the overlay header.
+- You can manually check for updates in the **About Screen**.
+- For developers: see [GitHub Releases Guide](docs/github_releases_guide.md) for publishing new versions.
+
+### ℹ️ About Screen
+Access the **About Screen** via the info icon in the overlay.
+- View version information and check for updates.
+- See a breakdown of app features and the technology stack.
+- Find quick links to the GitHub repository, issue tracker, and support email.
 
 ### 👤 Account Screen
 - Access your account via the **person icon** on the translator overlay.

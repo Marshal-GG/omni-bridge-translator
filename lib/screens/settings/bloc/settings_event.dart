@@ -122,4 +122,6 @@ class UpdateAudioLevelsEvent extends SettingsEvent {
   List<Object?> get props => [inputVolume, outputVolume];
 }
 
+class ResetIODefaultsEvent extends SettingsEvent {}
+
 class SaveSettingsEvent extends SettingsEvent {}

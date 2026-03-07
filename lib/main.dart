@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,6 +10,7 @@ import 'core/tray_manager.dart';
 import 'core/window_manager.dart';
 import 'firebase_options.dart';
 import 'core/services/tracking_service.dart';
+import 'core/services/update_service.dart';
 
 import 'package:protocol_handler/protocol_handler.dart';
 import 'package:app_links/app_links.dart';
@@ -146,7 +148,16 @@ void main(List<String> args) async {
   // Determine initial route
   final prefs = await SharedPreferences.getInstance();
   final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
-  final isLoggedIn = AuthService.instance.isLoggedIn;
+
+  // Wait for initial auth state to be resolved (useful for desktop where it might take a moment to load from storage)
+  try {
+    await FirebaseAuth.instance.authStateChanges().first.timeout(const Duration(seconds: 1));
+  } catch (_) {
+    // Timeout, proceed with current state
+  }
+
+  // Use FirebaseAuth directly since AuthService might not have initialized its ValueNotifier yet
+  final isLoggedIn = FirebaseAuth.instance.currentUser != null;
 
   String initialRoute = '/splash';
   if (hasSeenOnboarding && isLoggedIn) {
@@ -158,5 +169,15 @@ void main(List<String> args) async {
   // Configure the main window once it is ready
   doWhenWindowReady(() {
     configureMainWindow();
+  });
+
+  // Silent background update check — fire and forget
+  UpdateService.instance.checkForUpdate().then((result) {
+    if (result.status == UpdateStatus.available) {
+      UpdateNotifier.instance.setAvailable(
+        result.latestVersion!,
+        result.releaseUrl!,
+      );
+    }
   });
 }

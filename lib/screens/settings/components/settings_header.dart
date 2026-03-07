@@ -10,7 +10,18 @@ Widget buildSettingsHeader(BuildContext context) {
     height: 32,
     child: Row(
       children: [
-        const SizedBox(width: 16),
+        IconButton(
+          onPressed: () async {
+            await setToTranslationPosition();
+            if (context.mounted) {
+              context.read<TranslationBloc>().add(ToggleSettingsEvent());
+            }
+          },
+          icon: const Icon(Icons.arrow_back_rounded, size: 16, color: Colors.white38),
+          splashRadius: 16,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        ),
         const Icon(Icons.settings_rounded, size: 14, color: Colors.white38),
         const SizedBox(width: 8),
         const Text(

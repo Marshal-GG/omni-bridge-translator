@@ -84,6 +84,8 @@ class SettingsState extends Equatable {
     double? tempOpacity,
     int? tempInputDeviceIndex,
     int? tempOutputDeviceIndex,
+    bool clearInputDevice = false,
+    bool clearOutputDevice = false,
     double? tempDesktopVolume,
     double? tempMicVolume,
     String? tempTranslationModel,
@@ -104,9 +106,12 @@ class SettingsState extends Equatable {
       tempFontSize: tempFontSize ?? this.tempFontSize,
       tempIsBold: tempIsBold ?? this.tempIsBold,
       tempOpacity: tempOpacity ?? this.tempOpacity,
-      tempInputDeviceIndex: tempInputDeviceIndex ?? this.tempInputDeviceIndex,
-      tempOutputDeviceIndex:
-          tempOutputDeviceIndex ?? this.tempOutputDeviceIndex,
+      tempInputDeviceIndex: clearInputDevice
+          ? null
+          : (tempInputDeviceIndex ?? this.tempInputDeviceIndex),
+      tempOutputDeviceIndex: clearOutputDevice
+          ? null
+          : (tempOutputDeviceIndex ?? this.tempOutputDeviceIndex),
       tempDesktopVolume: tempDesktopVolume ?? this.tempDesktopVolume,
       tempMicVolume: tempMicVolume ?? this.tempMicVolume,
       tempTranslationModel: tempTranslationModel ?? this.tempTranslationModel,
