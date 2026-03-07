@@ -224,9 +224,9 @@ class AudioCapture:
         # Primary: flush every MAX_CHUNK_DURATION seconds (guaranteed captions)
         # Secondary: flush early when silence follows speech (lower latency)
         SILENCE_THRESHOLD = 300      # RMS below this = silence  (tune if needed)
-        SILENCE_DURATION  = 0.35     # seconds of silence to trigger early flush
-        MIN_SPEECH_DURATION = 0.4    # don't flush if chunk is shorter than this
-        MAX_CHUNK_DURATION  = 2.0    # always flush after this many seconds
+        SILENCE_DURATION  = 0.2      # seconds of silence to trigger early flush
+        MIN_SPEECH_DURATION = 0.3    # don't flush if chunk is shorter than this
+        MAX_CHUNK_DURATION  = 1.0    # always flush after this many seconds
 
         silence_frames_needed = int(native_rate * SILENCE_DURATION)
         min_speech_frames     = int(native_rate * MIN_SPEECH_DURATION)

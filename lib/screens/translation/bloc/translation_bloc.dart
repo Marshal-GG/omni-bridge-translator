@@ -7,6 +7,7 @@ import 'translation_event.dart';
 import 'translation_state.dart';
 import '../../../core/services/asr_ws_client.dart';
 import '../../../core/services/tracking_service.dart';
+import '../../../core/services/asr_text_controller.dart';
 import '../../../core/window_manager.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
@@ -152,8 +153,6 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     CaptionTextChangedEvent event,
     Emitter<TranslationState> emit,
   ) async {
-    if (!state.isShrunk) return;
-
     const double hPad = 16 * 2;
     const double vPad = 20;
     const double minHeight = 60.0;
@@ -169,18 +168,32 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         ),
       ),
       textDirection: TextDirection.ltr,
-      maxLines: 2,
     )..layout(maxWidth: availableWidth);
 
-    final lineCount = painter.computeLineMetrics().length.clamp(1, 2);
+    final metrics = painter.computeLineMetrics();
+    final lineCount = metrics.length;
 
-    if (lineCount != _lastLineCount) {
-      _lastLineCount = lineCount;
-      final newHeight = (state.activeFontSize * lineCount * 1.6 + vPad).clamp(
-        minHeight,
-        300.0,
-      );
-      await windowManager.setSize(Size(event.windowWidth, newHeight));
+    // 1. Handle window resizing for SHRUNK mode
+    if (state.isShrunk) {
+      final displayLineCount = lineCount.clamp(1, 2);
+      if (displayLineCount != _lastLineCount) {
+        _lastLineCount = displayLineCount;
+        final newHeight = (state.activeFontSize * displayLineCount * 1.6 + vPad)
+            .clamp(minHeight, 300.0);
+        await windowManager.setSize(Size(event.windowWidth, newHeight));
+      }
+    }
+
+    // 2. Handle line shifting/trimming if total lines > 2
+    if (lineCount > 2) {
+      // Find the end index of the first line to trim it
+      final firstLineEnd = painter
+          .getLineBoundary(const TextPosition(offset: 0))
+          .end;
+      if (firstLineEnd > 0) {
+        // We trim by adding 1 to account for the space separator in the controller
+        asrTextController.trimBy(firstLineEnd + 1);
+      }
     }
   }
 
@@ -195,13 +208,19 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       double shrinkHeight = state.activeFontSize * 3 + 30;
       if (shrinkHeight < 70) shrinkHeight = 70;
 
+      // bitsdojo_window alignment
+      appWindow.alignment = Alignment.bottomCenter;
+      await windowManager.setAlwaysOnTop(true);
       appWindow.minSize = const Size(100, 20);
       await windowManager.setMinimumSize(const Size(100, 20));
       await windowManager.setSize(Size(730, shrinkHeight));
     } else {
-      appWindow.minSize = const Size(300, 150);
-      await windowManager.setMinimumSize(const Size(400, 150));
-      await windowManager.setSize(const Size(730, 150));
+      appWindow.minSize = const Size(
+        300,
+        250,
+      ); // Increased height to allow popups to "pop out"
+      await windowManager.setMinimumSize(const Size(400, 250));
+      await windowManager.setSize(const Size(730, 250));
     }
   }
 
