@@ -48,6 +48,11 @@ This usually means the `redirect_uri` sent by the app doesn't *exactly* match wh
 This happens if `WindowsSingleInstance` fails to communicate.
 - **Solution:** Ensure the "Pipe Name" in `main.dart` (`omni_bridge_translator_instance`) is unique and consistent. Check for hidden background processes of the app and close them.
 
-### 4. Code Extraction Failure
+### 4. "Pipe create failed" / Logs completely missing after redirect
+If you see `Pipe create failed` in the terminal or if the `[Auth]` logs don't show up at all when the browser redirects:
+- **Cause:** This usually happens when you **Hot Restart** the Flutter debugger, or if the app previously crashed and left a background process running. The `windows_single_instance` named pipe isn't cleaned up, so the new instance fails to connect to it, and args are sent into the void.
+- **Solution:** Completely stop the debug session. Check Task Manager for ghost `omni_bridge.exe` background processes. Then start a fresh **Cold Start** debug session (F5).
+
+### 5. Code Extraction Failure
 If the app receives the link but fails to log in, it might be unable to "find" the `code` parameter.
 - **Solution:** Check the terminal logs. `AuthService` now includes a regex fallback to find `code=` in the raw string even if the URI parser fails.
