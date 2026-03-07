@@ -38,14 +38,17 @@ class SpeechRecognitionModel:
         audio_bytes: bytes,
         sample_rate: int,
         source_lang: str = "auto",
-    ) -> str | None:
+    ) -> tuple[str | None, dict | None]:
         """
         Transcribe raw PCM mono int16 audio to text.
         source_lang: ISO 639-1 code (e.g. 'en', 'hi') or 'auto' for auto-detect.
-        Returns transcript string, or None if nothing was recognised.
+        Returns a tuple of (transcript_string, usage_stats_dict), or (None, None) if nothing was recognised.
         """
         if not audio_bytes:
-            return None
+            return None, None
+        
+        import time
+        start = time.monotonic()
 
         try:
             # Wrap raw PCM in a WAV container
@@ -60,17 +63,27 @@ class SpeechRecognitionModel:
             with sr.AudioFile(wav_buf) as source:
                 audio = self._recognizer.record(source)
 
-            # Pass the BCP-47 language tag; None = Google auto-detect
             lang_tag = None if source_lang == "auto" else _LANG_MAP.get(source_lang)
             result = self._recognizer.recognize_google(audio, language=lang_tag)
-            return result.strip() if result else None
+            transcript = result.strip() if result else None
+            stats = None
+            if transcript:
+                latency_ms = int((time.monotonic() - start) * 1000)
+                stats = {
+                    "engine": "google",
+                    "model": "speech_recognition",
+                    "latency_ms": latency_ms,
+                    "input_chars": len(transcript),
+                    "output_chars": 0,
+                }
+            return transcript, stats
 
         except sr.UnknownValueError:
             # No speech detected — not an error
-            return None
+            return None, None
         except sr.RequestError as e:
             print(f"[SpeechRecognition] Google API error: {e}")
-            return None
+            return None, None
         except Exception as e:
             print(f"[SpeechRecognition] Unexpected error: {e}")
-            return None
+            return None, None

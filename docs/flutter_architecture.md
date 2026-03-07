@@ -38,7 +38,7 @@ Services handle the business logic and external communication:
 - **`TranslationService`**: Acts as the bridge between the Flutter app and the Python server. It triggers the `/start` and `/stop` REST endpoints on the Python server.
 - **`AsrWsClient`**: Manages the WebSocket connection (`ws://127.0.0.1:8000/ws/captions`) to the Python server to receive live transcription and translation updates.
 - **`TrackingService`**: Responsible for logging usage analytics, session data, and translation metadata to Firebase Firestore and Realtime Database.
-- **`AuthService`**: Handles interaction with Firebase Authentication and deep-linking for desktop browser-based Google Sign-In.
+- **`AuthService`**: Handles interaction with Firebase Authentication and custom URL scheme (`omni-bridge://`) deep-linking for desktop browser-based Google Sign-In.
 
 ### 3. UI Features (`lib/screens/`)
 - **Settings Screen**: Allows the user to select their preferred `transcriptionModel` (e.g., Google or Whisper), `translationModel` (e.g., Llama, Riva, Google, MyMemory), target languages, and input/output audio devices.

@@ -69,22 +69,38 @@ class RivaModel:
 
     # ── ASR ──────────────────────────────────────────────────────────────────
 
-    def transcribe(self, audio_bytes: bytes, config) -> str | None:
+    def transcribe(self, audio_bytes: bytes, config) -> tuple[str | None, dict | None]:
         """Run offline ASR and return the transcript, or None if empty."""
+        import time
+        start = time.monotonic()
+        
         # Route to the appropriate model function ID
         lang = config.language_code
         if lang in ("multi", "bn-IN", "hi-IN", "en-US"):
             service = getattr(self, "asr_parakeet", None)
+            model_name = "riva-parakeet"
         else:
             service = getattr(self, "asr_canary", None)
+            model_name = "riva-canary"
 
         if not service:
-            return None
+            return None, None
 
         response = service.offline_recognize(audio_bytes, config)
+        transcript = None
         if response and response.results and response.results[0].alternatives:
-            return response.results[0].alternatives[0].transcript.strip() or None
-        return None
+            transcript = response.results[0].alternatives[0].transcript.strip() or None
+            
+        stats = None
+        if transcript:
+            stats = {
+                "engine": "riva",
+                "model": model_name,
+                "latency_ms": int((time.monotonic() - start) * 1000),
+                "input_chars": len(transcript),
+                "output_chars": 0,
+            }
+        return transcript, stats
 
     def make_asr_config(self, sample_rate: int, lang: str):
         return riva.client.RecognitionConfig(

@@ -121,13 +121,23 @@ def caption_callback(text, is_error, is_final=True, original_text=None, usage_st
         asyncio.run_coroutine_threadsafe(broadcast(msg), _event_loop)
         # Emit usage stats as a separate message so Flutter can log them independently
         if usage_stats and not is_error and is_final:
-            stats_msg = {
-                "type": "usage_stats",
-                "source_lang": current_source_lang,
-                "target_lang": current_target_lang,
-                **usage_stats,
-            }
-            asyncio.run_coroutine_threadsafe(broadcast(stats_msg), _event_loop)
+            if isinstance(usage_stats, list):
+                for stat in usage_stats:
+                    stats_msg = {
+                        "type": "usage_stats",
+                        "source_lang": current_source_lang,
+                        "target_lang": current_target_lang,
+                        **stat,
+                    }
+                    asyncio.run_coroutine_threadsafe(broadcast(stats_msg), _event_loop)
+            else:
+                stats_msg = {
+                    "type": "usage_stats",
+                    "source_lang": current_source_lang,
+                    "target_lang": current_target_lang,
+                    **usage_stats,
+                }
+                asyncio.run_coroutine_threadsafe(broadcast(stats_msg), _event_loop)
 
 
 def audio_poll_loop():

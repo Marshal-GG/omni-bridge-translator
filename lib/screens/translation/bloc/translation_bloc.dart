@@ -209,7 +209,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       if (shrinkHeight < 70) shrinkHeight = 70;
 
       // bitsdojo_window alignment
-      appWindow.alignment = Alignment.bottomCenter;
+      // Removed forced alignment to keep window where it was
       await windowManager.setAlwaysOnTop(true);
       appWindow.minSize = const Size(100, 20);
       await windowManager.setMinimumSize(const Size(100, 20));
@@ -217,10 +217,10 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     } else {
       appWindow.minSize = const Size(
         300,
-        250,
-      ); // Increased height to allow popups to "pop out"
-      await windowManager.setMinimumSize(const Size(400, 250));
-      await windowManager.setSize(const Size(730, 250));
+        150,
+      ); // Increased width, consistent height
+      await windowManager.setMinimumSize(const Size(400, 150));
+      await windowManager.setSize(const Size(730, 150));
     }
   }
 

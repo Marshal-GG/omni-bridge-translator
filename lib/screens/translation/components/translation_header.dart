@@ -31,11 +31,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
           splashRadius: 16,
         ),
         PopupMenuButton<String>(
-          icon: Icon(
-            state.isSettingsOpen ? Icons.close : Icons.settings,
-            size: 14,
-            color: Colors.white54,
-          ),
+          icon: const Icon(Icons.settings, size: 14, color: Colors.white54),
           tooltip: 'Menu',
           offset: const Offset(0, 32),
           position: PopupMenuPosition.under,
@@ -43,7 +39,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
           elevation: 12,
           constraints: const BoxConstraints(),
           menuPadding: EdgeInsets
-              .zero, // Remove outer menu padding so icons control their own spacing
+              .zero, 
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
             side: const BorderSide(color: Colors.white10),
@@ -60,13 +56,13 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                     children: [
                       // Config icon
                       Tooltip(
-                        message: state.isSettingsOpen
-                            ? 'Close Config'
-                            : 'Configuration',
+                        message: 'Configuration',
                         child: InkWell(
                           onTap: () {
                             Navigator.pop(context);
-                            bloc.add(ToggleSettingsEvent());
+                            if (!state.isSettingsOpen) {
+                              bloc.add(ToggleSettingsEvent());
+                            }
                           },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
@@ -74,9 +70,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                               vertical: 10,
                             ),
                             child: Icon(
-                              state.isSettingsOpen
-                                  ? Icons.close
-                                  : Icons.settings,
+                              Icons.handyman,
                               size: 18,
                               color: Colors.tealAccent,
                             ),

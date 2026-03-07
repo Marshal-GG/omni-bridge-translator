@@ -175,9 +175,13 @@ class WhisperModel:
                 self._loaded_size = self._size
                 print(f"[WhisperModel] {self._size} model loaded.")
 
-    def transcribe(self, audio_bytes: bytes, sample_rate: int, source_lang: str = "auto") -> str | None:
+    def transcribe(self, audio_bytes: bytes, sample_rate: int, source_lang: str = "auto") -> tuple[str | None, dict | None]:
         if not self.is_downloaded():
-            return None
+            return None, None
+        
+        import time
+        start = time.monotonic()
+        
         try:
             self._ensure_loaded()
             audio_np = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
@@ -189,7 +193,18 @@ class WhisperModel:
                 kwargs["language"] = source_lang
             result = self._model.transcribe(audio_np, **kwargs)
             text = result.get("text", "").strip()
-            return text if text else None
+            transcript = text if text else None
+            stats = None
+            if transcript:
+                latency_ms = int((time.monotonic() - start) * 1000)
+                stats = {
+                    "engine": "whisper",
+                    "model": f"whisper-{self._size}",
+                    "latency_ms": latency_ms,
+                    "input_chars": len(transcript),
+                    "output_chars": 0,
+                }
+            return transcript, stats
         except Exception as e:
             print(f"[WhisperModel] Transcribe error ({self._size}): {e}")
-            return None
+            return None, None
