@@ -10,7 +10,7 @@ Widget buildSettingsHeader(BuildContext context) {
     height: 32,
     child: Row(
       children: [
-        const SizedBox(width: 12),
+        const SizedBox(width: 16),
         const Icon(Icons.settings_rounded, size: 14, color: Colors.white38),
         const SizedBox(width: 8),
         const Text(

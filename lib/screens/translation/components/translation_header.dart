@@ -38,8 +38,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
           color: const Color(0xFF1E1E1E),
           elevation: 12,
           constraints: const BoxConstraints(),
-          menuPadding: EdgeInsets
-              .zero, 
+          menuPadding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
             side: const BorderSide(color: Colors.white10),

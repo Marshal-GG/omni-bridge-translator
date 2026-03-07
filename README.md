@@ -106,27 +106,30 @@ To create a standalone installer that bundles both the Python server and the Flu
 ## 💡 Usage
 1. Make sure the Python server is running (`start_server.bat`).
 2. Launch the Omni Bridge: Live AI Translator Flutter app.
-3. Sign in with **Google**, **Email/Password**, or continue as a **Guest**. (Google Sign-In uses your system browser and the `omni-bridge://` custom URL scheme).
-4. Click the **Gear (Settings)** icon in the top right of the overlay.
-5. (Optional) Toggle **Microphone Translation** to translate your mic input instead of system audio.
-6. Select your **Speech Recognition** model:
+3. (First Launch) You will see a **Splash Screen** and a multi-slide **Onboarding Tutorial** explaining the key features.
+4. Sign in with **Google**, **Email/Password**, or continue as a **Guest**.
+   - **Google Sign-In**: Uses your system browser. If the redirect fails, see [Google Auth Troubleshooting](docs/google_auth_troubleshooting.md).
+5. On the **Login Screen**, you can click the **"View Tutorial"** button at any time to re-access the onboarding slides.
+6. Click the **Gear (Settings)** icon in the top right of the overlay.
+7. (Optional) Toggle **Microphone Translation** to translate your mic input instead of system audio.
+8. Select your **Speech Recognition** model:
    - **Online (Google)**: Standard fast ASR.
    - **NVIDIA Riva**: High-performance multilingual ASR (requires Riva key).
    - **Offline (Whisper)**: Run locally without internet. Supports **Tiny, Base, Small, and Medium** models which can be downloaded directly from the settings.
-7. Select your **Translation Engine**:
+9. Select your **Translation Engine**:
    - **Google Translate**: Standard online translation.
    - **MyMemory**: Alternative free translation service.
    - **Llama / Riva**: AI-powered translation (requires API keys).
-8. Select your **Target Language**. You can select **Original Source (Transcription)** to bypass translation and only transcribe the speech.
-9. Close the settings panel. Omni Bridge: Live AI Translator will connect to the server and begin displaying live translations or transcriptions for any audio playing on your PC (or from your microphone).
+10. Select your **Target Language**. You can select **Original Source (Transcription)** to bypass translation and only transcribe the speech.
+11. Close the settings panel. Omni Bridge: Live AI Translator will connect to the server and begin displaying live translations or transcriptions for any audio playing on your PC (or from your microphone).
 
-### � Account Screen
+### 👤 Account Screen
 - Access your account via the **person icon** on the translator overlay.
 - Displays your **display name**, **email**, and a badge showing your sign-in method (e.g. *Email Account*, *Google Account*, or *Guest Mode*).
 - Edit your **display name** and save it directly from the account panel.
 - The back arrow in the **top-left of the header** returns you to the translator overlay.
 
-## �📦 Dependencies
+## 📦 Dependencies
 
 **Flutter (`pubspec.yaml`)**:
 - `web_socket_channel`: WebSocket communication.

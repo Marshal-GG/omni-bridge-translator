@@ -71,8 +71,10 @@ Widget buildOverlayContent(BuildContext context) {
             ),
             child: Column(
               children: [
-                buildTranslationHeader(context, state),
-                const Divider(height: 1),
+                if (!state.isSettingsOpen) ...[
+                  buildTranslationHeader(context, state),
+                  const Divider(height: 1, color: Colors.white12),
+                ],
                 Expanded(
                   child: state.isSettingsOpen
                       ? const SettingsScreen()

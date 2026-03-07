@@ -6,6 +6,7 @@ import 'bloc/settings_event.dart';
 import 'bloc/settings_state.dart';
 
 import 'components/settings_footer.dart';
+import 'components/settings_header.dart';
 import 'components/input_output_tab.dart';
 import 'components/languages_tab.dart';
 import 'components/display_tab.dart';
@@ -55,23 +56,30 @@ class _SettingsScreenState extends State<SettingsScreen>
 
                   return Column(
                     children: [
+                      buildSettingsHeader(context),
+                      const Divider(height: 1, color: Colors.white10),
                       Container(
                         color: const Color(0xFF1A1A1A),
-                        child: TabBar(
-                          controller: _tabController,
-                          indicatorColor: Colors.tealAccent,
-                          indicatorWeight: 2,
-                          labelColor: Colors.tealAccent,
-                          unselectedLabelColor: Colors.white38,
-                          labelStyle: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                        child: Center(
+                          child: SizedBox(
+                            width: 500,
+                            child: TabBar(
+                              controller: _tabController,
+                              indicatorColor: Colors.tealAccent,
+                              indicatorWeight: 2,
+                              labelColor: Colors.tealAccent,
+                              unselectedLabelColor: Colors.white38,
+                              labelStyle: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              tabs: const [
+                                Tab(text: 'Translation'),
+                                Tab(text: 'Display'),
+                                Tab(text: 'Input & Output'),
+                              ],
+                            ),
                           ),
-                          tabs: const [
-                            Tab(text: 'Input & Output'),
-                            Tab(text: 'Languages'),
-                            Tab(text: 'Display'),
-                          ],
                         ),
                       ),
                       Expanded(
@@ -80,22 +88,41 @@ class _SettingsScreenState extends State<SettingsScreen>
                           children: [
                             SingleChildScrollView(
                               padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                              child: buildInputOutputTab(context, state),
-                            ),
-                            SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  buildLanguagesTab(context, state),
-                                  const SizedBox(height: 28),
-                                  buildTranslationModelSelector(context, state),
-                                ],
+                              child: Center(
+                                child: SizedBox(
+                                  width: 500,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      buildLanguagesTab(context, state),
+                                      const SizedBox(height: 28),
+                                      buildTranslationModelSelector(
+                                        context,
+                                        state,
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                             SingleChildScrollView(
                               padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                              child: buildDisplayTab(context, state),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 500,
+                                  child: buildDisplayTab(context, state),
+                                ),
+                              ),
+                            ),
+                            SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 500,
+                                  child: buildInputOutputTab(context, state),
+                                ),
+                              ),
                             ),
                           ],
                         ),
