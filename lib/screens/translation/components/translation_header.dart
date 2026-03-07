@@ -21,42 +21,128 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
           style: const TextStyle(color: Colors.white70, fontSize: 12),
         ),
         const SizedBox(width: 15),
+        Expanded(child: MoveWindow()),
         IconButton(
+          icon: const Icon(Icons.compress, size: 14, color: Colors.white70),
+          onPressed: () => bloc.add(ToggleShrinkEvent()),
+          tooltip: 'Collapse to Captions',
+          padding: const EdgeInsets.all(8),
+          constraints: const BoxConstraints(),
+          splashRadius: 16,
+        ),
+        PopupMenuButton<String>(
           icon: Icon(
             state.isSettingsOpen ? Icons.close : Icons.settings,
             size: 14,
             color: Colors.white54,
           ),
-          onPressed: () => bloc.add(ToggleSettingsEvent()),
-        ),
-        Expanded(child: MoveWindow()),
-        IconButton(
-          icon: const Icon(Icons.compress, size: 14, color: Colors.white70),
-          onPressed: () => bloc.add(ToggleShrinkEvent()),
-          tooltip: 'Shrink to Captions Only',
-          padding: const EdgeInsets.all(8),
+          tooltip: 'Menu',
+          offset: const Offset(0, 32),
+          position: PopupMenuPosition.under,
+          color: const Color(0xFF1E1E1E),
+          elevation: 12,
           constraints: const BoxConstraints(),
-          splashRadius: 16,
-        ),
-        IconButton(
-          icon: const Icon(Icons.history, size: 14, color: Colors.white70),
-          onPressed: () => Navigator.pushNamed(context, '/history-panel'),
-          tooltip: 'Translation History',
-          padding: const EdgeInsets.all(8),
-          constraints: const BoxConstraints(),
-          splashRadius: 16,
-        ),
-        IconButton(
-          icon: const Icon(
-            Icons.manage_accounts_rounded,
-            size: 14,
-            color: Colors.white70,
+          menuPadding: EdgeInsets
+              .zero, // Remove outer menu padding so icons control their own spacing
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: Colors.white10),
           ),
-          onPressed: () => Navigator.pushNamed(context, '/account'),
-          tooltip: 'Account',
-          padding: const EdgeInsets.all(8),
-          constraints: const BoxConstraints(),
-          splashRadius: 16,
+          itemBuilder: (context) => [
+            PopupMenuItem<String>(
+              enabled: false,
+              padding: EdgeInsets.zero,
+              child: IntrinsicHeight(
+                child: Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Config icon
+                      Tooltip(
+                        message: state.isSettingsOpen
+                            ? 'Close Config'
+                            : 'Configuration',
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.pop(context);
+                            bloc.add(ToggleSettingsEvent());
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 10,
+                            ),
+                            child: Icon(
+                              state.isSettingsOpen
+                                  ? Icons.close
+                                  : Icons.settings,
+                              size: 18,
+                              color: Colors.tealAccent,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Divider
+                      const VerticalDivider(
+                        width: 1,
+                        thickness: 1,
+                        color: Colors.white12,
+                      ),
+                      // History icon
+                      Tooltip(
+                        message: 'History',
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.pushNamed(context, '/history-panel');
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 10,
+                            ),
+                            child: Icon(
+                              Icons.history,
+                              size: 18,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Divider
+                      const VerticalDivider(
+                        width: 1,
+                        thickness: 1,
+                        color: Colors.white12,
+                      ),
+                      // Account icon
+                      Tooltip(
+                        message: 'Account',
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.pushNamed(context, '/account');
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 10,
+                            ),
+                            child: Icon(
+                              Icons.manage_accounts_rounded,
+                              size: 18,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ), // Row
+                ), // Center
+              ), // IntrinsicHeight
+            ), // PopupMenuItem
+          ],
         ),
         MinimizeWindowButton(
           colors: WindowButtonColors(iconNormal: Colors.white),

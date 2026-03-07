@@ -137,7 +137,7 @@ class RivaModel:
         result = completion.choices[0].message.content.strip()
         # Strip common model preamble artifacts
         result = re.sub(
-            r'^(translation[:\s]+|translated text[:\s]+|here is.*?:|output[:\s]+|in [a-z]+[:\s]+|sure[!,\s]+)',
+            r'^(translation[:\s]+|translated text[:\s]+|here is.*?:|output[:\s]+|prompt[:\s]+|notes[:\s]+|p[:\s]+|in [a-z]+[:\s]+|sure[!,\s]+)',
             "",
             result,
             flags=re.IGNORECASE,

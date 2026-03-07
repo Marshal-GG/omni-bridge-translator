@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -8,6 +7,8 @@ import 'package:omni_bridge/core/constants/auth_html_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'tracking_service.dart';
 
 class AuthService {
@@ -22,6 +23,14 @@ class AuthService {
   Completer<String?>? _authCodeCompleter;
 
   void init() {
+    // We delay the actual initialization until after the first frame to ensure
+    // the platform channel and native bridge are fully ready on Windows.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initialize();
+    });
+  }
+
+  void _initialize() {
     // Inject the redirect URL if provided in the environment variables
     final redirectUrl = dotenv.env['AUTH_SUCCESS_REDIRECT_URL'] ?? '';
     final customHtml = customAuthSuccessHtml.replaceFirst(
@@ -43,19 +52,22 @@ class AuthService {
     _authStateSub = FirebaseAuth.instance.authStateChanges().listen((
       user,
     ) async {
-      currentUser.value = user;
-      if (user != null) {
-        if (!TrackingService.instance.hasActiveSession) {
-          await TrackingService.instance.startSession();
-          await TrackingService.instance.logEvent(
-            'App Opened (Restored Session)',
-          );
+      // Ensure state updates happen on the UI thread to avoid Windows threading errors
+      SchedulerBinding.instance.addPostFrameCallback((_) async {
+        currentUser.value = user;
+        if (user != null) {
+          if (!TrackingService.instance.hasActiveSession) {
+            await TrackingService.instance.startSession();
+            await TrackingService.instance.logEvent(
+              'App Opened (Restored Session)',
+            );
+          }
+        } else {
+          if (TrackingService.instance.hasActiveSession) {
+            await TrackingService.instance.endSession();
+          }
         }
-      } else {
-        if (TrackingService.instance.hasActiveSession) {
-          await TrackingService.instance.endSession();
-        }
-      }
+      });
     });
 
     // Attempt silent sign-in on init

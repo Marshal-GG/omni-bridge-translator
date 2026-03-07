@@ -41,7 +41,10 @@ Widget buildShrunkCaptionView(
 
                   return Text(
                     text.isEmpty ? 'Listening...' : text,
-                    textAlign: TextAlign.center,
+                    key: ValueKey(
+                      'shrunk_captions_${asrTextController.revision}',
+                    ),
+                    textAlign: TextAlign.left,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

@@ -341,7 +341,7 @@ async def start_capture(
             )
             audio_capture = AudioCapture(
                 sample_rate=16000,
-                chunk_duration=1.5,
+                chunk_duration=1.0,
                 use_mic=current_use_mic,
                 input_device_index=current_input_device_index,
                 output_device_index=current_output_device_index,
