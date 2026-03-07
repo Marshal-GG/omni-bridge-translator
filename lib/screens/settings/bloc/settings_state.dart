@@ -13,6 +13,8 @@ class SettingsState extends Equatable {
   final double tempDesktopVolume;
   final double tempMicVolume;
   final String tempAiEngine;
+  final String tempApiKey;
+  final String tempTranscriptionEngine;
 
   // Audio Levels (live during settings open)
   final double currentInputVolume;
@@ -37,6 +39,8 @@ class SettingsState extends Equatable {
     required this.tempDesktopVolume,
     required this.tempMicVolume,
     required this.tempAiEngine,
+    required this.tempApiKey,
+    required this.tempTranscriptionEngine,
     required this.currentInputVolume,
     required this.currentOutputVolume,
     required this.devicesLoading,
@@ -58,7 +62,9 @@ class SettingsState extends Equatable {
       tempOutputDeviceIndex: null,
       tempDesktopVolume: 1.0,
       tempMicVolume: 1.0,
-      tempAiEngine: 'riva',
+      tempAiEngine: 'google',
+      tempApiKey: '',
+      tempTranscriptionEngine: 'online',
       currentInputVolume: 0.0,
       currentOutputVolume: 0.0,
       devicesLoading: false,
@@ -81,6 +87,8 @@ class SettingsState extends Equatable {
     double? tempDesktopVolume,
     double? tempMicVolume,
     String? tempAiEngine,
+    String? tempApiKey,
+    String? tempTranscriptionEngine,
     double? currentInputVolume,
     double? currentOutputVolume,
     bool? devicesLoading,
@@ -102,6 +110,9 @@ class SettingsState extends Equatable {
       tempDesktopVolume: tempDesktopVolume ?? this.tempDesktopVolume,
       tempMicVolume: tempMicVolume ?? this.tempMicVolume,
       tempAiEngine: tempAiEngine ?? this.tempAiEngine,
+      tempApiKey: tempApiKey ?? this.tempApiKey,
+      tempTranscriptionEngine:
+          tempTranscriptionEngine ?? this.tempTranscriptionEngine,
       currentInputVolume: currentInputVolume ?? this.currentInputVolume,
       currentOutputVolume: currentOutputVolume ?? this.currentOutputVolume,
       devicesLoading: devicesLoading ?? this.devicesLoading,
@@ -127,6 +138,8 @@ class SettingsState extends Equatable {
     tempDesktopVolume,
     tempMicVolume,
     tempAiEngine,
+    tempApiKey,
+    tempTranscriptionEngine,
     currentInputVolume,
     currentOutputVolume,
     devicesLoading,

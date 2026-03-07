@@ -36,6 +36,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       useMic: state.activeUseMic,
       inputDeviceIndex: state.activeInputDeviceIndex,
       outputDeviceIndex: state.activeOutputDeviceIndex,
+      aiEngine: state.activeAiEngine,
+      apiKey: state.activeApiKey,
+      transcriptionEngine: state.activeTranscriptionEngine,
     );
 
     _captionSub = asrClient.captions?.listen((msg) {
@@ -84,6 +87,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       final opacity =
           (settings['opacity'] as num?)?.toDouble() ?? state.activeOpacity;
       final aiEngine = settings['aiEngine'] as String? ?? state.activeAiEngine;
+      final apiKey = settings['apiKey'] as String? ?? '';
+      final transcriptionEngine =
+          settings['transcriptionEngine'] as String? ?? 'online';
 
       // Update BLoC state natively
       emit(
@@ -95,6 +101,8 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           activeIsBold: isBold,
           activeOpacity: opacity,
           activeAiEngine: aiEngine,
+          activeApiKey: apiKey,
+          activeTranscriptionEngine: transcriptionEngine,
         ),
       );
 
@@ -107,7 +115,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         outputDeviceIndex: state.activeOutputDeviceIndex,
         desktopVolume: state.activeDesktopVolume,
         micVolume: state.activeMicVolume,
-        aiEngine: state.activeAiEngine,
+        aiEngine: aiEngine,
+        apiKey: apiKey,
+        transcriptionEngine: transcriptionEngine,
       );
     }
   }
@@ -204,6 +214,8 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         activeDesktopVolume: event.desktopVolume,
         activeMicVolume: event.micVolume,
         activeAiEngine: event.aiEngine,
+        activeApiKey: event.apiKey,
+        activeTranscriptionEngine: event.transcriptionEngine,
       ),
     );
 
@@ -223,6 +235,8 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       desktopVolume: event.desktopVolume,
       micVolume: event.micVolume,
       aiEngine: event.aiEngine,
+      apiKey: event.apiKey,
+      transcriptionEngine: event.transcriptionEngine,
     );
 
     // Sync settings to Firestore
@@ -234,6 +248,8 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       'isBold': event.isBold,
       'opacity': event.opacity,
       'aiEngine': event.aiEngine,
+      'apiKey': event.apiKey,
+      'transcriptionEngine': event.transcriptionEngine,
     });
 
     add(ToggleSettingsEvent());

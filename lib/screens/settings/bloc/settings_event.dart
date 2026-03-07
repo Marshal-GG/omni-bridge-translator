@@ -18,6 +18,8 @@ class UpdateTempSettingEvent extends SettingsEvent {
   final double? desktopVolume;
   final double? micVolume;
   final String? aiEngine;
+  final String? apiKey;
+  final String? transcriptionEngine;
   final bool clearInputDevice;
   final bool clearOutputDevice;
 
@@ -33,6 +35,8 @@ class UpdateTempSettingEvent extends SettingsEvent {
     this.desktopVolume,
     this.micVolume,
     this.aiEngine,
+    this.apiKey,
+    this.transcriptionEngine,
     this.clearInputDevice = false,
     this.clearOutputDevice = false,
   });
@@ -50,6 +54,8 @@ class UpdateTempSettingEvent extends SettingsEvent {
     desktopVolume,
     micVolume,
     aiEngine,
+    apiKey,
+    transcriptionEngine,
     clearInputDevice,
     clearOutputDevice,
   ];
@@ -69,6 +75,8 @@ class SyncTempSettingsEvent extends SettingsEvent {
   final double desktopVolume;
   final double micVolume;
   final String aiEngine;
+  final String? apiKey;
+  final String? transcriptionEngine;
 
   const SyncTempSettingsEvent({
     required this.targetLang,
@@ -82,6 +90,8 @@ class SyncTempSettingsEvent extends SettingsEvent {
     required this.desktopVolume,
     required this.micVolume,
     required this.aiEngine,
+    this.apiKey,
+    this.transcriptionEngine,
   });
 
   @override
@@ -97,6 +107,8 @@ class SyncTempSettingsEvent extends SettingsEvent {
     desktopVolume,
     micVolume,
     aiEngine,
+    apiKey,
+    transcriptionEngine,
   ];
 }
 

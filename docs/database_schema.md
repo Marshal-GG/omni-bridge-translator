@@ -71,7 +71,9 @@ Single document synced whenever the user saves settings.
   "fontSize": 22.0,
   "isBold": false,
   "opacity": 0.7,
-  "aiEngine": "riva",
+  "aiEngine": "google",
+  "apiKey": "",
+  "transcriptionEngine": "online",
   "inputDeviceIndex": 1,
   "outputDeviceIndex": 0,
   "micVolume": 1.0,
@@ -80,7 +82,22 @@ Single document synced whenever the user saves settings.
 }
 ```
 
----
+| Field | Type | Notes |
+|---|---|---|
+| `sourceLang` | `string` | ISO 639-1 source language code |
+| `targetLang` | `string` | ISO 639-1 target language code |
+| `useMic` | `bool` | `true` = mic input, `false` = desktop audio |
+| `fontSize` | `number` | Caption font size in pts |
+| `isBold` | `bool` | Caption bold toggle |
+| `opacity` | `number` | Window background opacity (0–1) |
+| `aiEngine` | `string` | Selected engine: `google` (default) \| `riva` \| `llama` |
+| `apiKey` | `string` | NVIDIA NIM API key (empty for Google Translate). Stored as plaintext; readable only by the owner via Firestore security rules. |
+| `transcriptionEngine` | `string` | ASR backend when Google engine is active: `online` (default) \| `whisper` |
+| `inputDeviceIndex` | `number?` | Mic device index (null = system default) |
+| `outputDeviceIndex` | `number?` | Desktop audio device index (null = default) |
+| `micVolume` | `number` | Mic capture gain (0–2) |
+| `desktopVolume` | `number` | Desktop audio gain (0–2) |
+| `lastUpdated` | `Timestamp` | Server timestamp of last save |
 
 ### 3. Model Usage Log — `users/{uid}/model_usage/{auto-id}`
 

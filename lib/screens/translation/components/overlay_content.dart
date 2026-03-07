@@ -27,7 +27,9 @@ Widget buildOverlayContent(BuildContext context) {
         prev.activeOutputDeviceIndex != curr.activeOutputDeviceIndex ||
         prev.activeDesktopVolume != curr.activeDesktopVolume ||
         prev.activeMicVolume != curr.activeMicVolume ||
-        prev.activeAiEngine != curr.activeAiEngine,
+        prev.activeAiEngine != curr.activeAiEngine ||
+        prev.activeApiKey != curr.activeApiKey ||
+        prev.activeTranscriptionEngine != curr.activeTranscriptionEngine,
     listener: (context, state) {
       if (state.autoDetectWarning != null) {
         showAutoDetectWarning(context, state);
@@ -46,6 +48,8 @@ Widget buildOverlayContent(BuildContext context) {
           desktopVolume: state.activeDesktopVolume,
           micVolume: state.activeMicVolume,
           aiEngine: state.activeAiEngine,
+          apiKey: state.activeApiKey,
+          transcriptionEngine: state.activeTranscriptionEngine,
         ),
       );
     },

@@ -48,6 +48,8 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
                   desktopVolume: state.tempDesktopVolume,
                   micVolume: state.tempMicVolume,
                   aiEngine: state.tempAiEngine,
+                  apiKey: state.tempApiKey,
+                  transcriptionEngine: state.tempTranscriptionEngine,
                 ),
               );
               await setToTranslationPosition();
