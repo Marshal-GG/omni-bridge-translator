@@ -5,7 +5,6 @@ import '../../translation/bloc/translation_event.dart';
 import '../bloc/settings_bloc.dart';
 import '../bloc/settings_event.dart';
 import '../bloc/settings_state.dart';
-import '../../../core/window_manager.dart';
 
 Widget buildSettingsFooter(BuildContext context, SettingsState state) {
   return Container(
@@ -17,12 +16,7 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
       children: [
         Expanded(
           child: OutlinedButton(
-            onPressed: () async {
-              await setToTranslationPosition();
-              if (context.mounted) {
-                context.read<TranslationBloc>().add(ToggleSettingsEvent());
-              }
-            },
+            onPressed: () => Navigator.pop(context),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.white70,
               side: const BorderSide(color: Colors.white24),
@@ -33,7 +27,7 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
         const SizedBox(width: 10),
         Expanded(
           child: ElevatedButton(
-            onPressed: () async {
+            onPressed: () {
               context.read<SettingsBloc>().add(SaveSettingsEvent());
               context.read<TranslationBloc>().add(
                 ApplySettingsEvent(
@@ -52,7 +46,8 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
                   transcriptionModel: state.tempTranscriptionModel,
                 ),
               );
-              await setToTranslationPosition();
+
+              Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.tealAccent,

@@ -24,6 +24,7 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   void initState() {
     super.initState();
+    setToAccountPosition();
     final user = AuthService.instance.currentUser.value;
     _nameController.text = user?.displayName ?? '';
   }
@@ -112,10 +113,8 @@ class _AccountScreenState extends State<AccountScreen> {
             children: [
               // ── Draggable Header ──────────────────────────────────────────
               buildAccountHeader(
-                onBack: () async {
-                  final nav = Navigator.of(context);
-                  await setToTranslationPosition();
-                  nav.pop();
+                onBack: () {
+                  Navigator.of(context).pop();
                 },
               ),
               const Divider(height: 1, color: Colors.white10),

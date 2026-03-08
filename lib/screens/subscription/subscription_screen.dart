@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:intl/intl.dart';
 import '../../core/services/subscription_service.dart';
+import '../../core/window_manager.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -17,6 +18,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   @override
   void initState() {
     super.initState();
+    setToSubscriptionPosition();
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -210,19 +212,72 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                         ],
                                       ),
                                     ),
-                                    ],
-                                  ),
+                                    const SizedBox(height: 32),
+                                    _buildFooter(context),
+                                    const SizedBox(height: 16),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                        );
-                      },
+                        ),
+                      );
+                    },
                     );
                   },
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooter(BuildContext context) {
+    return Wrap(
+      spacing: 16,
+      runSpacing: 12,
+      alignment: WrapAlignment.center,
+      children: [
+        _buildFooterLink('Settings', Colors.teal, () {
+          Navigator.pushNamed(context, '/settings-overlay')
+              .then((_) => setToSubscriptionPosition());
+        }),
+        _buildFooterLink('Account', Colors.purple, () {
+          Navigator.pushNamed(context, '/account')
+              .then((_) => setToSubscriptionPosition());
+        }),
+        _buildFooterLink('About', Colors.amber, () {
+          Navigator.pushNamed(context, '/about')
+              .then((_) => setToSubscriptionPosition());
+        }),
+        _buildFooterLink('Support', Colors.lightBlue, () {
+          // Open support link
+        }),
+      ],
+    );
+  }
+
+  Widget _buildFooterLink(String text, Color color, VoidCallback onTap) {
+    return SizedBox(
+      height: 36,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+          side: BorderSide(color: color.withValues(alpha: 0.4), width: 1.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          foregroundColor: color,
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
           ),
         ),
       ),

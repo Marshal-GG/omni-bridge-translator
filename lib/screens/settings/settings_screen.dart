@@ -10,6 +10,7 @@ import 'components/settings_header.dart';
 import 'components/input_output_tab.dart';
 import 'components/languages_tab.dart';
 import 'components/display_tab.dart';
+import '../../core/window_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -25,6 +26,9 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setToSettingsPosition();
+    });
     _tabController = TabController(length: 3, vsync: this);
     context.read<SettingsBloc>().add(LoadDevicesEvent());
   }

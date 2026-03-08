@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:window_manager/window_manager.dart';
 import '../../core/services/update_service.dart';
 import '../../core/window_manager.dart';
 
@@ -16,6 +17,22 @@ class _AboutScreenState extends State<AboutScreen> {
   String _version = '';
   UpdateStatus _updateStatus = UpdateStatus.idle;
   UpdateResult? _updateResult;
+  final GlobalKey _contentKey = GlobalKey();
+  double _lastHeight = 0;
+
+  Future<void> _adjustWindowSize() async {
+    if (!mounted) return;
+    final context = _contentKey.currentContext;
+    if (context != null) {
+      final RenderBox box = context.findRenderObject() as RenderBox;
+      final contentHeight = box.size.height;
+      final targetHeight = contentHeight + 35; // 32 (header) + 1 (divider) + 2 (window borders)
+      if ((_lastHeight - targetHeight).abs() > 1) {
+        _lastHeight = targetHeight;
+        await windowManager.setSize(Size(1140, targetHeight));
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -62,6 +79,7 @@ class _AboutScreenState extends State<AboutScreen> {
 
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _adjustWindowSize());
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: WindowBorder(
@@ -74,389 +92,402 @@ class _AboutScreenState extends State<AboutScreen> {
               _buildHeader(context),
               const Divider(height: 1, color: Colors.white10),
               Expanded(
-                child: SingleChildScrollView(
-                  child: Center(
-                    child: SizedBox(
-                      width: 760,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 28,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // ── Branding ───────────────────────────────────
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // Logo
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(14),
-                                  child: Image.asset(
-                                    'assets/icon.png',
-                                    width: 56,
-                                    height: 56,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Omni Bridge',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                    const Text(
-                                      'Live AI Translator',
-                                      style: TextStyle(
-                                        color: Colors.tealAccent,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        letterSpacing: 1.2,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white10,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        _version.isNotEmpty
-                                            ? 'Version $_version'
-                                            : '',
-                                        style: const TextStyle(
-                                          color: Colors.white38,
-                                          fontSize: 10,
+                        child: Center(
+                          child: SizedBox(
+                            width: 1000,
+                            key: _contentKey,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 28,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  // ── Branding ───────────────────────────────────
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      // Logo
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(14),
+                                        child: Image.asset(
+                                          'assets/icon.png',
+                                          width: 86,
+                                          height: 86,
+                                          fit: BoxFit.cover,
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    // ── Check for Updates ──────────────────
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // Outlined button
-                                        SizedBox(
-                                          height: 26,
-                                          child: OutlinedButton(
-                                            onPressed:
-                                                _updateStatus ==
-                                                    UpdateStatus.checking
-                                                ? null
-                                                : _checkForUpdate,
-                                            style: OutlinedButton.styleFrom(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 0,
-                                                  ),
-                                              side: BorderSide(
-                                                color:
-                                                    _updateStatus ==
-                                                        UpdateStatus.checking
-                                                    ? Colors.white12
-                                                    : Colors.tealAccent
-                                                          .withValues(
-                                                            alpha: 0.4,
-                                                          ),
-                                              ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(6),
-                                              ),
-                                              foregroundColor:
-                                                  Colors.tealAccent,
+                                      const SizedBox(width: 16),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Omni Bridge',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.5,
                                             ),
-                                            child:
-                                                _updateStatus ==
-                                                    UpdateStatus.checking
-                                                ? const SizedBox(
-                                                    width: 10,
-                                                    height: 10,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          strokeWidth: 1.5,
-                                                          color: Colors.white38,
-                                                        ),
-                                                  )
-                                                : Text(
-                                                    _updateStatus ==
-                                                            UpdateStatus.idle
-                                                        ? 'Check for updates'
-                                                        : 'Check again',
-                                                    style: const TextStyle(
-                                                      fontSize: 11,
-                                                    ),
-                                                  ),
                                           ),
-                                        ),
-                                        // Status result shown below
-                                        if (_updateStatus !=
-                                                UpdateStatus.idle &&
-                                            _updateStatus !=
-                                                UpdateStatus.checking) ...[
+                                          const Text(
+                                            'Live AI Translator',
+                                            style: TextStyle(
+                                              color: Colors.tealAccent,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              letterSpacing: 1.2,
+                                            ),
+                                          ),
                                           const SizedBox(height: 4),
-                                          Row(
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white10,
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                            child: Text(
+                                              _version.isNotEmpty
+                                                  ? 'Version $_version'
+                                                  : '',
+                                              style: const TextStyle(
+                                                color: Colors.white38,
+                                                fontSize: 10,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          // ── Check for Updates ──────────────────
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              if (_updateStatus ==
-                                                  UpdateStatus.upToDate)
-                                                const Icon(
-                                                  Icons
-                                                      .check_circle_outline_rounded,
-                                                  size: 11,
-                                                  color: Colors.tealAccent,
-                                                )
-                                              else if (_updateStatus ==
-                                                  UpdateStatus.available)
-                                                const Icon(
-                                                  Icons.upgrade_rounded,
-                                                  size: 11,
-                                                  color: Colors.orangeAccent,
-                                                )
-                                              else if (_updateStatus ==
-                                                  UpdateStatus.error)
-                                                const Icon(
-                                                  Icons.error_outline_rounded,
-                                                  size: 11,
-                                                  color: Colors.redAccent,
-                                                ),
-                                              const SizedBox(width: 4),
-                                              if (_updateStatus ==
-                                                  UpdateStatus.upToDate)
-                                                const Text(
-                                                  'Up to date',
-                                                  style: TextStyle(
-                                                    color: Colors.tealAccent,
-                                                    fontSize: 10,
-                                                  ),
-                                                )
-                                              else if (_updateStatus ==
-                                                  UpdateStatus.available)
-                                                GestureDetector(
-                                                  onTap: _openRelease,
-                                                  child: Text(
-                                                    'v${_updateResult?.latestVersion} available — Download',
-                                                    style: const TextStyle(
+                                              // Outlined button
+                                              SizedBox(
+                                                height: 26,
+                                                child: OutlinedButton(
+                                                  onPressed:
+                                                      _updateStatus ==
+                                                          UpdateStatus.checking
+                                                      ? null
+                                                      : _checkForUpdate,
+                                                  style: OutlinedButton.styleFrom(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 12,
+                                                          vertical: 0,
+                                                        ),
+                                                    side: BorderSide(
                                                       color:
-                                                          Colors.orangeAccent,
-                                                      fontSize: 10,
-                                                      decoration: TextDecoration
-                                                          .underline,
-                                                      decorationColor:
-                                                          Colors.orangeAccent,
+                                                          _updateStatus ==
+                                                              UpdateStatus.checking
+                                                          ? Colors.white12
+                                                          : Colors.tealAccent
+                                                                .withValues(
+                                                                  alpha: 0.4,
+                                                                ),
                                                     ),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(6),
+                                                    ),
+                                                    foregroundColor:
+                                                        Colors.tealAccent,
                                                   ),
-                                                )
-                                              else if (_updateStatus ==
-                                                  UpdateStatus.error)
-                                                Text(
-                                                  _updateResult?.errorMessage ??
-                                                      'Check failed.',
-                                                  style: const TextStyle(
-                                                    color: Colors.redAccent,
-                                                    fontSize: 10,
-                                                  ),
+                                                  child:
+                                                      _updateStatus ==
+                                                          UpdateStatus.checking
+                                                      ? const SizedBox(
+                                                          width: 10,
+                                                          height: 10,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                strokeWidth: 1.5,
+                                                                color: Colors.white38,
+                                                              ),
+                                                        )
+                                                      : Text(
+                                                          _updateStatus ==
+                                                                  UpdateStatus.idle
+                                                              ? 'Check for updates'
+                                                              : 'Check again',
+                                                          style: const TextStyle(
+                                                            fontSize: 11,
+                                                          ),
+                                                        ),
                                                 ),
+                                              ),
+                                              // Status result shown below
+                                              if (_updateStatus !=
+                                                      UpdateStatus.idle &&
+                                                  _updateStatus !=
+                                                      UpdateStatus.checking) ...[
+                                                const SizedBox(height: 4),
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    if (_updateStatus ==
+                                                        UpdateStatus.upToDate)
+                                                      const Icon(
+                                                        Icons
+                                                            .check_circle_outline_rounded,
+                                                        size: 11,
+                                                        color: Colors.tealAccent,
+                                                      )
+                                                    else if (_updateStatus ==
+                                                        UpdateStatus.available)
+                                                      const Icon(
+                                                        Icons.upgrade_rounded,
+                                                        size: 11,
+                                                        color: Colors.orangeAccent,
+                                                      )
+                                                    else if (_updateStatus ==
+                                                        UpdateStatus.error)
+                                                      const Icon(
+                                                        Icons.error_outline_rounded,
+                                                        size: 11,
+                                                        color: Colors.redAccent,
+                                                      ),
+                                                    const SizedBox(width: 4),
+                                                    if (_updateStatus ==
+                                                        UpdateStatus.upToDate)
+                                                      const Text(
+                                                        'Up to date',
+                                                        style: TextStyle(
+                                                          color: Colors.tealAccent,
+                                                          fontSize: 10,
+                                                        ),
+                                                      )
+                                                    else if (_updateStatus ==
+                                                        UpdateStatus.available)
+                                                      GestureDetector(
+                                                        onTap: _openRelease,
+                                                        child: Text(
+                                                          'v${_updateResult?.latestVersion} available — Download',
+                                                          style: const TextStyle(
+                                                            color:
+                                                                Colors.orangeAccent,
+                                                            fontSize: 10,
+                                                            decoration: TextDecoration
+                                                                .underline,
+                                                            decorationColor:
+                                                                Colors.orangeAccent,
+                                                          ),
+                                                        ),
+                                                      )
+                                                    else if (_updateStatus ==
+                                                        UpdateStatus.error)
+                                                      Text(
+                                                        _updateResult?.errorMessage ??
+                                                            'Check failed.',
+                                                        style: const TextStyle(
+                                                          color: Colors.redAccent,
+                                                          fontSize: 10,
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ],
                                             ],
                                           ),
                                         ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 24),
+
+                                  // ── Row 1: About | Features ────────────────────
+                                  IntrinsicHeight(
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        Expanded(
+                                          child: _InfoCard(
+                                            icon: Icons.info_outline_rounded,
+                                            title: 'About',
+                                            content:
+                                                'Omni Bridge provides real-time AI-powered live captions and translations directly on your Windows desktop. Capture any audio — system output or microphone — and see it transcribed and translated instantly in a floating, always-on-top overlay.',
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: _InfoCard(
+                                            icon: Icons.auto_awesome_rounded,
+                                            title: 'Features',
+                                            content: null,
+                                            child: const Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                _FeatureRow(
+                                                  icon: Icons.mic_rounded,
+                                                  label:
+                                                      'Mic & Desktop Audio Capture',
+                                                ),
+                                                _FeatureRow(
+                                                  icon: Icons.psychology_rounded,
+                                                  label:
+                                                      'AI Transcription: Google, Whisper, Riva',
+                                                ),
+                                                _FeatureRow(
+                                                  icon: Icons.language_rounded,
+                                                  label:
+                                                      'AI Translation: Llama, Google, Riva, MyMemory',
+                                                ),
+                                                _FeatureRow(
+                                                  icon: Icons
+                                                      .picture_in_picture_alt_rounded,
+                                                  label:
+                                                      'Transparent Always-On-Top Overlay',
+                                                ),
+                                                _FeatureRow(
+                                                  icon: Icons.history_rounded,
+                                                  label:
+                                                      'Full Session Caption History',
+                                                ),
+                                                _FeatureRow(
+                                                  icon: Icons.cloud_done_rounded,
+                                                  label:
+                                                      'Synced Settings via Firebase',
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
                                       ],
                                     ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
+                                  ),
+                                  const SizedBox(height: 12),
 
-                            // ── Row 1: About | Features ────────────────────
-                            IntrinsicHeight(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    child: _InfoCard(
-                                      icon: Icons.info_outline_rounded,
-                                      title: 'About',
-                                      content:
-                                          'Omni Bridge provides real-time AI-powered live captions and translations directly on your Windows desktop. Capture any audio — system output or microphone — and see it transcribed and translated instantly in a floating, always-on-top overlay.',
+                                  // ── Row 2: Built With | Support + Legal ────────
+                                  IntrinsicHeight(
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        Expanded(
+                                          child: _InfoCard(
+                                            icon: Icons.code_rounded,
+                                            title: 'Built With',
+                                            content: null,
+                                            child: const Wrap(
+                                              spacing: 6,
+                                              runSpacing: 6,
+                                              children: [
+                                                _Chip('Flutter'),
+                                                _Chip('Python FastAPI'),
+                                                _Chip('Firebase'),
+                                                _Chip('NVIDIA Riva'),
+                                                _Chip('OpenAI Whisper'),
+                                                _Chip('Llama / NIM'),
+                                                _Chip('Google Translate'),
+                                                _Chip('MyMemory'),
+                                                _Chip('WebSocket'),
+                                                _Chip('PyAudio WPATCH'),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: const [
+                                              _InfoCard(
+                                                icon: Icons.help_outline_rounded,
+                                                title: 'Support & Feedback',
+                                                content:
+                                                    'For issues, feature requests, or general feedback, please reach out via the project repository or contact the developer directly.',
+                                              ),
+                                              SizedBox(height: 12),
+                                              _InfoCard(
+                                                icon: Icons.gavel_rounded,
+                                                title: 'License & Privacy',
+                                                content:
+                                                    'This software is provided for personal use. API keys are stored locally. Analytics are anonymous. We do not sell or share your data.',
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _InfoCard(
-                                      icon: Icons.auto_awesome_rounded,
-                                      title: 'Features',
-                                      content: null,
-                                      child: const Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                  const SizedBox(height: 12),
+
+                                  // ── Row 3: Links & Contact (full width) ────────
+                                  _InfoCard(
+                                    icon: Icons.link_rounded,
+                                    title: 'Links & Contact',
+                                    content: null,
+                                    child: Center(
+                                      child: Wrap(
+                                        spacing: 10,
+                                        runSpacing: 10,
+                                        alignment: WrapAlignment.center,
                                         children: [
-                                          _FeatureRow(
-                                            icon: Icons.mic_rounded,
-                                            label:
-                                                'Mic & Desktop Audio Capture',
+                                          _LinkButton(
+                                            icon: Icons.code_rounded,
+                                            label: 'GitHub Repository',
+                                            url:
+                                                'https://github.com/Marshal-GG/omni-bridge-translator',
+                                            color: Colors.white70,
                                           ),
-                                          _FeatureRow(
-                                            icon: Icons.psychology_rounded,
-                                            label:
-                                                'AI Transcription: Google, Whisper, Riva',
+                                          _LinkButton(
+                                            icon: Icons.bug_report_rounded,
+                                            label: 'Report an Issue',
+                                            url:
+                                                'https://github.com/Marshal-GG/omni-bridge-translator/issues',
+                                            color: Colors.orangeAccent,
                                           ),
-                                          _FeatureRow(
-                                            icon: Icons.language_rounded,
-                                            label:
-                                                'AI Translation: Llama, Google, Riva, MyMemory',
+                                          _LinkButton(
+                                            icon: Icons.star_rounded,
+                                            label: 'Star on GitHub',
+                                            url:
+                                                'https://github.com/Marshal-GG/omni-bridge-translator',
+                                            color: Colors.yellowAccent,
                                           ),
-                                          _FeatureRow(
-                                            icon: Icons
-                                                .picture_in_picture_alt_rounded,
-                                            label:
-                                                'Transparent Always-On-Top Overlay',
-                                          ),
-                                          _FeatureRow(
-                                            icon: Icons.history_rounded,
-                                            label:
-                                                'Full Session Caption History',
-                                          ),
-                                          _FeatureRow(
-                                            icon: Icons.cloud_done_rounded,
-                                            label:
-                                                'Synced Settings via Firebase',
+                                          _LinkButton(
+                                            icon: Icons.email_outlined,
+                                            label: 'Email Developer',
+                                            url:
+                                                'https://mail.google.com/mail/?view=cm&to=marshalgcom@gmail.com',
+                                            color: Colors.tealAccent,
                                           ),
                                         ],
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 12),
 
-                            // ── Row 2: Built With | Support + Legal ────────
-                            IntrinsicHeight(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    child: _InfoCard(
-                                      icon: Icons.code_rounded,
-                                      title: 'Built With',
-                                      content: null,
-                                      child: const Wrap(
-                                        spacing: 6,
-                                        runSpacing: 6,
-                                        children: [
-                                          _Chip('Flutter'),
-                                          _Chip('Python FastAPI'),
-                                          _Chip('Firebase'),
-                                          _Chip('NVIDIA Riva'),
-                                          _Chip('OpenAI Whisper'),
-                                          _Chip('Llama / NIM'),
-                                          _Chip('Google Translate'),
-                                          _Chip('MyMemory'),
-                                          _Chip('WebSocket'),
-                                          _Chip('PyAudio WPATCH'),
-                                        ],
-                                      ),
+                                  const SizedBox(height: 24),
+                                  const Text(
+                                    '© 2026 Omni Bridge. All rights reserved.',
+                                    style: TextStyle(
+                                      color: Colors.white24,
+                                      fontSize: 11,
                                     ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: const [
-                                        _InfoCard(
-                                          icon: Icons.help_outline_rounded,
-                                          title: 'Support & Feedback',
-                                          content:
-                                              'For issues, feature requests, or general feedback, please reach out via the project repository or contact the developer directly.',
-                                        ),
-                                        SizedBox(height: 12),
-                                        _InfoCard(
-                                          icon: Icons.gavel_rounded,
-                                          title: 'License & Privacy',
-                                          content:
-                                              'This software is provided for personal use. API keys are stored locally. Analytics are anonymous. We do not sell or share your data.',
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                  const SizedBox(height: 16),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 12),
-
-                            // ── Row 3: Links & Contact (full width) ────────
-                            _InfoCard(
-                              icon: Icons.link_rounded,
-                              title: 'Links & Contact',
-                              content: null,
-                              child: Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: [
-                                  _LinkButton(
-                                    icon: Icons.code_rounded,
-                                    label: 'GitHub Repository',
-                                    url:
-                                        'https://github.com/Marshal-GG/omni-bridge-translator',
-                                    color: Colors.white70,
-                                  ),
-                                  _LinkButton(
-                                    icon: Icons.bug_report_rounded,
-                                    label: 'Report an Issue',
-                                    url:
-                                        'https://github.com/Marshal-GG/omni-bridge-translator/issues',
-                                    color: Colors.orangeAccent,
-                                  ),
-                                  _LinkButton(
-                                    icon: Icons.star_rounded,
-                                    label: 'Star on GitHub',
-                                    url:
-                                        'https://github.com/Marshal-GG/omni-bridge-translator',
-                                    color: Colors.yellowAccent,
-                                  ),
-                                  _LinkButton(
-                                    icon: Icons.email_outlined,
-                                    label: 'Email Developer',
-                                    url:
-                                        'https://mail.google.com/mail/?view=cm&to=marshalgcom@gmail.com',
-                                    color: Colors.tealAccent,
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            const SizedBox(height: 24),
-                            const Text(
-                              '© 2026 Omni Bridge. All rights reserved.',
-                              style: TextStyle(
-                                color: Colors.white24,
-                                fontSize: 11,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -482,10 +513,8 @@ class _AboutScreenState extends State<AboutScreen> {
                 color: Colors.white38,
               ),
               tooltip: 'Back to Translator',
-              onPressed: () async {
-                final nav = Navigator.of(context);
-                await setToTranslationPosition();
-                nav.pop();
+              onPressed: () {
+                Navigator.of(context).pop();
               },
             ),
           ),
@@ -513,10 +542,8 @@ class _AboutScreenState extends State<AboutScreen> {
               iconNormal: Colors.white38,
               mouseOver: Colors.redAccent,
             ),
-            onPressed: () async {
-              final nav = Navigator.of(context);
-              await setToTranslationPosition();
-              nav.pop();
+            onPressed: () {
+              Navigator.of(context).pop();
             },
           ),
         ],
@@ -686,6 +713,7 @@ class _LinkButtonState extends State<_LinkButton> {
             ),
           ),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(widget.icon, size: 14, color: widget.color),

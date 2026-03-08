@@ -7,6 +7,7 @@ import '../bloc/translation_event.dart';
 import '../bloc/translation_state.dart';
 import '../../../core/services/update_service.dart';
 import '../../../core/services/subscription_service.dart';
+import '../../../core/window_manager.dart';
 import '../../subscription/upgrade_sheet.dart';
 
 Widget buildTranslationHeader(BuildContext context, TranslationState state) {
@@ -124,9 +125,9 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                 child: InkWell(
                                   onTap: () {
                                     Navigator.pop(context);
-                                    if (!state.isSettingsOpen) {
-                                      bloc.add(ToggleSettingsEvent());
-                                    }
+                                    Navigator.pushNamed(context, '/settings-overlay').then((_) {
+                                      setToTranslationPosition();
+                                    });
                                   },
                                   child: const Padding(
                                     padding: EdgeInsets.symmetric(
@@ -152,7 +153,9 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                 child: InkWell(
                                   onTap: () {
                                     Navigator.pop(context);
-                                    Navigator.pushNamed(context, '/account');
+                                    Navigator.pushNamed(context, '/account').then((_) {
+                                      setToTranslationPosition();
+                                    });
                                   },
                                   child: const Padding(
                                     padding: EdgeInsets.symmetric(
@@ -181,7 +184,9 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                     Navigator.pushNamed(
                                       context,
                                       '/subscription',
-                                    );
+                                    ).then((_) {
+                                      setToTranslationPosition();
+                                    });
                                   },
                                   child: const Padding(
                                     padding: EdgeInsets.symmetric(
@@ -209,7 +214,9 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                 child: InkWell(
                                   onTap: () {
                                     Navigator.pop(context);
-                                    Navigator.pushNamed(context, '/about');
+                                    Navigator.pushNamed(context, '/about').then((_) {
+                                      setToTranslationPosition();
+                                    });
                                   },
                                   child: Stack(
                                     clipBehavior: Clip.none,

@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../translation/bloc/translation_bloc.dart';
-import '../../translation/bloc/translation_event.dart';
-import '../../../core/window_manager.dart';
 
 Widget buildSettingsHeader(BuildContext context) {
   return SizedBox(
@@ -11,12 +7,7 @@ Widget buildSettingsHeader(BuildContext context) {
     child: Row(
       children: [
         IconButton(
-          onPressed: () async {
-            await setToTranslationPosition();
-            if (context.mounted) {
-              context.read<TranslationBloc>().add(ToggleSettingsEvent());
-            }
-          },
+          onPressed: () => Navigator.pop(context),
           icon: const Icon(
             Icons.arrow_back_rounded,
             size: 16,
@@ -45,12 +36,7 @@ Widget buildSettingsHeader(BuildContext context) {
             iconNormal: Colors.white38,
             mouseOver: Colors.redAccent,
           ),
-          onPressed: () async {
-            await setToTranslationPosition();
-            if (context.mounted) {
-              context.read<TranslationBloc>().add(ToggleSettingsEvent());
-            }
-          },
+          onPressed: () => appWindow.close(),
         ),
       ],
     ),

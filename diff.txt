@@ -1,0 +1,1320 @@
+﻿diff --git a/lib/app.dart b/lib/app.dart
+index 33a1c8a..f877e26 100644
+--- a/lib/app.dart
++++ b/lib/app.dart
+@@ -1,6 +1,10 @@
+ import 'package:flutter/material.dart';
+ import 'core/routes/my_nav_observer.dart';
+ import 'core/routes/router.dart';
++import 'package:flutter_bloc/flutter_bloc.dart';
++import 'screens/translation/bloc/translation_bloc.dart';
++import 'screens/settings/bloc/settings_bloc.dart';
++import 'core/services/asr_ws_client.dart';
+ 
+ class MyApp extends StatelessWidget {
+   final String initialRoute;
+@@ -11,19 +15,31 @@ class MyApp extends StatelessWidget {
+     // The Splash Screen handles routing to Onboarding or Login/Home
+     final startRoute = initialRoute;
+ 
+-    return MaterialApp(
+-      debugShowCheckedModeBanner: false,
+-      title: 'Omni Bridge: Live AI Translator',
+-      darkTheme: ThemeData.dark(),
+-      theme: ThemeData(
+-        scaffoldBackgroundColor: Colors.transparent,
+-        canvasColor: Colors.transparent,
+-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
+-        useMaterial3: true,
++    return MultiBlocProvider(
++      providers: [
++        BlocProvider(
++          create: (_) => TranslationBloc(asrClient: AsrWebSocketClient()),
++        ),
++        BlocProvider(
++          create: (context) => SettingsBloc(
++            asrClient: context.read<TranslationBloc>().asrClient,
++          ),
++        ),
++      ],
++      child: MaterialApp(
++        debugShowCheckedModeBanner: false,
++        title: 'Omni Bridge: Live AI Translator',
++        darkTheme: ThemeData.dark(),
++        theme: ThemeData(
++          scaffoldBackgroundColor: Colors.transparent,
++          canvasColor: Colors.transparent,
++          colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
++          useMaterial3: true,
++        ),
++        initialRoute: startRoute,
++        onGenerateRoute: generateRoute,
++        navigatorObservers: [MyNavigatorObserver()],
+       ),
+-      initialRoute: startRoute,
+-      onGenerateRoute: generateRoute,
+-      navigatorObservers: [MyNavigatorObserver()],
+     );
+   }
+ }
+diff --git a/lib/core/routes/my_nav_observer.dart b/lib/core/routes/my_nav_observer.dart
+index fef21cc..360467a 100644
+--- a/lib/core/routes/my_nav_observer.dart
++++ b/lib/core/routes/my_nav_observer.dart
+@@ -36,7 +36,7 @@ class MyNavigatorObserver extends NavigatorObserver {
+         name == '/history-panel' ||
+         name == '/subscription' ||
+         name == '/about' ||
+-        name == '/settings') {
++        name == '/settings-overlay') {
+       if (previousRoute != null) {
+         _handleWindowState(previousRoute);
+       }
+@@ -59,7 +59,7 @@ class MyNavigatorObserver extends NavigatorObserver {
+       setToSubscriptionPosition();
+     } else if (name == '/about') {
+       setToAboutPosition();
+-    } else if (name == '/settings') {
++    } else if (name == '/settings-overlay') {
+       setToSettingsPosition();
+     }
+   }
+diff --git a/lib/core/window_manager.dart b/lib/core/window_manager.dart
+index 0f50556..4a42585 100644
+--- a/lib/core/window_manager.dart
++++ b/lib/core/window_manager.dart
+@@ -67,7 +67,7 @@ Future<void> setToStartupPosition() async {
+   await windowManager.setAlwaysOnTop(true);
+ }
+ 
+-/// Sets window to the Account screen size (same as login)
++/// Sets window to the Account screen size
+ Future<void> setToAccountPosition() async {
+   await windowManager.setResizable(true);
+   appWindow.minSize = const Size(600, 500);
+@@ -77,12 +77,12 @@ Future<void> setToAccountPosition() async {
+   await windowManager.setAlwaysOnTop(false);
+ }
+ 
+-/// Sets the window to the About screen size (same as login)
++/// Sets the window to the About screen size
+ Future<void> setToAboutPosition() async {
+   await windowManager.setResizable(true);
+-  appWindow.minSize = const Size(600, 500);
+-  await windowManager.setMinimumSize(const Size(600, 500));
+-  await windowManager.setSize(const Size(880, 700));
++  appWindow.minSize = const Size(100, 500);
++  await windowManager.setMinimumSize(const Size(1000, 500));
++  await windowManager.setSize(const Size(1140, 800));
+   await windowManager.center();
+   await windowManager.setAlwaysOnTop(false);
+ }
+diff --git a/lib/screens/about/about_screen.dart b/lib/screens/about/about_screen.dart
+index 6c84038..3fe0651 100644
+--- a/lib/screens/about/about_screen.dart
++++ b/lib/screens/about/about_screen.dart
+@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
+ import 'package:bitsdojo_window/bitsdojo_window.dart';
+ import 'package:package_info_plus/package_info_plus.dart';
+ import 'package:url_launcher/url_launcher.dart';
++import 'package:window_manager/window_manager.dart';
+ import '../../core/services/update_service.dart';
+ import '../../core/window_manager.dart';
+ 
+@@ -16,6 +17,22 @@ class _AboutScreenState extends State<AboutScreen> {
+   String _version = '';
+   UpdateStatus _updateStatus = UpdateStatus.idle;
+   UpdateResult? _updateResult;
++  final GlobalKey _contentKey = GlobalKey();
++  double _lastHeight = 0;
++
++  Future<void> _adjustWindowSize() async {
++    if (!mounted) return;
++    final context = _contentKey.currentContext;
++    if (context != null) {
++      final RenderBox box = context.findRenderObject() as RenderBox;
++      final contentHeight = box.size.height;
++      final targetHeight = contentHeight + 35; // 32 (header) + 1 (divider) + 2 (window borders)
++      if ((_lastHeight - targetHeight).abs() > 1) {
++        _lastHeight = targetHeight;
++        await windowManager.setSize(Size(1140, targetHeight));
++      }
++    }
++  }
+ 
+   @override
+   void initState() {
+@@ -62,6 +79,7 @@ class _AboutScreenState extends State<AboutScreen> {
+ 
+   @override
+   Widget build(BuildContext context) {
++    WidgetsBinding.instance.addPostFrameCallback((_) => _adjustWindowSize());
+     return Scaffold(
+       backgroundColor: Colors.transparent,
+       body: WindowBorder(
+@@ -74,389 +92,402 @@ class _AboutScreenState extends State<AboutScreen> {
+               _buildHeader(context),
+               const Divider(height: 1, color: Colors.white10),
+               Expanded(
+-                child: SingleChildScrollView(
+-                  child: Center(
+-                    child: SizedBox(
+-                      width: 760,
+-                      child: Padding(
+-                        padding: const EdgeInsets.symmetric(
+-                          horizontal: 24,
+-                          vertical: 28,
++                child: LayoutBuilder(
++                  builder: (context, constraints) {
++                    return SingleChildScrollView(
++                      child: ConstrainedBox(
++                        constraints: BoxConstraints(
++                          minHeight: constraints.maxHeight,
+                         ),
+-                        child: Column(
+-                          crossAxisAlignment: CrossAxisAlignment.center,
+-                          children: [
+-                            // ΓöÇΓöÇ Branding ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-                            Row(
+-                              mainAxisAlignment: MainAxisAlignment.center,
+-                              children: [
+-                                // Logo
+-                                ClipRRect(
+-                                  borderRadius: BorderRadius.circular(14),
+-                                  child: Image.asset(
+-                                    'assets/icon.png',
+-                                    width: 56,
+-                                    height: 56,
+-                                    fit: BoxFit.cover,
+-                                  ),
+-                                ),
+-                                const SizedBox(width: 16),
+-                                Column(
+-                                  crossAxisAlignment: CrossAxisAlignment.start,
+-                                  children: [
+-                                    const Text(
+-                                      'Omni Bridge',
+-                                      style: TextStyle(
+-                                        color: Colors.white,
+-                                        fontSize: 22,
+-                                        fontWeight: FontWeight.bold,
+-                                        letterSpacing: 0.5,
+-                                      ),
+-                                    ),
+-                                    const Text(
+-                                      'Live AI Translator',
+-                                      style: TextStyle(
+-                                        color: Colors.tealAccent,
+-                                        fontSize: 12,
+-                                        fontWeight: FontWeight.w500,
+-                                        letterSpacing: 1.2,
+-                                      ),
+-                                    ),
+-                                    const SizedBox(height: 4),
+-                                    Container(
+-                                      padding: const EdgeInsets.symmetric(
+-                                        horizontal: 10,
+-                                        vertical: 2,
+-                                      ),
+-                                      decoration: BoxDecoration(
+-                                        color: Colors.white10,
+-                                        borderRadius: BorderRadius.circular(20),
+-                                      ),
+-                                      child: Text(
+-                                        _version.isNotEmpty
+-                                            ? 'Version $_version'
+-                                            : '',
+-                                        style: const TextStyle(
+-                                          color: Colors.white38,
+-                                          fontSize: 10,
++                        child: Center(
++                          child: SizedBox(
++                            width: 1000,
++                            key: _contentKey,
++                            child: Padding(
++                              padding: const EdgeInsets.symmetric(
++                                horizontal: 24,
++                                vertical: 28,
++                              ),
++                              child: Column(
++                                crossAxisAlignment: CrossAxisAlignment.center,
++                                children: [
++                                  // ΓöÇΓöÇ Branding ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++                                  Row(
++                                    mainAxisAlignment: MainAxisAlignment.center,
++                                    children: [
++                                      // Logo
++                                      ClipRRect(
++                                        borderRadius: BorderRadius.circular(14),
++                                        child: Image.asset(
++                                          'assets/icon.png',
++                                          width: 86,
++                                          height: 86,
++                                          fit: BoxFit.cover,
+                                         ),
+                                       ),
+-                                    ),
+-                                    const SizedBox(height: 8),
+-                                    // ΓöÇΓöÇ Check for Updates ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-                                    Column(
+-                                      crossAxisAlignment:
+-                                          CrossAxisAlignment.start,
+-                                      mainAxisSize: MainAxisSize.min,
+-                                      children: [
+-                                        // Outlined button
+-                                        SizedBox(
+-                                          height: 26,
+-                                          child: OutlinedButton(
+-                                            onPressed:
+-                                                _updateStatus ==
+-                                                    UpdateStatus.checking
+-                                                ? null
+-                                                : _checkForUpdate,
+-                                            style: OutlinedButton.styleFrom(
+-                                              padding:
+-                                                  const EdgeInsets.symmetric(
+-                                                    horizontal: 12,
+-                                                    vertical: 0,
+-                                                  ),
+-                                              side: BorderSide(
+-                                                color:
+-                                                    _updateStatus ==
+-                                                        UpdateStatus.checking
+-                                                    ? Colors.white12
+-                                                    : Colors.tealAccent
+-                                                          .withValues(
+-                                                            alpha: 0.4,
+-                                                          ),
+-                                              ),
+-                                              shape: RoundedRectangleBorder(
+-                                                borderRadius:
+-                                                    BorderRadius.circular(6),
+-                                              ),
+-                                              foregroundColor:
+-                                                  Colors.tealAccent,
++                                      const SizedBox(width: 16),
++                                      Column(
++                                        crossAxisAlignment: CrossAxisAlignment.start,
++                                        children: [
++                                          const Text(
++                                            'Omni Bridge',
++                                            style: TextStyle(
++                                              color: Colors.white,
++                                              fontSize: 22,
++                                              fontWeight: FontWeight.bold,
++                                              letterSpacing: 0.5,
++                                            ),
++                                          ),
++                                          const Text(
++                                            'Live AI Translator',
++                                            style: TextStyle(
++                                              color: Colors.tealAccent,
++                                              fontSize: 12,
++                                              fontWeight: FontWeight.w500,
++                                              letterSpacing: 1.2,
+                                             ),
+-                                            child:
+-                                                _updateStatus ==
+-                                                    UpdateStatus.checking
+-                                                ? const SizedBox(
+-                                                    width: 10,
+-                                                    height: 10,
+-                                                    child:
+-                                                        CircularProgressIndicator(
+-                                                          strokeWidth: 1.5,
+-                                                          color: Colors.white38,
+-                                                        ),
+-                                                  )
+-                                                : Text(
+-                                                    _updateStatus ==
+-                                                            UpdateStatus.idle
+-                                                        ? 'Check for updates'
+-                                                        : 'Check again',
+-                                                    style: const TextStyle(
+-                                                      fontSize: 11,
+-                                                    ),
+-                                                  ),
+                                           ),
+-                                        ),
+-                                        // Status result shown below
+-                                        if (_updateStatus !=
+-                                                UpdateStatus.idle &&
+-                                            _updateStatus !=
+-                                                UpdateStatus.checking) ...[
+                                           const SizedBox(height: 4),
+-                                          Row(
++                                          Container(
++                                            padding: const EdgeInsets.symmetric(
++                                              horizontal: 10,
++                                              vertical: 2,
++                                            ),
++                                            decoration: BoxDecoration(
++                                              color: Colors.white10,
++                                              borderRadius: BorderRadius.circular(20),
++                                            ),
++                                            child: Text(
++                                              _version.isNotEmpty
++                                                  ? 'Version $_version'
++                                                  : '',
++                                              style: const TextStyle(
++                                                color: Colors.white38,
++                                                fontSize: 10,
++                                              ),
++                                            ),
++                                          ),
++                                          const SizedBox(height: 8),
++                                          // ΓöÇΓöÇ Check for Updates ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++                                          Column(
++                                            crossAxisAlignment:
++                                                CrossAxisAlignment.start,
+                                             mainAxisSize: MainAxisSize.min,
+                                             children: [
+-                                              if (_updateStatus ==
+-                                                  UpdateStatus.upToDate)
+-                                                const Icon(
+-                                                  Icons
+-                                                      .check_circle_outline_rounded,
+-                                                  size: 11,
+-                                                  color: Colors.tealAccent,
+-                                                )
+-                                              else if (_updateStatus ==
+-                                                  UpdateStatus.available)
+-                                                const Icon(
+-                                                  Icons.upgrade_rounded,
+-                                                  size: 11,
+-                                                  color: Colors.orangeAccent,
+-                                                )
+-                                              else if (_updateStatus ==
+-                                                  UpdateStatus.error)
+-                                                const Icon(
+-                                                  Icons.error_outline_rounded,
+-                                                  size: 11,
+-                                                  color: Colors.redAccent,
+-                                                ),
+-                                              const SizedBox(width: 4),
+-                                              if (_updateStatus ==
+-                                                  UpdateStatus.upToDate)
+-                                                const Text(
+-                                                  'Up to date',
+-                                                  style: TextStyle(
+-                                                    color: Colors.tealAccent,
+-                                                    fontSize: 10,
+-                                                  ),
+-                                                )
+-                                              else if (_updateStatus ==
+-                                                  UpdateStatus.available)
+-                                                GestureDetector(
+-                                                  onTap: _openRelease,
+-                                                  child: Text(
+-                                                    'v${_updateResult?.latestVersion} available ΓÇö Download',
+-                                                    style: const TextStyle(
++                                              // Outlined button
++                                              SizedBox(
++                                                height: 26,
++                                                child: OutlinedButton(
++                                                  onPressed:
++                                                      _updateStatus ==
++                                                          UpdateStatus.checking
++                                                      ? null
++                                                      : _checkForUpdate,
++                                                  style: OutlinedButton.styleFrom(
++                                                    padding:
++                                                        const EdgeInsets.symmetric(
++                                                          horizontal: 12,
++                                                          vertical: 0,
++                                                        ),
++                                                    side: BorderSide(
+                                                       color:
+-                                                          Colors.orangeAccent,
+-                                                      fontSize: 10,
+-                                                      decoration: TextDecoration
+-                                                          .underline,
+-                                                      decorationColor:
+-                                                          Colors.orangeAccent,
++                                                          _updateStatus ==
++                                                              UpdateStatus.checking
++                                                          ? Colors.white12
++                                                          : Colors.tealAccent
++                                                                .withValues(
++                                                                  alpha: 0.4,
++                                                                ),
+                                                     ),
++                                                    shape: RoundedRectangleBorder(
++                                                      borderRadius:
++                                                          BorderRadius.circular(6),
++                                                    ),
++                                                    foregroundColor:
++                                                        Colors.tealAccent,
+                                                   ),
+-                                                )
+-                                              else if (_updateStatus ==
+-                                                  UpdateStatus.error)
+-                                                Text(
+-                                                  _updateResult?.errorMessage ??
+-                                                      'Check failed.',
+-                                                  style: const TextStyle(
+-                                                    color: Colors.redAccent,
+-                                                    fontSize: 10,
+-                                                  ),
++                                                  child:
++                                                      _updateStatus ==
++                                                          UpdateStatus.checking
++                                                      ? const SizedBox(
++                                                          width: 10,
++                                                          height: 10,
++                                                          child:
++                                                              CircularProgressIndicator(
++                                                                strokeWidth: 1.5,
++                                                                color: Colors.white38,
++                                                              ),
++                                                        )
++                                                      : Text(
++                                                          _updateStatus ==
++                                                                  UpdateStatus.idle
++                                                              ? 'Check for updates'
++                                                              : 'Check again',
++                                                          style: const TextStyle(
++                                                            fontSize: 11,
++                                                          ),
++                                                        ),
+                                                 ),
++                                              ),
++                                              // Status result shown below
++                                              if (_updateStatus !=
++                                                      UpdateStatus.idle &&
++                                                  _updateStatus !=
++                                                      UpdateStatus.checking) ...[
++                                                const SizedBox(height: 4),
++                                                Row(
++                                                  mainAxisSize: MainAxisSize.min,
++                                                  children: [
++                                                    if (_updateStatus ==
++                                                        UpdateStatus.upToDate)
++                                                      const Icon(
++                                                        Icons
++                                                            .check_circle_outline_rounded,
++                                                        size: 11,
++                                                        color: Colors.tealAccent,
++                                                      )
++                                                    else if (_updateStatus ==
++                                                        UpdateStatus.available)
++                                                      const Icon(
++                                                        Icons.upgrade_rounded,
++                                                        size: 11,
++                                                        color: Colors.orangeAccent,
++                                                      )
++                                                    else if (_updateStatus ==
++                                                        UpdateStatus.error)
++                                                      const Icon(
++                                                        Icons.error_outline_rounded,
++                                                        size: 11,
++                                                        color: Colors.redAccent,
++                                                      ),
++                                                    const SizedBox(width: 4),
++                                                    if (_updateStatus ==
++                                                        UpdateStatus.upToDate)
++                                                      const Text(
++                                                        'Up to date',
++                                                        style: TextStyle(
++                                                          color: Colors.tealAccent,
++                                                          fontSize: 10,
++                                                        ),
++                                                      )
++                                                    else if (_updateStatus ==
++                                                        UpdateStatus.available)
++                                                      GestureDetector(
++                                                        onTap: _openRelease,
++                                                        child: Text(
++                                                          'v${_updateResult?.latestVersion} available ΓÇö Download',
++                                                          style: const TextStyle(
++                                                            color:
++                                                                Colors.orangeAccent,
++                                                            fontSize: 10,
++                                                            decoration: TextDecoration
++                                                                .underline,
++                                                            decorationColor:
++                                                                Colors.orangeAccent,
++                                                          ),
++                                                        ),
++                                                      )
++                                                    else if (_updateStatus ==
++                                                        UpdateStatus.error)
++                                                      Text(
++                                                        _updateResult?.errorMessage ??
++                                                            'Check failed.',
++                                                        style: const TextStyle(
++                                                          color: Colors.redAccent,
++                                                          fontSize: 10,
++                                                        ),
++                                                      ),
++                                                  ],
++                                                ),
++                                              ],
+                                             ],
+                                           ),
+                                         ],
++                                      ),
++                                    ],
++                                  ),
++                                  const SizedBox(height: 24),
++
++                                  // ΓöÇΓöÇ Row 1: About | Features ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++                                  IntrinsicHeight(
++                                    child: Row(
++                                      crossAxisAlignment: CrossAxisAlignment.stretch,
++                                      children: [
++                                        Expanded(
++                                          child: _InfoCard(
++                                            icon: Icons.info_outline_rounded,
++                                            title: 'About',
++                                            content:
++                                                'Omni Bridge provides real-time AI-powered live captions and translations directly on your Windows desktop. Capture any audio ΓÇö system output or microphone ΓÇö and see it transcribed and translated instantly in a floating, always-on-top overlay.',
++                                          ),
++                                        ),
++                                        const SizedBox(width: 12),
++                                        Expanded(
++                                          child: _InfoCard(
++                                            icon: Icons.auto_awesome_rounded,
++                                            title: 'Features',
++                                            content: null,
++                                            child: const Column(
++                                              crossAxisAlignment:
++                                                  CrossAxisAlignment.start,
++                                              children: [
++                                                _FeatureRow(
++                                                  icon: Icons.mic_rounded,
++                                                  label:
++                                                      'Mic & Desktop Audio Capture',
++                                                ),
++                                                _FeatureRow(
++                                                  icon: Icons.psychology_rounded,
++                                                  label:
++                                                      'AI Transcription: Google, Whisper, Riva',
++                                                ),
++                                                _FeatureRow(
++                                                  icon: Icons.language_rounded,
++                                                  label:
++                                                      'AI Translation: Llama, Google, Riva, MyMemory',
++                                                ),
++                                                _FeatureRow(
++                                                  icon: Icons
++                                                      .picture_in_picture_alt_rounded,
++                                                  label:
++                                                      'Transparent Always-On-Top Overlay',
++                                                ),
++                                                _FeatureRow(
++                                                  icon: Icons.history_rounded,
++                                                  label:
++                                                      'Full Session Caption History',
++                                                ),
++                                                _FeatureRow(
++                                                  icon: Icons.cloud_done_rounded,
++                                                  label:
++                                                      'Synced Settings via Firebase',
++                                                ),
++                                              ],
++                                            ),
++                                          ),
++                                        ),
+                                       ],
+                                     ),
+-                                  ],
+-                                ),
+-                              ],
+-                            ),
+-                            const SizedBox(height: 24),
++                                  ),
++                                  const SizedBox(height: 12),
+ 
+-                            // ΓöÇΓöÇ Row 1: About | Features ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-                            IntrinsicHeight(
+-                              child: Row(
+-                                crossAxisAlignment: CrossAxisAlignment.stretch,
+-                                children: [
+-                                  Expanded(
+-                                    child: _InfoCard(
+-                                      icon: Icons.info_outline_rounded,
+-                                      title: 'About',
+-                                      content:
+-                                          'Omni Bridge provides real-time AI-powered live captions and translations directly on your Windows desktop. Capture any audio ΓÇö system output or microphone ΓÇö and see it transcribed and translated instantly in a floating, always-on-top overlay.',
++                                  // ΓöÇΓöÇ Row 2: Built With | Support + Legal ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++                                  IntrinsicHeight(
++                                    child: Row(
++                                      crossAxisAlignment: CrossAxisAlignment.stretch,
++                                      children: [
++                                        Expanded(
++                                          child: _InfoCard(
++                                            icon: Icons.code_rounded,
++                                            title: 'Built With',
++                                            content: null,
++                                            child: const Wrap(
++                                              spacing: 6,
++                                              runSpacing: 6,
++                                              children: [
++                                                _Chip('Flutter'),
++                                                _Chip('Python FastAPI'),
++                                                _Chip('Firebase'),
++                                                _Chip('NVIDIA Riva'),
++                                                _Chip('OpenAI Whisper'),
++                                                _Chip('Llama / NIM'),
++                                                _Chip('Google Translate'),
++                                                _Chip('MyMemory'),
++                                                _Chip('WebSocket'),
++                                                _Chip('PyAudio WPATCH'),
++                                              ],
++                                            ),
++                                          ),
++                                        ),
++                                        const SizedBox(width: 12),
++                                        Expanded(
++                                          child: Column(
++                                            crossAxisAlignment:
++                                                CrossAxisAlignment.stretch,
++                                            children: const [
++                                              _InfoCard(
++                                                icon: Icons.help_outline_rounded,
++                                                title: 'Support & Feedback',
++                                                content:
++                                                    'For issues, feature requests, or general feedback, please reach out via the project repository or contact the developer directly.',
++                                              ),
++                                              SizedBox(height: 12),
++                                              _InfoCard(
++                                                icon: Icons.gavel_rounded,
++                                                title: 'License & Privacy',
++                                                content:
++                                                    'This software is provided for personal use. API keys are stored locally. Analytics are anonymous. We do not sell or share your data.',
++                                              ),
++                                            ],
++                                          ),
++                                        ),
++                                      ],
+                                     ),
+                                   ),
+-                                  const SizedBox(width: 12),
+-                                  Expanded(
+-                                    child: _InfoCard(
+-                                      icon: Icons.auto_awesome_rounded,
+-                                      title: 'Features',
+-                                      content: null,
+-                                      child: const Column(
+-                                        crossAxisAlignment:
+-                                            CrossAxisAlignment.start,
++                                  const SizedBox(height: 12),
++
++                                  // ΓöÇΓöÇ Row 3: Links & Contact (full width) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++                                  _InfoCard(
++                                    icon: Icons.link_rounded,
++                                    title: 'Links & Contact',
++                                    content: null,
++                                    child: Center(
++                                      child: Wrap(
++                                        spacing: 10,
++                                        runSpacing: 10,
++                                        alignment: WrapAlignment.center,
+                                         children: [
+-                                          _FeatureRow(
+-                                            icon: Icons.mic_rounded,
+-                                            label:
+-                                                'Mic & Desktop Audio Capture',
+-                                          ),
+-                                          _FeatureRow(
+-                                            icon: Icons.psychology_rounded,
+-                                            label:
+-                                                'AI Transcription: Google, Whisper, Riva',
+-                                          ),
+-                                          _FeatureRow(
+-                                            icon: Icons.language_rounded,
+-                                            label:
+-                                                'AI Translation: Llama, Google, Riva, MyMemory',
++                                          _LinkButton(
++                                            icon: Icons.code_rounded,
++                                            label: 'GitHub Repository',
++                                            url:
++                                                'https://github.com/Marshal-GG/omni-bridge-translator',
++                                            color: Colors.white70,
+                                           ),
+-                                          _FeatureRow(
+-                                            icon: Icons
+-                                                .picture_in_picture_alt_rounded,
+-                                            label:
+-                                                'Transparent Always-On-Top Overlay',
++                                          _LinkButton(
++                                            icon: Icons.bug_report_rounded,
++                                            label: 'Report an Issue',
++                                            url:
++                                                'https://github.com/Marshal-GG/omni-bridge-translator/issues',
++                                            color: Colors.orangeAccent,
+                                           ),
+-                                          _FeatureRow(
+-                                            icon: Icons.history_rounded,
+-                                            label:
+-                                                'Full Session Caption History',
++                                          _LinkButton(
++                                            icon: Icons.star_rounded,
++                                            label: 'Star on GitHub',
++                                            url:
++                                                'https://github.com/Marshal-GG/omni-bridge-translator',
++                                            color: Colors.yellowAccent,
+                                           ),
+-                                          _FeatureRow(
+-                                            icon: Icons.cloud_done_rounded,
+-                                            label:
+-                                                'Synced Settings via Firebase',
++                                          _LinkButton(
++                                            icon: Icons.email_outlined,
++                                            label: 'Email Developer',
++                                            url:
++                                                'https://mail.google.com/mail/?view=cm&to=marshalgcom@gmail.com',
++                                            color: Colors.tealAccent,
+                                           ),
+                                         ],
+                                       ),
+                                     ),
+                                   ),
+-                                ],
+-                              ),
+-                            ),
+-                            const SizedBox(height: 12),
+ 
+-                            // ΓöÇΓöÇ Row 2: Built With | Support + Legal ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-                            IntrinsicHeight(
+-                              child: Row(
+-                                crossAxisAlignment: CrossAxisAlignment.stretch,
+-                                children: [
+-                                  Expanded(
+-                                    child: _InfoCard(
+-                                      icon: Icons.code_rounded,
+-                                      title: 'Built With',
+-                                      content: null,
+-                                      child: const Wrap(
+-                                        spacing: 6,
+-                                        runSpacing: 6,
+-                                        children: [
+-                                          _Chip('Flutter'),
+-                                          _Chip('Python FastAPI'),
+-                                          _Chip('Firebase'),
+-                                          _Chip('NVIDIA Riva'),
+-                                          _Chip('OpenAI Whisper'),
+-                                          _Chip('Llama / NIM'),
+-                                          _Chip('Google Translate'),
+-                                          _Chip('MyMemory'),
+-                                          _Chip('WebSocket'),
+-                                          _Chip('PyAudio WPATCH'),
+-                                        ],
+-                                      ),
+-                                    ),
+-                                  ),
+-                                  const SizedBox(width: 12),
+-                                  Expanded(
+-                                    child: Column(
+-                                      crossAxisAlignment:
+-                                          CrossAxisAlignment.stretch,
+-                                      children: const [
+-                                        _InfoCard(
+-                                          icon: Icons.help_outline_rounded,
+-                                          title: 'Support & Feedback',
+-                                          content:
+-                                              'For issues, feature requests, or general feedback, please reach out via the project repository or contact the developer directly.',
+-                                        ),
+-                                        SizedBox(height: 12),
+-                                        _InfoCard(
+-                                          icon: Icons.gavel_rounded,
+-                                          title: 'License & Privacy',
+-                                          content:
+-                                              'This software is provided for personal use. API keys are stored locally. Analytics are anonymous. We do not sell or share your data.',
+-                                        ),
+-                                      ],
++                                  const SizedBox(height: 24),
++                                  const Text(
++                                    '┬⌐ 2026 Omni Bridge. All rights reserved.',
++                                    style: TextStyle(
++                                      color: Colors.white24,
++                                      fontSize: 11,
+                                     ),
++                                    textAlign: TextAlign.center,
+                                   ),
++                                  const SizedBox(height: 16),
+                                 ],
+                               ),
+                             ),
+-                            const SizedBox(height: 12),
+-
+-                            // ΓöÇΓöÇ Row 3: Links & Contact (full width) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-                            _InfoCard(
+-                              icon: Icons.link_rounded,
+-                              title: 'Links & Contact',
+-                              content: null,
+-                              child: Wrap(
+-                                spacing: 10,
+-                                runSpacing: 10,
+-                                children: [
+-                                  _LinkButton(
+-                                    icon: Icons.code_rounded,
+-                                    label: 'GitHub Repository',
+-                                    url:
+-                                        'https://github.com/Marshal-GG/omni-bridge-translator',
+-                                    color: Colors.white70,
+-                                  ),
+-                                  _LinkButton(
+-                                    icon: Icons.bug_report_rounded,
+-                                    label: 'Report an Issue',
+-                                    url:
+-                                        'https://github.com/Marshal-GG/omni-bridge-translator/issues',
+-                                    color: Colors.orangeAccent,
+-                                  ),
+-                                  _LinkButton(
+-                                    icon: Icons.star_rounded,
+-                                    label: 'Star on GitHub',
+-                                    url:
+-                                        'https://github.com/Marshal-GG/omni-bridge-translator',
+-                                    color: Colors.yellowAccent,
+-                                  ),
+-                                  _LinkButton(
+-                                    icon: Icons.email_outlined,
+-                                    label: 'Email Developer',
+-                                    url:
+-                                        'https://mail.google.com/mail/?view=cm&to=marshalgcom@gmail.com',
+-                                    color: Colors.tealAccent,
+-                                  ),
+-                                ],
+-                              ),
+-                            ),
+-
+-                            const SizedBox(height: 24),
+-                            const Text(
+-                              '┬⌐ 2026 Omni Bridge. All rights reserved.',
+-                              style: TextStyle(
+-                                color: Colors.white24,
+-                                fontSize: 11,
+-                              ),
+-                              textAlign: TextAlign.center,
+-                            ),
+-                            const SizedBox(height: 16),
+-                          ],
++                          ),
+                         ),
+                       ),
+-                    ),
+-                  ),
++                    );
++                  },
+                 ),
+               ),
+             ],
+@@ -482,10 +513,8 @@ class _AboutScreenState extends State<AboutScreen> {
+                 color: Colors.white38,
+               ),
+               tooltip: 'Back to Translator',
+-              onPressed: () async {
+-                final nav = Navigator.of(context);
+-                await setToTranslationPosition();
+-                nav.pop();
++              onPressed: () {
++                Navigator.of(context).pop();
+               },
+             ),
+           ),
+@@ -513,10 +542,8 @@ class _AboutScreenState extends State<AboutScreen> {
+               iconNormal: Colors.white38,
+               mouseOver: Colors.redAccent,
+             ),
+-            onPressed: () async {
+-              final nav = Navigator.of(context);
+-              await setToTranslationPosition();
+-              nav.pop();
++            onPressed: () {
++              Navigator.of(context).pop();
+             },
+           ),
+         ],
+@@ -686,6 +713,7 @@ class _LinkButtonState extends State<_LinkButton> {
+             ),
+           ),
+           child: Row(
++            mainAxisAlignment: MainAxisAlignment.center,
+             mainAxisSize: MainAxisSize.min,
+             children: [
+               Icon(widget.icon, size: 14, color: widget.color),
+diff --git a/lib/screens/account/account_screen.dart b/lib/screens/account/account_screen.dart
+index 1b5613b..060811e 100644
+--- a/lib/screens/account/account_screen.dart
++++ b/lib/screens/account/account_screen.dart
+@@ -24,6 +24,7 @@ class _AccountScreenState extends State<AccountScreen> {
+   @override
+   void initState() {
+     super.initState();
++    setToAccountPosition();
+     final user = AuthService.instance.currentUser.value;
+     _nameController.text = user?.displayName ?? '';
+   }
+@@ -112,10 +113,8 @@ class _AccountScreenState extends State<AccountScreen> {
+             children: [
+               // ΓöÇΓöÇ Draggable Header ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+               buildAccountHeader(
+-                onBack: () async {
+-                  final nav = Navigator.of(context);
+-                  await setToTranslationPosition();
+-                  nav.pop();
++                onBack: () {
++                  Navigator.of(context).pop();
+                 },
+               ),
+               const Divider(height: 1, color: Colors.white10),
+diff --git a/lib/screens/settings/components/settings_footer.dart b/lib/screens/settings/components/settings_footer.dart
+index 9632269..ff23f50 100644
+--- a/lib/screens/settings/components/settings_footer.dart
++++ b/lib/screens/settings/components/settings_footer.dart
+@@ -5,7 +5,6 @@ import '../../translation/bloc/translation_event.dart';
+ import '../bloc/settings_bloc.dart';
+ import '../bloc/settings_event.dart';
+ import '../bloc/settings_state.dart';
+-import '../../../core/window_manager.dart';
+ 
+ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
+   return Container(
+@@ -17,12 +16,7 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
+       children: [
+         Expanded(
+           child: OutlinedButton(
+-            onPressed: () async {
+-              await setToTranslationPosition();
+-              if (context.mounted) {
+-                context.read<TranslationBloc>().add(ToggleSettingsEvent());
+-              }
+-            },
++            onPressed: () => Navigator.pop(context),
+             style: OutlinedButton.styleFrom(
+               foregroundColor: Colors.white70,
+               side: const BorderSide(color: Colors.white24),
+@@ -33,7 +27,7 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
+         const SizedBox(width: 10),
+         Expanded(
+           child: ElevatedButton(
+-            onPressed: () async {
++            onPressed: () {
+               context.read<SettingsBloc>().add(SaveSettingsEvent());
+               context.read<TranslationBloc>().add(
+                 ApplySettingsEvent(
+@@ -52,7 +46,8 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
+                   transcriptionModel: state.tempTranscriptionModel,
+                 ),
+               );
+-              await setToTranslationPosition();
++
++              Navigator.pop(context);
+             },
+             style: ElevatedButton.styleFrom(
+               backgroundColor: Colors.tealAccent,
+diff --git a/lib/screens/settings/components/settings_header.dart b/lib/screens/settings/components/settings_header.dart
+index 753c24c..b5f4439 100644
+--- a/lib/screens/settings/components/settings_header.dart
++++ b/lib/screens/settings/components/settings_header.dart
+@@ -1,9 +1,5 @@
+ import 'package:flutter/material.dart';
+ import 'package:bitsdojo_window/bitsdojo_window.dart';
+-import 'package:flutter_bloc/flutter_bloc.dart';
+-import '../../translation/bloc/translation_bloc.dart';
+-import '../../translation/bloc/translation_event.dart';
+-import '../../../core/window_manager.dart';
+ 
+ Widget buildSettingsHeader(BuildContext context) {
+   return SizedBox(
+@@ -11,12 +7,7 @@ Widget buildSettingsHeader(BuildContext context) {
+     child: Row(
+       children: [
+         IconButton(
+-          onPressed: () async {
+-            await setToTranslationPosition();
+-            if (context.mounted) {
+-              context.read<TranslationBloc>().add(ToggleSettingsEvent());
+-            }
+-          },
++          onPressed: () => Navigator.pop(context),
+           icon: const Icon(
+             Icons.arrow_back_rounded,
+             size: 16,
+@@ -45,12 +36,7 @@ Widget buildSettingsHeader(BuildContext context) {
+             iconNormal: Colors.white38,
+             mouseOver: Colors.redAccent,
+           ),
+-          onPressed: () async {
+-            await setToTranslationPosition();
+-            if (context.mounted) {
+-              context.read<TranslationBloc>().add(ToggleSettingsEvent());
+-            }
+-          },
++          onPressed: () => appWindow.close(),
+         ),
+       ],
+     ),
+diff --git a/lib/screens/settings/settings_screen.dart b/lib/screens/settings/settings_screen.dart
+index cf86e21..153aa9c 100644
+--- a/lib/screens/settings/settings_screen.dart
++++ b/lib/screens/settings/settings_screen.dart
+@@ -10,6 +10,7 @@ import 'components/settings_header.dart';
+ import 'components/input_output_tab.dart';
+ import 'components/languages_tab.dart';
+ import 'components/display_tab.dart';
++import '../../core/window_manager.dart';
+ 
+ class SettingsScreen extends StatefulWidget {
+   const SettingsScreen({super.key});
+@@ -25,6 +26,9 @@ class _SettingsScreenState extends State<SettingsScreen>
+   @override
+   void initState() {
+     super.initState();
++    WidgetsBinding.instance.addPostFrameCallback((_) {
++      setToSettingsPosition();
++    });
+     _tabController = TabController(length: 3, vsync: this);
+     context.read<SettingsBloc>().add(LoadDevicesEvent());
+   }
+diff --git a/lib/screens/subscription/subscription_screen.dart b/lib/screens/subscription/subscription_screen.dart
+index 41a622b..88282c8 100644
+--- a/lib/screens/subscription/subscription_screen.dart
++++ b/lib/screens/subscription/subscription_screen.dart
+@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
+ import 'package:bitsdojo_window/bitsdojo_window.dart';
+ import 'package:intl/intl.dart';
+ import '../../core/services/subscription_service.dart';
++import '../../core/window_manager.dart';
+ 
+ class SubscriptionScreen extends StatefulWidget {
+   const SubscriptionScreen({super.key});
+@@ -17,6 +18,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
+   @override
+   void initState() {
+     super.initState();
++    setToSubscriptionPosition();
+     _pulseController = AnimationController(
+       vsync: this,
+       duration: const Duration(seconds: 2),
+@@ -210,14 +212,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
+                                         ],
+                                       ),
+                                     ),
+-                                    ],
+-                                  ),
++                                    const SizedBox(height: 32),
++                                    _buildFooter(context),
++                                    const SizedBox(height: 16),
++                                  ],
+                                 ),
+                               ),
+                             ),
+                           ),
+-                        );
+-                      },
++                        ),
++                      );
++                    },
+                     );
+                   },
+                 ),
+@@ -229,6 +234,56 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
+     );
+   }
+ 
++  Widget _buildFooter(BuildContext context) {
++    return Wrap(
++      spacing: 16,
++      runSpacing: 12,
++      alignment: WrapAlignment.center,
++      children: [
++        _buildFooterLink('Settings', Colors.teal, () {
++          Navigator.pushNamed(context, '/settings-overlay')
++              .then((_) => setToSubscriptionPosition());
++        }),
++        _buildFooterLink('Account', Colors.purple, () {
++          Navigator.pushNamed(context, '/account')
++              .then((_) => setToSubscriptionPosition());
++        }),
++        _buildFooterLink('About', Colors.amber, () {
++          Navigator.pushNamed(context, '/about')
++              .then((_) => setToSubscriptionPosition());
++        }),
++        _buildFooterLink('Support', Colors.lightBlue, () {
++          // Open support link
++        }),
++      ],
++    );
++  }
++
++  Widget _buildFooterLink(String text, Color color, VoidCallback onTap) {
++    return SizedBox(
++      height: 36,
++      child: OutlinedButton(
++        onPressed: onTap,
++        style: OutlinedButton.styleFrom(
++          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
++          side: BorderSide(color: color.withValues(alpha: 0.4), width: 1.5),
++          shape: RoundedRectangleBorder(
++            borderRadius: BorderRadius.circular(8),
++          ),
++          foregroundColor: color,
++        ),
++        child: Text(
++          text,
++          style: const TextStyle(
++            fontSize: 14,
++            fontWeight: FontWeight.w800,
++            letterSpacing: 0.5,
++          ),
++        ),
++      ),
++    );
++  }
++
+   Widget _buildHeader(BuildContext context) {
+     return SizedBox(
+       height: 32,
+diff --git a/lib/screens/translation/bloc/translation_bloc.dart b/lib/screens/translation/bloc/translation_bloc.dart
+index b3e5d85..fb206ca 100644
+--- a/lib/screens/translation/bloc/translation_bloc.dart
++++ b/lib/screens/translation/bloc/translation_bloc.dart
+@@ -343,8 +343,6 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
+       'apiKey': event.apiKey,
+       'transcriptionModel': event.transcriptionModel,
+     });
+-
+-    add(ToggleSettingsEvent());
+   }
+ 
+   @override
+diff --git a/lib/screens/translation/components/auto_detect_snackbar.dart b/lib/screens/translation/components/auto_detect_snackbar.dart
+index 927db27..0a7422b 100644
+--- a/lib/screens/translation/components/auto_detect_snackbar.dart
++++ b/lib/screens/translation/components/auto_detect_snackbar.dart
+@@ -1,8 +1,6 @@
+ import 'package:flutter/material.dart';
+-import 'package:flutter_bloc/flutter_bloc.dart';
+-import '../bloc/translation_bloc.dart';
+-import '../bloc/translation_event.dart';
+ import '../bloc/translation_state.dart';
++import '../../../core/window_manager.dart';
+ 
+ /// Shows a snack bar when the auto-detect language warning fires.
+ void showAutoDetectWarning(BuildContext context, TranslationState state) {
+@@ -61,7 +59,9 @@ void showAutoDetectWarning(BuildContext context, TranslationState state) {
+               TextButton(
+                 onPressed: () {
+                   messenger.hideCurrentSnackBar();
+-                  context.read<TranslationBloc>().add(ToggleSettingsEvent());
++                  Navigator.pushNamed(context, '/settings-overlay').then((_) {
++                    setToTranslationPosition();
++                  });
+                 },
+                 style: TextButton.styleFrom(
+                   foregroundColor: Colors.tealAccent,
+diff --git a/lib/screens/translation/components/translation_header.dart b/lib/screens/translation/components/translation_header.dart
+index ec4d232..704c767 100644
+--- a/lib/screens/translation/components/translation_header.dart
++++ b/lib/screens/translation/components/translation_header.dart
+@@ -7,6 +7,7 @@ import '../bloc/translation_event.dart';
+ import '../bloc/translation_state.dart';
+ import '../../../core/services/update_service.dart';
+ import '../../../core/services/subscription_service.dart';
++import '../../../core/window_manager.dart';
+ import '../../subscription/upgrade_sheet.dart';
+ 
+ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
+@@ -124,9 +125,9 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
+                                 child: InkWell(
+                                   onTap: () {
+                                     Navigator.pop(context);
+-                                    if (!state.isSettingsOpen) {
+-                                      bloc.add(ToggleSettingsEvent());
+-                                    }
++                                    Navigator.pushNamed(context, '/settings-overlay').then((_) {
++                                      setToTranslationPosition();
++                                    });
+                                   },
+                                   child: const Padding(
+                                     padding: EdgeInsets.symmetric(
+@@ -152,7 +153,9 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
+                                 child: InkWell(
+                                   onTap: () {
+                                     Navigator.pop(context);
+-                                    Navigator.pushNamed(context, '/account');
++                                    Navigator.pushNamed(context, '/account').then((_) {
++                                      setToTranslationPosition();
++                                    });
+                                   },
+                                   child: const Padding(
+                                     padding: EdgeInsets.symmetric(
+@@ -181,7 +184,9 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
+                                     Navigator.pushNamed(
+                                       context,
+                                       '/subscription',
+-                                    );
++                                    ).then((_) {
++                                      setToTranslationPosition();
++                                    });
+                                   },
+                                   child: const Padding(
+                                     padding: EdgeInsets.symmetric(
+@@ -209,7 +214,9 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
+                                 child: InkWell(
+                                   onTap: () {
+                                     Navigator.pop(context);
+-                                    Navigator.pushNamed(context, '/about');
++                                    Navigator.pushNamed(context, '/about').then((_) {
++                                      setToTranslationPosition();
++                                    });
+                                   },
+                                   child: Stack(
+                                     clipBehavior: Clip.none,
+diff --git a/lib/screens/translation/translation_screen.dart b/lib/screens/translation/translation_screen.dart
+index 7221626..a709134 100644
+--- a/lib/screens/translation/translation_screen.dart
++++ b/lib/screens/translation/translation_screen.dart
+@@ -1,10 +1,6 @@
+ import 'package:flutter/material.dart';
+-import 'package:flutter_bloc/flutter_bloc.dart';
+ import 'package:bitsdojo_window/bitsdojo_window.dart';
+ 
+-import 'bloc/translation_bloc.dart';
+-import '../settings/bloc/settings_bloc.dart';
+-import '../../core/services/asr_ws_client.dart';
+ import 'components/overlay_content.dart';
+ 
+ class TranslationScreen extends StatelessWidget {
+@@ -12,28 +8,16 @@ class TranslationScreen extends StatelessWidget {
+ 
+   @override
+   Widget build(BuildContext context) {
+-    return MultiBlocProvider(
+-      providers: [
+-        BlocProvider(
+-          create: (_) => TranslationBloc(asrClient: AsrWebSocketClient()),
+-        ),
+-        BlocProvider(
+-          create: (context) => SettingsBloc(
+-            asrClient: context.read<TranslationBloc>().asrClient,
+-          ),
+-        ),
+-      ],
+-      child: Scaffold(
+-        backgroundColor: Colors.transparent,
+-        body: WindowBorder(
+-          color: Colors.transparent,
+-          width: 0,
+-          child: Stack(
+-            children: [
+-              MoveWindow(),
+-              Center(child: buildOverlayContent(context)),
+-            ],
+-          ),
++    return Scaffold(
++      backgroundColor: Colors.transparent,
++      body: WindowBorder(
++        color: Colors.transparent,
++        width: 0,
++        child: Stack(
++          children: [
++            MoveWindow(),
++            Center(child: buildOverlayContent(context)),
++          ],
+         ),
+       ),
+     );

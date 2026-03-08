@@ -343,8 +343,6 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       'apiKey': event.apiKey,
       'transcriptionModel': event.transcriptionModel,
     });
-
-    add(ToggleSettingsEvent());
   }
 
   @override
