@@ -36,7 +36,7 @@ class MyNavigatorObserver extends NavigatorObserver {
         name == '/history-panel' ||
         name == '/subscription' ||
         name == '/about' ||
-        name == '/settings') {
+        name == '/settings-overlay') {
       if (previousRoute != null) {
         _handleWindowState(previousRoute);
       }
@@ -59,7 +59,7 @@ class MyNavigatorObserver extends NavigatorObserver {
       setToSubscriptionPosition();
     } else if (name == '/about') {
       setToAboutPosition();
-    } else if (name == '/settings') {
+    } else if (name == '/settings-overlay') {
       setToSettingsPosition();
     }
   }
