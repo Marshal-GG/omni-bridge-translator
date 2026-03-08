@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/services/auth_service.dart';
@@ -348,6 +349,53 @@ class _AccountScreenState extends State<AccountScreen> {
                                 },
                               ),
                               const SizedBox(height: 12),
+
+                              // ── DEBUG: Plan Switcher ───────────────────────
+                              if (kDebugMode)
+                                Card(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Row(
+                                          children: [
+                                            Icon(Icons.bug_report_rounded, size: 16, color: Colors.redAccent),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'DEBUG: CHANGE PLAN',
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 0.8,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          children: SubscriptionTier.values.map((tier) {
+                                            return SizedBox(
+                                              height: 32,
+                                              child: ActionChip(
+                                                label: Text(
+                                                  tier.name.toUpperCase(),
+                                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                                ),
+                                                backgroundColor: Colors.white.withValues(alpha: 0.05),
+                                                onPressed: () => SubscriptionService.instance.setTierDebug(tier),
+                                              ),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              if (kDebugMode) const SizedBox(height: 12),
 
                               // ── Planned Features Card (Todo) ───────────────
                               Card(

@@ -240,6 +240,17 @@ class SubscriptionService {
     }
   }
 
+  /// Manually updates the user tier in Firestore (Debug only).
+  Future<void> setTierDebug(SubscriptionTier tier) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      'tier': _tierToString(tier),
+    });
+    debugPrint('[Subscription] DEBUG: Tier manually set to $tier');
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   DateTime _getNextDailyReset() {
