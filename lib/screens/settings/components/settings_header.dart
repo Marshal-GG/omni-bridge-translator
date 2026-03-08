@@ -17,7 +17,11 @@ Widget buildSettingsHeader(BuildContext context) {
               context.read<TranslationBloc>().add(ToggleSettingsEvent());
             }
           },
-          icon: const Icon(Icons.arrow_back_rounded, size: 16, color: Colors.white38),
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            size: 16,
+            color: Colors.white38,
+          ),
           splashRadius: 16,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),

@@ -10,7 +10,6 @@ import '../../settings/bloc/settings_event.dart';
 import 'translation_header.dart';
 import 'translation_content.dart';
 import 'shrunk_caption_view.dart';
-import '../../subscription/upgrade_sheet.dart';
 
 Widget buildOverlayContent(BuildContext context) {
   return BlocConsumer<TranslationBloc, TranslationState>(
@@ -78,8 +77,6 @@ Widget buildOverlayContent(BuildContext context) {
                 Expanded(
                   child: state.isSettingsOpen
                       ? const SettingsScreen()
-                      : state.isQuotaExceeded && state.activeApiKey.isEmpty
-                      ? _buildQuotaExceededView(context)
                       : buildTranslationContent(context, state),
                 ),
               ],
@@ -88,54 +85,5 @@ Widget buildOverlayContent(BuildContext context) {
         },
       );
     },
-  );
-}
-
-Widget _buildQuotaExceededView(BuildContext context) {
-  return Center(
-    child: Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            color: Colors.amber,
-            size: 48,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Daily Quota Exceeded',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Upgrade to Plus or Pro for more tokens, or use your own API key.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white70, fontSize: 13),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () => showUpgradeSheet(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Upgrade Plan',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    ),
   );
 }

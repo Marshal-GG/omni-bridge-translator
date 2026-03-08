@@ -145,7 +145,9 @@ class AppInitializer {
 
     // Wait for initial auth state to be resolved (useful for desktop where it might take a moment to load from storage)
     try {
-      await FirebaseAuth.instance.authStateChanges().first.timeout(const Duration(seconds: 1));
+      await FirebaseAuth.instance.authStateChanges().first.timeout(
+        const Duration(seconds: 1),
+      );
     } catch (_) {
       // Timeout, proceed with current state
     }

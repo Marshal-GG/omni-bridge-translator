@@ -153,22 +153,26 @@ class _AboutScreenState extends State<AboutScreen> {
                                         SizedBox(
                                           height: 26,
                                           child: OutlinedButton(
-                                            onPressed: _updateStatus ==
+                                            onPressed:
+                                                _updateStatus ==
                                                     UpdateStatus.checking
                                                 ? null
                                                 : _checkForUpdate,
                                             style: OutlinedButton.styleFrom(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                                vertical: 0,
-                                              ),
+                                                    horizontal: 12,
+                                                    vertical: 0,
+                                                  ),
                                               side: BorderSide(
-                                                color: _updateStatus ==
+                                                color:
+                                                    _updateStatus ==
                                                         UpdateStatus.checking
                                                     ? Colors.white12
                                                     : Colors.tealAccent
-                                                        .withValues(alpha: 0.4),
+                                                          .withValues(
+                                                            alpha: 0.4,
+                                                          ),
                                               ),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius:
@@ -177,16 +181,17 @@ class _AboutScreenState extends State<AboutScreen> {
                                               foregroundColor:
                                                   Colors.tealAccent,
                                             ),
-                                            child: _updateStatus ==
+                                            child:
+                                                _updateStatus ==
                                                     UpdateStatus.checking
                                                 ? const SizedBox(
                                                     width: 10,
                                                     height: 10,
                                                     child:
                                                         CircularProgressIndicator(
-                                                      strokeWidth: 1.5,
-                                                      color: Colors.white38,
-                                                    ),
+                                                          strokeWidth: 1.5,
+                                                          color: Colors.white38,
+                                                        ),
                                                   )
                                                 : Text(
                                                     _updateStatus ==
@@ -303,7 +308,8 @@ class _AboutScreenState extends State<AboutScreen> {
                                         children: [
                                           _FeatureRow(
                                             icon: Icons.mic_rounded,
-                                            label: 'Mic & Desktop Audio Capture',
+                                            label:
+                                                'Mic & Desktop Audio Capture',
                                           ),
                                           _FeatureRow(
                                             icon: Icons.psychology_rounded,
@@ -323,11 +329,13 @@ class _AboutScreenState extends State<AboutScreen> {
                                           ),
                                           _FeatureRow(
                                             icon: Icons.history_rounded,
-                                            label: 'Full Session Caption History',
+                                            label:
+                                                'Full Session Caption History',
                                           ),
                                           _FeatureRow(
                                             icon: Icons.cloud_done_rounded,
-                                            label: 'Synced Settings via Firebase',
+                                            label:
+                                                'Synced Settings via Firebase',
                                           ),
                                         ],
                                       ),

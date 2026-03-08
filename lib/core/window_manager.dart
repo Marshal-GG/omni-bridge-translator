@@ -90,9 +90,9 @@ Future<void> setToAboutPosition() async {
 /// Sets the window to a centered large panel for Subscription
 Future<void> setToSubscriptionPosition() async {
   await windowManager.setResizable(true);
-  appWindow.minSize = const Size(600, 500);
-  await windowManager.setMinimumSize(const Size(600, 500));
-  await windowManager.setSize(const Size(1080, 820));
+  appWindow.minSize = const Size(1000, 500);
+  await windowManager.setMinimumSize(const Size(1000, 500));
+  await windowManager.setSize(const Size(1140, 880));
   await windowManager.center();
   await windowManager.setAlwaysOnTop(false);
 }

@@ -107,7 +107,9 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
               onChanged: (device) {
                 if (device != null) {
                   context.read<SettingsBloc>().add(
-                    UpdateTempSettingEvent(outputDeviceIndex: device['index'] as int),
+                    UpdateTempSettingEvent(
+                      outputDeviceIndex: device['index'] as int,
+                    ),
                   );
                 } else {
                   context.read<SettingsBloc>().add(
@@ -128,10 +130,11 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
               onChangeEnd: (v) => context.read<SettingsBloc>().add(
                 UpdateTempSettingEvent(desktopVolume: v),
               ),
-              onLiveChange: (v) => context
-                  .read<TranslationBloc>()
-                  .asrClient
-                  .liveVolumeUpdate(desktopVolume: v, micVolume: state.tempMicVolume),
+              onLiveChange: (v) =>
+                  context.read<TranslationBloc>().asrClient.liveVolumeUpdate(
+                    desktopVolume: v,
+                    micVolume: state.tempMicVolume,
+                  ),
             ),
           ),
         ],
@@ -177,7 +180,8 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
           TextButton.icon(
             onPressed: state.devicesLoading
                 ? null
-                : () => context.read<SettingsBloc>().add(ResetIODefaultsEvent()),
+                : () =>
+                      context.read<SettingsBloc>().add(ResetIODefaultsEvent()),
             icon: const Icon(Icons.restore, size: 16, color: Colors.white70),
             label: const Text(
               'Reset Defaults',
@@ -207,7 +211,9 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                   )
                 : const Icon(Icons.refresh, size: 16, color: Colors.white70),
             label: Text(
-              state.devicesLoading ? 'Refreshing Devices...' : 'Refresh Devices',
+              state.devicesLoading
+                  ? 'Refreshing Devices...'
+                  : 'Refresh Devices',
               style: const TextStyle(color: Colors.white70),
             ),
             style: TextButton.styleFrom(

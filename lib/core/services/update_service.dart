@@ -79,7 +79,10 @@ class UpdateService {
         );
       }
 
-      return UpdateResult(status: UpdateStatus.upToDate, latestVersion: current);
+      return UpdateResult(
+        status: UpdateStatus.upToDate,
+        latestVersion: current,
+      );
     } catch (e) {
       debugPrint('[UpdateService] Error: $e');
       return UpdateResult(

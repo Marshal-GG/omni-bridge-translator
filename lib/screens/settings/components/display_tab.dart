@@ -190,8 +190,8 @@ Widget buildDisplayTab(BuildContext context, SettingsState state) {
         alignment: Alignment.centerRight,
         child: TextButton.icon(
           onPressed: () => context.read<SettingsBloc>().add(
-                const UpdateTempSettingEvent(opacity: 0.85),
-              ),
+            const UpdateTempSettingEvent(opacity: 0.85),
+          ),
           icon: const Icon(Icons.refresh, size: 14, color: Colors.white38),
           label: const Text(
             'Reset to 85%',

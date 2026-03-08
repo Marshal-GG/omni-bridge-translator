@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/translation_bloc.dart';
@@ -21,7 +22,9 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
           'Omni Bridge: Live AI Translator',
           style: TextStyle(color: Colors.white70, fontSize: 12),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
+        _QuotaUsageText(status: state.quotaStatus),
+        const SizedBox(width: 12),
         GestureDetector(
           onTap: () {
             if (!state.isSettingsOpen) {
@@ -43,8 +46,6 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
         ),
         const SizedBox(width: 15),
         const SizedBox(width: 15),
-        if (state.quotaStatus != null)
-          _CompactQuotaBar(status: state.quotaStatus!),
         Expanded(child: MoveWindow()),
         IconButton(
           icon: Icon(
@@ -286,40 +287,73 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
   );
 }
 
-class _CompactQuotaBar extends StatelessWidget {
-  final SubscriptionStatus status;
-  const _CompactQuotaBar({required this.status});
+class _QuotaUsageText extends StatelessWidget {
+  final SubscriptionStatus? status;
+  const _QuotaUsageText({this.status});
 
   @override
   Widget build(BuildContext context) {
-    if (status.tier == SubscriptionTier.pro) return const SizedBox.shrink();
+    final String tierName = status?.tier.name.toUpperCase() ?? '...';
+    final bool isPro = status?.tier == SubscriptionTier.pro;
 
-    final color = status.progress > 0.9
-        ? Colors.red
-        : (status.progress > 0.7 ? Colors.orange : Colors.tealAccent);
+    final formatter = NumberFormat('#,###');
+    final usedStr = status != null
+        ? formatter.format(status!.dailyCharsUsed)
+        : '...';
+    final limitStr = status != null
+        ? (isPro ? '∞' : formatter.format(status!.dailyLimit))
+        : '...';
 
-    return Container(
-      width: 100,
-      height: 4,
-      decoration: BoxDecoration(
-        color: Colors.white10,
-        borderRadius: BorderRadius.circular(2),
-      ),
-      child: FractionallySizedBox(
-        alignment: Alignment.centerLeft,
-        widthFactor: status.progress.clamp(0.0, 1.0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.5),
-                blurRadius: 4,
-                spreadRadius: 1,
+    final double progress = status?.progress ?? 0.0;
+    final color = progress > 0.9
+        ? Colors.redAccent
+        : (progress > 0.7 ? Colors.orangeAccent : Colors.tealAccent);
+
+    return Tooltip(
+      message: 'Daily Character Usage: $usedStr / $limitStr ($tierName)',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.25),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$usedStr / $limitStr',
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                fontFamily: 'monospace',
+                letterSpacing: 0.5,
+              ),
+            ),
+            if (status != null) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 5,
+                  vertical: 1.5,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  tierName,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ),
             ],
-          ),
+          ],
         ),
       ),
     );

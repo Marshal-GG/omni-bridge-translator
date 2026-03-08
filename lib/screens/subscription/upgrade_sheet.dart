@@ -47,8 +47,14 @@ class UpgradeSheet extends StatelessWidget {
             style: TextStyle(color: Colors.white70, fontSize: 16),
           ),
           const SizedBox(height: 24),
-          _buildFeatureRow(Icons.check_circle_outline, 'Plus: 10x Daily Limit (100k chars)'),
-          _buildFeatureRow(Icons.check_circle_outline, 'Pro: Unlimited Usage & Full History'),
+          _buildFeatureRow(
+            Icons.check_circle_outline,
+            'Plus: 10x Daily Limit (100k chars)',
+          ),
+          _buildFeatureRow(
+            Icons.check_circle_outline,
+            'Pro: Unlimited Usage & Full History',
+          ),
           _buildFeatureRow(Icons.check_circle_outline, 'Priority Support'),
           const SizedBox(height: 32),
           SizedBox(
@@ -59,15 +65,22 @@ class UpgradeSheet extends StatelessWidget {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const SubscriptionScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const SubscriptionScreen(),
+                  ),
                 );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.teal,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: const Text('View Plans', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'View Plans',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
           const SizedBox(height: 12),

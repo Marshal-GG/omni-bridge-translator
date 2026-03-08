@@ -56,115 +56,162 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                         return SingleChildScrollView(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 24,
-                            vertical: 32,
+                            vertical: 24,
                           ),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minHeight:
-                                  constraints.maxHeight -
-                                  64, // Subtracting vertical padding
-                            ),
-                            child: Center(
-                              child: SizedBox(
-                                width: 1040,
-                                child: Column(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight - 48,
+                                minWidth: constraints.maxWidth - 48,
+                              ),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 1020,
+                                  child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     _buildBranding(),
                                     const SizedBox(height: 24),
                                     if (status != null) ...[
-                                      _InfoCard(
-                                        icon: Icons.data_usage_rounded,
-                                        title: 'Current Usage',
-                                        child: _buildCurrentUsage(status),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                        ),
+                                        child: _InfoCard(
+                                          icon: Icons.data_usage_rounded,
+                                          title: 'Current Usage',
+                                          child: _buildCurrentUsage(status),
+                                        ),
                                       ),
                                       const SizedBox(height: 24),
                                     ],
-                                    const _SectionTitle(
-                                      title: 'Subscription Plans',
-                                      subtitle:
-                                          'Select a plan that fits your needs. Upgrade anytime.',
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 24,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF181818),
+                                        borderRadius: BorderRadius.circular(24),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.05,
+                                          ),
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.4,
+                                            ),
+                                            blurRadius: 40,
+                                            spreadRadius: 0,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          const _SectionTitle(
+                                            title: 'Subscription Plans',
+                                            subtitle:
+                                                'Select a plan that fits your needs. Upgrade anytime.',
+                                          ),
+                                          const SizedBox(height: 24),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Expanded(
+                                                child: _PlanCard(
+                                                  tier: SubscriptionTier.free,
+                                                  name: 'Free',
+                                                  price: '₹0',
+                                                  description:
+                                                      'For occasional use',
+                                                  features: const [
+                                                    '10,000 Chars Daily',
+                                                    'Standard Engines',
+                                                    'Basic Live Captions',
+                                                  ],
+                                                  isCurrent:
+                                                      status?.tier ==
+                                                      SubscriptionTier.free,
+                                                  formatter: _formatter,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 16),
+                                              Expanded(
+                                                child: _PlanCard(
+                                                  tier: SubscriptionTier.weekly,
+                                                  name: 'Weekly',
+                                                  price: '₹49',
+                                                  period: '/wk',
+                                                  description: 'For short trips',
+                                                  features: const [
+                                                    '50,000 Chars Daily',
+                                                    'Same-Session History',
+                                                    'High-Speed Translation',
+                                                    'Standard Live Captions',
+                                                  ],
+                                                  isCurrent:
+                                                      status?.tier ==
+                                                      SubscriptionTier.weekly,
+                                                  formatter: _formatter,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 16),
+                                              Expanded(
+                                                child: _PlanCard(
+                                                  tier: SubscriptionTier.plus,
+                                                  name: 'Plus',
+                                                  price: '₹149',
+                                                  period: '/mo',
+                                                  description:
+                                                      'For active learners',
+                                                  features: const [
+                                                    '100,000 Chars Daily',
+                                                    '3-Day History Access',
+                                                    'Advanced Live Captions',
+                                                    'Priority Support',
+                                                    'Offline Model Support',
+                                                  ],
+                                                  isCurrent:
+                                                      status?.tier ==
+                                                      SubscriptionTier.plus,
+                                                  isPopular: true,
+                                                  formatter: _formatter,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 16),
+                                              Expanded(
+                                                child: _PlanCard(
+                                                  tier: SubscriptionTier.pro,
+                                                  name: 'Pro',
+                                                  price: '₹399',
+                                                  period: '/mo',
+                                                  description:
+                                                      'For power users',
+                                                  features: const [
+                                                    'Unlimited Daily Chars',
+                                                    'Intelligent Context Refresh (5s)',
+                                                    'Unlimited History Access',
+                                                    'Premium Translation Engines',
+                                                    '24/7 Priority Support',
+                                                  ],
+                                                  isCurrent:
+                                                      status?.tier ==
+                                                      SubscriptionTier.pro,
+                                                  formatter: _formatter,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    const SizedBox(height: 24),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        _PlanCard(
-                                          tier: SubscriptionTier.free,
-                                          name: 'Free',
-                                          price: '₹0',
-                                          description: 'For occasional use',
-                                          features: const [
-                                            '10,000 Chars Daily',
-                                            'Standard Engines',
-                                            'Basic Live Captions',
-                                          ],
-                                          isCurrent:
-                                              status?.tier ==
-                                              SubscriptionTier.free,
-                                          formatter: _formatter,
-                                        ),
-                                        const SizedBox(width: 20),
-                                        _PlanCard(
-                                          tier: SubscriptionTier.weekly,
-                                          name: 'Weekly',
-                                          price: '₹49',
-                                          period: '/wk',
-                                          description: 'For short trips',
-                                          features: const [
-                                            '50,000 Chars Daily',
-                                            'Same-Session History',
-                                            'High-Speed Translation',
-                                            'Standard Live Captions',
-                                          ],
-                                          isCurrent:
-                                              status?.tier ==
-                                              SubscriptionTier.weekly,
-                                          formatter: _formatter,
-                                        ),
-                                        const SizedBox(width: 20),
-                                        _PlanCard(
-                                          tier: SubscriptionTier.plus,
-                                          name: 'Plus',
-                                          price: '₹149',
-                                          period: '/mo',
-                                          description: 'For active learners',
-                                          features: const [
-                                            '100,000 Chars Daily',
-                                            '3-Day History Access',
-                                            'Advanced Live Captions',
-                                            'Priority Support',
-                                            'Offline Model Support',
-                                          ],
-                                          isCurrent:
-                                              status?.tier ==
-                                              SubscriptionTier.plus,
-                                          isPopular: true,
-                                          formatter: _formatter,
-                                        ),
-                                        const SizedBox(width: 20),
-                                        _PlanCard(
-                                          tier: SubscriptionTier.pro,
-                                          name: 'Pro',
-                                          price: '₹399',
-                                          period: '/mo',
-                                          description: 'For power users',
-                                          features: const [
-                                            'Unlimited Daily Chars',
-                                            'Intelligent Context Refresh (5s)',
-                                            'Unlimited History Access',
-                                            'Premium Translation Engines',
-                                            '24/7 Priority Support',
-                                          ],
-                                          isCurrent:
-                                              status?.tier ==
-                                              SubscriptionTier.pro,
-                                          formatter: _formatter,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -472,8 +519,7 @@ class _PlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 240,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isPopular
             ? const Color(0xFF1A1A1A)
@@ -534,7 +580,7 @@ class _PlanCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -558,12 +604,12 @@ class _PlanCard extends StatelessWidget {
             description,
             style: const TextStyle(color: Colors.white54, fontSize: 12),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           const Divider(color: Colors.white10),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           ...features.map(
             (f) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: 8),
               child: Row(
                 children: [
                   const Icon(
@@ -585,7 +631,7 @@ class _PlanCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(

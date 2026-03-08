@@ -42,7 +42,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
   void _initAsr() {
     add(LoadSettingsEvent());
-    
+
     if (state.isRunning && !state.isQuotaExceeded) {
       asrClient.start(
         sourceLang: state.activeSourceLang,
@@ -114,10 +114,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
   void _onUpdateQuota(UpdateQuotaEvent event, Emitter<TranslationState> emit) {
     final bool exceeded = event.status.isExceeded;
-    emit(state.copyWith(
-      quotaStatus: event.status,
-      isQuotaExceeded: exceeded,
-    ));
+    emit(state.copyWith(quotaStatus: event.status, isQuotaExceeded: exceeded));
 
     if (exceeded && state.isRunning && state.activeApiKey.isEmpty) {
       asrClient.stop();

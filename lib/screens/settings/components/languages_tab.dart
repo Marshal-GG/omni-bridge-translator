@@ -157,11 +157,7 @@ Widget _buildRecommendedBadge({required bool isActive}) {
     ),
     child: Text(
       'Recommended',
-      style: TextStyle(
-        color: color,
-        fontSize: 9,
-        fontWeight: FontWeight.w600,
-      ),
+      style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600),
     ),
   );
 }
@@ -250,15 +246,19 @@ Widget buildTranslationModelSelector(
             final isRecommended = item.key == 'google';
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: isSelected ? Colors.tealAccent.withValues(alpha: 0.1) : Colors.transparent,
+              color: isSelected
+                  ? Colors.tealAccent.withValues(alpha: 0.1)
+                  : Colors.transparent,
               child: Row(
                 children: [
-                   Expanded(
+                  Expanded(
                     child: Text(
                       item.value,
                       style: TextStyle(
                         color: isSelected ? Colors.white : Colors.white70,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -694,7 +694,9 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
                         Text(e.value),
                         if (isRecommended) ...[
                           const SizedBox(width: 8),
-                          _buildRecommendedBadge(isActive: e.key == _currentSize),
+                          _buildRecommendedBadge(
+                            isActive: e.key == _currentSize,
+                          ),
                         ],
                         if (isDownloaded) ...[
                           const SizedBox(width: 8),

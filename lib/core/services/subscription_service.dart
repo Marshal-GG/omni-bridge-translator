@@ -54,31 +54,33 @@ class SubscriptionService {
         .doc(uid)
         .snapshots()
         .listen((doc) {
-      if (!doc.exists) {
-        _initializeUserDoc(uid);
-        return;
-      }
+          if (!doc.exists) {
+            _initializeUserDoc(uid);
+            return;
+          }
 
-      final data = doc.data()!;
-      final tierStr = data['tier'] as String? ?? 'free';
-      final tier = _parseTier(tierStr);
-      final charsUsed = data['dailyCharsUsed'] as int? ?? 0;
-      final resetAt = (data['dailyResetAt'] as Timestamp?)?.toDate() ?? _getNextResetTime();
+          final data = doc.data()!;
+          final tierStr = data['tier'] as String? ?? 'free';
+          final tier = _parseTier(tierStr);
+          final charsUsed = data['dailyCharsUsed'] as int? ?? 0;
+          final resetAt =
+              (data['dailyResetAt'] as Timestamp?)?.toDate() ??
+              _getNextResetTime();
 
-      // Check if we need to reset quota (it's a new day)
-      if (DateTime.now().isAfter(resetAt)) {
-        _resetQuota(uid);
-        return;
-      }
+          // Check if we need to reset quota (it's a new day)
+          if (DateTime.now().isAfter(resetAt)) {
+            _resetQuota(uid);
+            return;
+          }
 
-      _currentStatus = SubscriptionStatus(
-        tier: tier,
-        dailyCharsUsed: charsUsed,
-        dailyLimit: _getLimitForTier(tier),
-        dailyResetAt: resetAt,
-      );
-      _statusController.add(_currentStatus!);
-    });
+          _currentStatus = SubscriptionStatus(
+            tier: tier,
+            dailyCharsUsed: charsUsed,
+            dailyLimit: _getLimitForTier(tier),
+            dailyResetAt: resetAt,
+          );
+          _statusController.add(_currentStatus!);
+        });
   }
 
   Future<void> _initializeUserDoc(String uid) async {
@@ -100,7 +102,7 @@ class SubscriptionService {
   DateTime _getNextResetTime() {
     final now = DateTime.now();
     // Reset at midnight IST (UTC+5:30)
-    // For simplicity, reset every 24 hours from current time if not set, 
+    // For simplicity, reset every 24 hours from current time if not set,
     // real implementation would align to midnight IST.
     return DateTime(now.year, now.month, now.day + 1);
   }
@@ -152,12 +154,12 @@ class SubscriptionService {
   Future<void> openCheckout(SubscriptionTier tier) async {
     // Razorpay payment link placeholder
     // In production, these would be your real Razorpay Payment Links or a custom cloud function URL
-    final String url = tier == SubscriptionTier.pro 
-      ? 'https://razorpay.me/@omnibridgepro' 
-      : tier == SubscriptionTier.plus 
+    final String url = tier == SubscriptionTier.pro
+        ? 'https://razorpay.me/@omnibridgepro'
+        : tier == SubscriptionTier.plus
         ? 'https://razorpay.me/@omnibridgeplus'
         : 'https://razorpay.me/@omnibridgeweekly';
-    
+
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     }
