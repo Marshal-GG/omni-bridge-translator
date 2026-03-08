@@ -9,6 +9,7 @@ import '../bloc/settings_event.dart';
 import '../bloc/settings_state.dart';
 import '../../../core/constants/languages.dart';
 import '../../../core/services/whisper_service.dart';
+import '../../../core/services/subscription_service.dart';
 import 'settings_helpers.dart';
 
 Widget buildLanguagesTab(BuildContext context, SettingsState state) {
@@ -101,46 +102,90 @@ Widget _langDropdown({
   required ValueChanged<MapEntry<String, String>?> onChanged,
 }) {
   const dropDec = DropDownDecoratorProps(
-    dropdownSearchDecoration: InputDecoration(
-      filled: true,
-      fillColor: Colors.white10,
-      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(8)),
-        borderSide: BorderSide(color: Colors.white12),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(8)),
-        borderSide: BorderSide(color: Colors.white12),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(8)),
-        borderSide: BorderSide(color: Colors.white24),
-      ),
-    ),
+    baseStyle: TextStyle(color: Colors.white, fontSize: 13),
+    dropdownSearchDecoration: InputDecoration(),
   );
 
-  return DropdownSearch<MapEntry<String, String>>(
-    items: items,
-    itemAsString: (entry) => entry.value,
-    selectedItem: selected,
-    compareFn: (a, b) => a.key == b.key,
-    onChanged: onChanged,
-    popupProps: PopupProps.menu(
-      showSearchBox: true,
-      fit: FlexFit.loose,
-      constraints: const BoxConstraints(maxHeight: 300),
-      searchDelay: Duration.zero,
-      searchFieldProps: TextFieldProps(
-        autofocus: true,
-        decoration: searchDecoration(hint),
+  return SizedBox(
+    height: 36,
+    child: DropdownSearch<MapEntry<String, String>>(
+      items: items,
+      itemAsString: (entry) => entry.value,
+      selectedItem: selected,
+      compareFn: (a, b) => a.key == b.key,
+      onChanged: onChanged,
+      dropdownButtonProps: const DropdownButtonProps(
+        padding: EdgeInsets.zero,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        hoverColor: Colors.transparent,
+        mouseCursor: SystemMouseCursors.basic,
+        icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.white38),
       ),
-      menuProps: MenuProps(
-        backgroundColor: const Color(0xFF2C2C2C),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      dropdownBuilder: (context, selectedItem) {
+        if (selectedItem == null) return const SizedBox();
+        return Text(
+          selectedItem.value,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          overflow: TextOverflow.ellipsis,
+        );
+      },
+      popupProps: PopupProps.menu(
+        showSearchBox: true,
+        fit: FlexFit.loose,
+        constraints: const BoxConstraints(maxHeight: 300),
+        searchDelay: Duration.zero,
+        interceptCallBacks: true,
+        searchFieldProps: TextFieldProps(
+          autofocus: true,
+          decoration: searchDecoration(hint),
+        ),
+        menuProps: MenuProps(
+          backgroundColor: const Color(0xFF2C2C2C),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        itemBuilder: (context, item, isSelectedRaw) {
+          final isCurrentlySelected = item.key == selected.key;
+          return InkWell(
+            onTap: () => Navigator.pop(context, item),
+            splashColor: Colors.tealAccent.withValues(alpha: 0.2),
+            highlightColor: Colors.white10,
+            hoverColor: Colors.white10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: isCurrentlySelected
+                  ? Colors.tealAccent.withValues(alpha: 0.1)
+                  : Colors.transparent,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.value,
+                      style: TextStyle(
+                        color: isCurrentlySelected
+                            ? Colors.white
+                            : Colors.white70,
+                        fontWeight: isCurrentlySelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  if (isCurrentlySelected) ...[
+                    const SizedBox(width: 8),
+                    const Icon(Icons.check, color: Colors.tealAccent, size: 18),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
       ),
+      dropdownDecoratorProps: dropDec,
     ),
-    dropdownDecoratorProps: dropDec,
   );
 }
 
@@ -185,12 +230,28 @@ Widget buildTranslationModelSelector(
   BuildContext context,
   SettingsState state,
 ) {
+  final currentTier =
+      SubscriptionService.instance.currentStatus?.tier ?? SubscriptionTier.free;
+
+  // Minimum tier required per engine
+  const engineTierRequirements = <String, SubscriptionTier>{
+    'google': SubscriptionTier.free,
+    'mymemory': SubscriptionTier.free,
+    'riva': SubscriptionTier.weekly,
+    'llama': SubscriptionTier.weekly,
+  };
+
   const translationModels = {
     'google': 'Google Translate',
     'mymemory': 'MyMemory',
     'riva': 'NVIDIA Riva (Fast, High Quality)',
     'llama': 'Llama 3.1 8B (Accurate, Slower)',
   };
+
+  bool hasAccess(String engineKey) {
+    final required = engineTierRequirements[engineKey] ?? SubscriptionTier.free;
+    return _tierRank(currentTier) >= _tierRank(required);
+  }
 
   const enginesThatNeedKey = {'riva', 'llama'};
   final needsKey =
@@ -202,96 +263,140 @@ Widget buildTranslationModelSelector(
     children: [
       sectionLabel('AI Translation Engine'),
       const SizedBox(height: 8),
-      DropdownSearch<MapEntry<String, String>>(
-        items: translationModels.entries.toList(),
-        itemAsString: (entry) => entry.value,
-        dropdownBuilder: (context, selectedItem) {
-          if (selectedItem == null) return const SizedBox();
-          final isRecommended = selectedItem.key == 'google';
-          return Row(
-            children: [
-              Text(selectedItem.value, style: const TextStyle(fontSize: 14)),
-              if (isRecommended) ...[
-                const SizedBox(width: 8),
-                _buildRecommendedBadge(isActive: true),
-              ],
-            ],
-          );
-        },
-        selectedItem: MapEntry(
-          state.tempTranslationModel,
-          translationModels[state.tempTranslationModel] ??
-              state.tempTranslationModel,
-        ),
-        compareFn: (a, b) => a.key == b.key,
-        onChanged: (entry) {
-          Future.delayed(const Duration(milliseconds: 100), () {
-            if (context.mounted) {
-              context.read<SettingsBloc>().add(
-                UpdateTempSettingEvent(translationModel: entry!.key),
-              );
-            }
-          });
-        },
-        popupProps: PopupProps.menu(
-          fit: FlexFit.loose,
-          constraints: const BoxConstraints(maxHeight: 200),
-          menuProps: const MenuProps(
-            backgroundColor: Color(0xFF2C2C2C),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-            ),
+      SizedBox(
+        height: 36,
+        child: DropdownSearch<MapEntry<String, String>>(
+          items: translationModels.entries.toList(),
+          itemAsString: (entry) => entry.value,
+          selectedItem: MapEntry(
+            state.tempTranslationModel,
+            translationModels[state.tempTranslationModel] ??
+                state.tempTranslationModel,
           ),
-          itemBuilder: (context, item, isSelected) {
-            final isRecommended = item.key == 'google';
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: isSelected
-                  ? Colors.tealAccent.withValues(alpha: 0.1)
-                  : Colors.transparent,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      item.value,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.white70,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                      ),
-                    ),
+          onBeforeChange: (prev, next) async {
+            if (next == null) return false;
+            return hasAccess(next.key);
+          },
+          compareFn: (a, b) => a.key == b.key,
+          dropdownButtonProps: const DropdownButtonProps(
+            padding: EdgeInsets.zero,
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+            mouseCursor: SystemMouseCursors.basic,
+            icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.white38),
+          ),
+          onChanged: (entry) {
+            if (entry != null && hasAccess(entry.key)) {
+              Future.delayed(const Duration(milliseconds: 100), () {
+                if (context.mounted) {
+                  context.read<SettingsBloc>().add(
+                    UpdateTempSettingEvent(translationModel: entry.key),
+                  );
+                }
+              });
+            }
+          },
+          dropdownBuilder: (context, selectedItem) {
+            if (selectedItem == null) return const SizedBox();
+            final isRecommended = selectedItem.key == 'google';
+            return Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    selectedItem.value,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  if (isSelected) ...[
-                    const SizedBox(width: 8),
-                    const Icon(Icons.check, color: Colors.tealAccent, size: 18),
-                  ],
-                  if (isRecommended) ...[
-                    const SizedBox(width: 8),
-                    _buildRecommendedBadge(isActive: isSelected),
-                  ],
+                ),
+                if (isRecommended) ...[
+                  const SizedBox(width: 8),
+                  _buildRecommendedBadge(isActive: true),
                 ],
-              ),
+              ],
             );
           },
-        ),
-        dropdownDecoratorProps: const DropDownDecoratorProps(
-          dropdownSearchDecoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.white10,
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(8)),
-              borderSide: BorderSide(color: Colors.white12),
+          popupProps: PopupProps.menu(
+            fit: FlexFit.loose,
+            constraints: const BoxConstraints(maxHeight: 250),
+            interceptCallBacks: true,
+            menuProps: const MenuProps(
+              backgroundColor: Color(0xFF2C2C2C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(10)),
+              ),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(8)),
-              borderSide: BorderSide(color: Colors.white12),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(8)),
-              borderSide: BorderSide(color: Colors.white24),
-            ),
+            itemBuilder: (context, item, _) {
+              final isCurrentlySelected =
+                  item.key == state.tempTranslationModel;
+              final isRecommended = item.key == 'google';
+              final itemHasAccess = hasAccess(item.key);
+
+              return InkWell(
+                onTap: () {
+                  if (itemHasAccess) {
+                    Navigator.pop(context);
+                    context.read<SettingsBloc>().add(
+                      UpdateTempSettingEvent(translationModel: item.key),
+                    );
+                  } else {}
+                },
+                splashColor: itemHasAccess
+                    ? Colors.tealAccent.withValues(alpha: 0.2)
+                    : Colors.transparent,
+                highlightColor: itemHasAccess ? Colors.white10 : Colors.transparent,
+                hoverColor: itemHasAccess ? Colors.white10 : Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  color: isCurrentlySelected
+                      ? Colors.tealAccent.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.value,
+                          style: TextStyle(
+                            color: itemHasAccess
+                                ? (isCurrentlySelected
+                                      ? Colors.white
+                                      : Colors.white70)
+                                : Colors.white30,
+                            fontWeight: isCurrentlySelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      if (!itemHasAccess) ...[
+                        const SizedBox(width: 8),
+                        _buildTierLockBadge('Weekly+'),
+                      ],
+                      if (isCurrentlySelected) ...[
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.check,
+                          color: Colors.tealAccent,
+                          size: 18,
+                        ),
+                      ],
+                      if (isRecommended && itemHasAccess) ...[
+                        const SizedBox(width: 8),
+                        _buildRecommendedBadge(isActive: isCurrentlySelected),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          dropdownDecoratorProps: const DropDownDecoratorProps(
+            baseStyle: TextStyle(color: Colors.white, fontSize: 13),
+            dropdownSearchDecoration: InputDecoration(),
           ),
         ),
       ),
@@ -586,6 +691,29 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
       'medium': 'Medium (~1.5 GB) - High Accuracy',
     };
 
+    // Minimum tier required per Whisper size
+    const whisperTierRequirements = <String, SubscriptionTier>{
+      'tiny': SubscriptionTier.free,
+      'base': SubscriptionTier.free,
+      'small': SubscriptionTier.weekly,
+      'medium': SubscriptionTier.plus,
+    };
+
+    final currentTier =
+        SubscriptionService.instance.currentStatus?.tier ??
+        SubscriptionTier.free;
+
+    bool whisperHasAccess(String size) {
+      final required = whisperTierRequirements[size] ?? SubscriptionTier.free;
+      return _tierRank(currentTier) >= _tierRank(required);
+    }
+
+    String whisperLockLabel(String size) {
+      if (size == 'small') return 'Weekly+';
+      if (size == 'medium') return 'Plus+';
+      return '';
+    }
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -668,37 +796,58 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: Colors.white12),
               ),
-              child: DropdownButton<String>(
-                value: _currentSize,
-                dropdownColor: const Color(0xFF2C2C2C),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down,
-                  size: 18,
-                  color: Colors.white38,
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  hoverColor: Colors.transparent,
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
                 ),
-                isExpanded: true,
-                style: const TextStyle(color: Colors.white, fontSize: 12),
+                child: DropdownButton<String>(
+                  value: _currentSize,
+                  dropdownColor: const Color(0xFF2C2C2C),
+                  mouseCursor: SystemMouseCursors.basic,
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 18,
+                    color: Colors.white38,
+                  ),
+                  isExpanded: true,
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
                 onChanged: (val) {
-                  if (val != null) {
+                  if (val != null && whisperHasAccess(val)) {
                     widget.onModelChanged('whisper-$val');
+                  } else if (val != null && !whisperHasAccess(val)) {
+                    Navigator.pushNamed(context, '/history-panel');
                   }
                 },
                 items: modelOptions.entries.map((e) {
                   final isRecommended = e.key == 'base';
                   final isDownloaded = _downloadedModels[e.key] == true;
+                  final hasAccess = whisperHasAccess(e.key);
+                  final lockLabel = whisperLockLabel(e.key);
                   return DropdownMenuItem<String>(
                     value: e.key,
+                    enabled: hasAccess,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(e.value),
-                        if (isRecommended) ...[
+                        Text(
+                          e.value,
+                          style: TextStyle(
+                            color: hasAccess ? Colors.white : Colors.white30,
+                          ),
+                        ),
+                        if (!hasAccess) ...[
+                          const SizedBox(width: 8),
+                          _buildTierLockBadge(lockLabel),
+                        ],
+                        if (isRecommended && hasAccess) ...[
                           const SizedBox(width: 8),
                           _buildRecommendedBadge(
                             isActive: e.key == _currentSize,
                           ),
                         ],
-                        if (isDownloaded) ...[
+                        if (isDownloaded && hasAccess) ...[
                           const SizedBox(width: 8),
                           _buildDownloadedBadge(),
                         ],
@@ -729,6 +878,7 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
               ),
             ),
           ),
+        ),
 
           if (isDownloading) ...[
             const SizedBox(height: 12),
@@ -845,6 +995,17 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.state.tempApiKey);
+
+    // Eagerly set assumed valid state to prevent UI flash before validation completes
+    final key = _controller.text.trim();
+    if (key.startsWith('nvapi-') && key.length >= 50) {
+      _status = ApiKeyStatus.valid;
+      _isEditing = false;
+    } else {
+      _status = ApiKeyStatus.missing;
+      _isEditing = true;
+    }
+
     _validateKey(_controller.text, immediate: true);
   }
 
@@ -854,6 +1015,16 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
     if (old.state.tempApiKey != widget.state.tempApiKey &&
         _controller.text != widget.state.tempApiKey) {
       _controller.text = widget.state.tempApiKey;
+
+      final key = _controller.text.trim();
+      if (key.startsWith('nvapi-') && key.length >= 50) {
+        _status = ApiKeyStatus.valid;
+        _isEditing = false;
+      } else {
+        _status = ApiKeyStatus.missing;
+        _isEditing = true;
+      }
+
       _validateKey(_controller.text, immediate: true);
     }
   }
@@ -964,28 +1135,50 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
 
   @override
   Widget build(BuildContext context) {
-    if (_status == ApiKeyStatus.valid && !_isEditing) {
-      return Row(
+    if ((_status == ApiKeyStatus.valid || _status == ApiKeyStatus.verifying) &&
+        !_isEditing) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          sectionLabel('API Key'),
-          const SizedBox(width: 8),
-          _buildStatusBadge(),
-          const SizedBox(width: 12),
-          const Text(
-            '••••••••••••••••••••••••••••••••',
-            style: TextStyle(
-              color: Colors.white54,
-              fontSize: 12,
-              letterSpacing: 2,
-            ),
+          Row(
+            children: [
+              sectionLabel('API Key'),
+              const SizedBox(width: 8),
+              _buildStatusBadge(),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () => setState(() => _isEditing = true),
+                style: TextButton.styleFrom(foregroundColor: Colors.tealAccent),
+                icon: const Icon(Icons.edit, size: 14),
+                label: const Text('Edit', style: TextStyle(fontSize: 12)),
+              ),
+            ],
           ),
-          const Spacer(),
-          TextButton.icon(
-            onPressed: () => setState(() => _isEditing = true),
-            icon: const Icon(Icons.edit, size: 14, color: Colors.tealAccent),
-            label: const Text(
-              'Edit',
-              style: TextStyle(color: Colors.tealAccent, fontSize: 12),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 36,
+            child: TextField(
+              controller: _controller,
+              obscureText: true,
+              readOnly: true,
+              style: const TextStyle(color: Colors.white54, fontSize: 13),
+              decoration: InputDecoration(
+                fillColor: Colors.white.withValues(alpha: 0.02),
+                hintText: 'nvapi-xxxxxxxxxxxxxxxxxxxxxxxx',
+                hintStyle: const TextStyle(color: Colors.white24, fontSize: 13),
+                border: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(6)),
+                  borderSide: BorderSide(color: Colors.transparent),
+                ),
+                enabledBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(6)),
+                  borderSide: BorderSide(color: Colors.transparent),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(6)),
+                  borderSide: BorderSide(color: Colors.transparent),
+                ),
+              ),
             ),
           ),
         ],
@@ -1009,11 +1202,9 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
               const Spacer(),
               TextButton.icon(
                 onPressed: () => setState(() => _isEditing = false),
-                icon: const Icon(Icons.close, size: 14, color: Colors.white54),
-                label: const Text(
-                  'Cancel',
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
-                ),
+                style: TextButton.styleFrom(foregroundColor: Colors.white54),
+                icon: const Icon(Icons.close, size: 14),
+                label: const Text('Cancel', style: TextStyle(fontSize: 12)),
               ),
             ],
           ],
@@ -1026,6 +1217,7 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
         const SizedBox(height: 4),
         InkWell(
           onTap: () => launchUrl(Uri.parse(instructions.url)),
+          mouseCursor: SystemMouseCursors.click,
           borderRadius: BorderRadius.circular(4),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1058,44 +1250,34 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
           ),
         ),
         const SizedBox(height: 8),
-        TextField(
-          controller: _controller,
-          obscureText: _obscure,
-          onChanged: (val) {
-            context.read<SettingsBloc>().add(
-              UpdateTempSettingEvent(apiKey: val),
-            );
-            _validateKey(val);
-          },
-          style: const TextStyle(color: Colors.white, fontSize: 13),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.white10,
-            hintText: 'nvapi-xxxxxxxxxxxxxxxxxxxxxxxx',
-            hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
-            ),
-            border: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(8)),
-              borderSide: BorderSide(color: Colors.white12),
-            ),
-            enabledBorder: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(8)),
-              borderSide: BorderSide(color: Colors.white12),
-            ),
-            focusedBorder: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(8)),
-              borderSide: BorderSide(color: Colors.tealAccent, width: 1.5),
-            ),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscure ? Icons.visibility_off : Icons.visibility,
-                color: Colors.white38,
-                size: 18,
+        SizedBox(
+          height: 36,
+          child: TextField(
+            controller: _controller,
+            obscureText: _obscure,
+            onChanged: (val) {
+              context.read<SettingsBloc>().add(
+                UpdateTempSettingEvent(apiKey: val),
+              );
+              _validateKey(val);
+            },
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'nvapi-xxxxxxxxxxxxxxxxxxxxxxxx',
+              hintStyle: const TextStyle(color: Colors.white24, fontSize: 13),
+              suffixIconConstraints: const BoxConstraints(
+                minWidth: 36,
+                minHeight: 36,
               ),
-              onPressed: () => setState(() => _obscure = !_obscure),
+              suffixIcon: IconButton(
+                padding: EdgeInsets.zero,
+                icon: Icon(
+                  _obscure ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.white38,
+                  size: 16,
+                ),
+                onPressed: () => setState(() => _obscure = !_obscure),
+              ),
             ),
           ),
         ),
@@ -1138,4 +1320,47 @@ _ApiKeyInstructions _apiKeyInstructions(
       url: 'https://build.nvidia.com/settings/api-keys',
     );
   }
+}
+
+// ─── Tier gating helpers ──────────────────────────────────────────────────────
+
+/// Maps a [SubscriptionTier] to an ordinal for comparison.
+int _tierRank(SubscriptionTier tier) {
+  switch (tier) {
+    case SubscriptionTier.free:
+      return 0;
+    case SubscriptionTier.weekly:
+      return 1;
+    case SubscriptionTier.plus:
+      return 2;
+    case SubscriptionTier.pro:
+      return 3;
+  }
+}
+
+/// Lock badge rendered next to options the user's tier cannot access.
+Widget _buildTierLockBadge(String requiredTierLabel) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+      color: Colors.orangeAccent.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(4),
+      border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.lock_outline, size: 9, color: Colors.orangeAccent),
+        const SizedBox(width: 3),
+        Text(
+          requiredTierLabel,
+          style: const TextStyle(
+            color: Colors.orangeAccent,
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
 }

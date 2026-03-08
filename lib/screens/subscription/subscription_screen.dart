@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:intl/intl.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/services/subscription_service.dart';
 import '../../core/window_manager.dart';
 
@@ -14,6 +15,7 @@ class SubscriptionScreen extends StatefulWidget {
 class _SubscriptionScreenState extends State<SubscriptionScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
+  String _version = '1.0.0';
 
   @override
   void initState() {
@@ -23,6 +25,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
+    
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) setState(() => _version = info.version);
+    });
   }
 
   @override
@@ -41,7 +47,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         color: Colors.white12,
         width: 1,
         child: Container(
-          color: const Color(0xFF121212),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF161616),
+                Color(0xFF0F0F0F),
+              ],
+            ),
+          ),
           child: Column(
             children: [
               _buildHeader(context),
@@ -95,22 +110,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                         vertical: 24,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF181818),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.03,
+                                        ),
                                         borderRadius: BorderRadius.circular(24),
                                         border: Border.all(
                                           color: Colors.white.withValues(
                                             alpha: 0.05,
                                           ),
                                         ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(
-                                              alpha: 0.4,
-                                            ),
-                                            blurRadius: 40,
-                                            spreadRadius: 0,
-                                          ),
-                                        ],
                                       ),
                                       child: Column(
                                         children: [
@@ -197,6 +205,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                                   features: const [
                                                     'Unlimited Daily Chars',
                                                     'Intelligent Context Refresh (5s)',
+                                                    'Auto-Correct Live Captions',
                                                     'Unlimited History Access',
                                                     'Premium Translation Engines',
                                                     '24/7 Priority Support',
@@ -214,6 +223,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                     ),
                                     const SizedBox(height: 32),
                                     _buildFooter(context),
+                                    const SizedBox(height: 24),
+                                    _VersionChip(label: 'v$_version'),
                                     const SizedBox(height: 16),
                                   ],
                                 ),
@@ -266,18 +277,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-          side: BorderSide(color: color.withValues(alpha: 0.4), width: 1.5),
+          side: BorderSide(color: color.withValues(alpha: 0.3), width: 1.2),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
           ),
-          foregroundColor: color,
+          foregroundColor: color.withValues(alpha: 0.9),
         ),
         child: Text(
           text,
           style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.5,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
           ),
         ),
       ),
@@ -307,7 +318,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
           const Icon(
             Icons.workspace_premium_rounded,
             size: 14,
-            color: Colors.white38,
+            color: Colors.tealAccent,
           ),
           const SizedBox(width: 8),
           const Text(
@@ -339,7 +350,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           child: Image.asset(
             'assets/icon.png',
             width: 56,
@@ -365,12 +376,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
           children: [
             Text(
               'Omni Bridge',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
+                ),
             ),
             Text(
               'PREMIUM SUBSCRIPTION',
@@ -407,11 +418,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
             SizedBox(width: 8),
             Text(
               'PRO UNLIMITED ACCESS ACTIVE',
-              style: TextStyle(
-                color: Colors.tealAccent,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
+                style: TextStyle(
+                  color: Colors.tealAccent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
             ),
           ],
         ),
@@ -432,7 +443,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
               '${(status.progress * 100).toInt()}%',
               style: const TextStyle(
                 color: Colors.tealAccent,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
                 fontSize: 12,
               ),
             ),
@@ -457,7 +468,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                 text: _formatter.format(status.dailyCharsUsed),
                 style: const TextStyle(
                   color: Colors.tealAccent,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               TextSpan(
@@ -487,7 +498,7 @@ class _SectionTitle extends StatelessWidget {
           style: const TextStyle(
             color: Colors.white,
             fontSize: 20,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: 4),
@@ -517,9 +528,9 @@ class _InfoCard extends StatelessWidget {
       width: 360,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white10),
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -534,8 +545,8 @@ class _InfoCard extends StatelessWidget {
                 style: const TextStyle(
                   color: Colors.white38,
                   fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.8,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
                 ),
               ),
             ],
@@ -577,21 +588,21 @@ class _PlanCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isPopular
-            ? const Color(0xFF1A1A1A)
-            : Colors.white.withValues(alpha: 0.04),
+            ? Colors.tealAccent.withValues(alpha: 0.05)
+            : Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isPopular
-              ? Colors.tealAccent.withValues(alpha: 0.4)
-              : Colors.white10,
-          width: isPopular ? 1.5 : 1,
+              ? Colors.tealAccent.withValues(alpha: 0.3)
+              : Colors.white.withValues(alpha: 0.08),
+          width: 1,
         ),
         boxShadow: isPopular
             ? [
                 BoxShadow(
-                  color: Colors.tealAccent.withValues(alpha: 0.05),
-                  blurRadius: 20,
-                  spreadRadius: 5,
+                  color: Colors.tealAccent.withValues(alpha: 0.08),
+                  blurRadius: 25,
+                  spreadRadius: 2,
                 ),
               ]
             : null,
@@ -608,7 +619,7 @@ class _PlanCard extends StatelessWidget {
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               if (isPopular)
@@ -629,7 +640,7 @@ class _PlanCard extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.tealAccent,
                       fontSize: 8,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -644,7 +655,7 @@ class _PlanCard extends StatelessWidget {
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 28,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               if (period != null)
@@ -660,7 +671,7 @@ class _PlanCard extends StatelessWidget {
             style: const TextStyle(color: Colors.white54, fontSize: 12),
           ),
           const SizedBox(height: 12),
-          const Divider(color: Colors.white10),
+          const Divider(color: Colors.white12),
           const SizedBox(height: 12),
           ...features.map(
             (f) => Padding(
@@ -699,7 +710,7 @@ class _PlanCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 disabledBackgroundColor: Colors.white.withValues(alpha: 0.05),
               ),
@@ -707,12 +718,39 @@ class _PlanCard extends StatelessWidget {
                 isCurrent ? 'Current Plan' : 'Select Plan',
                 style: const TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _VersionChip extends StatelessWidget {
+  final String label;
+
+  const _VersionChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Text(
+        'OMNI BRIDGE $label'.toUpperCase(),
+        style: const TextStyle(
+          color: Colors.white24,
+          fontSize: 8,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }

@@ -6,16 +6,23 @@ This guide covers running Omni Bridge from source for development.
 
 - **Windows 10/11** (required for WASAPI loopback audio capture)
 - **Flutter SDK** 3.x+ — [flutter.dev](https://flutter.dev/docs/get-started/install/windows)
-- **Python 3.10+** — [python.org](https://python.org)
+- **Python 3.11+** — [python.org](https://python.org)
 
 ---
 
 ## 1. Python Server
 
+The Python server acts as the local orchestrator for audio capture and AI processing.
+
 ```powershell
+# 1. Navigate to the server directory
 cd server
+
+# 2. Create and activate a Virtual Environment
 python -m venv .venv
 .\.venv\Scripts\activate
+
+# 3. Install core dependencies
 pip install -r requirements.txt
 ```
 

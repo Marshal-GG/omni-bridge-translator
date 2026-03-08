@@ -10,6 +10,7 @@ import 'components/settings_header.dart';
 import 'components/input_output_tab.dart';
 import 'components/languages_tab.dart';
 import 'components/display_tab.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/window_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -22,6 +23,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  String _version = '1.0.0';
 
   @override
   void initState() {
@@ -31,6 +33,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     });
     _tabController = TabController(length: 3, vsync: this);
     context.read<SettingsBloc>().add(LoadDevicesEvent());
+    
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) setState(() => _version = info.version);
+    });
   }
 
   @override
@@ -64,7 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       const Divider(height: 1, color: Colors.white10),
                       Container(
                         color: const Color(0xFF1A1A1A),
-                        height: 38, // Added fixed height to shrink tabs
+                        height: 38,
                         child: Center(
                           child: SizedBox(
                             width: 500,
@@ -75,10 +81,11 @@ class _SettingsScreenState extends State<SettingsScreen>
                               labelColor: Colors.tealAccent,
                               unselectedLabelColor: Colors.white38,
                               labelStyle: const TextStyle(
-                                fontSize: 11, // Shrunk from 12
+                                fontSize: 11,
                                 fontWeight: FontWeight.w600,
+                                fontFamily: 'Inter',
                               ),
-                              labelPadding: EdgeInsets.zero, // Compact padding
+                              labelPadding: EdgeInsets.zero,
                               tabs: const [
                                 Tab(text: 'Translation'),
                                 Tab(text: 'Display'),
@@ -93,7 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                           controller: _tabController,
                           children: [
                             SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                               child: Center(
                                 child: SizedBox(
                                   width: 500,
@@ -107,26 +114,42 @@ class _SettingsScreenState extends State<SettingsScreen>
                                         context,
                                         state,
                                       ),
+                                      const SizedBox(height: 40),
+                                      Center(
+                                        child: _VersionChip(label: 'v$_version'),
+                                      ),
                                     ],
                                   ),
                                 ),
                               ),
                             ),
                             SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                               child: Center(
                                 child: SizedBox(
                                   width: 500,
-                                  child: buildDisplayTab(context, state),
+                                  child: Column(
+                                    children: [
+                                      buildDisplayTab(context, state),
+                                      const SizedBox(height: 40),
+                                      _VersionChip(label: 'v$_version'),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                             SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                               child: Center(
                                 child: SizedBox(
                                   width: 500,
-                                  child: buildInputOutputTab(context, state),
+                                  child: Column(
+                                    children: [
+                                      buildInputOutputTab(context, state),
+                                      const SizedBox(height: 40),
+                                      _VersionChip(label: 'v$_version'),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -142,6 +165,33 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
         );
       },
+    );
+  }
+}
+
+class _VersionChip extends StatelessWidget {
+  final String label;
+
+  const _VersionChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Text(
+        'OMNI BRIDGE $label'.toUpperCase(),
+        style: const TextStyle(
+          color: Colors.white24,
+          fontSize: 8,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.2,
+        ),
+      ),
     );
   }
 }

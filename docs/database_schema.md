@@ -161,7 +161,7 @@ Single document synced whenever the user saves settings.
 | `sourceLang` | `string` | ISO 639-1 source language code |
 | `targetLang` | `string` | ISO 639-1 target language code |
 | `useMic` | `bool` | `true` = mic input, `false` = desktop audio |
-| `fontSize` | `number` | Caption font size in pts |
+| `fontSize` | `number` | Caption font size in px |
 | `isBold` | `bool` | Caption bold toggle |
 | `opacity` | `number` | Window background opacity (0–1) |
 | `translationModel` | `string` | Selected engine: `google` (default) \| `riva` \| `llama` \| `mymemory` |

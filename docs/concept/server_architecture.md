@@ -4,31 +4,24 @@
 
 Omni Bridge uses a **hybrid two-server architecture**:
 
-| Layer | Where It Runs | Responsibility |
+| Component | Responsibility | Technical Stack |
 |---|---|---|
-| **Local Python Server** | User's PC (bundled in installer) | Capture Windows audio, manage devices, perform **Offline Whisper ASR**, relay to cloud |
-| **Cloud Server** | Google Cloud Run | Hold API keys, call NVIDIA Riva (ASR/NMT) + Llama (NIM), return captions |
-| **GitHub API** | Remote | Provides latest release metadata for the **Auto-Update Service** |
-| **Flutter Frontend** | User's PC | Display captions, send settings via WebSocket |
+| **Flutter App** | UI/UX, Subscription logic, Live caption display | Flutter (Material 3) |
+| **Local Python Server** | Audio capture, VAD, ASR/Translation orchestration | Python 3.11+, PyAudio, FastAPI |
+| **External AI APIs** | Heavylifting for ASR (NVIDIA Riva/Whisper) and NMT (Llama/Google) | NVIDIA NIM, Google Translate |
+| **Firebase** | User accounts, Subscription state, Usage tracking | Auth, Firestore, RTDB |
 
 ```
 User PC
-┌──────────────────────────────────────────────┐
-│  Flutter App  ←──WS(captions)──→  Local Py  │
-│                                      Server  │
-│    (ws://localhost:8765)          (pyaudio,  │
-│                                   devices)   │
-└────────────────────┬─────────────────────────┘
-                     │ raw audio (WSS)
-                     ▼
-         Google Cloud Run
-         ┌─────────────────────────┐
-         │  Cloud Server           │
-         │  - NVIDIA Riva (ASR/NMT)│
-         │  - Llama 3.1 (trans)    │
-         │  - MyMemory (API)       │
-         │  - API keys stored here │
-         └─────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│  Flutter Frontend (UI)  ←──WS──→  Local Python Server  │
+│                                      (Orchestrator)    │
+└──────────────────────────────────────────┬─────────────┘
+                                           │
+                    ┌──────────────────────┼──────────────────────┐
+                    ▼                      ▼                      ▼
+           NVIDIA NIM (API)       Google Translate       MyMemory / Whisper
+        (Riva ASR, Llama 3.1)       (REST API)           (Offline / REST)
 ```
 
 ---
@@ -39,22 +32,18 @@ User PC
 omni_bridge/
 │
 ├── server/                        # Python backend
-│   ├── flutter_server.py          # Local server (entry point for installed app)
-│   ├── cloud_server.py            # Cloud server (deployed to Google Cloud Run)
+│   ├── flutter_server.py          # WebSocket server (entry point)
 │   ├── nim_api.py                 # AI engine orchestrator (Riva / Llama / Google)
 │   ├── audio_capture.py           # Windows WASAPI audio capture (local-only)
 │   ├── audio_meter.py             # Real-time RMS metering (local-only)
 │   ├── shared_pyaudio.py          # Singleton PyAudio instance
-│   ├── models/
-│   │   ├── riva_model.py          # NVIDIA Riva ASR + Translation (NMT)
+│   ├── models/                    # Individual engine implementations
+│   │   ├── riva_model.py          # NVIDIA Riva ASR + Translation
 │   │   ├── llama_model.py         # Llama 3.1 8B via NVIDIA NIM
 │   │   ├── whisper_model.py       # Offline Whisper (Tiny, Base, Small, Medium)
 │   │   └── google_model.py        # Google Translate fallback
-│   ├── requirements.txt           # Local server dependencies (includes pyaudiowpatch)
-│   ├── requirements_cloud.txt     # Cloud server dependencies (no Windows libs)
-│   ├── Dockerfile                 # Container definition for Cloud Run
-│   ├── omni_bridge_server.spec    # PyInstaller spec to build local server EXE
-│   └── .env.example               # Template for server env vars
+│   ├── requirements.txt           # Python dependencies
+│   └── .env.example               # Local secret storage (shipped in installer)
 │
 ├── lib/                           # Flutter application source
 │   ├── main.dart
@@ -67,7 +56,8 @@ omni_bridge/
 │   │   └── ...
 │   └── screens/
 │       ├── login/                 # Login screen
-│       ├── settings/              # Device & language settings
+│       ├── history/               # History Page (Gated for Free users)
+│       ├── settings/              # Device & AI engine config
 │       ├── about/                 # About screen & Update checker UI
 │       └── ...
 │
@@ -79,11 +69,12 @@ omni_bridge/
 
 ---
 
-## Environment Variables Reference
+## Environment Variables
 
-### Flutter App — `.env` (Shipped to user's PC via the installer)
+### Local Server — `server/.env`
+These keys are used by the local Python orchestrator to communicate with AI providers.
 
-| Variable | Safe to Ship? | Notes |
+| Variable | Provider | Purpose |
 |---|---|---|
 | `GOOGLE_CLIENT_ID` | ✅ **Yes — Public** | Designed to be public. Needed for OAuth redirect. |
 | `FIREBASE_API_KEY` | ✅ **Yes — Public** | Firebase security comes from Security Rules, not key secrecy. |
@@ -106,21 +97,16 @@ omni_bridge/
 
 ---
 
-## Local Server — Setup & Running
+## Setup & Development
 
-The local server runs on the user's PC after installation. For development:
+### Python Backend
+Requires Python 3.11 and the `.venv` specifically configured for Windows WASAPI capture.
 
 ```powershell
-# 1. Navigate to server directory
 cd server
-
-# 2. Activate virtual environment
-..\.venv\Scripts\activate
-
-# 3. Set your env vars (copy example and fill in)
-copy .env.example .env
-
-# 4. Run the local server
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
 python flutter_server.py
 ```
 

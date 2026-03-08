@@ -15,48 +15,72 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
     child: Row(
       children: [
         Expanded(
-          child: OutlinedButton(
-            onPressed: () => Navigator.pop(context),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white70,
-              side: const BorderSide(color: Colors.white24),
+          child: SizedBox(
+            height: 42,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                backgroundColor: Colors.white.withValues(alpha: 0.05),
+              ),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.3,
+                ),
+              ),
             ),
-            child: const Text('Cancel'),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
-          child: ElevatedButton(
-            onPressed: () {
-              context.read<SettingsBloc>().add(SaveSettingsEvent());
-              context.read<TranslationBloc>().add(
-                ApplySettingsEvent(
-                  targetLang: state.tempTargetLang,
-                  sourceLang: state.tempSourceLang,
-                  useMic: state.tempUseMic,
-                  fontSize: state.tempFontSize,
-                  isBold: state.tempIsBold,
-                  opacity: state.tempOpacity,
-                  inputDeviceIndex: state.tempInputDeviceIndex,
-                  outputDeviceIndex: state.tempOutputDeviceIndex,
-                  desktopVolume: state.tempDesktopVolume,
-                  micVolume: state.tempMicVolume,
-                  translationModel: state.tempTranslationModel,
-                  apiKey: state.tempApiKey,
-                  transcriptionModel: state.tempTranscriptionModel,
-                ),
-              );
+          child: SizedBox(
+            height: 42,
+            child: ElevatedButton(
+              onPressed: () {
+                context.read<SettingsBloc>().add(SaveSettingsEvent());
+                context.read<TranslationBloc>().add(
+                      ApplySettingsEvent(
+                        targetLang: state.tempTargetLang,
+                        sourceLang: state.tempSourceLang,
+                        useMic: state.tempUseMic,
+                        fontSize: state.tempFontSize,
+                        isBold: state.tempIsBold,
+                        opacity: state.tempOpacity,
+                        inputDeviceIndex: state.tempInputDeviceIndex,
+                        outputDeviceIndex: state.tempOutputDeviceIndex,
+                        desktopVolume: state.tempDesktopVolume,
+                        micVolume: state.tempMicVolume,
+                        translationModel: state.tempTranslationModel,
+                        apiKey: state.tempApiKey,
+                        transcriptionModel: state.tempTranscriptionModel,
+                      ),
+                    );
 
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.tealAccent,
-              foregroundColor: Colors.black,
-              elevation: 4,
-            ),
-            child: const Text(
-              'Save',
-              style: TextStyle(fontWeight: FontWeight.bold),
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.tealAccent,
+                foregroundColor: Colors.black,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Save Changes',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
             ),
           ),
         ),

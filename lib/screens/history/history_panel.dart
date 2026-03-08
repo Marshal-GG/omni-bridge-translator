@@ -1,87 +1,325 @@
 import 'package:flutter/material.dart';
+import 'package:bitsdojo_window/bitsdojo_window.dart';
 import '../../core/services/history_service.dart';
+import '../../core/services/subscription_service.dart';
 import '../../models/history_entry.dart';
-import 'components/history_app_bar.dart';
+import 'components/history_header.dart';
 import 'components/history_list_components.dart';
 import 'components/history_entry_item.dart';
+
+import '../../screens/subscription/upgrade_sheet.dart';
 
 class HistoryPanel extends StatelessWidget {
   const HistoryPanel({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
-      appBar: buildHistoryAppBar(context),
-      body: Row(
-        children: [
-          // ── LEFT: Live Transcriptions ──────────────────────────────────
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return StreamBuilder<SubscriptionStatus>(
+      stream: SubscriptionService.instance.statusStream,
+      initialData: SubscriptionService.instance.currentStatus,
+      builder: (context, snapshot) {
+        final tier = snapshot.data?.tier ?? SubscriptionTier.free;
+        return _HistoryPanelBody(tier: tier);
+      },
+    );
+  }
+}
+
+class _HistoryPanelBody extends StatefulWidget {
+  final SubscriptionTier tier;
+  const _HistoryPanelBody({required this.tier});
+
+  @override
+  State<_HistoryPanelBody> createState() => _HistoryPanelBodyState();
+}
+
+class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.tier == SubscriptionTier.free) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          showUpgradeSheet(context);
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Free: blocked entirely — showing upgrade sheet via callback above.
+    if (widget.tier == SubscriptionTier.free) {
+      return WindowBorder(
+        color: Colors.white10,
+        width: 1,
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF161616), Color(0xFF0F0F0F)],
+            ),
+          ),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: Column(
               children: [
-                buildHistoryColumnHeader(
-                  '📝  Live Transcripts',
-                  'Every utterance captured',
-                ),
-                const Divider(height: 1, color: Colors.white12),
-                Expanded(
-                  child: ValueListenableBuilder<List<HistoryEntry>>(
-                    valueListenable: HistoryService.instance.liveEntries,
-                    builder: (_, entries, _) {
-                      if (entries.isEmpty) {
-                        return buildHistoryEmptyState(
-                          'No transcriptions yet.\nStart the live translator.',
-                        );
-                      }
-                      return _EntryList(
-                        entries: entries,
-                        showTranslation: true,
-                      );
-                    },
+                buildHistoryHeader(context, onClear: () {}),
+                const Divider(height: 1, color: Colors.white10),
+                const Expanded(
+                  child: _TierGateView(
+                    icon: Icons.history_toggle_off,
+                    title: 'History Unavailable',
+                    subtitle:
+                        'Upgrade to Weekly or higher plan to access your translation history.',
+                    requiredTier: 'Weekly+',
                   ),
                 ),
               ],
             ),
           ),
+        ),
+      );
+    }
 
-          // Divider
-          Container(width: 1, color: Colors.white12),
+    final isPro = widget.tier == SubscriptionTier.pro;
 
-          // ── RIGHT: Chunked 5-sec Re-translations ───────────────────────
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                buildHistoryColumnHeader(
-                  '🔁  5-Second Re-translations',
-                  'Cleaner, context-aware output',
-                ),
-                const Divider(height: 1, color: Colors.white12),
-                Expanded(
-                  child: ValueListenableBuilder<List<HistoryEntry>>(
-                    valueListenable: HistoryService.instance.chunkedEntries,
-                    builder: (_, entries, _) {
-                      if (entries.isEmpty) {
-                        return buildHistoryEmptyState(
-                          'Chunks appear every 5 seconds\nonce translation is running.',
-                        );
-                      }
-                      return _EntryList(
-                        entries: entries,
-                        showTranslation: true,
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
+    return WindowBorder(
+      color: Colors.white10,
+      width: 1,
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF161616), Color(0xFF0F0F0F)],
           ),
-        ],
+        ),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Column(
+            children: [
+              buildHistoryHeader(
+                context,
+                onClear: () => HistoryService.instance.clear(),
+              ),
+              const Divider(height: 1, color: Colors.white10),
+              Expanded(
+                child: Row(
+                  children: [
+                    // ── LEFT: Live Transcriptions ─────────────────────────────────────
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          buildHistoryColumnHeader(
+                            '📝  Live Transcripts',
+                            _historySubtitle(widget.tier),
+                          ),
+                          const Divider(height: 1, color: Colors.white12),
+                          Expanded(
+                            child: ValueListenableBuilder<List<HistoryEntry>>(
+                              valueListenable: HistoryService.instance.liveEntries,
+                              builder: (_, entries, _) {
+                                final filtered = _filterByTier(entries, widget.tier);
+                                if (filtered.isEmpty) {
+                                  return buildHistoryEmptyState(
+                                    'No transcriptions yet.\nStart the live translator.',
+                                  );
+                                }
+                                return _EntryList(
+                                  entries: filtered,
+                                  showTranslation: true,
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Divider
+                    Container(width: 1, color: Colors.white12),
+
+                    // ── RIGHT: 5-Second Re-translations (Pro only) ────────────────────
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          buildHistoryColumnHeader(
+                            '🔁  5-Second Re-translations',
+                            'Cleaner, context-aware output',
+                          ),
+                          const Divider(height: 1, color: Colors.white12),
+                          if (!isPro)
+                            const Expanded(
+                              child: _TierGateView(
+                                icon: Icons.auto_fix_high,
+                                title: 'Pro Feature',
+                                subtitle:
+                                    'Upgrade to Pro to unlock Intelligent Context Refresh — '
+                                    'AI that corrects translations up to 5 seconds back in real time.',
+                                requiredTier: 'Pro',
+                              ),
+                            )
+                          else
+                            Expanded(
+                              child: ValueListenableBuilder<List<HistoryEntry>>(
+                                valueListenable: HistoryService.instance.chunkedEntries,
+                                builder: (_, entries, _) {
+                                  if (entries.isEmpty) {
+                                    return buildHistoryEmptyState(
+                                      'Chunks appear every 5 seconds\nonce translation is running.',
+                                    );
+                                  }
+                                  return _EntryList(
+                                    entries: entries,
+                                    showTranslation: true,
+                                  );
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Subtitle shown under the Live Transcripts column header.
+  String _historySubtitle(SubscriptionTier tier) {
+    switch (tier) {
+      case SubscriptionTier.free:
+        return 'No history available';
+      case SubscriptionTier.weekly:
+        return 'Current session only';
+      case SubscriptionTier.plus:
+        return 'Last 3 days';
+      case SubscriptionTier.pro:
+        return 'Unlimited history';
+    }
+  }
+
+  /// Filter entries based on the user's tier.
+  List<HistoryEntry> _filterByTier(
+    List<HistoryEntry> entries,
+    SubscriptionTier tier,
+  ) {
+    if (tier == SubscriptionTier.pro) return entries;
+    if (tier == SubscriptionTier.plus) {
+      final cutoff = DateTime.now().subtract(const Duration(days: 3));
+      return entries.where((e) => e.timestamp.isAfter(cutoff)).toList();
+    }
+    return entries;
+  }
+}
+
+// ─── Tier gate placeholder ────────────────────────────────────────────────────
+
+class _TierGateView extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String requiredTier;
+
+  const _TierGateView({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.requiredTier,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.orangeAccent.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.orangeAccent.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Icon(icon, size: 32, color: Colors.orangeAccent),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.orangeAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: Colors.orangeAccent.withValues(alpha: 0.5),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.lock_outline,
+                    size: 12,
+                    color: Colors.orangeAccent,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Requires $requiredTier',
+                    style: const TextStyle(
+                      color: Colors.orangeAccent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: () => Navigator.pushNamed(context, '/subscription'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.tealAccent,
+                side: const BorderSide(color: Colors.tealAccent, width: 0.8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('View Plans', style: TextStyle(fontSize: 13)),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
+// ─── Entry list ───────────────────────────────────────────────────────────────
 
 class _EntryList extends StatefulWidget {
   final List<HistoryEntry> entries;
@@ -98,7 +336,6 @@ class _EntryListState extends State<_EntryList> {
   @override
   void didUpdateWidget(_EntryList old) {
     super.didUpdateWidget(old);
-    // Auto-scroll to bottom when new entries arrive
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) {
         _scroll.animateTo(

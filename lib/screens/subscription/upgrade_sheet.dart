@@ -4,9 +4,10 @@ import 'subscription_screen.dart';
 void showUpgradeSheet(BuildContext context) {
   showModalBottomSheet(
     context: context,
-    backgroundColor: Colors.grey[900],
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
     builder: (context) => const UpgradeSheet(),
   );
@@ -19,6 +20,11 @@ class UpgradeSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161616),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -31,7 +37,7 @@ class UpgradeSheet extends StatelessWidget {
                 'Upgrade Your Plan',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const Spacer(),
@@ -48,14 +54,18 @@ class UpgradeSheet extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           _buildFeatureRow(
-            Icons.check_circle_outline,
-            'Plus: 10x Daily Limit (100k chars)',
+            Icons.bolt_rounded,
+            'Weekly: High-Speed Engines & 50k Limit',
           ),
           _buildFeatureRow(
-            Icons.check_circle_outline,
-            'Pro: Unlimited Usage & Full History',
+            Icons.history_rounded,
+            'Plus: 3-Day History & Offline Models',
           ),
-          _buildFeatureRow(Icons.check_circle_outline, 'Priority Support'),
+          _buildFeatureRow(
+            Icons.auto_awesome_rounded,
+            'Pro: Unlimited Usage & 5s AI Refresh',
+          ),
+          _buildFeatureRow(Icons.contact_support_rounded, 'Priority Support'),
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
@@ -79,7 +89,7 @@ class UpgradeSheet extends StatelessWidget {
               ),
               child: const Text(
                 'View Plans',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ),
           ),

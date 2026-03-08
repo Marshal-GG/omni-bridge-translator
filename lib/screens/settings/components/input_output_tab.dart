@@ -11,142 +11,171 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Row(
-        children: [
-          Expanded(child: sectionLabel('Microphone Input')),
-          Transform.scale(
-            scale: 0.7,
-            child: Switch(
-              value: state.tempUseMic,
-              activeThumbColor: Colors.tealAccent,
-              onChanged: (val) => context.read<SettingsBloc>().add(
-                UpdateTempSettingEvent(useMic: val),
-              ),
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 4),
-      if (state.tempUseMic) ...[
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: buildDeviceDropdown(
-                context: context,
-                state: state,
-                items: state.inputDevices,
-                defaultName: state.defaultInputDeviceName,
-                selectedIndex: state.tempInputDeviceIndex,
-                hintText: 'System Default',
-                loading: state.devicesLoading,
-                onChanged: (device) {
-                  if (device != null) {
-                    context.read<SettingsBloc>().add(
-                      UpdateTempSettingEvent(
-                        inputDeviceIndex: device['index'] as int,
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: sectionLabel('Microphone Input')),
+                  SizedBox(
+                    height: 20, // Reduces the vertical footprint
+                    child: Transform.scale(
+                      scale: 0.7,
+                      child: Switch(
+                        value: state.tempUseMic,
+                        materialTapTargetSize: MaterialTapTargetSize
+                            .shrinkWrap, // Removes Flutter's forced 48px padding
+                        onChanged: (val) => context.read<SettingsBloc>().add(
+                          UpdateTempSettingEvent(useMic: val),
+                        ),
                       ),
-                    );
-                  } else {
-                    context.read<SettingsBloc>().add(
-                      const UpdateTempSettingEvent(clearInputDevice: true),
-                    );
-                  }
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 4,
-              child: VolumeSlider(
-                key: const ValueKey('Mic Volume'),
-                label: 'Volume',
-                value: state.tempMicVolume,
-                color: Colors.tealAccent,
-                onChangeEnd: (v) => context.read<SettingsBloc>().add(
-                  UpdateTempSettingEvent(micVolume: v),
-                ),
-                onLiveChange: (v) =>
-                    context.read<TranslationBloc>().asrClient.liveVolumeUpdate(
-                      desktopVolume: state.tempDesktopVolume,
-                      micVolume: v,
                     ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-        buildDbMeter(
-          level: (state.currentInputVolume * state.tempMicVolume).clamp(
-            0.0,
-            1.0,
+              if (state.tempUseMic) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: buildDeviceDropdown(
+                        context: context,
+                        state: state,
+                        items: state.inputDevices,
+                        defaultName: state.defaultInputDeviceName,
+                        selectedIndex: state.tempInputDeviceIndex,
+                        hintText: 'System Default',
+                        loading: state.devicesLoading,
+                        onChanged: (device) {
+                          if (device != null) {
+                            context.read<SettingsBloc>().add(
+                              UpdateTempSettingEvent(
+                                inputDeviceIndex: device['index'] as int,
+                              ),
+                            );
+                          } else {
+                            context.read<SettingsBloc>().add(
+                              const UpdateTempSettingEvent(
+                                clearInputDevice: true,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 4,
+                      child: VolumeSlider(
+                        key: const ValueKey('Mic Volume'),
+                        label: 'Volume',
+                        value: state.tempMicVolume,
+                        color: Colors.tealAccent,
+                        onChangeEnd: (v) => context.read<SettingsBloc>().add(
+                          UpdateTempSettingEvent(micVolume: v),
+                        ),
+                        onLiveChange: (v) => context
+                            .read<TranslationBloc>()
+                            .asrClient
+                            .liveVolumeUpdate(
+                              desktopVolume: state.tempDesktopVolume,
+                              micVolume: v,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+                buildDbMeter(
+                  level: (state.currentInputVolume * state.tempMicVolume).clamp(
+                    0.0,
+                    1.0,
+                  ),
+                  label: 'Mic',
+                  color: Colors.tealAccent,
+                  active: true,
+                ),
+              ],
+            ],
           ),
-          label: 'Mic',
-          color: Colors.tealAccent,
-          active: true,
         ),
-      ],
+      ),
 
       const SizedBox(height: 16),
 
       // ── Desktop Audio section ─────────────────────────────────────────
-      sectionLabel('Desktop Audio Output'),
-      const SizedBox(height: 4),
-      Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: buildDeviceDropdown(
-              context: context,
-              state: state,
-              items: state.outputDevices,
-              defaultName: state.defaultOutputDeviceName,
-              selectedIndex: state.tempOutputDeviceIndex,
-              hintText: 'System Default',
-              loading: state.devicesLoading,
-              onChanged: (device) {
-                if (device != null) {
-                  context.read<SettingsBloc>().add(
-                    UpdateTempSettingEvent(
-                      outputDeviceIndex: device['index'] as int,
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              sectionLabel('Desktop Audio Output'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: buildDeviceDropdown(
+                      context: context,
+                      state: state,
+                      items: state.outputDevices,
+                      defaultName: state.defaultOutputDeviceName,
+                      selectedIndex: state.tempOutputDeviceIndex,
+                      hintText: 'System Default',
+                      loading: state.devicesLoading,
+                      onChanged: (device) {
+                        if (device != null) {
+                          context.read<SettingsBloc>().add(
+                            UpdateTempSettingEvent(
+                              outputDeviceIndex: device['index'] as int,
+                            ),
+                          );
+                        } else {
+                          context.read<SettingsBloc>().add(
+                            const UpdateTempSettingEvent(
+                              clearOutputDevice: true,
+                            ),
+                          );
+                        }
+                      },
                     ),
-                  );
-                } else {
-                  context.read<SettingsBloc>().add(
-                    const UpdateTempSettingEvent(clearOutputDevice: true),
-                  );
-                }
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 4,
-            child: VolumeSlider(
-              key: const ValueKey('Desktop Volume'),
-              label: 'Volume',
-              value: state.tempDesktopVolume,
-              color: Colors.purpleAccent,
-              onChangeEnd: (v) => context.read<SettingsBloc>().add(
-                UpdateTempSettingEvent(desktopVolume: v),
-              ),
-              onLiveChange: (v) =>
-                  context.read<TranslationBloc>().asrClient.liveVolumeUpdate(
-                    desktopVolume: v,
-                    micVolume: state.tempMicVolume,
                   ),
-            ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 4,
+                    child: VolumeSlider(
+                      key: const ValueKey('Desktop Volume'),
+                      label: 'Volume',
+                      value: state.tempDesktopVolume,
+                      color: Colors.purpleAccent,
+                      onChangeEnd: (v) => context.read<SettingsBloc>().add(
+                        UpdateTempSettingEvent(desktopVolume: v),
+                      ),
+                      onLiveChange: (v) => context
+                          .read<TranslationBloc>()
+                          .asrClient
+                          .liveVolumeUpdate(
+                            desktopVolume: v,
+                            micVolume: state.tempMicVolume,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+              buildDbMeter(
+                level: (state.currentOutputVolume * state.tempDesktopVolume)
+                    .clamp(0.0, 1.0),
+                label: 'Desktop',
+                color: Colors.purpleAccent,
+                active: true,
+              ),
+            ],
           ),
-        ],
-      ),
-      buildDbMeter(
-        level: (state.currentOutputVolume * state.tempDesktopVolume).clamp(
-          0.0,
-          1.0,
         ),
-        label: 'Desktop',
-        color: Colors.purpleAccent,
-        active: true,
       ),
 
       const SizedBox(height: 10),
@@ -182,18 +211,8 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                 ? null
                 : () =>
                       context.read<SettingsBloc>().add(ResetIODefaultsEvent()),
-            icon: const Icon(Icons.restore, size: 16, color: Colors.white70),
-            label: const Text(
-              'Reset Defaults',
-              style: TextStyle(color: Colors.white70),
-            ),
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 0.05),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
+            icon: const Icon(Icons.restore, size: 16),
+            label: const Text('Reset Defaults'),
           ),
           const SizedBox(width: 16),
           TextButton.icon(
@@ -209,19 +228,11 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                       color: Colors.white54,
                     ),
                   )
-                : const Icon(Icons.refresh, size: 16, color: Colors.white70),
+                : const Icon(Icons.refresh, size: 16),
             label: Text(
               state.devicesLoading
                   ? 'Refreshing Devices...'
                   : 'Refresh Devices',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 0.05),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
             ),
           ),
         ],
@@ -248,56 +259,53 @@ Widget buildDeviceDropdown({
       child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
     );
   }
-  return DropdownSearch<Map<String, dynamic>>(
-    items: items,
-    itemAsString: (device) => device['name'] == defaultName
-        ? '${device['name']} (Default)'
-        : device['name'] as String,
-    selectedItem: selectedIndex != null
-        ? items.firstWhere(
-            (d) => d['index'] == selectedIndex,
-            orElse: () => {'name': defaultName, 'index': -1},
-          )
-        : null,
-    compareFn: (item, selectedItem) => item['index'] == selectedItem['index'],
-    onChanged: (device) {
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (context.mounted) onChanged(device);
-      });
-    },
-    popupProps: PopupProps.menu(
-      showSearchBox: true,
-      fit: FlexFit.loose,
-      constraints: const BoxConstraints(maxHeight: 300),
-      searchDelay: Duration.zero,
-      searchFieldProps: TextFieldProps(
-        autofocus: true,
-        decoration: searchDecoration(hintText),
+  return SizedBox(
+    height: 36,
+    child: DropdownSearch<Map<String, dynamic>>(
+      items: items,
+      itemAsString: (device) => device['name'] == defaultName
+          ? '${device['name']} (Default)'
+          : device['name'] as String,
+      selectedItem: selectedIndex != null
+          ? items.firstWhere(
+              (d) => d['index'] == selectedIndex,
+              orElse: () => {'name': defaultName, 'index': -1},
+            )
+          : null,
+      compareFn: (item, selectedItem) => item['index'] == selectedItem['index'],
+      onChanged: (device) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (context.mounted) onChanged(device);
+        });
+      },
+      dropdownButtonProps: const DropdownButtonProps(
+        padding: EdgeInsets.zero,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        hoverColor: Colors.transparent,
+        mouseCursor: SystemMouseCursors.basic,
+        icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.white38),
       ),
-      menuProps: MenuProps(
-        backgroundColor: const Color(0xFF2C2C2C),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      popupProps: PopupProps.menu(
+        showSearchBox: true,
+        fit: FlexFit.loose,
+        constraints: const BoxConstraints(maxHeight: 300),
+        searchDelay: Duration.zero,
+        searchFieldProps: TextFieldProps(
+          autofocus: true,
+          decoration: searchDecoration(hintText),
+        ),
+        menuProps: MenuProps(
+          backgroundColor: const Color(0xFF2C2C2C),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       ),
-    ),
-    dropdownDecoratorProps: DropDownDecoratorProps(
-      dropdownSearchDecoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: const TextStyle(color: Colors.white70),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.05),
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        border: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(6)),
-          borderSide: BorderSide(color: Colors.white12),
-        ),
-        enabledBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(6)),
-          borderSide: BorderSide(color: Colors.white12),
-        ),
-        focusedBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(6)),
-          borderSide: BorderSide(color: Colors.white24),
+      dropdownDecoratorProps: DropDownDecoratorProps(
+        dropdownSearchDecoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: const TextStyle(color: Colors.white70),
         ),
       ),
     ),

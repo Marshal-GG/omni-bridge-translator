@@ -72,12 +72,12 @@ Core pipeline orchestrator:
 
 ```
 Flutter "start" command
- └─ flutter_server.py → NimApiClient.start()
-     └─ audio_capture.py (loopback / mic)
-         └─ audio chunks → ASR model
-             └─ transcript text → Translation model
-                 └─ { originalText, translatedText, isFinal }
-                     └─ WebSocket → Flutter UI
+    └─ flutter_server.py → NimApiClient.start()
+        └─ audio_capture.py (loopback / mic)
+            └─ audio chunks → ASR model
+                └─ transcript text → Translation model
+                    └─ { originalText, translatedText, isFinal }
+                        └─ WebSocket → Flutter UI (Used by HistoryService for 5s context refresh)
 ```
 
 ---

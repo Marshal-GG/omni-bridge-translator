@@ -86,11 +86,20 @@ class _AboutScreenState extends State<AboutScreen> {
         color: Colors.white12,
         width: 1,
         child: Container(
-          color: const Color(0xFF121212),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF161616),
+                Color(0xFF0F0F0F),
+              ],
+            ),
+          ),
           child: Column(
             children: [
               _buildHeader(context),
-              const Divider(height: 1, color: Colors.white10),
+            const Divider(height: 1, color: Colors.white10),
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -147,26 +156,8 @@ class _AboutScreenState extends State<AboutScreen> {
                                               letterSpacing: 1.2,
                                             ),
                                           ),
-                                          const SizedBox(height: 4),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white10,
-                                              borderRadius: BorderRadius.circular(20),
-                                            ),
-                                            child: Text(
-                                              _version.isNotEmpty
-                                                  ? 'Version $_version'
-                                                  : '',
-                                              style: const TextStyle(
-                                                color: Colors.white38,
-                                                fontSize: 10,
-                                              ),
-                                            ),
-                                          ),
+                                          const SizedBox(height: 12),
+                                          // Note: Version tag moved to footer
                                           const SizedBox(height: 8),
                                           // ── Check for Updates ──────────────────
                                           Column(
@@ -181,8 +172,8 @@ class _AboutScreenState extends State<AboutScreen> {
                                                   onPressed:
                                                       _updateStatus ==
                                                           UpdateStatus.checking
-                                                      ? null
-                                                      : _checkForUpdate,
+                                                              ? null
+                                                              : _checkForUpdate,
                                                   style: OutlinedButton.styleFrom(
                                                     padding:
                                                         const EdgeInsets.symmetric(
@@ -193,18 +184,19 @@ class _AboutScreenState extends State<AboutScreen> {
                                                       color:
                                                           _updateStatus ==
                                                               UpdateStatus.checking
-                                                          ? Colors.white12
-                                                          : Colors.tealAccent
+                                                          ? Colors.white10
+                                                           : Colors.tealAccent
                                                                 .withValues(
-                                                                  alpha: 0.4,
+                                                                  alpha: 0.3,
                                                                 ),
                                                     ),
                                                     shape: RoundedRectangleBorder(
                                                       borderRadius:
-                                                          BorderRadius.circular(6),
+                                                          BorderRadius.circular(8),
                                                     ),
-                                                    foregroundColor:
-                                                        Colors.tealAccent,
+                                                     foregroundColor:
+                                                         Colors.tealAccent,
+                                                     backgroundColor: Colors.tealAccent.withValues(alpha: 0.02),
                                                   ),
                                                   child:
                                                       _updateStatus ==
@@ -313,14 +305,14 @@ class _AboutScreenState extends State<AboutScreen> {
                                     child: Row(
                                       crossAxisAlignment: CrossAxisAlignment.stretch,
                                       children: [
-                                        Expanded(
-                                          child: _InfoCard(
-                                            icon: Icons.info_outline_rounded,
-                                            title: 'About',
-                                            content:
-                                                'Omni Bridge provides real-time AI-powered live captions and translations directly on your Windows desktop. Capture any audio — system output or microphone — and see it transcribed and translated instantly in a floating, always-on-top overlay.',
+                                          Expanded(
+                                            child: _InfoCard(
+                                              icon: Icons.info_outline_rounded,
+                                              title: 'About Omni Bridge',
+                                              content:
+                                                  'Omni Bridge is your ultimate companion for real-time accessibility and global communication. By leveraging state-of-the-art AI from Google, NVIDIA, and OpenAI, it provides ultra-low latency live captions and translations directly on your Windows desktop.\n\nWhether you are attending a meeting in a foreign language, watching content without subtitles, or need assistive technology for hearing clarity, Omni Bridge captures any audio source — system output or microphone — and delivers synchronized, highly accurate text in a customizable, transparent overlay.',
+                                            ),
                                           ),
-                                        ),
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: _InfoCard(
@@ -471,6 +463,31 @@ class _AboutScreenState extends State<AboutScreen> {
                                   ),
 
                                   const SizedBox(height: 24),
+                                  if (_version.isNotEmpty) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.03),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(alpha: 0.05),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'Version $_version',
+                                        style: const TextStyle(
+                                          color: Colors.white38,
+                                          fontSize: 10,
+                                          letterSpacing: 0.8,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                  ],
                                   const Text(
                                     '© 2026 Omni Bridge. All rights reserved.',
                                     style: TextStyle(
@@ -498,48 +515,44 @@ class _AboutScreenState extends State<AboutScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return SizedBox(
+    return Container(
       height: 32,
+      color: Colors.black26,
       child: Row(
         children: [
-          SizedBox(
-            width: 32,
-            height: 32,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: const Icon(
-                Icons.arrow_back_rounded,
-                size: 15,
-                color: Colors.white38,
-              ),
-              tooltip: 'Back to Translator',
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.arrow_back_rounded, size: 16),
+            color: Colors.white60,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+            hoverColor: Colors.white10,
+            splashRadius: 16,
+            tooltip: 'Back',
           ),
           const SizedBox(width: 4),
           const Icon(
             Icons.info_outline_rounded,
             size: 14,
-            color: Colors.white38,
+            color: Colors.tealAccent,
           ),
           const SizedBox(width: 8),
           const Text(
             'About Omni Bridge',
             style: TextStyle(
-              color: Colors.white38,
+              color: Colors.white70,
               fontSize: 11,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
             ),
           ),
           Expanded(child: MoveWindow()),
           MinimizeWindowButton(
-            colors: WindowButtonColors(iconNormal: Colors.white38),
+            colors: WindowButtonColors(iconNormal: Colors.white60),
           ),
           CloseWindowButton(
             colors: WindowButtonColors(
-              iconNormal: Colors.white38,
+              iconNormal: Colors.white60,
               mouseOver: Colors.redAccent,
             ),
             onPressed: () {
@@ -569,11 +582,18 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -645,11 +665,11 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.tealAccent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.2)),
+        color: Colors.tealAccent.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.15)),
       ),
       child: Text(
         label,

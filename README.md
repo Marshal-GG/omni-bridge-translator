@@ -61,8 +61,9 @@ Auto-detect source language, or manually select from: English, Spanish, French, 
 - **Bold text** toggle for better readability
 
 ### 📜 Caption History
-- Every translated caption is saved to a searchable **History Panel**
-- Review past translations any time without interrupting the live session
+- Every translated caption is saved to a searchable, premium **History Panel** with a glassy dark aesthetic.
+- Standardized window controls (Minimize, Close, Drag) and a dedicated "Clear History" action.
+- **Contextual Upgrades**: Free-tier users are automatically presented with the `UpgradeSheet` upon entering the history view, providing a seamless path to premium features.
 
 ### 🔄 Auto-Update
 - Built-in update checker — get notified when a new version is available
@@ -82,7 +83,7 @@ Auto-detect source language, or manually select from: English, Spanish, French, 
 | **Plus** | ₹149/month | 100,000 chars/day |
 | **Pro** | ₹399/month | Unlimited |
 
-Pro unlocks **Intelligent Context Refresh** (5-second retroactive correction), unlimited history, and priority support. Upgrade from within the app via Razorpay.
+Pro unlocks **Intelligent Context Refresh** (5-second retroactive correction), unlimited history access, and priority support. Clear visual indicators (teal highlights) and real-time usage tracking in the Account screen help you manage your plan. Upgrade from within the app via Razorpay.
 
 > Users with their own NVIDIA API Key bypass the daily quota for NVIDIA-backed engines.
 

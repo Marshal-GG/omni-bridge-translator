@@ -17,48 +17,76 @@ String _providerLabel(bool isAnon, User? user) {
 Widget buildAccountAvatar(User? user, bool isAnon) {
   return Column(
     children: [
-      CircleAvatar(
-        radius: 36,
-        backgroundColor: Colors.tealAccent.withValues(alpha: 0.12),
-        backgroundImage: (user?.photoURL?.startsWith('http') == true)
-            ? NetworkImage(user!.photoURL!)
-            : null,
-        child: (user?.photoURL?.startsWith('http') != true)
-            ? Icon(
-                isAnon ? Icons.person_outline : Icons.person,
-                color: Colors.tealAccent,
-                size: 36,
-              )
-            : null,
+      Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.tealAccent.withValues(alpha: 0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.tealAccent.withValues(alpha: 0.08),
+              blurRadius: 20,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: CircleAvatar(
+          radius: 36,
+          backgroundColor: Colors.white.withValues(alpha: 0.05),
+          backgroundImage: (user?.photoURL?.startsWith('http') == true)
+              ? NetworkImage(user!.photoURL!)
+              : null,
+          child: (user?.photoURL?.startsWith('http') != true)
+              ? Icon(
+                  isAnon ? Icons.person_outline : Icons.person,
+                  color: Colors.tealAccent,
+                  size: 32,
+                )
+              : null,
+        ),
       ),
-      const SizedBox(height: 14),
+      const SizedBox(height: 16),
       Text(
-        isAnon ? 'Anonymous User' : (user?.displayName ?? 'No Name'),
+        isAnon ? 'Guest User' : (user?.displayName ?? 'No Name'),
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.5,
         ),
       ),
       if (!isAnon)
-        Text(
-          user?.email ?? '',
-          style: const TextStyle(color: Colors.white54, fontSize: 12),
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text(
+            user?.email ?? '',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 13,
+              letterSpacing: 0.2,
+            ),
+          ),
         ),
-      const SizedBox(height: 6),
+      const SizedBox(height: 12),
       Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.tealAccent.withValues(alpha: 0.1),
+          color: Colors.tealAccent.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: Colors.tealAccent.withValues(alpha: 0.2),
+          ),
         ),
         child: Text(
-          _providerLabel(isAnon, user),
+          _providerLabel(isAnon, user).toUpperCase(),
           style: const TextStyle(
             color: Colors.tealAccent,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.8,
           ),
         ),
       ),

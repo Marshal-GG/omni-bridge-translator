@@ -28,43 +28,48 @@ class _AccountButtonState extends State<AccountButton> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedScale(
-        scale: _isHovered ? 1.02 : 1.0,
-        duration: const Duration(milliseconds: 180),
+        scale: _isHovered ? 1.01 : 1.0,
+        duration: const Duration(milliseconds: 200),
         child: SizedBox(
           width: double.infinity,
-          height: 46,
+          height: 44,
           child: ElevatedButton.icon(
             onPressed: widget.onPressed,
             icon: Icon(
               widget.icon,
-              size: 17,
+              size: 16,
               color: danger
-                  ? Colors.redAccent
-                  : (_isHovered ? Colors.black87 : Colors.white70),
+                  ? Colors.redAccent.withValues(alpha: 0.9)
+                  : (_isHovered ? Colors.black : Colors.white70),
             ),
             label: Text(
               widget.label,
               style: TextStyle(
                 color: danger
-                    ? Colors.redAccent
-                    : (_isHovered ? Colors.black87 : Colors.white70),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+                    ? Colors.redAccent.withValues(alpha: 0.9)
+                    : (_isHovered ? Colors.black : Colors.white70),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
               ),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: danger
                   ? (_isHovered
-                        ? Colors.redAccent.withValues(alpha: 0.15)
-                        : Colors.transparent)
-                  : (_isHovered ? Colors.tealAccent : Colors.white10),
+                        ? Colors.redAccent.withValues(alpha: 0.12)
+                        : Colors.white.withValues(alpha: 0.03))
+                  : (_isHovered ? Colors.tealAccent : Colors.white.withValues(alpha: 0.05)),
+              foregroundColor: danger ? Colors.redAccent : Colors.black,
               elevation: 0,
+              shadowColor: Colors.transparent,
+              splashFactory: NoSplash.splashFactory,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(6),
                 side: BorderSide(
                   color: danger
-                      ? Colors.redAccent.withValues(alpha: 0.5)
-                      : Colors.white12,
+                      ? Colors.redAccent.withValues(alpha: _isHovered ? 0.4 : 0.2)
+                      : (_isHovered ? Colors.tealAccent : Colors.white12),
+                  width: 1,
                 ),
               ),
             ),

@@ -17,7 +17,7 @@ Widget buildSettingsHeader(BuildContext context) {
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         ),
-        const Icon(Icons.settings_rounded, size: 14, color: Colors.white38),
+        const Icon(Icons.settings_rounded, size: 14, color: Colors.tealAccent),
         const SizedBox(width: 8),
         const Text(
           'Settings',

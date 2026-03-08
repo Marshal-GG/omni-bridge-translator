@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'core/routes/my_nav_observer.dart';
 import 'core/routes/router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'core/theme/app_theme.dart';
 import 'screens/translation/bloc/translation_bloc.dart';
 import 'screens/settings/bloc/settings_bloc.dart';
 import 'core/services/asr_ws_client.dart';
@@ -29,13 +30,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Omni Bridge: Live AI Translator',
-        darkTheme: ThemeData.dark(),
-        theme: ThemeData(
-          scaffoldBackgroundColor: Colors.transparent,
-          canvasColor: Colors.transparent,
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
-          useMaterial3: true,
-        ),
+        theme: AppTheme.darkTheme,
         initialRoute: startRoute,
         onGenerateRoute: generateRoute,
         navigatorObservers: [MyNavigatorObserver()],

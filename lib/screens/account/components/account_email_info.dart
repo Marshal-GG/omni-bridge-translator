@@ -5,38 +5,58 @@ Widget buildAccountEmailInfo(User? user) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Align(
-        alignment: Alignment.centerLeft,
+      const Padding(
+        padding: EdgeInsets.only(left: 4, bottom: 8),
         child: Text(
-          'Email',
+          'EMAIL ADDRESS',
           style: TextStyle(
-            color: Colors.white54,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.8,
+            color: Colors.white38,
+            fontSize: 10,
+            letterSpacing: 0.5,
           ),
         ),
       ),
-      const SizedBox(height: 8),
       Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white10),
+          color: Colors.white.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.white12),
         ),
         child: Row(
           children: [
-            const Icon(Icons.email_outlined, size: 15, color: Colors.white38),
-            const SizedBox(width: 10),
-            Text(
-              user?.email ?? '—',
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            const Icon(Icons.mail_rounded, size: 16, color: Colors.tealAccent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                user?.email ?? '—',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const Spacer(),
-            if (user?.emailVerified == true)
-              const Icon(Icons.verified, size: 14, color: Colors.tealAccent),
+            if (user?.emailVerified == true) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.tealAccent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'VERIFIED',
+                  style: TextStyle(
+                    color: Colors.tealAccent,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

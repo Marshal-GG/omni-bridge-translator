@@ -8,7 +8,6 @@ import '../bloc/translation_state.dart';
 import '../../../core/services/update_service.dart';
 import '../../../core/services/subscription_service.dart';
 import '../../../core/window_manager.dart';
-import '../../subscription/upgrade_sheet.dart';
 
 Widget buildTranslationHeader(BuildContext context, TranslationState state) {
   final bloc = context.read<TranslationBloc>();
@@ -72,14 +71,8 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
         ),
         IconButton(
           icon: const Icon(Icons.history, size: 14, color: Colors.white70),
-          onPressed: () {
-            if (state.quotaStatus?.tier == SubscriptionTier.pro) {
-              Navigator.pushNamed(context, '/history-panel');
-            } else {
-              showUpgradeSheet(context);
-            }
-          },
-          tooltip: 'History (Pro only)',
+          onPressed: () => Navigator.pushNamed(context, '/history-panel'),
+          tooltip: 'History',
           padding: const EdgeInsets.all(8),
           constraints: const BoxConstraints(),
           splashRadius: 16,

@@ -10,69 +10,50 @@ Widget buildAccountNameEditor({
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Align(
-        alignment: Alignment.centerLeft,
+      const Padding(
+        padding: EdgeInsets.only(left: 4, bottom: 8),
         child: Text(
-          'Display Name',
+          'DISPLAY NAME',
           style: TextStyle(
-            color: Colors.white54,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.8,
+            color: Colors.white38,
+            fontSize: 10,
+            letterSpacing: 0.5,
           ),
         ),
       ),
-      const SizedBox(height: 8),
       Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: controller,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.05),
-                hintText: 'Your display name',
-                hintStyle: const TextStyle(color: Colors.white30),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.white12),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.white12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                    color: Colors.tealAccent,
-                    width: 1.5,
-                  ),
+            child: SizedBox(
+              height: 36,
+              child: TextField(
+                controller: controller,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: const InputDecoration(
+                  hintText: 'Your display name',
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           SizedBox(
-            height: 46,
+            height: 36, // TODO: Refine size, currently perceived as too big compared to TextField
             child: ElevatedButton(
               onPressed: isSaving ? null : onSave,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.tealAccent,
                 foregroundColor: Colors.black,
+                elevation: 0,
+                shadowColor: Colors.transparent,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
               child: isSaving
                   ? const SizedBox(
-                      width: 16,
-                      height: 16,
+                      width: 14,
+                      height: 14,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: Colors.black,
@@ -80,7 +61,10 @@ Widget buildAccountNameEditor({
                     )
                   : const Text(
                       'Save',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
             ),
           ),
@@ -88,11 +72,14 @@ Widget buildAccountNameEditor({
       ),
       if (message != null) ...[
         const SizedBox(height: 10),
-        Text(
-          message,
-          style: TextStyle(
-            color: messageIsError ? Colors.redAccent : Colors.tealAccent,
-            fontSize: 12,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            message,
+            style: TextStyle(
+              color: messageIsError ? Colors.redAccent : Colors.tealAccent,
+              fontSize: 12,
+            ),
           ),
         ),
       ],
