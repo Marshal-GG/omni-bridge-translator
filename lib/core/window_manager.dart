@@ -74,7 +74,7 @@ Future<void> setToAccountPosition() async {
   await windowManager.setMinimumSize(const Size(600, 500));
   await windowManager.setSize(const Size(800, 660));
   await windowManager.center();
-  await windowManager.setAlwaysOnTop(true);
+  await windowManager.setAlwaysOnTop(false);
 }
 
 /// Sets the window to the About screen size (same as login)
@@ -84,7 +84,17 @@ Future<void> setToAboutPosition() async {
   await windowManager.setMinimumSize(const Size(600, 500));
   await windowManager.setSize(const Size(880, 700));
   await windowManager.center();
-  await windowManager.setAlwaysOnTop(true);
+  await windowManager.setAlwaysOnTop(false);
+}
+
+/// Sets the window to a centered large panel for Subscription
+Future<void> setToSubscriptionPosition() async {
+  await windowManager.setResizable(true);
+  appWindow.minSize = const Size(600, 500);
+  await windowManager.setMinimumSize(const Size(600, 500));
+  await windowManager.setSize(const Size(1080, 820));
+  await windowManager.center();
+  await windowManager.setAlwaysOnTop(false);
 }
 
 /// Sets the window to the wide bottom-center overlay style

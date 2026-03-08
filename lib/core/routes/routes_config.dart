@@ -7,6 +7,7 @@ export '../../screens/login/login_screen.dart';
 export '../../screens/history/history_panel.dart';
 export '../../screens/account/account_screen.dart';
 export '../../screens/about/about_screen.dart';
+export '../../screens/subscription/subscription_screen.dart';
 
 // services & models
 export '../services/auth_service.dart';

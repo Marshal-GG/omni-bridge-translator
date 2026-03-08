@@ -10,6 +10,7 @@ Route<dynamic> generateRoute(RouteSettings settings) {
     '/history-panel': (_) => const HistoryPanel(),
     '/account': (_) => const AccountScreen(),
     '/about': (_) => const AboutScreen(),
+    '/subscription': (_) => const SubscriptionScreen(),
   };
   final WidgetBuilder? builder = routes[settings.name];
 

@@ -1,9 +1,13 @@
 import 'package:equatable/equatable.dart';
+import '../../../core/services/subscription_service.dart';
 
 class TranslationState extends Equatable {
   // App UI State
   final bool isSettingsOpen;
   final bool isShrunk;
+  final bool isRunning;
+  final SubscriptionStatus? quotaStatus;
+  final bool isQuotaExceeded;
 
   // Active Settings (Applied to WebSocket)
   final String activeTargetLang;
@@ -26,6 +30,7 @@ class TranslationState extends Equatable {
   const TranslationState({
     required this.isSettingsOpen,
     required this.isShrunk,
+    required this.isRunning,
     required this.activeTargetLang,
     required this.activeSourceLang,
     required this.activeUseMic,
@@ -40,12 +45,15 @@ class TranslationState extends Equatable {
     this.activeApiKey = '',
     this.activeTranscriptionModel = 'online',
     this.autoDetectWarning,
+    this.quotaStatus,
+    this.isQuotaExceeded = false,
   });
 
   factory TranslationState.initial() {
     return const TranslationState(
       isSettingsOpen: false,
       isShrunk: false,
+      isRunning: true,
       // Active
       activeTargetLang: 'en',
       activeSourceLang: 'auto',
@@ -61,12 +69,15 @@ class TranslationState extends Equatable {
       activeApiKey: '',
       activeTranscriptionModel: 'online',
       autoDetectWarning: null,
+      quotaStatus: null,
+      isQuotaExceeded: false,
     );
   }
 
   TranslationState copyWith({
     bool? isSettingsOpen,
     bool? isShrunk,
+    bool? isRunning,
     String? activeTargetLang,
     String? activeSourceLang,
     bool? activeUseMic,
@@ -81,10 +92,13 @@ class TranslationState extends Equatable {
     String? activeApiKey,
     String? activeTranscriptionModel,
     Object? autoDetectWarning = _sentinel,
+    SubscriptionStatus? quotaStatus,
+    bool? isQuotaExceeded,
   }) {
     return TranslationState(
       isSettingsOpen: isSettingsOpen ?? this.isSettingsOpen,
       isShrunk: isShrunk ?? this.isShrunk,
+      isRunning: isRunning ?? this.isRunning,
       activeTargetLang: activeTargetLang ?? this.activeTargetLang,
       activeSourceLang: activeSourceLang ?? this.activeSourceLang,
       activeUseMic: activeUseMic ?? this.activeUseMic,
@@ -105,6 +119,8 @@ class TranslationState extends Equatable {
       autoDetectWarning: autoDetectWarning == _sentinel
           ? this.autoDetectWarning
           : autoDetectWarning as String?,
+      quotaStatus: quotaStatus ?? this.quotaStatus,
+      isQuotaExceeded: isQuotaExceeded ?? this.isQuotaExceeded,
     );
   }
 
@@ -112,6 +128,7 @@ class TranslationState extends Equatable {
   List<Object?> get props => [
     isSettingsOpen,
     isShrunk,
+    isRunning,
     activeTargetLang,
     activeSourceLang,
     activeUseMic,
@@ -126,6 +143,8 @@ class TranslationState extends Equatable {
     activeApiKey,
     activeTranscriptionModel,
     autoDetectWarning,
+    quotaStatus,
+    isQuotaExceeded,
   ];
 }
 

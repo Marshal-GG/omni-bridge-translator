@@ -5,6 +5,8 @@ import '../bloc/translation_bloc.dart';
 import '../bloc/translation_event.dart';
 import '../bloc/translation_state.dart';
 import '../../../core/services/update_service.dart';
+import '../../../core/services/subscription_service.dart';
+import '../../subscription/upgrade_sheet.dart';
 
 Widget buildTranslationHeader(BuildContext context, TranslationState state) {
   final bloc = context.read<TranslationBloc>();
@@ -40,7 +42,24 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
           ),
         ),
         const SizedBox(width: 15),
+        const SizedBox(width: 15),
+        if (state.quotaStatus != null)
+          _CompactQuotaBar(status: state.quotaStatus!),
         Expanded(child: MoveWindow()),
+        IconButton(
+          icon: Icon(
+            state.isRunning
+                ? Icons.pause_circle_outline
+                : Icons.play_circle_outline,
+            size: 16,
+            color: state.isRunning ? Colors.tealAccent : Colors.redAccent,
+          ),
+          onPressed: () => bloc.add(ToggleRunningEvent()),
+          tooltip: state.isRunning ? 'Pause Translation' : 'Resume Translation',
+          padding: const EdgeInsets.all(8),
+          constraints: const BoxConstraints(),
+          splashRadius: 16,
+        ),
         IconButton(
           icon: const Icon(Icons.compress, size: 14, color: Colors.white70),
           onPressed: () => bloc.add(ToggleShrinkEvent()),
@@ -51,8 +70,14 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
         ),
         IconButton(
           icon: const Icon(Icons.history, size: 14, color: Colors.white70),
-          onPressed: () => Navigator.pushNamed(context, '/history-panel'),
-          tooltip: 'History',
+          onPressed: () {
+            if (state.quotaStatus?.tier == SubscriptionTier.pro) {
+              Navigator.pushNamed(context, '/history-panel');
+            } else {
+              showUpgradeSheet(context);
+            }
+          },
+          tooltip: 'History (Pro only)',
           padding: const EdgeInsets.all(8),
           constraints: const BoxConstraints(),
           splashRadius: 16,
@@ -146,6 +171,35 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                 thickness: 1,
                                 color: Colors.white12,
                               ),
+                              // Subscription icon
+                              Tooltip(
+                                message: 'Subscription & Quota',
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/subscription',
+                                    );
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 10,
+                                    ),
+                                    child: Icon(
+                                      Icons.workspace_premium_rounded,
+                                      size: 18,
+                                      color: Colors.lightBlueAccent,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const VerticalDivider(
+                                width: 1,
+                                thickness: 1,
+                                color: Colors.white12,
+                              ),
                               // About icon — shows update dot if available
                               Tooltip(
                                 message: hasUpdate
@@ -230,4 +284,44 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
       ],
     ),
   );
+}
+
+class _CompactQuotaBar extends StatelessWidget {
+  final SubscriptionStatus status;
+  const _CompactQuotaBar({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    if (status.tier == SubscriptionTier.pro) return const SizedBox.shrink();
+
+    final color = status.progress > 0.9
+        ? Colors.red
+        : (status.progress > 0.7 ? Colors.orange : Colors.tealAccent);
+
+    return Container(
+      width: 100,
+      height: 4,
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: FractionallySizedBox(
+        alignment: Alignment.centerLeft,
+        widthFactor: status.progress.clamp(0.0, 1.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.5),
+                blurRadius: 4,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

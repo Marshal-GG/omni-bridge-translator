@@ -33,7 +33,10 @@ class MyNavigatorObserver extends NavigatorObserver {
     final name = route.settings.name;
     if (name == '/login' ||
         name == '/translation-overlay' ||
-        name == '/history-panel') {
+        name == '/history-panel' ||
+        name == '/subscription' ||
+        name == '/about' ||
+        name == '/settings') {
       if (previousRoute != null) {
         _handleWindowState(previousRoute);
       }
@@ -52,6 +55,12 @@ class MyNavigatorObserver extends NavigatorObserver {
       setToHistoryPosition();
     } else if (name == '/account') {
       setToAccountPosition();
+    } else if (name == '/subscription') {
+      setToSubscriptionPosition();
+    } else if (name == '/about') {
+      setToAboutPosition();
+    } else if (name == '/settings') {
+      setToSettingsPosition();
     }
   }
 }

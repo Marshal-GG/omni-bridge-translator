@@ -8,17 +8,22 @@ import 'translation_state.dart';
 import '../../../core/services/asr_ws_client.dart';
 import '../../../core/services/tracking_service.dart';
 import '../../../core/services/asr_text_controller.dart';
+import '../../../core/services/subscription_service.dart';
 import '../../../core/window_manager.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final AsrWebSocketClient asrClient;
   StreamSubscription? _captionSub;
+  StreamSubscription? _statusSub;
   int _lastLineCount = 0;
 
   TranslationBloc({required this.asrClient})
     : super(TranslationState.initial()) {
+    on<UpdateQuotaEvent>(_onUpdateQuota);
+    on<QuotaExceededEvent>(_onQuotaExceeded);
     on<ToggleSettingsEvent>(_onToggleSettings);
     on<ToggleShrinkEvent>(_onToggleShrink);
+    on<ToggleRunningEvent>(_onToggleRunning);
     on<CaptionTextChangedEvent>(_onCaptionTextChanged);
     on<SourceLangOverrideEvent>(_onSourceLangOverride);
     on<ApplySettingsEvent>(_onApplySettings);
@@ -26,20 +31,30 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     on<LangErrorEvent>(_onLangError);
 
     _initAsr();
+    _initQuotaListener();
+  }
+
+  void _initQuotaListener() {
+    _statusSub = SubscriptionService.instance.statusStream.listen((status) {
+      add(UpdateQuotaEvent(status));
+    });
   }
 
   void _initAsr() {
     add(LoadSettingsEvent());
-    asrClient.start(
-      sourceLang: state.activeSourceLang,
-      targetLang: state.activeTargetLang,
-      useMic: state.activeUseMic,
-      inputDeviceIndex: state.activeInputDeviceIndex,
-      outputDeviceIndex: state.activeOutputDeviceIndex,
-      translationModel: state.activeTranslationModel,
-      apiKey: state.activeApiKey,
-      transcriptionModel: state.activeTranscriptionModel,
-    );
+    
+    if (state.isRunning && !state.isQuotaExceeded) {
+      asrClient.start(
+        sourceLang: state.activeSourceLang,
+        targetLang: state.activeTargetLang,
+        useMic: state.activeUseMic,
+        inputDeviceIndex: state.activeInputDeviceIndex,
+        outputDeviceIndex: state.activeOutputDeviceIndex,
+        translationModel: state.activeTranslationModel,
+        apiKey: state.activeApiKey,
+        transcriptionModel: state.activeTranscriptionModel,
+      );
+    }
 
     _captionSub = asrClient.captions?.listen((msg) {
       if (msg.sourceLangOverride != null && !isClosed) {
@@ -54,6 +69,12 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           msg.isFinal,
           state.activeTranslationModel,
         );
+
+        if (msg.isFinal && msg.text.trim().isNotEmpty) {
+          if (state.activeApiKey.isEmpty) {
+            SubscriptionService.instance.incrementChars(msg.text.length);
+          }
+        }
       }
     });
   }
@@ -63,6 +84,53 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     Emitter<TranslationState> emit,
   ) {
     emit(state.copyWith(activeSourceLang: event.sourceLang));
+  }
+
+  void _onToggleRunning(
+    ToggleRunningEvent event,
+    Emitter<TranslationState> emit,
+  ) {
+    if (state.isRunning) {
+      asrClient.stop();
+      emit(state.copyWith(isRunning: false));
+    } else {
+      if (state.isQuotaExceeded && state.activeApiKey.isEmpty) {
+        add(QuotaExceededEvent());
+        return;
+      }
+      asrClient.start(
+        sourceLang: state.activeSourceLang,
+        targetLang: state.activeTargetLang,
+        useMic: state.activeUseMic,
+        inputDeviceIndex: state.activeInputDeviceIndex,
+        outputDeviceIndex: state.activeOutputDeviceIndex,
+        translationModel: state.activeTranslationModel,
+        apiKey: state.activeApiKey,
+        transcriptionModel: state.activeTranscriptionModel,
+      );
+      emit(state.copyWith(isRunning: true));
+    }
+  }
+
+  void _onUpdateQuota(UpdateQuotaEvent event, Emitter<TranslationState> emit) {
+    final bool exceeded = event.status.isExceeded;
+    emit(state.copyWith(
+      quotaStatus: event.status,
+      isQuotaExceeded: exceeded,
+    ));
+
+    if (exceeded && state.isRunning && state.activeApiKey.isEmpty) {
+      asrClient.stop();
+      emit(state.copyWith(isRunning: false));
+      add(QuotaExceededEvent());
+    }
+  }
+
+  void _onQuotaExceeded(
+    QuotaExceededEvent event,
+    Emitter<TranslationState> emit,
+  ) {
+    // Handled by UI layers/listeners
   }
 
   void _onLangError(LangErrorEvent event, Emitter<TranslationState> emit) {
@@ -285,6 +353,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   @override
   Future<void> close() {
     _captionSub?.cancel();
+    _statusSub?.cancel();
     asrClient.stop();
     return super.close();
   }

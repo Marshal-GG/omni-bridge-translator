@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../core/services/subscription_service.dart';
 
 abstract class TranslationEvent extends Equatable {
   const TranslationEvent();
@@ -10,6 +11,18 @@ abstract class TranslationEvent extends Equatable {
 class ToggleSettingsEvent extends TranslationEvent {}
 
 class ToggleShrinkEvent extends TranslationEvent {}
+
+class ToggleRunningEvent extends TranslationEvent {}
+
+class UpdateQuotaEvent extends TranslationEvent {
+  final SubscriptionStatus status;
+  const UpdateQuotaEvent(this.status);
+
+  @override
+  List<Object?> get props => [status];
+}
+
+class QuotaExceededEvent extends TranslationEvent {}
 
 /// Dispatched on every caption update while in shrunk mode so the bloc
 /// can measure line count and resize the window to snugly fit the text.

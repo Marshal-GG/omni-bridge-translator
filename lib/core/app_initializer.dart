@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/tracking_service.dart';
+import 'services/subscription_service.dart';
 import 'tray_manager.dart';
 import 'window_manager.dart';
 
@@ -80,6 +81,9 @@ class AppInitializer {
 
     // Initialize Auth (Mock for Windows compatibility)
     AuthService.instance.init();
+
+    // Initialize Subscription/Quota Service
+    SubscriptionService.instance.init();
 
     // Initialize the window and tray manager
     await initializeWindow();
