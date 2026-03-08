@@ -13,6 +13,7 @@ class CaptionMessage {
   final String original;
   final bool isError;
   final bool isFinal;
+  final bool isSystemMessage;
   final String? sourceLangOverride;
   // Non-null when type == 'audio_levels'
   final double? inputLevel;
@@ -25,6 +26,7 @@ class CaptionMessage {
     required this.original,
     required this.isError,
     required this.isFinal,
+    this.isSystemMessage = false,
     this.sourceLangOverride,
     this.inputLevel,
     this.outputLevel,
@@ -85,6 +87,7 @@ class TranslationService {
   bool _intentionallyStopped = false;
   Timer? _reconnectTimer;
   int _reconnectAttempt = 0;
+  bool _wasConnected = false;
 
   // Last known settings so we can re-send start on reconnect
   String _sourceLang = 'auto';
@@ -138,8 +141,22 @@ class TranslationService {
       await _channel!.ready;
 
       // Connected — reset backoff
+      bool isReconnect = _wasConnected;
+      _wasConnected = true;
       _reconnectAttempt = 0;
       debugPrint('[WS] Connection established to $_wsUrl');
+
+      if (isReconnect) {
+        _captionController.add(
+          CaptionMessage(
+            text: 'Reconnected.',
+            original: '',
+            isError: false,
+            isFinal: true,
+            isSystemMessage: true,
+          ),
+        );
+      }
 
       _sub = _channel!.stream.listen(
         (data) {
@@ -155,8 +172,9 @@ class TranslationService {
               CaptionMessage(
                 text: '⚠ Server disconnected. Reconnecting…',
                 original: '',
-                isError: true,
+                isError: false,
                 isFinal: true,
+                isSystemMessage: true,
               ),
             );
             _scheduleReconnect();
@@ -180,8 +198,9 @@ class TranslationService {
             CaptionMessage(
               text: '⚠ Server not running. Retrying…',
               original: '',
-              isError: true,
+              isError: false,
               isFinal: true,
+              isSystemMessage: true,
             ),
           );
         }

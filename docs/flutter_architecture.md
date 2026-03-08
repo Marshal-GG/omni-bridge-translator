@@ -1,64 +1,90 @@
-# OmniBridge Flutter App Architecture
+# Flutter App Architecture
 
 ## Overview
-The OmniBridge client is a Flutter desktop application (Windows) that serves as the user interface and orchestration layer. It is responsible for managing user settings, displaying an overlay for live translations, managing authentication, and communicating with the local Python backend server for audio processing.
 
-The app follows a **BLoC (Business Logic Component)** architecture for state management, ensuring a clear separation between UI, state, and business logic.
+The Omni Bridge client is a Flutter desktop app (Windows-first) that serves as the UI and orchestration layer. It connects to a local Python WebSocket server for audio capture, ASR, and translation.
+
+State management: **BLoC pattern** throughout.
+
+---
 
 ## Directory Structure
-```text
+
+```
 lib/
 ├── core/
-│   ├── blocs/          # Global BLoCs (e.g., AuthBloc)
-│   ├── constants/      # App-wide constants (themes, strings)
-│   ├── routes/         # Navigation routing configuration
-│   ├── services/       # Core services (Firestore tracking, TranslationService, WebSockets)
-│   ├── utils/          # Helper functions
-│   └── widgets/        # Reusable global widgets
-├── models/             # Data models for settings, user info, etc.
-├── screens/            # UI organized by feature
-│   ├── account/        # User profile and account management
-│   ├── home/           # Main landing screen
-│   ├── settings/       # Settings control (Audio devices, Languages, Models)
-│   ├── startup/        # Splash and Onboarding experience
-│   └── translation/    # The transparent translation overlay and logic
-├── app.dart            # Main MaterialApp wrapper (handles initial routing)
-└── main.dart           # Application entry point (initializes Firebase, Auth, and SingleInstance)
+│   ├── blocs/          # Global BLoCs (AuthBloc)
+│   ├── constants/      # Languages map, themes, strings
+│   ├── routes/         # Named route configuration
+│   ├── services/       # TranslationService, AsrWsClient, AsrTextController, TrackingService, AuthService
+│   ├── utils/          # App lifecycle, window management helpers
+│   └── widgets/        # Shared reusable widgets
+├── models/             # Settings model, user model
+├── screens/
+│   ├── account/        # User profile (name, email, sign-in method badge)
+│   ├── about/          # Version info, update checker, links
+│   ├── history/        # Caption history panel
+│   ├── login/          # Sign-in screen (Google, Email, Guest)
+│   ├── settings/       # Audio devices, languages, models tabs
+│   ├── startup/        # Splash screen + onboarding slides
+│   └── translation/    # Live caption overlay + header + BLoC
+├── app.dart            # MaterialApp wrapper + initial routing
+└── main.dart           # Entry point (Firebase init, single-instance, window setup)
 ```
 
-## Key Components
+---
 
-### 1. State Management (BLoC)
-The app uses the `flutter_bloc` package to manage state across different features:
-- **`AuthBloc`**: Manages user authentication state using Firebase Auth (Google Sign-In, Email/Password).
-- **`SettingsBloc`**: Manages local user preferences (`translationModel`, `transcriptionModel`, input/output devices, languages). It syncs these settings with Cloud Firestore for persistent storage across sessions.
-- **`TranslationBloc`**: Orchestrates the active translation session. It connects the UI overlay with the `TranslationService`.
+## Key BLoCs
 
-### 2. Services (`lib/core/services/`)
-Services handle the business logic and external communication:
-- **`TranslationService`**: Acts as the bridge between the Flutter app and the Python server. It triggers the `/start` and `/stop` REST endpoints on the Python server.
-- **`AsrWsClient`**: Manages the WebSocket connection (`ws://127.0.0.1:8000/ws/captions`) to the Python server to receive live transcription and translation updates.
-- **`TrackingService`**: Responsible for logging usage analytics, session data, and translation metadata to Firebase Firestore and Realtime Database.
-- **`AuthService`**: Handles interaction with Firebase Authentication and custom URL scheme (`omni-bridge://`) deep-linking for desktop browser-based Google Sign-In.
+| BLoC | Responsibility |
+|------|---------------|
+| `AuthBloc` | Firebase Auth state — Google, Email/Password, Guest |
+| `SettingsBloc` | User preferences (model, language, devices, opacity, font) |
+| `TranslationBloc` | Active translation session, overlay visibility, language overrides |
 
-### 3. UI Features (`lib/screens/`)
-- **Settings Screen**: Allows the user to select their preferred `transcriptionModel` (e.g., Google or Whisper), `translationModel` (e.g., Llama, Riva, Google, MyMemory), target languages, and input/output audio devices.
-- **Translation Overlay**: Uses desktop window management plugins (`bitsdojo_window`, `window_manager`) to display a borderless, always-on-top, click-through overlay showing the live translated captions.
+---
+
+## Key Services
+
+| Service | Responsibility |
+|---------|---------------|
+| `AsrWsClient` | WebSocket client to Python server (`ws://127.0.0.1:8765`). Receives JSON caption events. |
+| `AsrTextController` | Manages the display buffer — interim vs. final text, rolling captions |
+| `TranslationService` | Sends start/stop/settings commands to the WebSocket server |
+| `TrackingService` | Logs session stats and translation metadata to Firestore / RTDB |
+| `AuthService` | Firebase Auth + custom URL scheme (`omni-bridge://`) for Windows desktop Google Sign-In |
+
+---
 
 ## Application Flow
-1. **Launch**: 
-   - App boots and ensures it is the only instance running on Windows.
-   - Initializes Firebase and environment variables.
-   - Binds `AuthService` state and checks `SharedPreferences` for onboarding status.
-   - **Conditional Routing**: 
-       - Skip **Splash** if the user is already logged in for faster access.
-       - Show **Splash** -> **Onboarding** for new users.
-       - Show **Splash** -> **Login** for existing logged-out users.
-2. **Setup**: The user configures settings (Languages, Mic/Desktop Audio, AI Models) in the Settings Tab.
-3. **Start Translation**:
-   - The user clicks "Start" on the Home Tab.
-   - `TranslationBloc` sends a REST POST request to the Python backend `/start`.
-   - `AsrWsClient` connects via WebSocket (`ws://`) to listen for incoming JSON packets.
-   - The Flutter App opens the **Translation Overlay** window using `bitsdojo_window`.
-4. **Live Stream**: The Python server streams JSON payloads containing `originalText`, `translatedText`, and `isFinal` flags to the Flutter app's WebSocket.
-5. **Stop**: `TranslationBloc` stops the stream, hides the overlay, and updates the `TrackingService` with final session statistics on Firebase RTDB.
+
+```
+Launch
+ └─ AppInitializer: Firebase init, auth state check
+     ├─ New user  → Splash → Onboarding → Login
+     ├─ Logged out → Splash → Login
+     └─ Logged in  → Translation Overlay (direct)
+
+Settings
+ └─ SettingsBloc syncs preferences to Firestore on save
+
+Start Translation
+ └─ TranslationBloc sends `start` command via AsrWsClient
+     └─ Overlay window opens (bitsdojo_window)
+         └─ AsrTextController buffers caption events
+             └─ UI reacts via BlocBuilder
+
+Stop Translation
+ └─ TranslationBloc sends `stop` command
+     └─ Overlay hides, session stats written to RTDB
+```
+
+---
+
+## Overlay UI
+
+- **Always-on-top, frameless, draggable** window using `bitsdojo_window` + `window_manager`
+- **Transparent background** via `flutter_acrylic`
+- **Mini Mode** — collapsed single-line caption
+- **Header** — shows `source → target` language badge (clickable to open Settings)
+- **Opacity + font size** controlled from Settings

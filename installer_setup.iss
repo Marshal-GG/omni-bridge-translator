@@ -1,11 +1,11 @@
 ; Omni Bridge - Inno Setup Installer Script
 
-#define MyAppName "Omni Bridge - Live AI Translator"
+#define MyAppName "Omni Bridge: Live AI Translator"
 #define MyAppVersion "1.2.1"
 #define MyAppPublisher "Marshal"
 #define MyAppExeName "omni_bridge.exe"
 #define MyAppURL "https://github.com/Marshal-GG/omni-bridge-translator"
-#define MyAppCopyright "Copyright (C) 2026 Marshal"
+#define MyAppCopyright "Copyright (C) 2026 Marshal. All rights reserved."
 
 [Setup]
 AppId={{D9BEBE4B-A480-4D46-A223-952F3DB6D5D1}
@@ -164,11 +164,11 @@ begin
     DelTree(ExpandConstant('{localappdata}\Programs\{#MyAppName}'), True, True, True);
 
     // 5. Wipe Persistent Session/Auth Data (Fixes "still logged in" issue)
-    // - AppData Roaming (com.example is the CompanyName from Runner.rc)
-    DelTree(ExpandConstant('{userappdata}\com.example\{#MyAppName}'), True, True, True);
+    // - AppData Roaming (com.marshal is the CompanyName from Runner.rc)
+    DelTree(ExpandConstant('{userappdata}\com.marshal\{#MyAppName}'), True, True, True);
     // - LocalAppData
-    DelTree(ExpandConstant('{localappdata}\com.example\{#MyAppName}'), True, True, True);
-    // - Firebase/Firestore Caches (Wiping known root cache locations)
+    DelTree(ExpandConstant('{localappdata}\com.marshal\{#MyAppName}'), True, True, True);
+    // - Firebase/Firestore Caches
     DelTree(ExpandConstant('{localappdata}\firestore'), True, True, True);
     DelTree(ExpandConstant('{localappdata}\firebase-heartbeat'), True, True, True);
   end;

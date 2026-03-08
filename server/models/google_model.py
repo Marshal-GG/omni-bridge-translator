@@ -24,6 +24,20 @@ class GoogleModel:
         start = time.monotonic()
         try:
             src = source_lang if source_lang != "auto" else "auto"
+            # When source and target are the same, deep-translator rejects it.
+            # Just return the original text directly.
+            if src != "auto" and src == target_lang:
+                return text, {
+                    "engine": "google-translate",
+                    "model": "google-translate",
+                    "latency_ms": 0,
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0,
+                    "input_chars": len(text),
+                    "output_chars": len(text),
+                    "same_lang_passthrough": True,
+                }
             key = (src, target_lang)
             
             if key not in self._translators:

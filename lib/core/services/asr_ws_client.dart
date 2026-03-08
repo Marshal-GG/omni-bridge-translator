@@ -4,17 +4,11 @@ import '../routes/routes_config.dart';
 import 'asr_text_controller.dart';
 import 'tracking_service.dart';
 import 'translation_service.dart';
-import '../../screens/translation/bloc/translation_bloc.dart';
-import '../../screens/translation/bloc/translation_event.dart';
 
 /// Connects to the Python flutter_server.py via WebSocket,
 /// sends the start command, and feeds translated captions to [asrTextController].
 class AsrWebSocketClient {
   TranslationService? _service;
-  // Weak reference back to bloc so we can dispatch audio level events
-  TranslationBloc? _bloc;
-
-  void attachBloc(TranslationBloc bloc) => _bloc = bloc;
 
   Stream<CaptionMessage>? get captions => _service?.captions;
 
@@ -52,21 +46,17 @@ class AsrWebSocketClient {
       // Override signal from backend — handled by the UI layer, not shown in captions
       if (msg.sourceLangOverride != null) return;
 
+      if (msg.isSystemMessage) {
+        asrTextController.showSystemMessage(msg.text);
+        return;
+      }
+
       if (msg.isError) {
-        final activeLang = _bloc?.state.activeSourceLang ?? 'unknown';
         final errMsg = msg.text.trim().isNotEmpty
             ? msg.text.trim()
             : 'The server returned an error while processing audio.';
 
-        // Python Server errors will just show in the UI via the bloc event now
-
-        _bloc?.add(
-          LangErrorEvent(
-            '⚠ Language error (source: $activeLang): $errMsg. '
-            'Try a different source language in Settings.',
-          ),
-        );
-        asrTextController.value = '[Error] $errMsg';
+        asrTextController.showSystemMessage('⚠ Error: $errMsg.');
         return;
       }
       final text = msg.text.trim();

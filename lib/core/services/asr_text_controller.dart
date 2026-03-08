@@ -134,6 +134,13 @@ class AsrTextController extends ValueNotifier<String> {
     value = _targetValue;
   }
 
+  void showSystemMessage(String text) {
+    _interimText = "";
+    _targetValue = text;
+    value = text;
+    _stopTyping();
+  }
+
   @override
   void dispose() {
     _stopTyping();

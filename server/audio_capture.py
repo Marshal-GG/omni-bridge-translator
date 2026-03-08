@@ -223,10 +223,12 @@ class AudioCapture:
         # ── VAD + Time-based chunking ─────────────────────────────────────
         # Primary: flush every MAX_CHUNK_DURATION seconds (guaranteed captions)
         # Secondary: flush early when silence follows speech (lower latency)
+        # Tuning for API Rate Limit (e.g. 40 RPM ~ 1 chunk per 1.5s per service)
+        # using max 3.5s chunk ensures ~17 RPM continuous speech.
         SILENCE_THRESHOLD = 300      # RMS below this = silence  (tune if needed)
-        SILENCE_DURATION  = 0.2      # seconds of silence to trigger early flush
-        MIN_SPEECH_DURATION = 0.3    # don't flush if chunk is shorter than this
-        MAX_CHUNK_DURATION  = 1.0    # always flush after this many seconds
+        SILENCE_DURATION  = 0.5      # seconds of silence to trigger early flush (was 0.2)
+        MIN_SPEECH_DURATION = 0.5    # don't flush if chunk is shorter than this (was 0.3)
+        MAX_CHUNK_DURATION  = 3.5    # always flush after this many seconds (was 1.0)
 
         silence_frames_needed = int(native_rate * SILENCE_DURATION)
         min_speech_frames     = int(native_rate * MIN_SPEECH_DURATION)

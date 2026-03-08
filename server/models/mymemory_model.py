@@ -38,10 +38,6 @@ class MyMemoryModel:
             match = data.get("responseData", {})
             result = match.get("translatedText") or None
 
-            # MyMemory occasionally returns the source text as-is on failure
-            if result and result.strip().lower() == text.strip().lower():
-                result = None
-
             latency_ms = int((time.monotonic() - start) * 1000)
             return result, {
                 "engine": "mymemory-translate",

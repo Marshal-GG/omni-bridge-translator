@@ -15,11 +15,29 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
         const SizedBox(width: 10),
         const Icon(Icons.translate, size: 14, color: Colors.tealAccent),
         const SizedBox(width: 8),
-        Text(
-          state.isSettingsOpen
-              ? 'Configuration'
-              : 'Omni Bridge: Live AI Translator',
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        const Text(
+          'Omni Bridge: Live AI Translator',
+          style: TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+        const SizedBox(width: 10),
+        GestureDetector(
+          onTap: () {
+            if (!state.isSettingsOpen) {
+              bloc.add(ToggleSettingsEvent());
+            }
+          },
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: Text(
+              '${state.activeSourceLang.toLowerCase()} → ${state.activeTargetLang.toLowerCase()}',
+              style: const TextStyle(
+                color: Colors.tealAccent,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
         ),
         const SizedBox(width: 15),
         Expanded(child: MoveWindow()),

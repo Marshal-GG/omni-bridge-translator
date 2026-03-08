@@ -1,61 +1,92 @@
-# OmniBridge Python Server Architecture
+# Python Server Architecture
 
 ## Overview
-The Python server operates as the local backend for the OmniBridge application. It acts as the bridge connecting the user's system audio to the AI processing layer. The server is responsible for capturing audio streams (both desktop loopback and microphone input), transcribing speech in real-time, translating the recognized text into a target language, and streaming the output via WebSockets back to the Dart client. 
 
-This server manages all computationally-intensive tasks off-suite from the UI.
+The Python server is the local backend for Omni Bridge. It captures system audio (or microphone), runs ASR and translation, and streams results to the Flutter UI via WebSocket.
+
+---
 
 ## Directory Structure
-```text
+
+```
 server/
-├── models/                     # AI engine specific implementations
-│   ├── \__init\__.py           # Package init
-│   ├── google_model.py         # Google Translate API integration
-│   ├── llama_model.py          # Llama (Nvidia NIM) translation integration
-│   ├── mymemory_model.py       # MyMemory REST API translation
-│   ├── riva_model.py           # Riva (Nvidia NIM) translation integration
-│   ├── speech_recognition_model.py # SpeechRecognition ASR (online/offline)
-│   └── whisper_model.py        # Local Whisper ASR models
-├── audio_capture.py            # Interfaces with loopback and mic audio drivers
-├── audio_meter.py              # Visual audio level measuring utility
-├── flutter_server.py           # FastAPI and WebSocket application server
-├── nim_api.py                  # Core Model Router & Audio Processor
-├── shared_pyaudio.py           # Shared PyAudio instance
-└── requirements.txt            # Python environment dependencies
+├── models/
+│   ├── google_model.py         # Google Translate (via deep-translator)
+│   ├── llama_model.py          # Llama 3.1 via NVIDIA NIM (OpenAI-compatible)
+│   ├── mymemory_model.py       # MyMemory free REST translation API
+│   ├── riva_model.py           # NVIDIA Riva NMT + ASR
+│   ├── speech_recognition_model.py  # Google Cloud Speech (online ASR)
+│   └── whisper_model.py        # Offline Whisper ASR (tiny/base/small/medium)
+├── audio_capture.py            # WASAPI loopback + mic capture (pyaudiowpatch)
+├── audio_meter.py              # Real-time audio level monitoring
+├── flutter_server.py           # WebSocket server entry point
+├── nim_api.py                  # Core model router and ASR→Translation pipeline
+├── shared_pyaudio.py           # Shared PyAudio instance (avoids conflicts)
+└── requirements.txt
 ```
 
-**Cache Locations**:
-- **Whisper Models**: `~/.cache/whisper/` (Cached as `.pt` files).
+**Whisper cache:** `~/.cache/whisper/` (`.pt` files, auto-downloaded)
+
+---
 
 ## Key Components
 
-### 1. `flutter_server.py`
-This module acts as the networking entry point. It hosts a local server (`http://127.0.0.1:8000`) built with FastAPI and Uvicorn.
-- **REST APIs**: It provides an API layout to fetch system audio devices, adjust volumes, and trigger translation sessions via the `/start` and `/stop` endpoints. Settings inputs such as `transcription_model`, `translation_model`, `target_lang`, `api_key` are extracted from the payload HTTP bodies.
-- **WebSocket Endpoint (`/ws/captions`)**: Manages real-time bidirectional messaging for publishing the translated payload back to the Flutter UI asynchronously.
+### `flutter_server.py`
+WebSocket server (`ws://127.0.0.1:8765`). Handles all command routing from the Flutter client:
+- `start` — starts audio capture + ASR + translation pipeline
+- `stop` — stops all processing
+- `settings` — hot-updates model / language / device config
+- `get_devices` — returns available audio input/output devices
+- Streams JSON caption events back to connected Flutter clients
 
-### 2. `nim_api.py`
-The overarching orchestration core for AI routing.
-- **Model Orchestration**: Determines which ASR (Automatic Speech Recognition) classes and which translation model classes to dynamically instantiate based on the user's preferences.
-- **Data Pipeline**: Transports chunks of captured audio data into the ASR models. Transports the decoded string payload from ASR sequentially into the Translation models.
-- **Decoupled Engine Logic**: Enforces a rigid structure splitting operations strictly between ASR parsing and NLP translating, minimizing vendor-lock integration challenges.
+### `nim_api.py`
+Core pipeline orchestrator:
+- Dynamically loads the configured ASR model and translation model
+- Feeds audio chunks from `audio_capture.py` → ASR model → translation model
+- Broadcasts `{ originalText, translatedText, isFinal, stats }` payloads
+- Manages model switching without full restart
 
-### 3. Audio Handlers (`audio_capture.py`)
-Utilizes libraries to hook directly into the user's OS audio system.
-- Leverages OS-level "Loopback" mapping logic (via `sounddevice` / `pyaudio`) to grab raw audio from desktop output (like a YouTube video playing).
-- Provides capture features to support native USB microphone hardware seamlessly.
+### `audio_capture.py`
+- **Desktop loopback**: captures system audio via WASAPI (Windows-only, `pyaudiowpatch`)
+- **Microphone**: captures mic input via standard PyAudio
+- Volume scaling applied before sending to ASR
 
-### 4. Language Models (`models/`)
-Modular implementations representing different vendor layers:
-- **`SpeechRecognitionModel`**: Standard Python API proxy connecting to cloud ASR services like Google.
-- **`WhisperModel`**: An offline ASR implementation supporting dynamic loading and background downloading of OpenAI Whisper variants. Uses `resampy` for audio resampling to 16kHz and `requests` for progress-tracked model fetching.
-- **`LlamaModel`, `RivaModel`**: Adapters communicating natively with the NVIDIA NIM endpoints using `openai` API patterns.
-- **`GoogleModel`, `MyMemoryModel`**: Abstracted clients translating unstructured text chunks over generalized web APIs.
+### `models/`
+
+| Model | Type | Notes |
+|-------|------|-------|
+| `WhisperModel` | ASR (offline) | 4 sizes, auto-downloaded; resamples to 16kHz |
+| `SpeechRecognitionModel` | ASR (online) | Google Cloud Speech via `speech_recognition` |
+| `RivaModel` | ASR + Translation | NVIDIA NIM endpoint (API key required) |
+| `LlamaModel` | Translation | Llama 3.1 8B via NVIDIA NIM (OpenAI-compatible) |
+| `GoogleModel` | Translation | `deep-translator` → Google Translate |
+| `MyMemoryModel` | Translation | Free REST API, ~5k chars/day without email |
+
+---
 
 ## Data Flow
-1. The Flutter client issues a `/start` REST call specifying the target language, audio source, and desired AI backends (`transcription_model` & `translation_model`).
-2. `flutter_server.py` initializes the `NimApiClient` from `nim_api.py`, injecting the given user configurations.
-3. The specified audio capture interface engages the system driver and grabs raw `bytes`/`NumPy` audio streams continuously.
-4. The streams funnel into the specified ASR model.
-5. Detected textual transcripts hit the specified generic Translation model.
-6. The compiled results `{"originalText": ..., "translatedText": ..., "isFinal": ...}` are broadcast sequentially out of the WebSocket channel for the Flutter UI.
+
+```
+Flutter "start" command
+ └─ flutter_server.py → NimApiClient.start()
+     └─ audio_capture.py (loopback / mic)
+         └─ audio chunks → ASR model
+             └─ transcript text → Translation model
+                 └─ { originalText, translatedText, isFinal }
+                     └─ WebSocket → Flutter UI
+```
+
+---
+
+## Same-Language Handling
+
+- **GoogleModel**: when `source == target` (non-auto), the original text is returned directly (no API call) — `deep-translator` rejects same-language pairs
+- **MyMemoryModel**: passes through normally; the API returns the original text for same-language pairs
+
+## Environment Variables
+
+| Variable | Used By |
+|----------|---------|
+| `NVIDIA_API_KEY` | RivaModel, LlamaModel |
+
+Set in `server/.env` (copy from `server/.env.example`).

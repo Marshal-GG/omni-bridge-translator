@@ -9,7 +9,6 @@ import '../../settings/bloc/settings_state.dart';
 import '../../settings/bloc/settings_event.dart';
 import 'translation_header.dart';
 import 'translation_content.dart';
-import 'auto_detect_snackbar.dart';
 import 'shrunk_caption_view.dart';
 
 Widget buildOverlayContent(BuildContext context) {
@@ -31,10 +30,6 @@ Widget buildOverlayContent(BuildContext context) {
         prev.activeApiKey != curr.activeApiKey ||
         prev.activeTranscriptionModel != curr.activeTranscriptionModel,
     listener: (context, state) {
-      if (state.autoDetectWarning != null) {
-        showAutoDetectWarning(context, state);
-      }
-
       context.read<SettingsBloc>().add(
         SyncTempSettingsEvent(
           targetLang: state.activeTargetLang,

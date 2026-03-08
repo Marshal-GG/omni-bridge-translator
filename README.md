@@ -1,159 +1,147 @@
-# Omni Bridge: Live AI Translator 🌉
+# Omni Bridge — Live AI Translator
 
-Omni Bridge: Live AI Translator is a real-time translating live-caption overlay built with Flutter and Python. It captures system audio (or microphone input) on Windows, sends it to a local Python WebSocket server, processes the audio using **NVIDIA Riva**, **Whisper (Offline)**, or **Google Free ASR**, and translates or transcribes captions using **OpenAI (Llama)**, **Google Translate**, **MyMemory**, or **Riva NMT**, streaming them back to a transparent, draggable, always-on-top desktop widget.
+> **Real-time speech translation, right on your desktop.**  
+> Capture any audio from your PC or mic, translate it instantly, and see it as a live transparent overlay — no extra hardware required.
 
 <div align="center">
 
-| Normal View | Mini View |
-| :---: | :---: |
-| <img src="assets/screenshots/image3.png" width="400"/> | <img src="assets/screenshots/image2.png" width="400"/> |
+[![Download Latest](https://img.shields.io/github/v/release/Marshal-GG/omni-bridge-translator?label=Download&style=for-the-badge&color=teal)](https://github.com/Marshal-GG/omni-bridge-translator/releases/latest)
+[![Platform](https://img.shields.io/badge/Platform-Windows-blue?style=for-the-badge&logo=windows)](https://github.com/Marshal-GG/omni-bridge-translator/releases)
+[![License](https://img.shields.io/github/license/Marshal-GG/omni-bridge-translator?style=for-the-badge)](LICENSE)
 
-| Settings |
+</div>
+
+---
+
+<div align="center">
+
+| Translator Overlay | Mini Mode |
+| :---: | :---: |
+| <img src="assets/screenshots/image3.png" width="420"/> | <img src="assets/screenshots/image2.png" width="420"/> |
+
+| Settings Panel |
 | :---: |
 | <img src="assets/screenshots/image1.png" width="380"/> |
 
 </div>
 
-## 🏗️ Architecture
+---
 
-The project is split into two main components:
-1. **Python Backend (`server/`)**: 
-   - Uses `pyaudiowpatch` to capture Windows system audio via WASAPI loopback.
-   - **Decoupled Engine Architecture**:
-     - **ASR**: NVIDIA Riva (Multilingual), Whisper (Offline - 4 sizes), Google Speech-to-Text.
-     - **Translation**: Google Translate, MyMemory (Free), NVIDIA Riva NMT, Llama (via OpenAI compatible endpoint).
-   - High-performance WebSocket streaming for real-time captions.
-2. **Flutter Frontend (`lib/`)**:
-   - Built using Desktop window management plugins (`bitsdojo_window`, `window_manager`) to create a transparent, frameless overlay.
-   - Connects to the Python server via `web_socket_channel`.
-   - Displays real-time interim and final translated captions.
+## ✨ Features
 
-## 📋 Prerequisites
+### 🎙️ Universal Audio Capture
+- Translates **any audio playing on your PC** — videos, calls, streams, meetings
+- Switch between **system audio** and **microphone** with one toggle
+- Fine-grained **volume controls** for desktop and mic independently
 
-- **Flutter SDK** (for the UI)
-- **Python 3.10+** (for the backend server)
-- **Windows OS** (required for `pyaudiowpatch` loopback capture)
-- **NVIDIA Riva & Translation API Keys**
+### 🌐 Multiple Speech Recognition Engines
+| Engine | Best For |
+|--------|----------|
+| **Google Online** | Fast, no setup required |
+| **NVIDIA Riva** | High-accuracy multilingual (API key needed) |
+| **Whisper Offline** | Privacy-first, works without internet |
 
-## 🚀 Setup Instructions
+Whisper comes in 4 sizes — **Tiny, Base, Small, and Medium** — downloadable directly from the Settings panel.
 
-### 1. Python Server Configuration
-The Python backend requires its own virtual environment and dependencies.
+### 🔤 Multiple Translation Engines
+| Engine | Notes |
+|--------|-------|
+| **Google Translate** | Recommended — free, fast, 100+ languages |
+| **MyMemory** | Free alternative, no key needed |
+| **NVIDIA Riva NMT** | High-quality neural translation |
+| **Llama 3.1 8B** | AI-powered, great for context-aware translations |
 
-1. Navigate to the `server` folder:
-   ```ps1
-   cd server
-   ```
-2. Create a virtual environment named `.venv`:
-   ```ps1
-   python -m venv .venv
-   ```
-3. Activate the environment:
-   ```ps1
-   .\.venv\Scripts\activate
-   ```
-4. Install the required dependencies:
-   ```ps1
-   pip install -r requirements.txt
-   ```
+### 🗣️ 20+ Languages Supported
+Auto-detect source language, or manually select from: English, Spanish, French, German, Chinese, Japanese, Korean, Russian, Portuguese, Italian, Arabic, Hindi, Dutch, Turkish, Vietnamese, Polish, Indonesian, Thai, Bengali, and more.
 
-### 2. Configure Environment Variables
-You must provide your API keys before running the server. 
-1. Copy the `server/.env.example` file and rename the copy to `server/.env`.
-2. Edit `server/.env` and replace the placeholder API key with your actual NVIDIA NIM API key.
+### 🪟 Transparent Always-on-Top Overlay
+- Fully **draggable, resizable** transparent overlay — stays above all windows
+- **Collapse to Mini Mode** — single caption line that takes up minimal screen space
+- **Adjustable opacity** and font size from Settings
+- **Bold text** toggle for better readability
 
-### 3. Running the Server
-The easiest way to start the backend is to double-click the **`start_server.bat`** file in the root directory. 
+### 📜 Caption History
+- Every translated caption is saved to a searchable **History Panel**
+- Review past translations any time without interrupting the live session
 
-Alternatively, if you want to run it from the command line, make sure your virtual environment is activated:
-```ps1
-cd server
-.\.venv\Scripts\activate
-python main.py
-```
-*(Note: Replace `main.py` with your actual entry point script, e.g. `flutter_server.py`)*
+### 🔄 Auto-Update
+- Built-in update checker — get notified when a new version is available
+- Update badge appears right in the overlay header
 
-The server will start on `ws://0.0.0.0:8765`.
+### 👤 Account & Sync
+- Sign in with **Google**, **Email/Password**, or use as **Guest**
+- Settings sync to the cloud — your preferences follow you
 
-### 4. Running the Flutter App
-Open a separate terminal and run the Flutter application:
-```ps1
-flutter run -d windows
-```
+---
 
-## 🛠️ Building for Production
+## ⬇️ Download & Install
 
-To create a standalone installer that bundles both the Python server and the Flutter UI:
+### Option 1 — Installer (Recommended)
 
-1. **Build Python Executable:**
-   Open a terminal in the `server` directory, activate the environment, and use PyInstaller.
-   ```ps1
-   cd server
-   .\.venv\Scripts\activate
-   pyinstaller --noconfirm --clean omni_bridge_server.spec
-   ```
-   This generates `dist/omni_bridge_server.exe`.
+1. Go to the [**Releases page**](https://github.com/Marshal-GG/omni-bridge-translator/releases/latest)
+2. Download **`OmniBridge_Setup.exe`**
+3. Run the installer — it bundles everything (Python server + UI)
+4. Launch **Omni Bridge** from your Start Menu or Desktop
 
-2. **Build Flutter Release:**
-   Open a terminal in the root directory and build the Windows app.
-   ```ps1
-   flutter build windows
-   ```
+> No Python or Flutter installation required when using the installer.
 
-3. **Create Windows Installer (Inno Setup):**
-   Open `installer_setup.iss` in Inno Setup Compiler and click "Compile". This will bundle everything into a single `.exe` installer inside the `installers/` folder.
+### Option 2 — Run from Source
 
-## 💡 Usage
-1. Make sure the Python server is running (`start_server.bat`).
-2. Launch the Omni Bridge: Live AI Translator Flutter app.
-3. (First Launch) You will see a **Splash Screen** and a multi-slide **Onboarding Tutorial** explaining the key features.
-4. Sign in with **Google**, **Email/Password**, or continue as a **Guest**.
-   - **Google Sign-In**: Uses your system browser. If the redirect fails, see [Google Auth Troubleshooting](docs/google_auth_troubleshooting.md).
-5. On the **Login Screen**, you can click the **"View Tutorial"** button at any time to re-access the onboarding slides.
-6. Click the **Gear (Settings)** icon in the top right of the overlay.
-7. (Optional) Toggle **Microphone Translation** to translate your mic input instead of system audio.
-8. Select your **Speech Recognition** model:
-   - **Online (Google)**: Standard fast ASR.
-   - **NVIDIA Riva**: High-performance multilingual ASR (requires Riva key).
-   - **Offline (Whisper)**: Run locally without internet. Supports **Tiny, Base, Small, and Medium** models. Models are downloaded and cached dynamically from the settings panel.
-9. Select your **Translation Engine**:
-   - **Google Translate**: Standard online translation.
-   - **MyMemory**: Alternative free translation service.
-   - **Llama / Riva**: AI-powered translation (requires API keys).
-10. Select your **Target Language**. You can select **Original Source (Transcription)** to bypass translation and only transcribe the speech.
-11. Close the settings panel. Omni Bridge: Live AI Translator will connect to the server and begin displaying live translations or transcriptions for any audio playing on your PC (or from your microphone).
+See [Developer Setup →](docs/developer_setup.md)
 
-### 🚀 Auto-Update System
-Omni Bridge features a built-in update checker that hits the GitHub API to detect new releases.
-- If a new version is available, a badge/prompt will appear in the overlay header.
-- You can manually check for updates in the **About Screen**.
-- For developers: see [GitHub Releases Guide](docs/github_releases_guide.md) for publishing new versions.
+---
 
-### ℹ️ About Screen
-Access the **About Screen** via the info icon in the overlay.
-- View version information and check for updates.
-- See a breakdown of app features and the technology stack.
-- Find quick links to the GitHub repository, issue tracker, and support email.
+## 🚀 Quick Start
 
-### 👤 Account Screen
-- Access your account via the **person icon** on the translator overlay.
-- Displays your **display name**, **email**, and a badge showing your sign-in method (e.g. *Email Account*, *Google Account*, or *Guest Mode*).
-- Edit your **display name** and save it directly from the account panel.
-- The back arrow in the **top-left of the header** returns you to the translator overlay.
+1. **Launch** Omni Bridge from Start Menu (or run `start_server.bat` if running from source)
+2. **Sign in** with Google, Email, or continue as Guest
+3. **Open Settings** (gear icon or click the `auto → en` language badge in the header)
+4. Choose your **Speech Recognition** and **Translation Engine**
+5. Select your **Target Language**
+6. **Close Settings** — captions appear live as audio plays on your PC
 
-## 📦 Dependencies
+That's it. No complex configuration needed for the default Google setup.
 
-**Flutter (`pubspec.yaml`)**:
-- `web_socket_channel`: WebSocket communication.
-- `dropdown_search`: Searchable language selection UI.
-- `bitsdojo_window` & `window_manager`: Frameless, draggable desktop overlay.
-- `flutter_acrylic`: Transparent background support.
-- `firebase_auth` & `firebase_core`: User authentication.
-- `app_links`: Custom URL scheme (`omni-bridge://`) handling for Windows Google Sign-In.
+---
 
-**Python (`server/requirements.txt`)**:
-- `fastapi`, `uvicorn`, `websockets`
-- `pyaudiowpatch`, `PyAudio`
-- `numpy`
-- `nvidia-riva-client`
-- `openai`
+## ⚙️ Using an NVIDIA API Key
+
+For NVIDIA Riva ASR / NMT or Llama translation:
+1. Get a free API key at [build.nvidia.com](https://build.nvidia.com)
+2. Open **Settings → Translation Engine** and paste your key
+3. Select **NVIDIA Riva** or **Llama** as your engine
+
+---
+
+## ❓ Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| No captions appearing | Make sure the server is running (tray icon or `start_server.bat`) |
+| Google Sign-In redirect fails | See [Google Auth Troubleshooting](docs/google_auth_troubleshooting.md) |
+| Whisper model not working | Download it in **Settings → Transcription Method → Whisper Offline** |
+| Audio not captured | Check that your audio device is set as the Windows default playback device |
+
+---
+
+## 🛠️ For Developers
+
+- [Flutter Architecture](docs/flutter_architecture.md)
+- [Python Server Architecture](docs/python_architecture.md)
+- [Database Schema](docs/database_schema.md)
+- [Publishing a New Release](docs/github_releases_guide.md)
+- [Developer Setup](docs/developer_setup.md)
+
+---
+
+## 📄 License
+
+MIT — see [LICENSE](LICENSE) for details.
+
+---
+
+<div align="center">
+
+Made with ❤️ · [Report a Bug](https://github.com/Marshal-GG/omni-bridge-translator/issues) · [Request a Feature](https://github.com/Marshal-GG/omni-bridge-translator/issues)
+
+</div>

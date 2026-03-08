@@ -30,7 +30,6 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
   void _initAsr() {
     add(LoadSettingsEvent());
-    asrClient.attachBloc(this);
     asrClient.start(
       sourceLang: state.activeSourceLang,
       targetLang: state.activeTargetLang,
