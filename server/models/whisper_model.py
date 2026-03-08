@@ -175,6 +175,23 @@ class WhisperModel:
                 self._loaded_size = self._size
                 print(f"[WhisperModel] {self._size} model loaded.")
 
+    def unload_model(self):
+        """Unload the model from memory and clear GPU cache if applicable."""
+        with self._load_lock:
+            if self._model is not None:
+                print(f"[WhisperModel] Unloading {self._loaded_size} model from memory...")
+                self._model = None
+                self._loaded_size = None
+                import gc
+                gc.collect()
+                try:
+                    import torch
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                except ImportError:
+                    pass
+                print("[WhisperModel] Model unloaded.")
+
     def transcribe(self, audio_bytes: bytes, sample_rate: int, source_lang: str = "auto") -> tuple[str | None, dict | None]:
         if not self.is_downloaded():
             return None, None

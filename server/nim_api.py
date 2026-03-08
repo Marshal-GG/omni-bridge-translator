@@ -100,6 +100,9 @@ class NimApiClient:
                         True, is_final=True,
                     )
                 return
+        else:
+            # Explicitly unload the Whisper model from memory when not in use
+            self.whisper.unload_model()
 
         if translation_model in ("riva", "llama") and not self.riva.is_ready():
             if callback:
