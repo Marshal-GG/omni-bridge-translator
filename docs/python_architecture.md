@@ -45,11 +45,15 @@ Core pipeline orchestrator:
 - Feeds audio chunks from `audio_capture.py` → ASR model → translation model
 - Broadcasts `{ originalText, translatedText, isFinal, stats }` payloads
 - Manages model switching without full restart
+- **Offline Model Memory Management**: Explicitly unloads Whisper offline models from memory when switching to other engines to release system resources.
 
 ### `audio_capture.py`
 - **Desktop loopback**: captures system audio via WASAPI (Windows-only, `pyaudiowpatch`)
 - **Microphone**: captures mic input via standard PyAudio
 - Volume scaling applied before sending to ASR
+- **Hybrid Audio Chunking**: Implements a dual-trigger flushing strategy for ASR chunks:
+  - VAD-based flush: Triggers after 0.5s of silence to reduce latency.
+  - Time-based limit: Enforces a maximum duration (e.g., 3.5s) per chunk to guarantee API translation calls even during continuous speech, avoiding rate-limits and stalls.
 
 ### `models/`
 

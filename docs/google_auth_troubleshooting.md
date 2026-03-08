@@ -43,6 +43,7 @@ The browser relies on Windows knowing which app handles the `com.google...` sche
 ### 2. "Error 400: invalid_request"
 This usually means the `redirect_uri` sent by the app doesn't *exactly* match what Google expects.
 - **Solution:** Ensure `AuthService.dart` is building the URI with a **single slash** after the colon (`scheme:/oauth2redirect`). Google's policy for desktop/iOS clients treats `://` as a potential security risk or mismatch.
+- **Note:** The Google Client ID must be of type **iOS**, not "Web" or "Desktop", to properly support custom URI scheme redirects on Windows securely.
 
 ### 3. App Opens a Second Window Instead of Logging In
 This happens if `WindowsSingleInstance` fails to communicate.

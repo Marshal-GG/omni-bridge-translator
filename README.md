@@ -71,6 +71,20 @@ Auto-detect source language, or manually select from: English, Spanish, French, 
 ### 👤 Account & Sync
 - Sign in with **Google**, **Email/Password**, or use as **Guest**
 - Settings sync to the cloud — your preferences follow you
+- Session activity and translation usage are tracked securely per device
+
+### 💳 Subscription Tiers
+
+| Tier | Price | Daily Quota |
+|------|-------|-------------|
+| **Free** | ₹0 | 10,000 chars/day |
+| **Weekly** | ₹49/week | 50,000 chars/day |
+| **Plus** | ₹149/month | 100,000 chars/day |
+| **Pro** | ₹399/month | Unlimited |
+
+Pro unlocks **Intelligent Context Refresh** (5-second retroactive correction), unlimited history, and priority support. Upgrade from within the app via Razorpay.
+
+> Users with their own NVIDIA API Key bypass the daily quota for NVIDIA-backed engines.
 
 ---
 
@@ -129,6 +143,8 @@ For NVIDIA Riva ASR / NMT or Llama translation:
 - [Flutter Architecture](docs/flutter_architecture.md)
 - [Python Server Architecture](docs/python_architecture.md)
 - [Database Schema](docs/database_schema.md)
+- [Monetization Plan](docs/monetization_plan.md)
+- [Google Auth Troubleshooting](docs/google_auth_troubleshooting.md)
 - [Publishing a New Release](docs/github_releases_guide.md)
 - [Developer Setup](docs/developer_setup.md)
 

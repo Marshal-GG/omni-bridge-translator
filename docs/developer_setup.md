@@ -87,7 +87,10 @@ Output: `installers/OmniBridge_Setup.exe`
 
 ## VS Code
 
-A `.vscode/settings.json` is included that configures the Python interpreter to `server/.venv/Scripts/python.exe`.
+A `.vscode/settings.json` is included to help manage project execution natively. This file configures:
+- **`python.defaultInterpreterPath`**: Automatically points to the `server/.venv/Scripts/python.exe` virtual environment. If you encounter interpreter path errors, ensure your virtual environment was created precisely as `server/.venv`.
+- **`python.venvFolders`** and **`python.analysis.extraPaths`**: Helps VS Code resolve server modules accurately without manual configuration for linting and IntelliSense.
+- **`python.terminal.useEnvFile`**: Loads environment variables when utilizing the integrated terminal.
 
 Recommended extensions:
 - **Dart** + **Flutter** (Dart Code)
