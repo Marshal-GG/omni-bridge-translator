@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../firebase_options.dart';
+import 'config/app_config.dart';
 import 'services/auth_service.dart';
 import 'services/tracking_service.dart';
 import 'services/subscription_service.dart';
@@ -50,8 +50,8 @@ class AppInitializer {
       );
     }
 
-    // Load environment variables from .env file
-    await dotenv.load(fileName: '.env');
+    // Environment variables are now partially stored in AppConfig (Dart)
+    // await dotenv.load(fileName: '.env');
 
     try {
       // Initialize Firebase
@@ -95,7 +95,7 @@ class AppInitializer {
 
       // Also register the reversed Google Client ID as a protocol
       // This is required for the iOS Client ID redirection strategy
-      final String clientId = dotenv.env['GOOGLE_CLIENT_ID'] ?? '';
+      final String clientId = AppConfig.googleClientId;
       if (clientId.isNotEmpty &&
           clientId.contains('.apps.googleusercontent.com')) {
         final String scheme = clientId.split('.').reversed.join('.');

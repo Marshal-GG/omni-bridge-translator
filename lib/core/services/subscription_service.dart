@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:url_launcher/url_launcher.dart';
@@ -140,39 +141,40 @@ class SubscriptionService {
         .doc(uid)
         .snapshots()
         .listen((doc) {
-          if (!doc.exists) {
-            _initializeUserDoc(uid);
-            return;
-          }
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!doc.exists) {
+          _initializeUserDoc(uid);
+          return;
+        }
 
-          final data = doc.data()!;
-          final tierStr = data['tier'] as String? ?? 'free';
-          final tier = _parseTier(tierStr);
-          // Notice we don't pull dailyCharsUsed from Firestore anymore.
-          final resetAt =
-              (data['dailyResetAt'] as Timestamp?)?.toDate() ??
-              _getNextDailyReset();
+        final data = doc.data()!;
+        final tierStr = data['tier'] as String? ?? 'free';
+        final tier = _parseTier(tierStr);
+        // Notice we don't pull dailyCharsUsed from Firestore anymore.
+        final resetAt = (data['dailyResetAt'] as Timestamp?)?.toDate() ??
+            _getNextDailyReset();
 
-          // Check if we need to reset daily quota (it's a new day)
-          if (DateTime.now().isAfter(resetAt)) {
-             // We don't reset RTDB daily quota here because it's path-based (new day = new path).
-             // But we might want to update the DB's `dailyResetAt` to the next day so this doesn't trigger continually.
-            _resetDailyQuota(uid); 
-            return;
-          }
+        // Check if we need to reset daily quota (it's a new day)
+        if (DateTime.now().isAfter(resetAt)) {
+          // We don't reset RTDB daily quota here because it's path-based (new day = new path).
+          // But we might want to update the DB's `dailyResetAt` to the next day so this doesn't trigger continually.
+          _resetDailyQuota(uid);
+          return;
+        }
 
-          // Detect tier change and log a subscription event
-          if (_lastKnownTier != null && _lastKnownTier != tier) {
-            _logSubscriptionEvent(
-              uid: uid,
-              fromTier: _lastKnownTier!,
-              toTier: tier,
-            );
-          }
-          _lastKnownTier = tier;
+        // Detect tier change and log a subscription event
+        if (_lastKnownTier != null && _lastKnownTier != tier) {
+          _logSubscriptionEvent(
+            uid: uid,
+            fromTier: _lastKnownTier!,
+            toTier: tier,
+          );
+        }
+        _lastKnownTier = tier;
 
-          _updateCurrentStatus(tier: tier, resetAt: resetAt);
-        });
+        _updateCurrentStatus(tier: tier, resetAt: resetAt);
+      });
+    });
         
     _startUsagePolling(uid);
   }
@@ -294,11 +296,15 @@ class SubscriptionService {
   Future<void> setTierDebug(SubscriptionTier tier) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
+    await setTierForOtherUser(uid, tier);
+  }
 
+  /// Updates the tier for any user (Admin only).
+  Future<void> setTierForOtherUser(String uid, SubscriptionTier tier) async {
     await FirebaseFirestore.instance.collection('users').doc(uid).update({
       'tier': _tierToString(tier),
     });
-    debugPrint('[Subscription] DEBUG: Tier manually set to $tier');
+    debugPrint('[Subscription] Tier for $uid set to $tier');
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

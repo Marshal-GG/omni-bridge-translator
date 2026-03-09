@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
@@ -155,15 +156,17 @@ class TrackingService {
 
     _sessionSub?.cancel();
     _sessionSub = sessionRef?.snapshots().listen((snapshot) {
-      if (snapshot.exists) {
-        final data = snapshot.data();
-        if (data is Map<String, dynamic> && data['forceLogout'] == true) {
-          debugPrint(
-            '[Tracking] Remote forceLogout detected for session $_currentSessionId',
-          );
-          _handleRemoteLogout();
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (snapshot.exists) {
+          final data = snapshot.data();
+          if (data is Map<String, dynamic> && data['forceLogout'] == true) {
+            debugPrint(
+              '[Tracking] Remote forceLogout detected for session $_currentSessionId',
+            );
+            _handleRemoteLogout();
+          }
         }
-      }
+      });
     });
 
     // Listen to User document for global forceLogout
@@ -173,13 +176,15 @@ class TrackingService {
         .doc(uid)
         .snapshots()
         .listen((snapshot) {
-      if (snapshot.exists) {
-        final data = snapshot.data();
-        if (data is Map<String, dynamic> && data['forceLogout'] == true) {
-          debugPrint('[Tracking] Remote forceLogout detected for user $uid');
-          _handleRemoteLogout();
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (snapshot.exists) {
+          final data = snapshot.data();
+          if (data is Map<String, dynamic> && data['forceLogout'] == true) {
+            debugPrint('[Tracking] Remote forceLogout detected for user $uid');
+            _handleRemoteLogout();
+          }
         }
-      }
+      });
     });
 
     // 2. Sync Initial App Settings to RTDB

@@ -40,7 +40,16 @@ Edit `server/.env`:
 NVIDIA_API_KEY=your_nvidia_nim_key_here
 ```
 
-> **Note:** The Google Translate and MyMemory engines do not require a key. Only NVIDIA Riva / Llama require `NVIDIA_API_KEY`.
+> [!IMPORTANT]
+> The `server/.env` file is for local development only. It is **not** bundled with the installer. Users will need to provide their own keys in the app settings for distributed builds.
+
+### 2. Flutter App Configuration
+
+The Flutter app uses `lib/core/config/app_config.dart` to store non-sensitive client-side keys (Firebase, Google Client ID). This file is compiled into the application, removing the need for a distributed `.env` file.
+
+To update client keys:
+1. Open `lib/core/config/app_config.dart`.
+2. Update the constants with your development keys.
 
 ### Run the server
 
@@ -55,7 +64,7 @@ The server starts at `ws://127.0.0.1:8765`.
 
 ---
 
-## 2. Flutter App
+## 3. Flutter App
 
 From the project root:
 
@@ -66,7 +75,7 @@ flutter run -d windows
 
 ---
 
-## 3. Building for Production
+## 4. Building for Production
 
 ### Python server → EXE
 

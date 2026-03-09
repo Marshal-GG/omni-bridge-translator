@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:omni_bridge/core/config/app_config.dart';
 import 'package:omni_bridge/core/constants/auth_html_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
@@ -18,6 +18,7 @@ class AuthService {
 
   /// Exposes the current signed-in user (or null if not signed in).
   ValueNotifier<User?> currentUser = ValueNotifier(null);
+
   StreamSubscription<User?>? _authStateSub;
 
   late final GoogleSignIn _googleSignIn;
@@ -35,7 +36,8 @@ class AuthService {
 
   void _initialize() {
     // Inject the redirect URL if provided in the environment variables
-    final redirectUrl = dotenv.env['AUTH_SUCCESS_REDIRECT_URL'] ?? '';
+    // final redirectUrl = dotenv.env['AUTH_SUCCESS_REDIRECT_URL'] ?? '';
+    const redirectUrl = ''; // Default empty if not using environment overrides
     final customHtml = customAuthSuccessHtml.replaceFirst(
       '{{REDIRECT_URL}}',
       redirectUrl,
@@ -43,7 +45,7 @@ class AuthService {
 
     _googleSignIn = GoogleSignIn(
       params: GoogleSignInParams(
-        clientId: dotenv.env['GOOGLE_CLIENT_ID'] ?? '',
+        clientId: AppConfig.googleClientId,
         clientSecret:
             '', // Provide empty if not using Web Application client type
         scopes: ['email', 'profile'],
@@ -131,7 +133,7 @@ class AuthService {
           '[Auth] No cache, performing manual OAuth flow with custom redirect...',
         );
 
-        final clientId = dotenv.env['GOOGLE_CLIENT_ID'] ?? '';
+        final clientId = AppConfig.googleClientId;
         _authCodeCompleter = Completer<String?>();
 
         final scopes = ['email', 'profile'].join(' ');
@@ -254,19 +256,6 @@ class AuthService {
     await TrackingService.instance.logEvent('Password Reset Requested');
   }
 
-  Future<User?> bypassForDev() async {
-    try {
-      final userCredential = await FirebaseAuth.instance.signInAnonymously();
-      if (userCredential.user != null) {
-        await _saveUserToFirestore(userCredential.user!);
-        await TrackingService.instance.logEvent('Sign In Dev Bypass');
-      }
-      return userCredential.user;
-    } catch (e) {
-      debugPrint('[Auth] Dev Bypass failed: $e');
-      return null;
-    }
-  }
 
   Future<void> updateDisplayName(String newName) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -295,6 +284,7 @@ class AuthService {
     // Ensure we redirect to splash on manual sign out as well
     await GlobalNavigator.pushNamedAndRemoveUntil('/splash', (route) => false);
   }
+
 
   Future<void> _saveUserToFirestore(User user) async {
     try {

@@ -1,0 +1,464 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../../core/services/subscription_service.dart';
+
+class AdminPanel extends StatefulWidget {
+  const AdminPanel({super.key});
+
+  @override
+  State<AdminPanel> createState() => _AdminPanelState();
+}
+
+class _AdminPanelState extends State<AdminPanel> {
+  String _adminUserSearch = '';
+  String? _selectedUserUid;
+  String? _selectedUserName;
+  bool? _isAdmin; // null = loading
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAdminAccess();
+  }
+
+  Future<void> _checkAdminAccess() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null) {
+      if (mounted) setState(() => _isAdmin = false);
+      return;
+    }
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('system')
+          .doc('admins')
+          .get();
+      final emails = List<String>.from(doc.data()?['emails'] ?? []);
+      if (mounted) setState(() => _isAdmin = emails.contains(user.email));
+    } catch (_) {
+      if (mounted) setState(() => _isAdmin = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isAdmin != true) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        // ── ADMIN: Identity / Admin Emails ──────────────────────────
+        const _AdminIdentitySection(),
+        const SizedBox(height: 12),
+
+        // ── ADMIN: User Selection & Plan Manager ─────────────────
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.manage_accounts_rounded,
+                        size: 16, color: Colors.tealAccent),
+                    SizedBox(width: 8),
+                    Text(
+                      'MANAGE PLANS',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.tealAccent),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  onChanged: (val) =>
+                      setState(() => _adminUserSearch = val.trim()),
+                  decoration: const InputDecoration(
+                    hintText: 'Search by Name or Email...',
+                    prefixIcon: Icon(Icons.search, size: 16),
+                    isDense: true,
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: Colors.black12,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: FutureBuilder<QuerySnapshot>(
+                    future:
+                        FirebaseFirestore.instance.collection('users').get(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Error: ${snapshot.error}',
+                                  style: const TextStyle(
+                                      color: Colors.redAccent, fontSize: 11),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                TextButton(
+                                  onPressed: () => setState(() {}),
+                                  child: const Text('Retry',
+                                      style: TextStyle(fontSize: 11)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                            child: CircularProgressIndicator());
+                      }
+
+                      final docs = snapshot.data!.docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final name =
+                            (data['displayName'] ?? '').toString().toLowerCase();
+                        final email =
+                            (data['email'] ?? '').toString().toLowerCase();
+                        final q = _adminUserSearch.toLowerCase();
+                        return q.isEmpty ||
+                            name.contains(q) ||
+                            email.contains(q);
+                      }).toList();
+
+                      if (docs.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('No users found',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.white54)),
+                              const SizedBox(height: 8),
+                              TextButton(
+                                onPressed: () => setState(() {}),
+                                child: const Text('Refresh List',
+                                    style: TextStyle(fontSize: 11)),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final data =
+                              docs[index].data() as Map<String, dynamic>;
+                          final uid = data['uid'] ?? 'unknown';
+                          final name = data['displayName'] ?? 'No Name';
+                          final email = data['email'] ?? 'No Email';
+                          final isSelected = _selectedUserUid == uid;
+                          final tier = data['tier'] ?? 'free';
+
+                          return ListTile(
+                            dense: true,
+                            selected: isSelected,
+                            selectedTileColor: Colors.white12,
+                            title: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(name,
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: isSelected
+                                              ? Colors.tealAccent
+                                              : Colors.white)),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.tealAccent
+                                        .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                        color: Colors.tealAccent
+                                            .withValues(alpha: 0.2)),
+                                  ),
+                                  child: Text(
+                                    tier.toString().toUpperCase(),
+                                    style: const TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.tealAccent),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            subtitle: Text(email,
+                                style: const TextStyle(
+                                    fontSize: 11, color: Colors.white54)),
+                            onTap: () {
+                              setState(() {
+                                _selectedUserUid = uid;
+                                _selectedUserName = name;
+                              });
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+                if (_selectedUserUid != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Set Plan for $_selectedUserName:',
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.tealAccent),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: SubscriptionTier.values.map((tier) {
+                      return SizedBox(
+                        height: 32,
+                        child: ActionChip(
+                          label: Text(
+                            tier.name.toUpperCase(),
+                            style: const TextStyle(
+                                fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                          backgroundColor:
+                              Colors.white.withValues(alpha: 0.05),
+                          onPressed: () {
+                            SubscriptionService.instance
+                                .setTierForOtherUser(_selectedUserUid!, tier);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      'Plan updated for $_selectedUserName')),
+                            );
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+}
+
+// ── Admin Identity Section ──────────────────────────────────────────────────
+// Manages the system/admins Firestore document.
+// This is the source of truth for admin access — the admin check in AdminPanel
+// reads the same document to decide whether to show this panel at all.
+
+class _AdminIdentitySection extends StatefulWidget {
+  const _AdminIdentitySection();
+
+  @override
+  State<_AdminIdentitySection> createState() => _AdminIdentitySectionState();
+}
+
+class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
+  List<String> _adminEmails = [];
+  bool _loading = true;
+  String? _error;
+  final _addController = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAdminEmails();
+  }
+
+  @override
+  void dispose() {
+    _addController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadAdminEmails() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('system')
+          .doc('admins')
+          .get();
+      final emails = List<String>.from(doc.data()?['emails'] ?? []);
+      if (mounted) {
+        setState(() {
+          _adminEmails = emails;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _saveEmails(List<String> emails) async {
+    setState(() => _saving = true);
+    try {
+      await FirebaseFirestore.instance
+          .collection('system')
+          .doc('admins')
+          .set({'emails': emails}, SetOptions(merge: true));
+      if (mounted) {
+        setState(() {
+          _adminEmails = emails;
+          _saving = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Save failed: $e')),
+        );
+      }
+    }
+  }
+
+  void _addEmail() {
+    final email = _addController.text.trim();
+    if (email.isEmpty || _adminEmails.contains(email)) return;
+    _addController.clear();
+    _saveEmails([..._adminEmails, email]);
+  }
+
+  void _removeEmail(String email) {
+    final updated = _adminEmails.where((e) => e != email).toList();
+    _saveEmails(updated);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              children: [
+                const Icon(Icons.shield_rounded,
+                    size: 16, color: Colors.amberAccent),
+                const SizedBox(width: 8),
+                const Text(
+                  'ADMIN IDENTITY',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amberAccent,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.refresh,
+                      size: 16, color: Colors.white38),
+                  tooltip: 'Refresh',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: _loading ? null : _loadAdminEmails,
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Emails in this list are granted admin access.',
+              style: TextStyle(fontSize: 11, color: Colors.white38),
+            ),
+            const SizedBox(height: 12),
+
+            // Email list / loading / error
+            if (_loading)
+              const Center(child: CircularProgressIndicator(strokeWidth: 2))
+            else if (_error != null)
+              Text(_error!,
+                  style: const TextStyle(
+                      color: Colors.redAccent, fontSize: 11))
+            else if (_adminEmails.isEmpty)
+              const Text('No admin emails configured.',
+                  style: TextStyle(fontSize: 12, color: Colors.white54))
+            else
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: _adminEmails.map((email) {
+                  return Chip(
+                    label: Text(email,
+                        style: const TextStyle(fontSize: 11)),
+                    backgroundColor:
+                        Colors.amberAccent.withValues(alpha: 0.1),
+                    side: BorderSide(
+                        color: Colors.amberAccent.withValues(alpha: 0.3)),
+                    deleteIconColor: Colors.redAccent,
+                    onDeleted: _saving ? null : () => _removeEmail(email),
+                  );
+                }).toList(),
+              ),
+
+            const SizedBox(height: 12),
+
+            // Add email input
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _addController,
+                    decoration: const InputDecoration(
+                      hintText: 'Add admin email...',
+                      isDense: true,
+                    ),
+                    style: const TextStyle(fontSize: 13),
+                    onSubmitted: (_) => _addEmail(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.add_circle_outline,
+                            color: Colors.amberAccent),
+                        tooltip: 'Add admin',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: _addEmail,
+                      ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -125,16 +125,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _bypassForDev() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-    await AuthService.instance.bypassForDev();
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/translation-overlay');
-    Navigator.pushNamed(context, '/settings-overlay');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -264,13 +254,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               _GoogleSignInButton(onPressed: _signInWithGoogle),
                               const SizedBox(height: 12),
 
-                              LoginButton(
-                                icon: Icons.developer_mode_rounded,
-                                label: 'Continue as Dev',
-                                onPressed: _bypassForDev,
-                                isPrimary: false,
-                              ),
-                              const SizedBox(height: 12),
 
                               // View Tutorial button
                               TextButton.icon(

@@ -1,7 +1,7 @@
 ; Omni Bridge - Inno Setup Installer Script
 
 #define MyAppName "Omni Bridge: Live AI Translator"
-#define MyAppVersion "1.2.1"
+#define MyAppVersion "1.2.2"
 #define MyAppPublisher "Marshal"
 #define MyAppExeName "omni_bridge.exe"
 #define MyAppURL "https://github.com/Marshal-GG/omni-bridge-translator"
@@ -55,10 +55,10 @@ Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignorever
 Source: "server\dist\omni_bridge_server.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 ; Flutter app .env (contains GOOGLE_CLIENT_ID)
-Source: ".env"; DestDir: "{app}"; Flags: ignoreversion
+; Source: ".env"; DestDir: "{app}"; Flags: ignoreversion
 
 ; Python server .env (contains API keys)
-Source: "server\.env"; DestDir: "{app}"; Flags: ignoreversion
+; Source: "server\.env"; DestDir: "{app}"; Flags: ignoreversion
 
 ; (Optional) VC++ Redistributables — uncomment if users see "missing VCRUNTIME" errors:
 ; Source: "redist\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
@@ -139,9 +139,11 @@ begin
     end;
 
     // 2. Wipe Flutter Windows SharedPreferences
-    // Flutter usually stores these in HKCU\Software\<app_name>
+    // Flutter usually stores these in HKCU\Software\<company_name>\<app_name>
     DeleteRegKeyIfExists(HKCU, 'Software\omni_bridge');
-    DeleteRegKeyIfExists(HKCU, 'Software\com.marshal.omni_bridge');
+    DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\omni_bridge');
+    DeleteRegKeyIfExists(HKCU, 'Software\Marshal\omni_bridge');
+    DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\Omni Bridge');
 
     // 3. Delete any PyInstaller %TEMP%\omni_bridge* extractions from old runs
     TempDir := ExpandConstant('{tmp}');

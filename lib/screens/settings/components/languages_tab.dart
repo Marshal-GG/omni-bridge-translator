@@ -36,14 +36,10 @@ Widget buildLanguagesTab(BuildContext context, SettingsState state) {
                   hint:
                       appLanguages[state.tempSourceLang] ??
                       'Search language...',
-                  onChanged: (entry) {
-                    Future.delayed(const Duration(milliseconds: 100), () {
-                      if (context.mounted) {
-                        context.read<SettingsBloc>().add(
-                          UpdateTempSettingEvent(sourceLang: entry!.key),
-                        );
-                      }
-                    });
+                  onSelect: (item) {
+                    context.read<SettingsBloc>().add(
+                      UpdateTempSettingEvent(sourceLang: item.key),
+                    );
                   },
                 ),
               ],
@@ -75,14 +71,10 @@ Widget buildLanguagesTab(BuildContext context, SettingsState state) {
                   hint:
                       appLanguages[state.tempTargetLang] ??
                       'Search language...',
-                  onChanged: (entry) {
-                    Future.delayed(const Duration(milliseconds: 100), () {
-                      if (context.mounted) {
-                        context.read<SettingsBloc>().add(
-                          UpdateTempSettingEvent(targetLang: entry!.key),
-                        );
-                      }
-                    });
+                  onSelect: (item) {
+                    context.read<SettingsBloc>().add(
+                      UpdateTempSettingEvent(targetLang: item.key),
+                    );
                   },
                 ),
               ],
@@ -99,7 +91,7 @@ Widget _langDropdown({
   required List<MapEntry<String, String>> items,
   required MapEntry<String, String> selected,
   required String hint,
-  required ValueChanged<MapEntry<String, String>?> onChanged,
+  required void Function(MapEntry<String, String> item) onSelect,
 }) {
   const dropDec = DropDownDecoratorProps(
     baseStyle: TextStyle(color: Colors.white, fontSize: 13),
@@ -109,11 +101,12 @@ Widget _langDropdown({
   return SizedBox(
     height: 36,
     child: DropdownSearch<MapEntry<String, String>>(
+      key: ValueKey(selected.key),
       items: items,
       itemAsString: (entry) => entry.value,
       selectedItem: selected,
       compareFn: (a, b) => a.key == b.key,
-      onChanged: onChanged,
+      onChanged: (_) {}, // handled directly in itemBuilder onTap
       dropdownButtonProps: const DropdownButtonProps(
         padding: EdgeInsets.zero,
         splashColor: Colors.transparent,
@@ -146,10 +139,13 @@ Widget _langDropdown({
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-        itemBuilder: (context, item, isSelectedRaw) {
+        itemBuilder: (popupContext, item, isSelectedRaw) {
           final isCurrentlySelected = item.key == selected.key;
           return InkWell(
-            onTap: () => Navigator.pop(context, item),
+            onTap: () {
+              Navigator.pop(popupContext);
+              onSelect(item);
+            },
             splashColor: Colors.tealAccent.withValues(alpha: 0.2),
             highlightColor: Colors.white10,
             hoverColor: Colors.white10,
