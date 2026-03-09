@@ -237,8 +237,8 @@ Widget buildTranslationModelSelector(
   const engineTierRequirements = <String, SubscriptionTier>{
     'google': SubscriptionTier.free,
     'mymemory': SubscriptionTier.free,
-    'riva': SubscriptionTier.weekly,
-    'llama': SubscriptionTier.weekly,
+    'riva': SubscriptionTier.basic,
+    'llama': SubscriptionTier.basic,
   };
 
   const translationModels = {
@@ -695,7 +695,7 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
     const whisperTierRequirements = <String, SubscriptionTier>{
       'tiny': SubscriptionTier.free,
       'base': SubscriptionTier.free,
-      'small': SubscriptionTier.weekly,
+      'small': SubscriptionTier.basic,
       'medium': SubscriptionTier.plus,
     };
 
@@ -1329,7 +1329,7 @@ int _tierRank(SubscriptionTier tier) {
   switch (tier) {
     case SubscriptionTier.free:
       return 0;
-    case SubscriptionTier.weekly:
+    case SubscriptionTier.basic:
       return 1;
     case SubscriptionTier.plus:
       return 2;

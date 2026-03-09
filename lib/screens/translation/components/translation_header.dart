@@ -7,7 +7,6 @@ import '../bloc/translation_event.dart';
 import '../bloc/translation_state.dart';
 import '../../../core/services/update_service.dart';
 import '../../../core/services/subscription_service.dart';
-import '../../../core/window_manager.dart';
 
 Widget buildTranslationHeader(BuildContext context, TranslationState state) {
   final bloc = context.read<TranslationBloc>();
@@ -26,11 +25,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
         _QuotaUsageText(status: state.quotaStatus),
         const SizedBox(width: 12),
         GestureDetector(
-          onTap: () {
-            if (!state.isSettingsOpen) {
-              bloc.add(ToggleSettingsEvent());
-            }
-          },
+          onTap: () => Navigator.pushNamed(context, '/settings-overlay'),
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
             child: Text(
@@ -118,9 +113,10 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                 child: InkWell(
                                   onTap: () {
                                     Navigator.pop(context);
-                                    Navigator.pushNamed(context, '/settings-overlay').then((_) {
-                                      setToTranslationPosition();
-                                    });
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/settings-overlay',
+                                    );
                                   },
                                   child: const Padding(
                                     padding: EdgeInsets.symmetric(
@@ -140,34 +136,6 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                 thickness: 1,
                                 color: Colors.white12,
                               ),
-                              // Account icon
-                              Tooltip(
-                                message: 'Account',
-                                child: InkWell(
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    Navigator.pushNamed(context, '/account').then((_) {
-                                      setToTranslationPosition();
-                                    });
-                                  },
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 10,
-                                    ),
-                                    child: Icon(
-                                      Icons.manage_accounts_rounded,
-                                      size: 18,
-                                      color: Colors.purpleAccent,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const VerticalDivider(
-                                width: 1,
-                                thickness: 1,
-                                color: Colors.white12,
-                              ),
                               // Subscription icon
                               Tooltip(
                                 message: 'Subscription & Quota',
@@ -177,9 +145,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                     Navigator.pushNamed(
                                       context,
                                       '/subscription',
-                                    ).then((_) {
-                                      setToTranslationPosition();
-                                    });
+                                    );
                                   },
                                   child: const Padding(
                                     padding: EdgeInsets.symmetric(
@@ -199,6 +165,35 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                 thickness: 1,
                                 color: Colors.white12,
                               ),
+                              // Account icon
+                              Tooltip(
+                                message: 'Account',
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/account',
+                                    );
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 10,
+                                    ),
+                                    child: Icon(
+                                      Icons.manage_accounts_rounded,
+                                      size: 18,
+                                      color: Colors.purpleAccent,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const VerticalDivider(
+                                width: 1,
+                                thickness: 1,
+                                color: Colors.white12,
+                              ),
                               // About icon — shows update dot if available
                               Tooltip(
                                 message: hasUpdate
@@ -207,9 +202,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                 child: InkWell(
                                   onTap: () {
                                     Navigator.pop(context);
-                                    Navigator.pushNamed(context, '/about').then((_) {
-                                      setToTranslationPosition();
-                                    });
+                                    Navigator.pushNamed(context, '/about');
                                   },
                                   child: Stack(
                                     clipBehavior: Clip.none,
@@ -310,7 +303,7 @@ class _QuotaUsageText extends StatelessWidget {
         : (progress > 0.7 ? Colors.orangeAccent : Colors.tealAccent);
 
     return Tooltip(
-      message: 'Daily Character Usage: $usedStr / $limitStr ($tierName)',
+      message: 'Daily Token Usage: $usedStr / $limitStr ($tierName)',
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(

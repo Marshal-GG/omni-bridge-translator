@@ -25,7 +25,6 @@ Created automatically on first login by `SubscriptionService`. Holds subscriptio
 ```json
 {
   "tier": "free",
-  "dailyCharsUsed": 4200,
   "dailyResetAt": "2026-03-09T00:00:00Z",
   "monthlyCharsUsed": 38000,
   "monthlyResetAt": "2026-04-01T00:00:00Z",
@@ -33,30 +32,31 @@ Created automatically on first login by `SubscriptionService`. Holds subscriptio
   "subscriptionSince": "2026-02-01T00:00:00Z",
   "paymentProvider": "razorpay",
   "lastQuotaExceededAt": "2026-03-08T18:30:00Z",
+  "forceLogout": false,
   "createdAt": "2026-01-15T10:22:00Z"
 }
 ```
 
 | Field | Type | Notes |
 |---|---|---|
-| `tier` | `string` | Subscription tier: `free` \| `weekly` \| `plus` \| `pro` |
-| `dailyCharsUsed` | `number` | Characters translated today (atomic increment, resets daily) |
-| `dailyResetAt` | `Timestamp` | When the daily quota next resets (midnight local) |
+| `tier` | `string` | Subscription tier: `free` \| `basic` \| `plus` \| `pro` |
+| `dailyResetAt` | `Timestamp` | When the daily quota next resets (midnight local). Daily usage is tracked in RTDB. |
 | `monthlyCharsUsed` | `number` | Characters translated this calendar month (atomic increment) |
 | `monthlyResetAt` | `Timestamp` | When the monthly counter next resets (1st of next month) |
 | `lifetimeCharsUsed` | `number` | All-time cumulative chars, never resets |
 | `subscriptionSince` | `Timestamp?` | When the user first converted from free to paid (set once) |
 | `paymentProvider` | `string?` | Payment provider used: `"razorpay"` |
 | `lastQuotaExceededAt` | `Timestamp?` | Last time the user hit their daily cap |
+| `forceLogout` | `bool` | Set to `true` to force logout all sessions for this user |
 | `createdAt` | `Timestamp` | Server timestamp of first sign-in / document creation |
 
-**Daily char limits by tier:**
+**Daily token limits by tier:**
 
 | Tier | Limit |
 |---|---|
-| `free` | 10,000 chars/day |
-| `weekly` | 50,000 chars/day |
-| `plus` | 100,000 chars/day |
+| `free` | 10,000 tokens/day |
+| `basic` | 50,000 tokens/day |
+| `plus` | 100,000 tokens/day |
 | `pro` | Unlimited |
 
 > Payment links are handled via Razorpay (see `SubscriptionService.openCheckout`). Setting the `tier` field directly in Firestore (or via a backend function) upgrades the user.
@@ -85,20 +85,17 @@ Written by `SubscriptionService._logSubscriptionEvent()` whenever the user's tie
 | `timestamp` | `Timestamp` | Server timestamp of the change |
 | `via` | `string` | Payment provider (`"razorpay"`) |
 
-> Quota-exceeded events are logged to `users/{uid}/logs/{push-id}` in RTDB (see RTDB Event Logs below) with `event: "quota_exceeded"` and a `data` object containing `tier`, `dailyLimit`, and `dailyCharsUsed`.
+> Quota-exceeded events are logged to `users/{uid}/logs/{push-id}` in RTDB (see RTDB Event Logs below) with `event: "quota_exceeded"` and a `data` object containing `tier` and `dailyLimit`.
 
 ---
 
 ### 1. Sessions — `users/{uid}/sessions/{sessionId}`
 
-Created on first login per device. Local storage pins the session to the hardware. Resumes on app launch unless `forceLogout` or `isEnded` is true. Updated every **5 minutes** (heartbeat) and on close.
-
-```json
 {
   "sessionId": "abc123xyz",
   "startTime": "2026-03-06T07:30:00Z",
   "endTime": "2026-03-06T09:10:00Z",
-  "lastPingAt": "2026-03-06T09:05:00Z",
+  "appReopenedAt": "2026-03-07T08:00:00Z",
   "durationSeconds": 5880,
   "isEnded": true,
   "forceLogout": false,
@@ -117,18 +114,16 @@ Created on first login per device. Local storage pins the session to the hardwar
     "wifi_submask": "255.255.255.0"
   }
 }
-```
 
 | Field | Type | Notes |
 |---|---|---|
 | `sessionId` | `string` | Firestore auto-generated doc ID (copy) |
 | `startTime` | `Timestamp` | Server timestamp on session start |
 | `endTime` | `Timestamp` | Server timestamp on app close |
-| `lastPingAt` | `Timestamp` | Updated every 5 min while app is open |
-| `durationSeconds` | `number` | `endTime - startTime` in seconds (also updated on each heartbeat) |
+| `appReopenedAt` | `Timestamp?` | Timestamp when an existing session is resumed |
+| `durationSeconds` | `number` | `endTime - startTime` in seconds (updated on app exit) |
 | `isEnded` | `bool` | `false` while running, `true` after user logs out |
-| `forceLogout` | `bool` | `true` triggers a remote logout on the client |
-| `appReopenedAt` | `Timestamp?` | Appended when an existing session is resumed |
+| `forceLogout` | `bool` | `true` triggers a remote logout for this specific session |
 | `device.*` | `map` | OS + network snapshot at session start |
 
 ---
@@ -346,6 +341,67 @@ Exceptions caught at runtime. Filtered — noisy widget lifecycle errors are sup
 
 ---
 
+### 6. Daily Usage (Telemetry) — `users/{uid}/daily_usage/{YYYY-MM-DD}`
+
+Tracks aggregated telemetry for a specific day. Useful for real-time dashboards answering "How much quota has been consumed today across engines?". Updated atomically on translation completion.
+
+```json
+{
+  "tokens": 14200,
+  "last_updated": 1741239600000,
+  "models": {
+    "llama": {
+      "calls": 12,
+      "tokens": 4200,
+      "last_updated": 1741239600000
+    },
+    "google": {
+      "calls": 45,
+      "tokens": 10000,
+      "last_updated": 1741238500000
+    }
+  },
+  "errors": {
+    "riva": {
+      "failed_calls": 2,
+      "last_error": "Connection refused",
+      "last_error_time": 1741237000000
+    }
+  }
+}
+```
+
+| Sub-path | Type | Notes |
+|---|---|---|
+| `tokens` | `number` | Total tokens consumed for all models today (incrementally updated) |
+| `models/{engine}/tokens` | `number` | Tokens mapped to a specific engine today |
+| `models/{engine}/calls` | `number` | Number of successful translations for the engine today |
+| `errors/{engine}/failed_calls` | `number` | Non-fatal translation API errors grouped by engine |
+
+---
+
+### 7. RTDB Session Logs — `users/{uid}/sessions/{sessionId}`
+
+Written on session start, ping, and end to provide a lightweight real-time mirror to the Firestore session document. Highly useful for detecting "currently active" sessions cheaply via RTDB listeners, dropping off if `last_ping_at` goes stale.
+
+```json
+{
+  "started_at": 1741238000000,
+  "last_ping_at": 1741249500000,
+  "ended_at": 1741249600000,
+  "duration_seconds": 11600
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `started_at` | `number` | Server timestamp when session opened |
+| `last_ping_at` | `number?` | Server timestamp updated every **1 minute** by the client |
+| `ended_at` | `number?` | Server timestamp when app closed cleanly |
+| `duration_seconds` | `number?` | Local duration in seconds, synced periodically and on exit |
+
+---
+
 ## Quick Reference — All Paths
 
 ```text
@@ -361,5 +417,7 @@ users/{uid}/
     ├── logs/{push-id}                   ← general events (incl. quota_exceeded)
     ├── error_logs/{push-id}             ← runtime exceptions
     ├── model_usage/{push-id}            ← one node per translation call
-    └── model_stats/{engine}             ← engine totals (atomic increments via REST)
+    ├── model_stats/{engine}             ← engine totals (atomic increments via REST)
+    ├── daily_usage/{YYYY-MM-DD}         ← per-day aggregated tracking (tokens, calls, errors)
+    └── sessions/{sessionId}             ← real-time mirror of active session state
 ```

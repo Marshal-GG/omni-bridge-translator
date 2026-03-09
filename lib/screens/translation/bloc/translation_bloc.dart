@@ -9,7 +9,6 @@ import '../../../core/services/asr_ws_client.dart';
 import '../../../core/services/tracking_service.dart';
 import '../../../core/services/asr_text_controller.dart';
 import '../../../core/services/subscription_service.dart';
-import '../../../core/window_manager.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final AsrWebSocketClient asrClient;
@@ -18,10 +17,12 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   int _lastLineCount = 0;
 
   TranslationBloc({required this.asrClient})
-    : super(TranslationState.initial()) {
+    : super(TranslationState.initial().copyWith(
+        quotaStatus: SubscriptionService.instance.currentStatus,
+        isQuotaExceeded: SubscriptionService.instance.currentStatus?.isExceeded ?? false,
+      )) {
     on<UpdateQuotaEvent>(_onUpdateQuota);
     on<QuotaExceededEvent>(_onQuotaExceeded);
-    on<ToggleSettingsEvent>(_onToggleSettings);
     on<ToggleShrinkEvent>(_onToggleShrink);
     on<ToggleRunningEvent>(_onToggleRunning);
     on<CaptionTextChangedEvent>(_onCaptionTextChanged);
@@ -35,6 +36,20 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   }
 
   void _initQuotaListener() {
+    // If we already have a status, fetch it immediately to avoid missing the broadcast
+    final initialStatus = SubscriptionService.instance.currentStatus;
+    if (initialStatus != null) {
+      add(UpdateQuotaEvent(initialStatus));
+    } else {
+      // If we are logged out or initializing, default to an initial safe status instead of null
+      add(UpdateQuotaEvent(SubscriptionStatus(
+        tier: SubscriptionTier.free,
+        dailyCharsUsed: 0,
+        dailyLimit: 10000,
+        dailyResetAt: DateTime.now(), // Ignored here
+      )));
+    }
+
     _statusSub = SubscriptionService.instance.statusStream.listen((status) {
       add(UpdateQuotaEvent(status));
     });
@@ -57,6 +72,15 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     }
 
     _captionSub = asrClient.captions?.listen((msg) {
+      if (msg.usageStats != null) {
+        if (state.activeApiKey.isEmpty) {
+          final totalTokens = (msg.usageStats!['total_tokens'] as num?)?.toInt() ?? 0;
+          if (totalTokens > 0) {
+            SubscriptionService.instance.incrementChars(totalTokens);
+          }
+        }
+      }
+
       if (msg.sourceLangOverride != null && !isClosed) {
         add(SourceLangOverrideEvent(msg.sourceLangOverride!));
       }
@@ -69,12 +93,6 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           msg.isFinal,
           state.activeTranslationModel,
         );
-
-        if (msg.isFinal && msg.text.trim().isNotEmpty) {
-          if (state.activeApiKey.isEmpty) {
-            SubscriptionService.instance.incrementChars(msg.text.length);
-          }
-        }
       }
     });
   }
@@ -196,22 +214,6 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     }
   }
 
-  Future<void> _onToggleSettings(
-    ToggleSettingsEvent event,
-    Emitter<TranslationState> emit,
-  ) async {
-    final bool willOpen = !state.isSettingsOpen;
-    emit(state.copyWith(isSettingsOpen: willOpen));
-
-    if (willOpen) {
-      if (state.isShrunk) {
-        emit(state.copyWith(isShrunk: false));
-      }
-      await setToSettingsPosition();
-    } else {
-      await setToTranslationPosition();
-    }
-  }
 
   Future<void> _onCaptionTextChanged(
     CaptionTextChangedEvent event,

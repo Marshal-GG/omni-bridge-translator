@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import '../../core/services/auth_service.dart';
-import '../../core/window_manager.dart';
+
 import 'components/startup_header.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -21,8 +20,6 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-
-    setToStartupPosition();
 
     _animController = AnimationController(
       vsync: this,
@@ -54,19 +51,11 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
-
-    if (!mounted) return;
-
-    if (!hasSeenOnboarding) {
-      Navigator.of(context).pushReplacementNamed('/onboarding');
+    if (AuthService.instance.isLoggedIn) {
+      Navigator.of(context).pushReplacementNamed('/translation-overlay');
     } else {
-      if (AuthService.instance.isLoggedIn) {
-        Navigator.of(context).pushReplacementNamed('/translation-overlay');
-      } else {
-        Navigator.of(context).pushReplacementNamed('/login');
-      }
+      // Always show tutorial/onboarding if not logged in
+      Navigator.of(context).pushReplacementNamed('/onboarding');
     }
   }
 

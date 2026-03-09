@@ -29,40 +29,42 @@ Future<void> initializeWindow() async {
 }
 
 void configureMainWindow() async {
-  final win = appWindow;
-  win.title = "Omni Bridge: Live AI Translator";
+  appWindow.title = "Omni Bridge: Live AI Translator";
 
   // Use FirebaseAuth directly since AuthService might not have initialized its ValueNotifier yet
   if (FirebaseAuth.instance.currentUser != null) {
-    win.minSize = const Size(300, 150);
-    win.size = const Size(730, 150);
-    win.alignment = Alignment.bottomCenter;
+    await windowManager.setResizable(true);
+    await windowManager.setMinimumSize(const Size(300, 150));
+    await windowManager.setSize(const Size(730, 150));
+    appWindow.alignment = Alignment.bottomCenter;
   } else {
-    win.minSize = const Size(600, 500);
-    win.size = const Size(880, 700);
-    win.alignment = Alignment.center;
+    await windowManager.setResizable(true);
+    await windowManager.setMinimumSize(const Size(600, 500));
+    await windowManager.setSize(const Size(880, 700));
+    appWindow.alignment = Alignment.center;
+    await windowManager.center();
   }
 
-  windowManager.setAlwaysOnTop(true);
-  win.show();
+  await windowManager.setAlwaysOnTop(true);
+  await windowManager.show();
 }
 
 /// Sets the window to a centered dialog style for Login
 Future<void> setToLoginPosition() async {
   await windowManager.setResizable(true);
-  appWindow.minSize = const Size(600, 500);
   await windowManager.setMinimumSize(const Size(600, 500));
   await windowManager.setSize(const Size(880, 700));
+  appWindow.alignment = Alignment.center;
   await windowManager.center();
-  await windowManager.setAlwaysOnTop(true);
+  await windowManager.setAlwaysOnTop(false);
 }
 
 /// Sets the window to a centered dialog style for Startup/Splash
 Future<void> setToStartupPosition() async {
   await windowManager.setResizable(true);
-  appWindow.minSize = const Size(600, 500);
   await windowManager.setMinimumSize(const Size(600, 500));
   await windowManager.setSize(const Size(880, 700));
+  appWindow.alignment = Alignment.center;
   await windowManager.center();
   await windowManager.setAlwaysOnTop(true);
 }
@@ -70,9 +72,9 @@ Future<void> setToStartupPosition() async {
 /// Sets window to the Account screen size
 Future<void> setToAccountPosition() async {
   await windowManager.setResizable(true);
-  appWindow.minSize = const Size(600, 500);
-  await windowManager.setMinimumSize(const Size(600, 500));
-  await windowManager.setSize(const Size(800, 660));
+  await windowManager.setMinimumSize(const Size(1000, 500));
+  await windowManager.setSize(const Size(1140, 800));
+  appWindow.alignment = Alignment.center;
   await windowManager.center();
   await windowManager.setAlwaysOnTop(false);
 }
@@ -80,9 +82,9 @@ Future<void> setToAccountPosition() async {
 /// Sets the window to the About screen size
 Future<void> setToAboutPosition() async {
   await windowManager.setResizable(true);
-  appWindow.minSize = const Size(100, 500);
   await windowManager.setMinimumSize(const Size(1000, 500));
   await windowManager.setSize(const Size(1140, 800));
+  appWindow.alignment = Alignment.center;
   await windowManager.center();
   await windowManager.setAlwaysOnTop(false);
 }
@@ -90,9 +92,9 @@ Future<void> setToAboutPosition() async {
 /// Sets the window to a centered large panel for Subscription
 Future<void> setToSubscriptionPosition() async {
   await windowManager.setResizable(true);
-  appWindow.minSize = const Size(1000, 500);
   await windowManager.setMinimumSize(const Size(1000, 500));
   await windowManager.setSize(const Size(1140, 880));
+  appWindow.alignment = Alignment.center;
   await windowManager.center();
   await windowManager.setAlwaysOnTop(false);
 }
@@ -100,12 +102,10 @@ Future<void> setToSubscriptionPosition() async {
 /// Sets the window to the wide bottom-center overlay style
 Future<void> setToTranslationPosition() async {
   await windowManager.setResizable(true);
-  appWindow.minSize = const Size(300, 150); // Clear bitsdojo constraint
-  // Set minimum size FIRST so that setSize isn't clamped by the old minSize
+  // Reset constraints before setting new ones
+  appWindow.minSize = const Size(300, 150);
   await windowManager.setMinimumSize(const Size(400, 150));
   await windowManager.setSize(const Size(730, 150));
-
-  // bitsdojo_window alignment
   appWindow.alignment = Alignment.bottomCenter;
   await windowManager.setAlwaysOnTop(true);
 }
@@ -113,9 +113,9 @@ Future<void> setToTranslationPosition() async {
 /// Sets the window to a large centered view for History
 Future<void> setToHistoryPosition() async {
   await windowManager.setResizable(true);
-  appWindow.minSize = const Size(600, 400); // Clear bitsdojo constraint
   await windowManager.setMinimumSize(const Size(600, 400));
   await windowManager.setSize(const Size(1000, 700));
+  appWindow.alignment = Alignment.center;
   await windowManager.center();
   await windowManager.setAlwaysOnTop(false);
 }
@@ -123,9 +123,9 @@ Future<void> setToHistoryPosition() async {
 /// Sets the window to a centered panel for the Settings screen
 Future<void> setToSettingsPosition() async {
   await windowManager.setResizable(true);
-  appWindow.minSize = const Size(560, 480);
   await windowManager.setMinimumSize(const Size(560, 480));
   await windowManager.setSize(const Size(720, 620));
+  appWindow.alignment = Alignment.center;
   await windowManager.center();
   await windowManager.setAlwaysOnTop(false);
 }

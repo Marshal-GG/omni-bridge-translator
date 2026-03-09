@@ -24,7 +24,7 @@ lib/
 ├── screens/
 │   ├── account/        # User profile (name, email, sign-in method badge)
 │   ├── about/          # Version info, update checker, links
-│   ├── history/        # Caption history panel (tier-gated: Weekly+ entry, Pro-only 5s column. Features a custom glassy `history_header.dart`)
+│   ├── history/        # Caption history panel (tier-gated: Basic+ entry, Pro-only 5s column. Features a custom glassy `history_header.dart`)
 │   ├── login/          # Sign-in screen (Google, Email, Guest)
 │   ├── settings/       # Audio devices, languages, model selection (with tier-lock badges)
 │   ├── startup/        # Splash screen + onboarding slides
@@ -53,8 +53,8 @@ lib/
 | `AsrWsClient` | WebSocket client to Python server (`ws://127.0.0.1:8765`). Receives JSON caption events. |
 | `AsrTextController` | Manages the display buffer — interim vs. final text, rolling captions |
 | `TranslationService` | Sends start/stop/settings commands to the WebSocket server |
-| `TrackingService` | Logs session stats and translation metadata to Firestore / RTDB |
-| `SubscriptionService` | Manages subscription tier, daily/monthly/lifetime quota counters, tier-change event audit, quota-exceeded logging |
+| `TrackingService` | Logs session stats, hardware metadata (Firestore), real-time heartbeat, error logs, and Live Caption/Model Usage stats (RTDB via REST) |
+| `SubscriptionService` | Manages subscription tier, daily token / monthly / lifetime quota counters, tier-change event audit, quota-exceeded logging |
 | `AuthService` | Firebase Auth + custom URL schemes (`omni-bridge://` and reversed iOS Client ID) for Windows Google Sign-In redirects |
 
 ---
@@ -109,17 +109,17 @@ Feature access is enforced in the UI layer by reading `SubscriptionService.insta
 |---|---|
 | Google Translate | Free |
 | MyMemory | Free |
-| NVIDIA Riva | Weekly+ |
-| Llama 3.1 8B | Weekly+ |
+| NVIDIA Riva | Basic+ |
+| Llama 3.1 8B | Basic+ |
 
-Locked engines are rendered dimmed with an orange `🔒 Weekly+` badge. Tapping a locked option opens `UpgradeSheet`.
+Locked engines are rendered dimmed with an orange `🔒 Basic+` badge. Tapping a locked option opens `UpgradeSheet`.
 
 ### Whisper Offline Model Sizes (Settings → Transcription Method)
 
 | Size | Minimum Tier |
 |---|---|
 | Tiny / Base | Free |
-| Small (~460 MB) | Weekly+ |
+| Small (~460 MB) | Basic+ |
 | Medium (~1.5 GB) | Plus+ |
 
 Locked sizes are disabled in the `DropdownButton` and show a lock badge. Selecting them opens `UpgradeSheet`.
@@ -129,7 +129,7 @@ Locked sizes are disabled in the `DropdownButton` and show a lock badge. Selecti
 | Tier | Access |
 |---|---|
 | Free | Blocked — Custom `TierGateView` shown with "Upgrade to access history" message + automatic `UpgradeSheet` trigger. |
-| Weekly | Live transcripts (in-memory, session-scoped) |
+| Basic | Live transcripts (in-memory, session-scoped) |
 | Plus | Live transcripts filtered to last 72 hours |
 | Pro | Live transcripts + **5-second Context Refresh column** |
 
@@ -141,5 +141,5 @@ The history button in the overlay header and locked engine selections now route 
 - **Standardized Headers**: Custom internal headers (e.g., `buildAccountHeader`, `buildHistoryHeader`) replace standard AppBars to provide consistent window management controls (Minimize, Close, Drag) and navigation.
 - **Version Tracking**: Every major screen displays a consistent "Version Chip" (e.g., `OMNI BRIDGE V1.0.0`) in the footer or designated areas for easy reference.
 - **Account Screen**:
-    - **Plan Visualization**: Real-time progress bar shows daily character usage for capped tiers.
+    - **Plan Visualization**: Real-time progress bar shows daily token usage for capped tiers.
     - **Planned Features**: A dedicated "Todo" section informs users of upcoming capabilities (Audio TTS, PDF support, etc.).

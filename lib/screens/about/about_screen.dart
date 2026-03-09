@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:window_manager/window_manager.dart';
 import '../../core/services/update_service.dart';
-import '../../core/window_manager.dart';
+
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -18,26 +17,10 @@ class _AboutScreenState extends State<AboutScreen> {
   UpdateStatus _updateStatus = UpdateStatus.idle;
   UpdateResult? _updateResult;
   final GlobalKey _contentKey = GlobalKey();
-  double _lastHeight = 0;
-
-  Future<void> _adjustWindowSize() async {
-    if (!mounted) return;
-    final context = _contentKey.currentContext;
-    if (context != null) {
-      final RenderBox box = context.findRenderObject() as RenderBox;
-      final contentHeight = box.size.height;
-      final targetHeight = contentHeight + 35; // 32 (header) + 1 (divider) + 2 (window borders)
-      if ((_lastHeight - targetHeight).abs() > 1) {
-        _lastHeight = targetHeight;
-        await windowManager.setSize(Size(1140, targetHeight));
-      }
-    }
-  }
 
   @override
   void initState() {
     super.initState();
-    setToAboutPosition();
     PackageInfo.fromPlatform().then((info) {
       if (mounted) setState(() => _version = info.version);
     });
@@ -79,7 +62,6 @@ class _AboutScreenState extends State<AboutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _adjustWindowSize());
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: WindowBorder(

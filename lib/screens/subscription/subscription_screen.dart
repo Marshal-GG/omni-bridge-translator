@@ -3,7 +3,7 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/services/subscription_service.dart';
-import '../../core/window_manager.dart';
+
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -20,7 +20,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   @override
   void initState() {
     super.initState();
-    setToSubscriptionPosition();
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -153,7 +152,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                               const SizedBox(width: 16),
                                               Expanded(
                                                 child: _PlanCard(
-                                                  tier: SubscriptionTier.weekly,
+                                                  tier: SubscriptionTier.basic,
                                                   name: 'Weekly',
                                                   price: '₹49',
                                                   period: '/wk',
@@ -166,7 +165,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                                   ],
                                                   isCurrent:
                                                       status?.tier ==
-                                                      SubscriptionTier.weekly,
+                                                      SubscriptionTier.basic,
                                                   formatter: _formatter,
                                                 ),
                                               ),
@@ -252,16 +251,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       alignment: WrapAlignment.center,
       children: [
         _buildFooterLink('Settings', Colors.teal, () {
-          Navigator.pushNamed(context, '/settings-overlay')
-              .then((_) => setToSubscriptionPosition());
+          Navigator.pushNamed(context, '/settings-overlay');
         }),
         _buildFooterLink('Account', Colors.purple, () {
-          Navigator.pushNamed(context, '/account')
-              .then((_) => setToSubscriptionPosition());
+          Navigator.pushNamed(context, '/account');
         }),
         _buildFooterLink('About', Colors.amber, () {
-          Navigator.pushNamed(context, '/about')
-              .then((_) => setToSubscriptionPosition());
+          Navigator.pushNamed(context, '/about');
         }),
         _buildFooterLink('Support', Colors.lightBlue, () {
           // Open support link

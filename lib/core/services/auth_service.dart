@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'tracking_service.dart';
+import '../navigation/global_navigator.dart';
 
 class AuthService {
   AuthService._();
@@ -290,6 +291,9 @@ class AuthService {
     await TrackingService.instance.logEvent('User Signed Out');
     await TrackingService.instance.endSession();
     await FirebaseAuth.instance.signOut();
+
+    // Ensure we redirect to splash on manual sign out as well
+    await GlobalNavigator.pushNamedAndRemoveUntil('/splash', (route) => false);
   }
 
   Future<void> _saveUserToFirestore(User user) async {

@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'screens/translation/bloc/translation_bloc.dart';
 import 'screens/settings/bloc/settings_bloc.dart';
 import 'core/services/asr_ws_client.dart';
+import 'core/navigation/global_navigator.dart';
 
 class MyApp extends StatelessWidget {
   final String initialRoute;
@@ -28,6 +29,7 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
+        navigatorKey: GlobalNavigator.key,
         debugShowCheckedModeBanner: false,
         title: 'Omni Bridge: Live AI Translator',
         theme: AppTheme.darkTheme,

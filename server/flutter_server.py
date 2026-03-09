@@ -123,6 +123,10 @@ def caption_callback(text, is_error, is_final=True, original_text=None, usage_st
         if usage_stats and not is_error and is_final:
             if isinstance(usage_stats, list):
                 for stat in usage_stats:
+                    if not stat.get("total_tokens"):
+                        total_c = stat.get("input_chars", 0) + stat.get("output_chars", 0)
+                        stat["total_tokens"] = max(1, total_c // 4) if total_c > 0 else 0
+
                     stats_msg = {
                         "type": "usage_stats",
                         "source_lang": current_source_lang,
@@ -131,6 +135,10 @@ def caption_callback(text, is_error, is_final=True, original_text=None, usage_st
                     }
                     asyncio.run_coroutine_threadsafe(broadcast(stats_msg), _event_loop)
             else:
+                if not usage_stats.get("total_tokens"):
+                    total_c = usage_stats.get("input_chars", 0) + usage_stats.get("output_chars", 0)
+                    usage_stats["total_tokens"] = max(1, total_c // 4) if total_c > 0 else 0
+
                 stats_msg = {
                     "type": "usage_stats",
                     "source_lang": current_source_lang,

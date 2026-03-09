@@ -198,7 +198,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
     switch (tier) {
       case SubscriptionTier.free:
         return 'No history available';
-      case SubscriptionTier.weekly:
+      case SubscriptionTier.basic:
         return 'Current session only';
       case SubscriptionTier.plus:
         return 'Last 3 days';

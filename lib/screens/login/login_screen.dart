@@ -39,7 +39,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void _onAuthChanged() {
     if (!mounted) return;
     if (AuthService.instance.currentUser.value != null) {
-      Navigator.pushReplacementNamed(context, '/settings');
+      Navigator.pushReplacementNamed(context, '/translation-overlay');
+      Navigator.pushNamed(context, '/settings-overlay');
     }
   }
 
@@ -51,7 +52,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final user = await AuthService.instance.signInWithGoogle();
     if (!mounted) return;
     if (user != null) {
-      Navigator.pushReplacementNamed(context, '/settings');
+      Navigator.pushReplacementNamed(context, '/translation-overlay');
+      Navigator.pushNamed(context, '/settings-overlay');
     } else {
       setState(() {
         _isLoading = false;
@@ -130,7 +132,8 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     await AuthService.instance.bypassForDev();
     if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/settings');
+    Navigator.pushReplacementNamed(context, '/translation-overlay');
+    Navigator.pushNamed(context, '/settings-overlay');
   }
 
   @override

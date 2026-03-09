@@ -78,9 +78,9 @@ Auto-detect source language, or manually select from: English, Spanish, French, 
 
 | Tier | Price | Daily Quota |
 |------|-------|-------------|
-| **Free** | ₹0 | 10,000 chars/day |
-| **Weekly** | ₹49/week | 50,000 chars/day |
-| **Plus** | ₹149/month | 100,000 chars/day |
+| **Free** | ₹0 | 10,000 tokens/day |
+| **Basic** | ₹49/week | 50,000 tokens/day |
+| **Plus** | ₹149/month | 100,000 tokens/day |
 | **Pro** | ₹399/month | Unlimited |
 
 Pro unlocks **Intelligent Context Refresh** (5-second retroactive correction), unlimited history access, and priority support. Clear visual indicators (teal highlights) and real-time usage tracking in the Account screen help you manage your plan. Upgrade from within the app via Razorpay.

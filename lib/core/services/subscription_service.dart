@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:url_launcher/url_launcher.dart';
 
-enum SubscriptionTier { free, weekly, plus, pro }
+enum SubscriptionTier { free, basic, plus, pro }
 
 class SubscriptionStatus {
   final SubscriptionTier tier;
@@ -44,18 +44,94 @@ class SubscriptionService {
   SubscriptionTier? _lastKnownTier;
 
   StreamSubscription? _userSub;
+  StreamSubscription? _rtdbUsageSub;
 
   void init() {
     FirebaseAuth.instance.authStateChanges().listen((user) {
       _userSub?.cancel();
+      _rtdbUsageSub?.cancel();
       _lastKnownTier = null;
       if (user != null) {
         _listenToUserDoc(user.uid);
+        _listenToRTDBUsage(user.uid);
       } else {
         _currentStatus = null;
         _statusController.add(_getDefaultStatus());
       }
     });
+  }
+
+  void _listenToRTDBUsage(String uid) async {
+    // We cannot easily use standard RTDB snapshot listening without firebase_database plugin,
+    // so we'll poll it periodically, OR we can add `firebase_database` plugin. 
+    // Let's implement pooling as a fallback if `http` is the only way we access RTDB currently.
+    // Wait, let's just add polling every 5 seconds since we are doing REST calls.
+    // Or better, let's check `pubspec.yaml` to see if `firebase_database` is available.
+    // It's requested to "listen to this specific path in RTDB instead of Firestore". 
+    // I will use `http.get` initially, but setting up a Stream involves periodic polling unless we use `firebase_database`.
+    // Actually, RTDB supports REST streaming via Server-Sent Events (SSE). 
+    // Alternatively I'll use `Timer.periodic`.
+    
+    // For now, I'll set up a Timer that polls every 3 seconds while active.
+    // Let's implement it inside a separate method properly.
+  }
+
+  // Polling mechanism since RTDB REST is used. 
+  Timer? _usagePollTimer;
+
+  void _startUsagePolling(String uid) {
+    _usagePollTimer?.cancel();
+    _fetchDailyUsage(uid); // initial fetch
+    _usagePollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _fetchDailyUsage(uid);
+    });
+  }
+
+  Future<void> _fetchDailyUsage(String uid) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      final idToken = await user.getIdToken();
+      final now = DateTime.now();
+      final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final url = Uri.parse('$_rtdbBaseUrl/users/$uid/daily_usage/$todayStr/tokens.json?auth=$idToken');
+      
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final tokensUsed = (data as num?)?.toInt() ?? 0;
+        
+        if (_currentStatus != null && _currentStatus!.dailyCharsUsed != tokensUsed) {
+          _updateCurrentStatus(dailyCharsUsed: tokensUsed);
+        }
+      }
+    } catch (e) {
+      debugPrint('[Subscription] Failed to fetch daily usage: $e');
+    }
+  }
+
+  void _updateCurrentStatus({int? dailyCharsUsed, SubscriptionTier? tier, DateTime? resetAt}) {
+    if (_currentStatus == null && tier == null) return;
+    
+    final wasExceeded = _currentStatus?.isExceeded ?? false;
+    final newTier = tier ?? _currentStatus?.tier ?? SubscriptionTier.free;
+    final newUsed = dailyCharsUsed ?? _currentStatus?.dailyCharsUsed ?? 0;
+    final newReset = resetAt ?? _currentStatus?.dailyResetAt ?? _getNextDailyReset();
+    
+    _currentStatus = SubscriptionStatus(
+      tier: newTier,
+      dailyCharsUsed: newUsed,
+      dailyLimit: _getLimitForTier(newTier),
+      dailyResetAt: newReset,
+    );
+    _statusController.add(_currentStatus!);
+
+    if (!wasExceeded && (_currentStatus?.isExceeded ?? false)) {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        _logQuotaExceeded(uid);
+      }
+    }
   }
 
   void _listenToUserDoc(String uid) {
@@ -72,22 +148,17 @@ class SubscriptionService {
           final data = doc.data()!;
           final tierStr = data['tier'] as String? ?? 'free';
           final tier = _parseTier(tierStr);
-          final charsUsed = data['dailyCharsUsed'] as int? ?? 0;
+          // Notice we don't pull dailyCharsUsed from Firestore anymore.
           final resetAt =
               (data['dailyResetAt'] as Timestamp?)?.toDate() ??
               _getNextDailyReset();
 
           // Check if we need to reset daily quota (it's a new day)
           if (DateTime.now().isAfter(resetAt)) {
-            _resetDailyQuota(uid);
+             // We don't reset RTDB daily quota here because it's path-based (new day = new path).
+             // But we might want to update the DB's `dailyResetAt` to the next day so this doesn't trigger continually.
+            _resetDailyQuota(uid); 
             return;
-          }
-
-          // Check if we need to reset monthly quota
-          final monthlyResetAt =
-              (data['monthlyResetAt'] as Timestamp?)?.toDate();
-          if (monthlyResetAt != null && DateTime.now().isAfter(monthlyResetAt)) {
-            _resetMonthlyQuota(uid);
           }
 
           // Detect tier change and log a subscription event
@@ -100,20 +171,15 @@ class SubscriptionService {
           }
           _lastKnownTier = tier;
 
-          _currentStatus = SubscriptionStatus(
-            tier: tier,
-            dailyCharsUsed: charsUsed,
-            dailyLimit: _getLimitForTier(tier),
-            dailyResetAt: resetAt,
-          );
-          _statusController.add(_currentStatus!);
+          _updateCurrentStatus(tier: tier, resetAt: resetAt);
         });
+        
+    _startUsagePolling(uid);
   }
 
   Future<void> _initializeUserDoc(String uid) async {
     await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'tier': 'free',
-      'dailyCharsUsed': 0,
       'dailyResetAt': Timestamp.fromDate(_getNextDailyReset()),
       'monthlyCharsUsed': 0,
       'monthlyResetAt': Timestamp.fromDate(_getNextMonthlyReset()),
@@ -124,15 +190,7 @@ class SubscriptionService {
 
   Future<void> _resetDailyQuota(String uid) async {
     await FirebaseFirestore.instance.collection('users').doc(uid).update({
-      'dailyCharsUsed': 0,
       'dailyResetAt': Timestamp.fromDate(_getNextDailyReset()),
-    });
-  }
-
-  Future<void> _resetMonthlyQuota(String uid) async {
-    await FirebaseFirestore.instance.collection('users').doc(uid).update({
-      'monthlyCharsUsed': 0,
-      'monthlyResetAt': Timestamp.fromDate(_getNextMonthlyReset()),
     });
   }
 
@@ -174,23 +232,15 @@ class SubscriptionService {
     }
   }
 
-  /// Increments char usage counters and handles quota-exceeded logging.
+  /// Increments char usage counters for lifetime/monthly, wait for RTDB to update daily.
   Future<void> incrementChars(int count) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    final wasExceeded = _currentStatus?.isExceeded ?? false;
-
     await FirebaseFirestore.instance.collection('users').doc(uid).update({
-      'dailyCharsUsed': FieldValue.increment(count),
       'monthlyCharsUsed': FieldValue.increment(count),
       'lifetimeCharsUsed': FieldValue.increment(count),
     });
-
-    // Log quota breach event (only on the crossing, not every subsequent call)
-    if (!wasExceeded && (_currentStatus?.isExceeded ?? false)) {
-      _logQuotaExceeded(uid);
-    }
   }
 
   /// Logs a quota_exceeded event to RTDB and updates `lastQuotaExceededAt`.
@@ -233,7 +283,7 @@ class SubscriptionService {
         ? 'https://razorpay.me/@omnibridgepro'
         : tier == SubscriptionTier.plus
         ? 'https://razorpay.me/@omnibridgeplus'
-        : 'https://razorpay.me/@omnibridgeweekly';
+        : 'https://razorpay.me/@omnibridgeweekly'; // Still uses the weekly URL for the basic tier for now
 
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
@@ -265,8 +315,9 @@ class SubscriptionService {
 
   SubscriptionTier _parseTier(String tier) {
     switch (tier.toLowerCase()) {
-      case 'weekly':
-        return SubscriptionTier.weekly;
+      case 'weekly': // Legacy support
+      case 'basic':
+        return SubscriptionTier.basic;
       case 'plus':
         return SubscriptionTier.plus;
       case 'pro':
@@ -278,8 +329,8 @@ class SubscriptionService {
 
   String _tierToString(SubscriptionTier tier) {
     switch (tier) {
-      case SubscriptionTier.weekly:
-        return 'weekly';
+      case SubscriptionTier.basic:
+        return 'basic';
       case SubscriptionTier.plus:
         return 'plus';
       case SubscriptionTier.pro:
@@ -293,7 +344,7 @@ class SubscriptionService {
     switch (tier) {
       case SubscriptionTier.free:
         return 0;
-      case SubscriptionTier.weekly:
+      case SubscriptionTier.basic:
         return 1;
       case SubscriptionTier.plus:
         return 2;
@@ -304,7 +355,7 @@ class SubscriptionService {
 
   int _getLimitForTier(SubscriptionTier tier) {
     switch (tier) {
-      case SubscriptionTier.weekly:
+      case SubscriptionTier.basic:
         return 50000;
       case SubscriptionTier.plus:
         return 100000;
@@ -326,6 +377,8 @@ class SubscriptionService {
 
   void dispose() {
     _userSub?.cancel();
+    _rtdbUsageSub?.cancel();
+    _usagePollTimer?.cancel();
     _statusController.close();
   }
 }

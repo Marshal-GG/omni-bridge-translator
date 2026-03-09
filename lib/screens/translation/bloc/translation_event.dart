@@ -8,8 +8,6 @@ abstract class TranslationEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class ToggleSettingsEvent extends TranslationEvent {}
-
 class ToggleShrinkEvent extends TranslationEvent {}
 
 class ToggleRunningEvent extends TranslationEvent {}

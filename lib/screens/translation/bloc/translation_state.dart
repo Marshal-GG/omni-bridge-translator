@@ -3,7 +3,6 @@ import '../../../core/services/subscription_service.dart';
 
 class TranslationState extends Equatable {
   // App UI State
-  final bool isSettingsOpen;
   final bool isShrunk;
   final bool isRunning;
   final SubscriptionStatus? quotaStatus;
@@ -28,7 +27,6 @@ class TranslationState extends Equatable {
   final String? autoDetectWarning;
 
   const TranslationState({
-    required this.isSettingsOpen,
     required this.isShrunk,
     required this.isRunning,
     required this.activeTargetLang,
@@ -51,7 +49,6 @@ class TranslationState extends Equatable {
 
   factory TranslationState.initial() {
     return const TranslationState(
-      isSettingsOpen: false,
       isShrunk: false,
       isRunning: true,
       // Active
@@ -75,7 +72,6 @@ class TranslationState extends Equatable {
   }
 
   TranslationState copyWith({
-    bool? isSettingsOpen,
     bool? isShrunk,
     bool? isRunning,
     String? activeTargetLang,
@@ -96,7 +92,6 @@ class TranslationState extends Equatable {
     bool? isQuotaExceeded,
   }) {
     return TranslationState(
-      isSettingsOpen: isSettingsOpen ?? this.isSettingsOpen,
       isShrunk: isShrunk ?? this.isShrunk,
       isRunning: isRunning ?? this.isRunning,
       activeTargetLang: activeTargetLang ?? this.activeTargetLang,
@@ -126,7 +121,6 @@ class TranslationState extends Equatable {
 
   @override
   List<Object?> get props => [
-    isSettingsOpen,
     isShrunk,
     isRunning,
     activeTargetLang,

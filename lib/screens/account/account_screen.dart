@@ -4,7 +4,7 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/subscription_service.dart';
-import '../../core/window_manager.dart';
+
 import 'components/account_header.dart';
 import 'components/account_avatar.dart';
 import 'components/account_name_editor.dart';
@@ -28,7 +28,6 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   void initState() {
     super.initState();
-    setToAccountPosition();
     final user = AuthService.instance.currentUser.value;
     _nameController.text = user?.displayName ?? '';
     
@@ -98,10 +97,7 @@ class _AccountScreenState extends State<AccountScreen> {
       ),
     );
     if (confirm == true && mounted) {
-      final nav = Navigator.of(context);
       await AuthService.instance.signOut();
-      await setToLoginPosition();
-      nav.pushNamedAndRemoveUntil('/login', (route) => false);
     }
   }
 

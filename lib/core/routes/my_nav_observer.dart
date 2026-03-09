@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import '../window_manager.dart';
 import 'routes_config.dart';
 
@@ -36,7 +37,10 @@ class MyNavigatorObserver extends NavigatorObserver {
         name == '/history-panel' ||
         name == '/subscription' ||
         name == '/about' ||
-        name == '/settings-overlay') {
+        name == '/account' ||
+        name == '/settings-overlay' ||
+        name == '/onboarding' ||
+        name == '/splash') {
       if (previousRoute != null) {
         _handleWindowState(previousRoute);
       }
@@ -45,6 +49,8 @@ class MyNavigatorObserver extends NavigatorObserver {
 
   void _handleWindowState(Route<dynamic> route) {
     final name = route.settings.name;
+    if (name == null) return;
+    
     debugPrint('[NavObserver] Routing to: $name');
 
     if (name == '/login') {
@@ -61,6 +67,8 @@ class MyNavigatorObserver extends NavigatorObserver {
       setToAboutPosition();
     } else if (name == '/settings-overlay') {
       setToSettingsPosition();
+    } else if (name == '/onboarding' || name == '/splash') {
+      setToStartupPosition();
     }
   }
 }
