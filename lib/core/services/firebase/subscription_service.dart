@@ -8,43 +8,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:url_launcher/url_launcher.dart';
 
-enum SubscriptionTier { free, basic, plus, pro }
-
-class SubscriptionStatus {
-  final SubscriptionTier tier;
-  final int dailyCharsUsed;
-  final int dailyLimit;
-  final DateTime dailyResetAt;
-
-  const SubscriptionStatus({
-    required this.tier,
-    required this.dailyCharsUsed,
-    required this.dailyLimit,
-    required this.dailyResetAt,
-  });
-
-  bool get isUnlimited => tier == SubscriptionTier.pro;
-  double get progress => dailyLimit == 0 ? 0 : dailyCharsUsed / dailyLimit;
-  bool get isExceeded => !isUnlimited && dailyCharsUsed >= dailyLimit;
-}
-
-class SubscriptionPlan {
-  final String id;
-  final String name;
-  final String price;
-  final String description;
-  final List<String> features;
-  final bool isPopular;
-
-  const SubscriptionPlan({
-    required this.id,
-    required this.name,
-    required this.price,
-    required this.description,
-    required this.features,
-    this.isPopular = false,
-  });
-}
+import 'package:omni_bridge/models/subscription_models.dart';
 
 class SubscriptionService {
   SubscriptionService._();
@@ -56,6 +20,8 @@ class SubscriptionService {
   // --- Dynamic Monetization Config ---
   Map<String, dynamic>? _monetizationConfig;
   StreamSubscription? _monetizationSub;
+
+  final http.Client _httpClient = http.Client();
 
   final _statusController = StreamController<SubscriptionStatus>.broadcast();
   Stream<SubscriptionStatus> get statusStream => _statusController.stream;
@@ -133,7 +99,10 @@ class SubscriptionService {
         '$_rtdbBaseUrl/users/$uid/daily_usage/$todayStr/tokens.json?auth=$idToken',
       );
 
-      final response = await http.get(url);
+      final response = await _httpClient
+          .get(url)
+          .timeout(const Duration(seconds: 5));
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final tokensUsed = (data as num?)?.toInt() ?? 0;
@@ -143,6 +112,8 @@ class SubscriptionService {
           _updateCurrentStatus(dailyCharsUsed: tokensUsed);
         }
       }
+    } on TimeoutException {
+      debugPrint('[Subscription] RTDB usage fetch timed out.');
     } catch (e) {
       debugPrint('[Subscription] Failed to fetch daily usage: $e');
     }
@@ -299,21 +270,25 @@ class SubscriptionService {
       if (user == null) return;
       final idToken = await user.getIdToken();
       final url = Uri.parse('$_rtdbBaseUrl/users/$uid/logs.json?auth=$idToken');
-      await http.post(
-        url,
-        body: jsonEncode({
-          'event': 'quota_exceeded',
-          'data': {
-            'tier': _tierToString(
-              _currentStatus?.tier ?? SubscriptionTier.free,
-            ),
-            'dailyLimit': _currentStatus?.dailyLimit ?? 0,
-            'dailyCharsUsed': _currentStatus?.dailyCharsUsed ?? 0,
-          },
-          'timestamp': {'.sv': 'timestamp'},
-        }),
-      );
+      await _httpClient
+          .post(
+            url,
+            body: jsonEncode({
+              'event': 'quota_exceeded',
+              'data': {
+                'tier': _tierToString(
+                  _currentStatus?.tier ?? SubscriptionTier.free,
+                ),
+                'dailyLimit': _currentStatus?.dailyLimit ?? 0,
+                'dailyCharsUsed': _currentStatus?.dailyCharsUsed ?? 0,
+              },
+              'timestamp': {'.sv': 'timestamp'},
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
       debugPrint('[Subscription] Quota exceeded event logged.');
+    } on TimeoutException {
+      debugPrint('[Subscription] Quota exceeded log timed out.');
     } catch (e) {
       debugPrint('[Subscription] Failed to log quota exceeded: $e');
     }
@@ -547,6 +522,7 @@ class SubscriptionService {
     _userSub?.cancel();
     _rtdbUsageSub?.cancel();
     _usagePollTimer?.cancel();
+    _httpClient.close();
     _statusController.close();
   }
 }

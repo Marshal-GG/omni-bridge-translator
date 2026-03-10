@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../../core/services/firebase/subscription_service.dart';
+import '../../../models/subscription_models.dart';
 
 abstract class SubscriptionEvent extends Equatable {
   const SubscriptionEvent();

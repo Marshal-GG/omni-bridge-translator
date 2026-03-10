@@ -187,5 +187,6 @@ While copyright is automatic upon creation, formalizing your protection is highl
 - [Python Server Architecture](python_architecture.md)
 - [Database Schema](database_schema.md)
 - [Monetization Plan](monetization_plan.md)
+- [Admin Features Overview](admin_features_overview.md)
 - [Google Auth Troubleshooting](google_auth_troubleshooting.md)
 - [Publishing a New Release](github_releases_guide.md)

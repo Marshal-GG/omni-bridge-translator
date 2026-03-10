@@ -46,22 +46,22 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
               onPressed: () {
                 context.read<SettingsBloc>().add(SaveSettingsEvent());
                 context.read<TranslationBloc>().add(
-                      ApplySettingsEvent(
-                        targetLang: state.tempTargetLang,
-                        sourceLang: state.tempSourceLang,
-                        useMic: state.tempUseMic,
-                        fontSize: state.tempFontSize,
-                        isBold: state.tempIsBold,
-                        opacity: state.tempOpacity,
-                        inputDeviceIndex: state.tempInputDeviceIndex,
-                        outputDeviceIndex: state.tempOutputDeviceIndex,
-                        desktopVolume: state.tempDesktopVolume,
-                        micVolume: state.tempMicVolume,
-                        translationModel: state.tempTranslationModel,
-                        apiKey: state.tempApiKey,
-                        transcriptionModel: state.tempTranscriptionModel,
-                      ),
-                    );
+                  ApplySettingsEvent(
+                    targetLang: state.settings.targetLang,
+                    sourceLang: state.settings.sourceLang,
+                    useMic: state.settings.useMic,
+                    fontSize: state.settings.fontSize,
+                    isBold: state.settings.isBold,
+                    opacity: state.settings.opacity,
+                    inputDeviceIndex: state.settings.inputDeviceIndex,
+                    outputDeviceIndex: state.settings.outputDeviceIndex,
+                    desktopVolume: state.settings.desktopVolume,
+                    micVolume: state.settings.micVolume,
+                    translationModel: state.settings.translationModel,
+                    apiKey: state.settings.apiKey,
+                    transcriptionModel: state.settings.transcriptionModel,
+                  ),
+                );
 
                 Navigator.pop(context);
               },

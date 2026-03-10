@@ -9,6 +9,7 @@ import '../bloc/settings_event.dart';
 import '../bloc/settings_state.dart';
 import '../../../core/constants/languages.dart';
 import '../../../core/services/whisper_service.dart';
+import '../../../models/subscription_models.dart';
 import '../../../core/services/firebase/subscription_service.dart';
 import 'settings_helpers.dart';
 
@@ -30,11 +31,12 @@ Widget buildLanguagesTab(BuildContext context, SettingsState state) {
                       .where((e) => e.key != 'none')
                       .toList(),
                   selected: MapEntry(
-                    state.tempSourceLang,
-                    appLanguages[state.tempSourceLang] ?? state.tempSourceLang,
+                    state.settings.sourceLang,
+                    appLanguages[state.settings.sourceLang] ??
+                        state.settings.sourceLang,
                   ),
                   hint:
-                      appLanguages[state.tempSourceLang] ??
+                      appLanguages[state.settings.sourceLang] ??
                       'Search language...',
                   onSelect: (item) {
                     context.read<SettingsBloc>().add(
@@ -65,11 +67,12 @@ Widget buildLanguagesTab(BuildContext context, SettingsState state) {
                       .where((e) => e.key != 'auto')
                       .toList(),
                   selected: MapEntry(
-                    state.tempTargetLang,
-                    appLanguages[state.tempTargetLang] ?? state.tempTargetLang,
+                    state.settings.targetLang,
+                    appLanguages[state.settings.targetLang] ??
+                        state.settings.targetLang,
                   ),
                   hint:
-                      appLanguages[state.tempTargetLang] ??
+                      appLanguages[state.settings.targetLang] ??
                       'Search language...',
                   onSelect: (item) {
                     context.read<SettingsBloc>().add(
@@ -243,13 +246,13 @@ Widget buildTranslationModelSelector(
       engineKey,
       SubscriptionTier.basic,
     );
-    return _tierRank(currentTier) >= _tierRank(required);
+    return currentTier.rank >= required.rank;
   }
 
   const enginesThatNeedKey = {'riva', 'llama'};
   final needsKey =
-      enginesThatNeedKey.contains(state.tempTranslationModel) ||
-      state.tempTranscriptionModel == 'riva';
+      enginesThatNeedKey.contains(state.settings.translationModel) ||
+      state.settings.transcriptionModel == 'riva';
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,9 +265,9 @@ Widget buildTranslationModelSelector(
           items: translationModels.entries.toList(),
           itemAsString: (entry) => entry.value,
           selectedItem: MapEntry(
-            state.tempTranslationModel,
-            translationModels[state.tempTranslationModel] ??
-                state.tempTranslationModel,
+            state.settings.translationModel,
+            translationModels[state.settings.translationModel] ??
+                state.settings.translationModel,
           ),
           onBeforeChange: (prev, next) async {
             if (next == null) return false;
@@ -325,7 +328,7 @@ Widget buildTranslationModelSelector(
             ),
             itemBuilder: (context, item, _) {
               final isCurrentlySelected =
-                  item.key == state.tempTranslationModel;
+                  item.key == state.settings.translationModel;
               final isRecommended = item.key == 'google';
               final itemHasAccess = hasAccess(item.key);
 
@@ -427,7 +430,7 @@ Widget _buildTranscriptionModelSection(
           Expanded(
             child: _TranscriptionOption(
               value: 'online',
-              groupValue: state.tempTranscriptionModel,
+              groupValue: state.settings.transcriptionModel,
               label: 'Google Online',
               icon: Icons.cloud_outlined,
               onChanged: (v) => context.read<SettingsBloc>().add(
@@ -439,7 +442,7 @@ Widget _buildTranscriptionModelSection(
           Expanded(
             child: _TranscriptionOption(
               value: 'riva',
-              groupValue: state.tempTranscriptionModel,
+              groupValue: state.settings.transcriptionModel,
               label: 'NVIDIA Riva',
               isRecommended: true,
               icon: Icons.bolt_rounded,
@@ -451,10 +454,10 @@ Widget _buildTranscriptionModelSection(
           const SizedBox(width: 8),
           Expanded(
             child: _TranscriptionOption(
-              value: state.tempTranscriptionModel.startsWith('whisper')
-                  ? state.tempTranscriptionModel
+              value: state.settings.transcriptionModel.startsWith('whisper')
+                  ? state.settings.transcriptionModel
                   : 'whisper-base',
-              groupValue: state.tempTranscriptionModel,
+              groupValue: state.settings.transcriptionModel,
               label: 'Whisper Offline',
               icon: Icons.offline_bolt_outlined,
               onChanged: (v) => context.read<SettingsBloc>().add(
@@ -466,10 +469,10 @@ Widget _buildTranscriptionModelSection(
       ),
 
       // Whisper model manager (shown when offline is selected)
-      if (state.tempTranscriptionModel.startsWith('whisper')) ...[
+      if (state.settings.transcriptionModel.startsWith('whisper')) ...[
         const SizedBox(height: 12),
         _WhisperModelCard(
-          selectedModel: state.tempTranscriptionModel,
+          selectedModel: state.settings.transcriptionModel,
           onModelChanged: (newModel) {
             context.read<SettingsBloc>().add(
               UpdateTempSettingEvent(transcriptionModel: newModel),
@@ -703,7 +706,7 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
         size,
         size == 'medium' ? SubscriptionTier.plus : SubscriptionTier.basic,
       );
-      return _tierRank(currentTier) >= _tierRank(required);
+      return currentTier.rank >= required.rank;
     }
 
     String whisperLockLabel(String size) {
@@ -995,7 +998,7 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.state.tempApiKey);
+    _controller = TextEditingController(text: widget.state.settings.apiKey);
 
     // Eagerly set assumed valid state to prevent UI flash before validation completes
     final key = _controller.text.trim();
@@ -1013,9 +1016,9 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
   @override
   void didUpdateWidget(_ApiKeySection old) {
     super.didUpdateWidget(old);
-    if (old.state.tempApiKey != widget.state.tempApiKey &&
-        _controller.text != widget.state.tempApiKey) {
-      _controller.text = widget.state.tempApiKey;
+    if (old.state.settings.apiKey != widget.state.settings.apiKey &&
+        _controller.text != widget.state.settings.apiKey) {
+      _controller.text = widget.state.settings.apiKey;
 
       final key = _controller.text.trim();
       if (key.startsWith('nvapi-') && key.length >= 50) {
@@ -1187,8 +1190,8 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
     }
 
     final instructions = _apiKeyInstructions(
-      widget.state.tempTranslationModel,
-      widget.state.tempTranscriptionModel,
+      widget.state.settings.translationModel,
+      widget.state.settings.transcriptionModel,
     );
 
     return Column(
@@ -1320,22 +1323,6 @@ _ApiKeyInstructions _apiKeyInstructions(
       label: '',
       url: 'https://build.nvidia.com/settings/api-keys',
     );
-  }
-}
-
-// ─── Tier gating helpers ──────────────────────────────────────────────────────
-
-/// Maps a [SubscriptionTier] to an ordinal for comparison.
-int _tierRank(SubscriptionTier tier) {
-  switch (tier) {
-    case SubscriptionTier.free:
-      return 0;
-    case SubscriptionTier.basic:
-      return 1;
-    case SubscriptionTier.plus:
-      return 2;
-    case SubscriptionTier.pro:
-      return 3;
   }
 }
 

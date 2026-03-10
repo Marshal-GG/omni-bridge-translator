@@ -25,7 +25,7 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                     child: Transform.scale(
                       scale: 0.7,
                       child: Switch(
-                        value: state.tempUseMic,
+                        value: state.settings.useMic,
                         materialTapTargetSize: MaterialTapTargetSize
                             .shrinkWrap, // Removes Flutter's forced 48px padding
                         onChanged: (val) => context.read<SettingsBloc>().add(
@@ -36,7 +36,7 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                   ),
                 ],
               ),
-              if (state.tempUseMic) ...[
+              if (state.settings.useMic) ...[
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -47,7 +47,7 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                         state: state,
                         items: state.inputDevices,
                         defaultName: state.defaultInputDeviceName,
-                        selectedIndex: state.tempInputDeviceIndex,
+                        selectedIndex: state.settings.inputDeviceIndex,
                         hintText: 'System Default',
                         loading: state.devicesLoading,
                         onChanged: (device) {
@@ -73,7 +73,7 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                       child: VolumeSlider(
                         key: const ValueKey('Mic Volume'),
                         label: 'Volume',
-                        value: state.tempMicVolume,
+                        value: state.settings.micVolume,
                         color: Colors.tealAccent,
                         onChangeEnd: (v) => context.read<SettingsBloc>().add(
                           UpdateTempSettingEvent(micVolume: v),
@@ -82,7 +82,7 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                             .read<TranslationBloc>()
                             .asrClient
                             .liveVolumeUpdate(
-                              desktopVolume: state.tempDesktopVolume,
+                              desktopVolume: state.settings.desktopVolume,
                               micVolume: v,
                             ),
                       ),
@@ -90,10 +90,8 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                   ],
                 ),
                 buildDbMeter(
-                  level: (state.currentInputVolume * state.tempMicVolume).clamp(
-                    0.0,
-                    1.0,
-                  ),
+                  level: (state.currentInputVolume * state.settings.micVolume)
+                      .clamp(0.0, 1.0),
                   label: 'Mic',
                   color: Colors.tealAccent,
                   active: true,
@@ -124,7 +122,7 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                       state: state,
                       items: state.outputDevices,
                       defaultName: state.defaultOutputDeviceName,
-                      selectedIndex: state.tempOutputDeviceIndex,
+                      selectedIndex: state.settings.outputDeviceIndex,
                       hintText: 'System Default',
                       loading: state.devicesLoading,
                       onChanged: (device) {
@@ -150,7 +148,7 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                     child: VolumeSlider(
                       key: const ValueKey('Desktop Volume'),
                       label: 'Volume',
-                      value: state.tempDesktopVolume,
+                      value: state.settings.desktopVolume,
                       color: Colors.purpleAccent,
                       onChangeEnd: (v) => context.read<SettingsBloc>().add(
                         UpdateTempSettingEvent(desktopVolume: v),
@@ -160,15 +158,16 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                           .asrClient
                           .liveVolumeUpdate(
                             desktopVolume: v,
-                            micVolume: state.tempMicVolume,
+                            micVolume: state.settings.micVolume,
                           ),
                     ),
                   ),
                 ],
               ),
               buildDbMeter(
-                level: (state.currentOutputVolume * state.tempDesktopVolume)
-                    .clamp(0.0, 1.0),
+                level:
+                    (state.currentOutputVolume * state.settings.desktopVolume)
+                        .clamp(0.0, 1.0),
                 label: 'Desktop',
                 color: Colors.purpleAccent,
                 active: true,
@@ -193,7 +192,7 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                state.tempUseMic
+                state.settings.useMic
                     ? 'Both mic and desktop audio are active. Translation uses whichever source is louder.'
                     : 'Only desktop audio is captured. Enable mic above to also capture your voice.',
                 style: const TextStyle(color: Colors.white54, fontSize: 11),

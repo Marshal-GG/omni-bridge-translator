@@ -20,6 +20,8 @@ class TrackingService {
   StreamSubscription<DocumentSnapshot>? _sessionSub;
   StreamSubscription<DocumentSnapshot>? _userSub;
 
+  final http.Client _httpClient = http.Client();
+
   static const String _rtdbBaseUrl =
       'https://omni-bridge-ai-translator-default-rtdb.firebaseio.com';
 
@@ -193,12 +195,14 @@ class TrackingService {
     try {
       final settingsUrl = await _getRTDBUrl('sessions/$_currentSessionId');
       if (settingsUrl != null) {
-        await http.patch(
-          settingsUrl,
-          body: jsonEncode({
-            'started_at': {'.sv': 'timestamp'},
-          }),
-        );
+        await _httpClient
+            .patch(
+              settingsUrl,
+              body: jsonEncode({
+                'started_at': {'.sv': 'timestamp'},
+              }),
+            )
+            .timeout(const Duration(seconds: 5));
       }
     } catch (e) {
       debugPrint('[Tracking] Failed to sync session start to RTDB: $e');
@@ -246,13 +250,15 @@ class TrackingService {
       try {
         final settingsUrl = await _getRTDBUrl('sessions/$_currentSessionId');
         if (settingsUrl != null) {
-          await http.patch(
-            settingsUrl,
-            body: jsonEncode({
-              'ended_at': {'.sv': 'timestamp'},
-              'duration_seconds': duration,
-            }),
-          );
+          await _httpClient
+              .patch(
+                settingsUrl,
+                body: jsonEncode({
+                  'ended_at': {'.sv': 'timestamp'},
+                  'duration_seconds': duration,
+                }),
+              )
+              .timeout(const Duration(seconds: 5));
         }
       } catch (e) {
         debugPrint('[Tracking] Failed to sync session end to RTDB: $e');
@@ -284,13 +290,15 @@ class TrackingService {
       try {
         final settingsUrl = await _getRTDBUrl('sessions/$_currentSessionId');
         if (settingsUrl != null) {
-          await http.patch(
-            settingsUrl,
-            body: jsonEncode({
-              'last_ping_at': {'.sv': 'timestamp'},
-              'duration_seconds': duration,
-            }),
-          );
+          await _httpClient
+              .patch(
+                settingsUrl,
+                body: jsonEncode({
+                  'last_ping_at': {'.sv': 'timestamp'},
+                  'duration_seconds': duration,
+                }),
+              )
+              .timeout(const Duration(seconds: 5));
         }
       } catch (e) {
         debugPrint('[Tracking] Failed to ping RTDB session: $e');
@@ -358,15 +366,17 @@ class TrackingService {
       final url = await _getRTDBUrl('logs');
       if (url == null) return;
 
-      await http.post(
-        url,
-        body: jsonEncode({
-          'event': eventName,
-          'data': data ?? {},
-          'timestamp': {'.sv': 'timestamp'},
-          'sessionId': _currentSessionId,
-        }),
-      );
+      await _httpClient
+          .post(
+            url,
+            body: jsonEncode({
+              'event': eventName,
+              'data': data ?? {},
+              'timestamp': {'.sv': 'timestamp'},
+              'sessionId': _currentSessionId,
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
       debugPrint('[Tracking] Logged event to RTDB: $eventName');
     } catch (e) {
       debugPrint('[Tracking] Error logging event to RTDB: $e');
@@ -387,15 +397,17 @@ class TrackingService {
       final url = await _getRTDBUrl('error_logs');
       if (url == null) return;
 
-      await http.post(
-        url,
-        body: jsonEncode({
-          'message': message,
-          'error': errorStr,
-          'timestamp': {'.sv': 'timestamp'},
-          'sessionId': _currentSessionId,
-        }),
-      );
+      await _httpClient
+          .post(
+            url,
+            body: jsonEncode({
+              'message': message,
+              'error': errorStr,
+              'timestamp': {'.sv': 'timestamp'},
+              'sessionId': _currentSessionId,
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
       debugPrint('[Tracking] Logged error to RTDB: $message');
     } catch (e) {
       debugPrint('[Tracking] Failed to log error to RTDB: $e');
@@ -417,19 +429,21 @@ class TrackingService {
       final url = await _getRTDBUrl('captions');
       if (url == null) return;
 
-      await http.post(
-        url,
-        body: jsonEncode({
-          'originalText': originalText,
-          'translatedText': translatedText,
-          'sourceLang': sourceLang,
-          'targetLang': targetLang,
-          'translationModel': translationModel,
-          'isFinal': isFinal,
-          'timestamp': {'.sv': 'timestamp'},
-          'sessionId': _currentSessionId ?? 'unknown',
-        }),
-      );
+      await _httpClient
+          .post(
+            url,
+            body: jsonEncode({
+              'originalText': originalText,
+              'translatedText': translatedText,
+              'sourceLang': sourceLang,
+              'targetLang': targetLang,
+              'translationModel': translationModel,
+              'isFinal': isFinal,
+              'timestamp': {'.sv': 'timestamp'},
+              'sessionId': _currentSessionId ?? 'unknown',
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
     } catch (e) {
       debugPrint('[Tracking] Error pushing live caption to RTDB: $e');
     }
@@ -541,16 +555,18 @@ class TrackingService {
           'daily_usage/$todayStr/errors/$engine',
         );
         if (dailyErrorUrl != null) {
-          await http.patch(
-            dailyErrorUrl,
-            body: jsonEncode({
-              'failed_calls': {
-                '.sv': {'increment': 1},
-              },
-              'last_error': stats['error'],
-              'last_error_time': {'.sv': 'timestamp'},
-            }),
-          );
+          await _httpClient
+              .patch(
+                dailyErrorUrl,
+                body: jsonEncode({
+                  'failed_calls': {
+                    '.sv': {'increment': 1},
+                  },
+                  'last_error': stats['error'],
+                  'last_error_time': {'.sv': 'timestamp'},
+                }),
+              )
+              .timeout(const Duration(seconds: 5));
         }
       }
 
@@ -560,5 +576,12 @@ class TrackingService {
     } catch (e) {
       debugPrint('[Tracking] Failed to log model usage to RTDB: $e');
     }
+  }
+
+  void dispose() {
+    _heartbeatTimer?.cancel();
+    _sessionSub?.cancel();
+    _userSub?.cancel();
+    _httpClient.close();
   }
 }

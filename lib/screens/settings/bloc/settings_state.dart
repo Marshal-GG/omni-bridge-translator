@@ -1,20 +1,9 @@
 import 'package:equatable/equatable.dart';
 
+import 'package:omni_bridge/models/app_settings.dart';
+
 class SettingsState extends Equatable {
-  // Temporary Settings (Pending in Settings Screen)
-  final String tempTargetLang;
-  final String tempSourceLang;
-  final bool tempUseMic;
-  final double tempFontSize;
-  final bool tempIsBold;
-  final double tempOpacity;
-  final int? tempInputDeviceIndex;
-  final int? tempOutputDeviceIndex;
-  final double tempDesktopVolume;
-  final double tempMicVolume;
-  final String tempTranslationModel;
-  final String tempApiKey;
-  final String tempTranscriptionModel;
+  final AppSettings settings;
 
   // Audio Levels (live during settings open)
   final double currentInputVolume;
@@ -28,19 +17,7 @@ class SettingsState extends Equatable {
   final String defaultOutputDeviceName;
 
   const SettingsState({
-    required this.tempTargetLang,
-    required this.tempSourceLang,
-    required this.tempUseMic,
-    required this.tempFontSize,
-    required this.tempIsBold,
-    required this.tempOpacity,
-    this.tempInputDeviceIndex,
-    this.tempOutputDeviceIndex,
-    required this.tempDesktopVolume,
-    required this.tempMicVolume,
-    required this.tempTranslationModel,
-    required this.tempApiKey,
-    required this.tempTranscriptionModel,
+    required this.settings,
     required this.currentInputVolume,
     required this.currentOutputVolume,
     required this.devicesLoading,
@@ -51,20 +28,8 @@ class SettingsState extends Equatable {
   });
 
   factory SettingsState.initial() {
-    return const SettingsState(
-      tempTargetLang: 'en',
-      tempSourceLang: 'auto',
-      tempUseMic: false,
-      tempFontSize: 18.0,
-      tempIsBold: false,
-      tempOpacity: 0.85,
-      tempInputDeviceIndex: null,
-      tempOutputDeviceIndex: null,
-      tempDesktopVolume: 1.0,
-      tempMicVolume: 1.0,
-      tempTranslationModel: 'google',
-      tempApiKey: '',
-      tempTranscriptionModel: 'online',
+    return SettingsState(
+      settings: AppSettings.initial(),
       currentInputVolume: 0.0,
       currentOutputVolume: 0.0,
       devicesLoading: false,
@@ -76,21 +41,7 @@ class SettingsState extends Equatable {
   }
 
   SettingsState copyWith({
-    String? tempTargetLang,
-    String? tempSourceLang,
-    bool? tempUseMic,
-    double? tempFontSize,
-    bool? tempIsBold,
-    double? tempOpacity,
-    int? tempInputDeviceIndex,
-    int? tempOutputDeviceIndex,
-    bool clearInputDevice = false,
-    bool clearOutputDevice = false,
-    double? tempDesktopVolume,
-    double? tempMicVolume,
-    String? tempTranslationModel,
-    String? tempApiKey,
-    String? tempTranscriptionModel,
+    AppSettings? settings,
     double? currentInputVolume,
     double? currentOutputVolume,
     bool? devicesLoading,
@@ -100,24 +51,7 @@ class SettingsState extends Equatable {
     String? defaultOutputDeviceName,
   }) {
     return SettingsState(
-      tempTargetLang: tempTargetLang ?? this.tempTargetLang,
-      tempSourceLang: tempSourceLang ?? this.tempSourceLang,
-      tempUseMic: tempUseMic ?? this.tempUseMic,
-      tempFontSize: tempFontSize ?? this.tempFontSize,
-      tempIsBold: tempIsBold ?? this.tempIsBold,
-      tempOpacity: tempOpacity ?? this.tempOpacity,
-      tempInputDeviceIndex: clearInputDevice
-          ? null
-          : (tempInputDeviceIndex ?? this.tempInputDeviceIndex),
-      tempOutputDeviceIndex: clearOutputDevice
-          ? null
-          : (tempOutputDeviceIndex ?? this.tempOutputDeviceIndex),
-      tempDesktopVolume: tempDesktopVolume ?? this.tempDesktopVolume,
-      tempMicVolume: tempMicVolume ?? this.tempMicVolume,
-      tempTranslationModel: tempTranslationModel ?? this.tempTranslationModel,
-      tempApiKey: tempApiKey ?? this.tempApiKey,
-      tempTranscriptionModel:
-          tempTranscriptionModel ?? this.tempTranscriptionModel,
+      settings: settings ?? this.settings,
       currentInputVolume: currentInputVolume ?? this.currentInputVolume,
       currentOutputVolume: currentOutputVolume ?? this.currentOutputVolume,
       devicesLoading: devicesLoading ?? this.devicesLoading,
@@ -132,19 +66,7 @@ class SettingsState extends Equatable {
 
   @override
   List<Object?> get props => [
-    tempTargetLang,
-    tempSourceLang,
-    tempUseMic,
-    tempFontSize,
-    tempIsBold,
-    tempOpacity,
-    tempInputDeviceIndex,
-    tempOutputDeviceIndex,
-    tempDesktopVolume,
-    tempMicVolume,
-    tempTranslationModel,
-    tempApiKey,
-    tempTranscriptionModel,
+    settings,
     currentInputVolume,
     currentOutputVolume,
     devicesLoading,

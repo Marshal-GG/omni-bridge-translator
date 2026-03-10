@@ -22,13 +22,27 @@ State management: **BLoC pattern** throughout.
 lib/
 ├── core/
 │   ├── blocs/          # Global BLoCs (AuthBloc)
+│   ├── config/         # AppConfig (Google Client ID, secret keys)
 │   ├── constants/      # Languages map, themes, strings
 │   ├── routes/         # Named route configuration
-│   ├── services/       # TranslationService, AsrWsClient, AsrTextController, TrackingService, AuthService, SubscriptionService
+│   ├── services/       # Orchestration layer
+│   │   ├── firebase/   # AuthService, SubscriptionService, TrackingService (Persistent RTDB connections)
+│   │   ├── asr_text_controller.dart
+│   │   ├── asr_ws_client.dart
+│   │   ├── history_service.dart
+│   │   ├── python_server_manager.dart
+│   │   ├── translation_service.dart
+│   │   ├── update_service.dart
+│   │   └── whisper_service.dart
 │   ├── utils/          # App lifecycle, window management helpers
 │   ├── widgets/        # Shared reusable widgets
 │   └── app_initializer.dart # Firebase init, single-instance, custom URIs, deep link handlers
-├── models/             # Settings model, user model, HistoryEntry
+├── models/             # Consolidated data models
+│   ├── app_settings.dart
+│   ├── caption_model.dart
+│   ├── history_entry.dart
+│   ├── subscription_models.dart
+│   └── tracking_models.dart
 ├── screens/
 │   ├── account/        # User profile (name, email, sign-in method badge)
 │   ├── about/          # Version info, update checker, links
@@ -51,7 +65,7 @@ lib/
 | `AuthBloc` | Firebase Auth state — Google, Email/Password, Guest |
 | `SettingsBloc` | User preferences (model, language, devices, opacity, font) |
 | `TranslationBloc` | Active translation session, overlay visibility, language overrides |
-| `SubscriptionBloc`| Orchestrates real-time subscription tier details, limits, and features from Firestore |
+| `SubscriptionBloc`| Manages real-time subscription state, tier details, and dynamic limits/features from Firestore |
 
 ---
 
@@ -62,9 +76,11 @@ lib/
 | `AsrWsClient` | WebSocket client to Python server (`ws://127.0.0.1:8765`). Receives JSON caption events. |
 | `AsrTextController` | Manages the display buffer — interim vs. final text, rolling captions |
 | `TranslationService` | Sends start/stop/settings commands to the WebSocket server |
-| `TrackingService` | Logs session stats, hardware metadata (Firestore), real-time heartbeat, error logs, and Live Caption/Model Usage stats (RTDB via REST) |
-| `SubscriptionService` | Manages subscription tier, daily token / monthly / lifetime quota counters, tier-change event audit, quota-exceeded logging |
-| `AuthService` | Firebase Auth + custom URL schemes (`omni-bridge://` and reversed iOS Client ID) for Windows Google Sign-In redirects |
+| `PythonServerManager` | Manages the lifecycle of the local Python WebSocket server (start/stop/restart) |
+| `WhisperService` | Manages local Whisper model downloads, status, and deletion |
+| `TrackingService` | Logs session stats, hardware metadata, and heartbeat to RTDB (Uses persistent `http.Client`) |
+| `SubscriptionService`| Manages dynamic plans, limits, and character usage from Firestore/RTDB (Uses persistent `http.Client`) |
+| `AuthService` | Firebase Auth + custom URL schemes for Windows Google Sign-In redirects |
 
 ---
 
@@ -110,26 +126,28 @@ Stop Translation
 
 ## Per-Tier Feature Gating
 
-Feature access is enforced in the UI layer by reading `SubscriptionService.instance.currentStatus?.tier`. The overlay always sees the latest tier via a live Firestore stream.
+Enforcement is centralized in `SubscriptionService` via the `getRequirement(featureKey)` method. These requirements (e.g., `llama: plus`) are fetched dynamically from Firestore, allowing remote configuration of feature access.
 
 ### Translation Engines (Settings → AI Translation Engine)
 
-| Engine | Minimum Tier |
-|---|---|
-| Google Translate | Free |
-| MyMemory | Free |
-| NVIDIA Riva | Basic+ |
-| Llama 3.1 8B | Basic+ |
+| Engine | Requirement Key | Default Tier |
+|---|---|---|
+| Google Translate | `google` | Free |
+| MyMemory | `mymemory` | Free |
+| NVIDIA Riva | `riva` | Basic+ |
+| Llama 3.1 8B | `llama` | Plus+ |
 
 Locked engines are rendered dimmed with an orange `🔒 Basic+` badge. Tapping a locked option opens `UpgradeSheet`.
 
 ### Whisper Offline Model Sizes (Settings → Transcription Method)
 
-| Size | Minimum Tier |
-|---|---|
-| Tiny / Base | Free |
-| Small (~460 MB) | Basic+ |
-| Medium (~1.5 GB) | Plus+ |
+| Size | Requirement Key | Default Tier |
+|---|---|---|
+| base | `whisper-base` | Free |
+| base.en | `whisper-base.en` | Free |
+| small | `whisper-small` | Basic+ |
+| medium | `whisper-medium` | Plus+ |
+| large-v3 | `whisper-large-v3`| Pro |
 
 Locked sizes are disabled in the `DropdownButton` and show a lock badge. Selecting them opens `UpgradeSheet`.
 

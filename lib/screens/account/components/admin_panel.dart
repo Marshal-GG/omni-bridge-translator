@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/services/firebase/subscription_service.dart';
+import '../../../models/subscription_models.dart';
 
 class AdminPanel extends StatefulWidget {
   const AdminPanel({super.key});

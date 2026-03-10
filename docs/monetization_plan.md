@@ -85,7 +85,7 @@ This enables LTV calculations and churn analysis over time.
 - **Razorpay links:**
   - Pro: `https://razorpay.me/@omnibridgepro`
   - Plus: `https://razorpay.me/@omnibridgeplus`
-  - Basic: `https://razorpay.me/@omnibridgeweekly`
+  - Basic: `https://razorpay.me/@omnibridgebasic`
 
 ---
 
@@ -115,24 +115,25 @@ The Python server sends character counts in translation metadata payloads. The F
 
 ## Feature Gating
 
-Beyond quota enforcement, specific features and AI engines are locked behind tiers in the Settings UI and History Panel. Gating is applied in Flutter by reading `SubscriptionService.instance.currentStatus?.tier` at widget-build time.
+Beyond quota enforcement, specific features and AI engines are locked behind tiers. Gating is applied in Flutter by calling `SubscriptionService.instance.getRequirement(featureKey)`. This mapping is fetched dynamically from Firestore.
 
 ### AI Translation Engines
 
-| Engine | Minimum Tier | Enforcement |
+| Engine | Requirement Key | Default Tier |
 |---|---|---|
-| Google Translate | Free | Always available |
-| MyMemory | Free | Always available |
-| NVIDIA Riva | Basic+ | Dimmed + 🔒 badge; tap → `UpgradeSheet` |
-| Llama 3.1 8B | Basic+ | Dimmed + 🔒 badge; tap → `UpgradeSheet` |
+| Google Translate | `google` | Free |
+| MyMemory | `mymemory` | Free |
+| NVIDIA Riva | `riva` | Basic+ |
+| Llama 3.1 8B | `llama` | Plus+ |
 
 ### Whisper Offline Model Sizes
 
-| Whisper Size | Minimum Tier | Enforcement |
+| Whisper Size | Requirement Key | Default Tier |
 |---|---|---|
-| Tiny / Base | Free | Always selectable |
-| Small (~460 MB) | Basic+ | Disabled `DropdownMenuItem` + 🔒 badge |
-| Medium (~1.5 GB) | Plus+ | Disabled `DropdownMenuItem` + 🔒 badge |
+| base / base.en | `whisper-base` | Free |
+| small | `whisper-small` | Basic+ |
+| medium | `whisper-medium` | Plus+ |
+| large-v3 | `whisper-large-v3`| Pro |
 
 ### Translation History Panel
 

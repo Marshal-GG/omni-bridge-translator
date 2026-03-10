@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../models/caption_model.dart';
 import 'package:http/http.dart' as http;
 import '../routes/routes_config.dart';
 import 'asr_text_controller.dart';

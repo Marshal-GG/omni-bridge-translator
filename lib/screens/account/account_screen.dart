@@ -3,6 +3,7 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/services/firebase/auth_service.dart';
 import '../../core/services/firebase/subscription_service.dart';
+import '../../models/subscription_models.dart';
 
 import 'components/account_header.dart';
 import 'components/account_avatar.dart';

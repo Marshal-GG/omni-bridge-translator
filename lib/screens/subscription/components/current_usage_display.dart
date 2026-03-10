@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../models/subscription_models.dart';
 import 'package:intl/intl.dart';
-import '../../../core/services/firebase/subscription_service.dart';
 
 Widget buildCurrentUsageDisplay({
   required SubscriptionStatus status,

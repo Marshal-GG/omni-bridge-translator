@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../models/subscription_models.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:window_manager/window_manager.dart';
@@ -71,22 +72,27 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     _captionSub = asrClient.captions?.listen((msg) {
       if (msg.usageStats != null) {
         if (state.activeApiKey.isEmpty) {
-          final totalTokens =
-              (msg.usageStats!['total_tokens'] as num?)?.toInt() ?? 0;
-          if (totalTokens > 0) {
-            SubscriptionService.instance.incrementChars(totalTokens);
+          final usage = msg.usageStats;
+          if (usage != null) {
+            final totalTokens = (usage['total_tokens'] as num?)?.toInt() ?? 0;
+            if (totalTokens > 0) {
+              SubscriptionService.instance.incrementChars(totalTokens);
+            }
           }
         }
       }
 
-      if (msg.sourceLangOverride != null && !isClosed) {
-        add(SourceLangOverrideEvent(msg.sourceLangOverride!));
+      final override = msg.sourceLangOverride;
+      if (override != null && !isClosed) {
+        add(SourceLangOverrideEvent(override));
       }
-      if (msg.text.trim().isNotEmpty) {
+
+      final text = msg.text;
+      if (text.trim().isNotEmpty) {
         TrackingService.instance.syncLiveCaption(
           msg.original,
-          msg.text,
-          msg.sourceLangOverride ?? state.activeSourceLang,
+          text,
+          override ?? state.activeSourceLang,
           state.activeTargetLang,
           msg.isFinal,
           state.activeTranslationModel,

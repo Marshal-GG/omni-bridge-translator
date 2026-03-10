@@ -6,7 +6,7 @@ import '../bloc/translation_bloc.dart';
 import '../bloc/translation_event.dart';
 import '../bloc/translation_state.dart';
 import '../../../core/services/update_service.dart';
-import '../../../core/services/firebase/subscription_service.dart';
+import '../../../models/subscription_models.dart';
 
 Widget buildTranslationHeader(BuildContext context, TranslationState state) {
   final bloc = context.read<TranslationBloc>();

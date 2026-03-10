@@ -27,20 +27,21 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   ) {
     emit(
       state.copyWith(
-        tempTargetLang: event.targetLang,
-        tempSourceLang: event.sourceLang,
-        tempUseMic: event.useMic,
-        tempFontSize: event.fontSize,
-        tempIsBold: event.isBold,
-        tempOpacity: event.opacity,
-        tempTranslationModel: event.translationModel,
-        tempApiKey: event.apiKey ?? state.tempApiKey,
-        tempTranscriptionModel:
-            event.transcriptionModel ?? state.tempTranscriptionModel,
-        tempInputDeviceIndex: event.inputDeviceIndex,
-        tempOutputDeviceIndex: event.outputDeviceIndex,
-        tempDesktopVolume: event.desktopVolume,
-        tempMicVolume: event.micVolume,
+        settings: state.settings.copyWith(
+          targetLang: event.targetLang,
+          sourceLang: event.sourceLang,
+          useMic: event.useMic,
+          fontSize: event.fontSize,
+          isBold: event.isBold,
+          opacity: event.opacity,
+          translationModel: event.translationModel,
+          apiKey: event.apiKey,
+          transcriptionModel: event.transcriptionModel,
+          inputDeviceIndex: event.inputDeviceIndex,
+          outputDeviceIndex: event.outputDeviceIndex,
+          desktopVolume: event.desktopVolume,
+          micVolume: event.micVolume,
+        ),
       ),
     );
   }
@@ -51,22 +52,23 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   ) {
     emit(
       state.copyWith(
-        tempTargetLang: event.targetLang,
-        tempSourceLang: event.sourceLang,
-        tempUseMic: event.useMic,
-        tempFontSize: event.fontSize,
-        tempIsBold: event.isBold,
-        tempOpacity: event.opacity,
-        tempTranslationModel: event.translationModel,
-        tempApiKey: event.apiKey ?? state.tempApiKey,
-        tempTranscriptionModel:
-            event.transcriptionModel ?? state.tempTranscriptionModel,
-        clearInputDevice: event.clearInputDevice,
-        tempInputDeviceIndex: event.inputDeviceIndex,
-        clearOutputDevice: event.clearOutputDevice,
-        tempOutputDeviceIndex: event.outputDeviceIndex,
-        tempDesktopVolume: event.desktopVolume,
-        tempMicVolume: event.micVolume,
+        settings: state.settings.copyWith(
+          targetLang: event.targetLang,
+          sourceLang: event.sourceLang,
+          useMic: event.useMic,
+          fontSize: event.fontSize,
+          isBold: event.isBold,
+          opacity: event.opacity,
+          translationModel: event.translationModel,
+          apiKey: event.apiKey,
+          transcriptionModel: event.transcriptionModel,
+          clearInputDevice: event.clearInputDevice,
+          inputDeviceIndex: event.inputDeviceIndex,
+          clearOutputDevice: event.clearOutputDevice,
+          outputDeviceIndex: event.outputDeviceIndex,
+          desktopVolume: event.desktopVolume,
+          micVolume: event.micVolume,
+        ),
       ),
     );
   }
@@ -117,11 +119,13 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   ) {
     emit(
       state.copyWith(
-        tempUseMic: false, // Default is mic off
-        tempMicVolume: 1.0,
-        tempDesktopVolume: 1.0,
-        clearInputDevice: true,
-        clearOutputDevice: true,
+        settings: state.settings.copyWith(
+          useMic: false, // Default is mic off
+          micVolume: 1.0,
+          desktopVolume: 1.0,
+          clearInputDevice: true,
+          clearOutputDevice: true,
+        ),
       ),
     );
   }

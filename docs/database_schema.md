@@ -106,10 +106,16 @@ A singleton document used to manage dynamic pricing, tier names, character limit
     ]
   },
   "requirements": {
-    "riva": "free",
-    "llama": "plus",
-    "whisper-tiny": "free",
-    "whisper-medium": "pro"
+    "engines": {
+      "riva": "basic",
+      "llama": "plus"
+    },
+    "whisper": {
+      "base": "free",
+      "small": "basic",
+      "medium": "plus",
+      "large-v3": "pro"
+    }
   },
   "order": ["free", "basic", "plus", "pro"],
   "popular": "plus",

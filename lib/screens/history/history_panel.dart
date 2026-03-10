@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import '../../core/services/history_service.dart';
 import '../../core/services/firebase/subscription_service.dart';
+import '../../models/subscription_models.dart';
 import '../../models/history_entry.dart';
 import 'components/history_header.dart';
 import 'components/history_list_components.dart';
