@@ -60,15 +60,13 @@ venv/
 env/
 .pytest_cache/
 *.spec
+!server/omni_bridge_server.spec
 dist/
 build/
 build_output/
 installers/
 analyze.txt
-asr_error.log
-server/asr_error.log
-server/extracted_err.txt
-server/riva_functions.txt
+logs/
 *.pt
 
 # SQLite databases (if used for simple caching locally)

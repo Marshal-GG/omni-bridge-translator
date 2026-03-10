@@ -6,8 +6,11 @@ import 'package:http/http.dart' as http;
 
 class PythonServerManager {
   static Process? _serverProcess;
+  static bool _isIntentionalStop = false;
+  static int _restartCount = 0;
 
   static Future<void> startServer() async {
+    _isIntentionalStop = false;
     if (_serverProcess != null) return;
 
     try {
@@ -73,9 +76,28 @@ class PythonServerManager {
 
         if (isReady) {
           debugPrint('Python server is ready.');
+          _restartCount = 0; // Reset counter on successful boot
         } else {
           debugPrint('Warning: Python server boot timed out.');
         }
+
+        // Auto-restart logic for unexpected crashes
+        _serverProcess!.exitCode.then((code) {
+          debugPrint('[PythonManager] Process exited with code: $code');
+          if (!_isIntentionalStop) {
+            _serverProcess = null;
+            _restartCount++;
+            int delaySeconds = _restartCount > 3 ? 10 : 3; // Backoff
+            debugPrint(
+              '[PythonManager] Unexpected exit. Restarting in $delaySeconds seconds... (Attempt $_restartCount)',
+            );
+            Future.delayed(Duration(seconds: delaySeconds), () {
+              if (!_isIntentionalStop) {
+                startServer();
+              }
+            });
+          }
+        });
       } else {
         debugPrint(
           'Bundled server not found at $pyPath. Ensure the server is running manually in dev mode.',
@@ -87,6 +109,8 @@ class PythonServerManager {
   }
 
   static void stopServer() {
+    _isIntentionalStop = true;
+    _restartCount = 0;
     if (_serverProcess != null) {
       debugPrint('Attempting to kill Python server process tree...');
       try {

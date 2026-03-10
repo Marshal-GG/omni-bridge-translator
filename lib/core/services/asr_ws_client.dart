@@ -58,6 +58,9 @@ class AsrWebSocketClient {
             ? msg.text.trim()
             : 'The server returned an error while processing audio.';
         asrTextController.showSystemMessage('⚠ Error: $errMsg.');
+
+        // Remote logging
+        TrackingService.instance.logError('Server Error', errMsg);
         return;
       }
 

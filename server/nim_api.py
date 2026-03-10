@@ -191,7 +191,10 @@ class NimApiClient:
                 except Exception as asr_err:
                     err_str = str(asr_err)
                     try:
-                        with open("asr_error.log", "a") as f:
+                        log_dir = "logs"
+                        if not os.path.exists(log_dir):
+                            os.makedirs(log_dir)
+                        with open(os.path.join(log_dir, "asr_error.log"), "a") as f:
                             f.write(f"[ASR ERROR] model={self._transcription_model} lang={asr_lang} err={err_str}\n")
                     except Exception:
                         pass

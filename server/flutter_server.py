@@ -24,6 +24,32 @@ import threading
 import time
 from typing import Set
 
+# Create a robust logging setup that avoids Windows Program Files permission issues
+appdata = os.environ.get("APPDATA", "")
+if appdata:
+    LOG_DIR = os.path.join(appdata, "com.marshal", "Omni Bridge", "logs")
+else:
+    LOG_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "com.marshal", "Omni Bridge", "logs")
+
+try:
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR, exist_ok=True)
+except Exception:
+    import tempfile
+    LOG_DIR = os.path.join(tempfile.gettempdir(), "omni_bridge_logs")
+    os.makedirs(LOG_DIR, exist_ok=True)
+
+log_file = os.path.join(LOG_DIR, "server.log")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler(log_file, encoding="utf-8"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logging.info("Initializing Omni Bridge Server...")
+
 try:
     import psutil
     HAS_PSUTIL = True
@@ -58,7 +84,7 @@ async def lifespan(app):
 
     def _handle_exception(loop, context):
         msg = context.get("exception", context["message"])
-        print(f"[asyncio] Unhandled exception in task: {msg}")
+        logging.error(f"[asyncio] Unhandled exception in task: {msg}")
 
     loop.set_exception_handler(_handle_exception)
     yield  # server runs here
@@ -165,7 +191,7 @@ def audio_poll_loop():
             else:
                 time.sleep(0.01)
     except Exception as e:
-        print(f"[audio_poll_loop] Crashed: {e}")
+        logging.error(f"[audio_poll_loop] Crashed: {e}")
         is_running = False
 
 async def audio_level_broadcast_loop():
@@ -292,7 +318,7 @@ async def list_devices():
                 outputs.append({"index": loopback["index"], "name": clean_name})
 
         except Exception as e:
-            print(f"[/devices] Error: {e}")
+            logging.error(f"[/devices] Error: {e}")
     return {
         "input": inputs,
         "output": outputs,
@@ -393,7 +419,7 @@ async def start_capture(
             return {"status": "started", "source": source_lang, "target": target_lang, "use_mic": current_use_mic}
 
         except Exception as e:
-            print(f"[start_capture] Error: {e}")
+            logging.error(f"[start_capture] Error: {e}")
             is_running = False
             await broadcast({"type": "error", "text": f"Failed to start capture: {e}", "is_final": True, "original": ""})
             return {"status": "error", "message": str(e)}
@@ -460,7 +486,7 @@ async def captions_ws(websocket: WebSocket):
     except WebSocketDisconnect:
         active_connections.discard(websocket)
     except Exception as exc:
-        print(f"[WebSocket] Unhandled error: {exc}")
+        logging.error(f"[WebSocket] Unhandled error: {exc}")
         active_connections.discard(websocket)
 
 
@@ -480,11 +506,11 @@ def kill_process_on_port(port: int):
                 pid = parts[-1]
                 if pid == current_pid:
                     continue
-                print(f"[Main] Killing process on port {port} (PID: {pid})")
+                logging.info(f"[Main] Killing process on port {port} (PID: {pid})")
                 subprocess.run(["taskkill", "/F", "/PID", pid],
                                capture_output=True, timeout=5)
     except Exception as e:
-        print(f"[Main] Port cleanup failed: {e}")
+        logging.error(f"[Main] Port cleanup failed: {e}")
 
 
 def kill_other_instances():
@@ -498,7 +524,7 @@ def kill_other_instances():
     current_pid = os.getpid()
     target_exe = "omni_bridge_server.exe"
 
-    print(f"[Main] Checking for existing instances (Current PID: {current_pid})...")
+    logging.info(f"[Main] Checking for existing instances (Current PID: {current_pid})...")
 
     for proc in psutil.process_iter(['pid', 'name']):
         try:
@@ -511,16 +537,46 @@ def kill_other_instances():
 
             # ONLY kill the packaged EXE. User requested not to touch python.exe.
             if name == target_exe:
-                print(f"[Main] Terminating stale instance: {name} (PID: {pid})")
+                logging.info(f"[Main] Terminating stale instance: {name} (PID: {pid})")
                 proc.terminate()
                 try:
                     proc.wait(timeout=3)
                 except psutil.TimeoutExpired:
-                    print(f"[Main] Force killing PID {pid}")
+                    logging.warning(f"[Main] Force killing PID {pid}")
                     proc.kill()
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
 
 if __name__ == "__main__":
     kill_other_instances()
-    uvicorn.run(app, host="127.0.0.1", port=8765)
+    logging.info("Starting Uvicorn server...")
+    
+    log_config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "default": {
+                "format": "%(asctime)s [%(levelname)s] uvicorn: %(message)s",
+            },
+        },
+        "handlers": {
+            "file": {
+                "formatter": "default",
+                "class": "logging.FileHandler",
+                "filename": log_file,
+                "encoding": "utf-8",
+            },
+            "console": {
+                "formatter": "default",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+            },
+        },
+        "loggers": {
+            "": {"handlers": ["file", "console"], "level": "INFO"},
+            "uvicorn.error": {"handlers": ["file", "console"], "level": "INFO", "propagate": False},
+            "uvicorn.access": {"handlers": ["file", "console"], "level": "INFO", "propagate": False},
+        },
+    }
+    
+    uvicorn.run(app, host="127.0.0.1", port=8765, log_config=log_config)

@@ -73,12 +73,12 @@ lib/
 
 | Service | Responsibility |
 |---------|---------------|
-| `AsrWsClient` | WebSocket client to Python server (`ws://127.0.0.1:8765`). Receives JSON caption events. |
+| `AsrWsClient` | WebSocket client to Python server (`ws://127.0.0.1:8765`). Receives JSON caption events and synchronizes remote server errors to `TrackingService`. |
 | `AsrTextController` | Manages the display buffer — interim vs. final text, rolling captions |
 | `TranslationService` | Sends start/stop/settings commands to the WebSocket server |
-| `PythonServerManager` | Manages the lifecycle of the local Python WebSocket server (start/stop/restart) |
+| `PythonServerManager` | Manages the lifecycle of the Python WebSocket server. Includes auto-restart resilience with exponential backoff if the server crashes. |
 | `WhisperService` | Manages local Whisper model downloads, status, and deletion |
-| `TrackingService` | Logs session stats, hardware metadata, and heartbeat to RTDB (Uses persistent `http.Client`) |
+| `TrackingService` | Logs session stats, hardware metadata, heartbeat, and remote server errors to RTDB (Uses persistent `http.Client`) |
 | `SubscriptionService`| Manages dynamic plans, limits, and character usage from Firestore/RTDB (Uses persistent `http.Client`) |
 | `AuthService` | Firebase Auth + custom URL schemes for Windows Google Sign-In redirects |
 

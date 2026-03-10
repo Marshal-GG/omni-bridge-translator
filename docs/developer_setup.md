@@ -158,6 +158,9 @@ pyinstaller omni_bridge_server.spec
 ```
 The `omni_bridge_server.spec` file is pre-configured to automatically source files from `dist_obfuscated/` if the folder exists, ensuring the final `.exe` contains only protected bytecode.
 
+> [!NOTE]
+> When using PyArmor to obfuscate code, dynamic imports (such as `riva` and `riva.client`) may be hidden from PyInstaller. These must be explicitly defined in the `hiddenimports` array within `omni_bridge_server.spec` to prevent `ModuleNotFoundError` in production.
+
 ---
 
 ## 6. Copyright & Legal Safeguards

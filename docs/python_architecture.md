@@ -46,6 +46,7 @@ WebSocket server (`ws://127.0.0.1:8765`). Handles all command routing from the F
 - `settings` — hot-updates model / language / device config
 - `get_devices` — returns available audio input/output devices
 - Streams JSON caption events back to connected Flutter clients
+- **Logging**: Securely writes production debug logs to `%LocalAppData%\OmniBridge\logs\server_debug.log` to avoid write permission errors typically encountered when installed in `C:\Program Files\`.
 
 ### `nim_api.py`
 Core pipeline orchestrator:
@@ -53,6 +54,7 @@ Core pipeline orchestrator:
 - Feeds audio chunks from `audio_capture.py` → ASR model → translation model
 - Broadcasts `{ originalText, translatedText, isFinal, stats }` payloads
 - Manages model switching without full restart
+- Writes ASR errors safely to a dedicated `logs/asr_error.log` file instead of the project root.
 - **Offline Model Memory Management**: Explicitly unloads Whisper offline models from memory when switching to other engines to release system resources.
 
 ### `audio_capture.py`
