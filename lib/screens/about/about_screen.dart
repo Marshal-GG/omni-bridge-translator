@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../core/services/update_service.dart';
 
 class AboutScreen extends StatefulWidget {
@@ -300,107 +302,116 @@ class _AboutScreenState extends State<AboutScreen> {
                                   ),
                                   const SizedBox(height: 24),
 
-                                  // ── Row 1: About | Features ────────────────────
+                                  // ── Optimized Dual-Column Layout with Bottom Alignment ──
                                   IntrinsicHeight(
                                     child: Row(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Expanded(
-                                          child: _InfoCard(
-                                            icon: Icons.info_outline_rounded,
-                                            title: 'About Omni Bridge',
-                                            content:
-                                                'Omni Bridge is your ultimate companion for real-time accessibility and global communication. By leveraging state-of-the-art AI from Google, NVIDIA, and OpenAI, it provides ultra-low latency live captions and translations directly on your Windows desktop.\n\nWhether you are attending a meeting in a foreign language, watching content without subtitles, or need assistive technology for hearing clarity, Omni Bridge captures any audio source — system output or microphone — and delivers synchronized, highly accurate text in a customizable, transparent overlay.',
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: _InfoCard(
-                                            icon: Icons.auto_awesome_rounded,
-                                            title: 'Features',
-                                            content: null,
-                                            child: const Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                _FeatureRow(
-                                                  icon: Icons.mic_rounded,
-                                                  label:
-                                                      'Mic & Desktop Audio Capture',
-                                                ),
-                                                _FeatureRow(
-                                                  icon:
-                                                      Icons.psychology_rounded,
-                                                  label:
-                                                      'AI Transcription: Google, Whisper, Riva',
-                                                ),
-                                                _FeatureRow(
-                                                  icon: Icons.language_rounded,
-                                                  label:
-                                                      'AI Translation: Llama, Google, Riva, MyMemory',
-                                                ),
-                                                _FeatureRow(
-                                                  icon: Icons
-                                                      .picture_in_picture_alt_rounded,
-                                                  label:
-                                                      'Transparent Always-On-Top Overlay',
-                                                ),
-                                                _FeatureRow(
-                                                  icon: Icons.history_rounded,
-                                                  label:
-                                                      'Full Session Caption History',
-                                                ),
-                                                _FeatureRow(
-                                                  icon:
-                                                      Icons.cloud_done_rounded,
-                                                  label:
-                                                      'Synced Settings via Firebase',
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-
-                                  // ── Row 2: Built With | Support + Legal ────────
-                                  IntrinsicHeight(
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        Expanded(
-                                          child: _InfoCard(
-                                            icon: Icons.code_rounded,
-                                            title: 'Built With',
-                                            content: null,
-                                            child: const Wrap(
-                                              spacing: 6,
-                                              runSpacing: 6,
-                                              children: [
-                                                _Chip('Flutter'),
-                                                _Chip('Python FastAPI'),
-                                                _Chip('Firebase'),
-                                                _Chip('NVIDIA Riva'),
-                                                _Chip('OpenAI Whisper'),
-                                                _Chip('Llama / NIM'),
-                                                _Chip('Google Translate'),
-                                                _Chip('MyMemory'),
-                                                _Chip('WebSocket'),
-                                                _Chip('PyAudio WPATCH'),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
+                                        // Left Column: About, Built With, and License
                                         Expanded(
                                           child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.stretch,
-                                            children: const [
+                                            children: [
+                                              _InfoCard(
+                                                icon:
+                                                    Icons.info_outline_rounded,
+                                                title: 'About Omni Bridge',
+                                                content:
+                                                    'Omni Bridge is a real-time AI translator for Windows that provides ultra-low latency captions and translations from any audio source — YouTube, meetings, or your microphone. Powered by Google, NVIDIA, and OpenAI, it bridges language gaps and improves accessibility through a sleek, customizable overlay.',
+                                              ),
+                                              const SizedBox(height: 12),
+                                              _InfoCard(
+                                                icon: Icons.code_rounded,
+                                                title: 'Built With',
+                                                content: null,
+                                                child: const Wrap(
+                                                  spacing: 6,
+                                                  runSpacing: 6,
+                                                  children: [
+                                                    _Chip('Flutter'),
+                                                    _Chip('FastAPI'),
+                                                    _Chip('Firebase'),
+                                                    _Chip('NVIDIA Riva'),
+                                                    _Chip('Whisper'),
+                                                    _Chip('Llama 3.1'),
+                                                    _Chip('Google Translate'),
+                                                    _Chip('MyMemory'),
+                                                    _Chip('WebSocket'),
+                                                    _Chip('PyAudio'),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 12),
+                                              const Expanded(
+                                                child: _InfoCard(
+                                                  icon: Icons.gavel_rounded,
+                                                  title: 'License & Privacy',
+                                                  content:
+                                                      'Licensed for Personal Study & Learning only. Commercial use or public distribution of modified versions is strictly prohibited. Your privacy is respected; no personal data is shared.\nAll rights reserved under the original author. Access to premium features is subject to the Terms of Service.',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        // Right Column: Features, Support, and Links
+                                        Expanded(
+                                          child: Column(
+                                            children: [
+                                              _InfoCard(
+                                                icon:
+                                                    Icons.auto_awesome_rounded,
+                                                title: 'Features',
+                                                content: null,
+                                                child: const Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    _FeatureRow(
+                                                      icon: Icons.mic_rounded,
+                                                      label:
+                                                          'Mic & Desktop Audio Capture',
+                                                    ),
+                                                    _FeatureRow(
+                                                      icon: Icons
+                                                          .psychology_rounded,
+                                                      label:
+                                                          'AI Transcription: Google, Whisper, Riva',
+                                                    ),
+                                                    _FeatureRow(
+                                                      icon: Icons
+                                                          .language_rounded,
+                                                      label:
+                                                          'AI Translation: Llama, Google, Riva',
+                                                    ),
+                                                    _FeatureRow(
+                                                      icon: Icons
+                                                          .picture_in_picture_alt_rounded,
+                                                      label:
+                                                          'Mini Mode & Transparent Overlay',
+                                                    ),
+                                                    _FeatureRow(
+                                                      icon:
+                                                          Icons.history_rounded,
+                                                      label:
+                                                          'Searchable Caption History',
+                                                    ),
+                                                    _FeatureRow(
+                                                      icon: Icons
+                                                          .auto_fix_high_rounded,
+                                                      label:
+                                                          'Intelligent Context Refresh (Pro)',
+                                                    ),
+                                                    _FeatureRow(
+                                                      icon: Icons
+                                                          .cloud_done_rounded,
+                                                      label:
+                                                          'Cloud Sync & Auto-Updates',
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 12),
                                               _InfoCard(
                                                 icon:
                                                     Icons.help_outline_rounded,
@@ -408,12 +419,87 @@ class _AboutScreenState extends State<AboutScreen> {
                                                 content:
                                                     'For issues, feature requests, or general feedback, please reach out via the project repository or contact the developer directly.',
                                               ),
-                                              SizedBox(height: 12),
+                                              const Spacer(), // Pushes Links to bottom
+                                              const SizedBox(height: 12),
                                               _InfoCard(
-                                                icon: Icons.gavel_rounded,
-                                                title: 'License & Privacy',
-                                                content:
-                                                    'Licensed for Personal Study & Learning only. You may use this code to learn, but any commercial use or public distribution of modified versions is strictly prohibited. Your privacy is respected; no personal data is shared.',
+                                                icon: Icons.link_rounded,
+                                                title: 'Links & Contact',
+                                                content: null,
+                                                child: Center(
+                                                  child: Wrap(
+                                                    spacing: 8,
+                                                    runSpacing: 8,
+                                                    alignment:
+                                                        WrapAlignment.center,
+                                                    children: [
+                                                      _LinkButton(
+                                                        icon:
+                                                            Icons.code_rounded,
+                                                        label: 'GitHub',
+                                                        url:
+                                                            'https://github.com/Marshal-GG/omni-bridge-translator',
+                                                        color: Colors.white70,
+                                                      ),
+                                                      _LinkButton(
+                                                        icon: Icons
+                                                            .bug_report_rounded,
+                                                        label: 'Issues',
+                                                        url:
+                                                            'https://github.com/Marshal-GG/omni-bridge-translator/issues',
+                                                        color:
+                                                            Colors.orangeAccent,
+                                                      ),
+                                                      _LinkButton(
+                                                        icon: Icons
+                                                            .email_outlined,
+                                                        label: 'Email',
+                                                        url:
+                                                            'https://mail.google.com/mail/?view=cm&to=marshalgcom@gmail.com',
+                                                        color:
+                                                            Colors.tealAccent,
+                                                      ),
+                                                      _LinkButton(
+                                                        icon:
+                                                            Icons.gavel_rounded,
+                                                        label: 'Terms',
+                                                        url: '',
+                                                        color:
+                                                            Colors.blueAccent,
+                                                        onTap: () =>
+                                                            _LegalDialog.show(
+                                                              context,
+                                                              'terms_of_service',
+                                                            ),
+                                                      ),
+                                                      _LinkButton(
+                                                        icon:
+                                                            Icons.gavel_rounded,
+                                                        label: 'License',
+                                                        url: '',
+                                                        color:
+                                                            Colors.amberAccent,
+                                                        onTap: () =>
+                                                            _LegalDialog.show(
+                                                              context,
+                                                              'license',
+                                                            ),
+                                                      ),
+                                                      _LinkButton(
+                                                        icon: Icons
+                                                            .privacy_tip_rounded,
+                                                        label: 'Privacy',
+                                                        url: '',
+                                                        color:
+                                                            Colors.purpleAccent,
+                                                        onTap: () =>
+                                                            _LegalDialog.show(
+                                                              context,
+                                                              'privacy_policy',
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
                                               ),
                                             ],
                                           ),
@@ -421,52 +507,6 @@ class _AboutScreenState extends State<AboutScreen> {
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(height: 12),
-
-                                  // ── Row 3: Links & Contact (full width) ────────
-                                  _InfoCard(
-                                    icon: Icons.link_rounded,
-                                    title: 'Links & Contact',
-                                    content: null,
-                                    child: Center(
-                                      child: Wrap(
-                                        spacing: 10,
-                                        runSpacing: 10,
-                                        alignment: WrapAlignment.center,
-                                        children: [
-                                          _LinkButton(
-                                            icon: Icons.code_rounded,
-                                            label: 'GitHub Repository',
-                                            url:
-                                                'https://github.com/Marshal-GG/omni-bridge-translator',
-                                            color: Colors.white70,
-                                          ),
-                                          _LinkButton(
-                                            icon: Icons.bug_report_rounded,
-                                            label: 'Report an Issue',
-                                            url:
-                                                'https://github.com/Marshal-GG/omni-bridge-translator/issues',
-                                            color: Colors.orangeAccent,
-                                          ),
-                                          _LinkButton(
-                                            icon: Icons.star_rounded,
-                                            label: 'Star on GitHub',
-                                            url:
-                                                'https://github.com/Marshal-GG/omni-bridge-translator',
-                                            color: Colors.yellowAccent,
-                                          ),
-                                          _LinkButton(
-                                            icon: Icons.email_outlined,
-                                            label: 'Email Developer',
-                                            url:
-                                                'https://mail.google.com/mail/?view=cm&to=marshalgcom@gmail.com',
-                                            color: Colors.tealAccent,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-
                                   const SizedBox(height: 24),
                                   if (_version.isNotEmpty) ...[
                                     Container(
@@ -674,17 +714,17 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.tealAccent.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.15)),
       ),
       child: Text(
         label,
         style: const TextStyle(
           color: Colors.tealAccent,
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -697,12 +737,14 @@ class _LinkButton extends StatefulWidget {
   final String label;
   final String url;
   final Color color;
+  final VoidCallback? onTap;
 
   const _LinkButton({
     required this.icon,
     required this.label,
     required this.url,
     required this.color,
+    this.onTap,
   });
 
   @override
@@ -726,7 +768,7 @@ class _LinkButtonState extends State<_LinkButton> {
       onExit: (_) => setState(() => _hovered = false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: _launch,
+        onTap: widget.onTap ?? _launch,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -758,6 +800,229 @@ class _LinkButtonState extends State<_LinkButton> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _LegalDialog extends StatelessWidget {
+  final String documentId;
+
+  const _LegalDialog({required this.documentId});
+
+  static void show(BuildContext context, String documentId) {
+    showDialog(
+      context: context,
+      builder: (context) => _LegalDialog(documentId: documentId),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = documentId == 'terms_of_service'
+        ? 'Terms of Service'
+        : 'Privacy Policy';
+
+    return Dialog(
+      backgroundColor: Colors.black,
+      shape: const RoundedRectangleBorder(),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.black,
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Column(
+            children: [
+              _buildHeader(context, title),
+              const Divider(height: 1, color: Colors.white12),
+              Expanded(child: _buildBody()),
+              _buildFooter(context),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, String title) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(
+            documentId == 'terms_of_service'
+                ? Icons.gavel_rounded
+                : Icons.privacy_tip_rounded,
+            color: Colors.tealAccent,
+            size: 16,
+          ),
+          const SizedBox(width: 10),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const Spacer(),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: const Icon(Icons.close, color: Colors.white38, size: 16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('legal')
+          .doc(documentId)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              color: Colors.tealAccent,
+              strokeWidth: 2,
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error loading: ${snapshot.error}',
+              style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const Center(
+            child: Text(
+              'Document not found.',
+              style: TextStyle(color: Colors.white38, fontSize: 13),
+            ),
+          );
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final content = data['content'] as String? ?? '';
+
+        return Padding(
+          padding: const EdgeInsets.all(12),
+          child: Card(
+            color: Colors.white.withValues(alpha: 0.04),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+              side: const BorderSide(color: Colors.white12),
+            ),
+            margin: EdgeInsets.zero,
+            elevation: 0,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Markdown(
+                data: content,
+                selectable: true,
+                padding: const EdgeInsets.all(16),
+                styleSheet: MarkdownStyleSheet(
+                  p: const TextStyle(
+                    color: Colors.white70,
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    height: 1.7,
+                    letterSpacing: 0.1,
+                  ),
+                  h1: const TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    height: 2.2,
+                    letterSpacing: 0.3,
+                  ),
+                  h2: const TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    height: 2,
+                    letterSpacing: 0.2,
+                  ),
+                  h3: const TextStyle(
+                    color: Colors.white70,
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.8,
+                  ),
+                  strong: const TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                  em: const TextStyle(
+                    color: Colors.white54,
+                    fontFamily: 'Inter',
+                    fontStyle: FontStyle.italic,
+                    fontSize: 12,
+                  ),
+                  listBullet: const TextStyle(
+                    color: Colors.tealAccent,
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                  ),
+                  blockquoteDecoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    border: const Border(
+                      left: BorderSide(color: Colors.tealAccent, width: 3),
+                    ),
+                  ),
+                  code: TextStyle(
+                    backgroundColor: Colors.white.withValues(alpha: 0.08),
+                    color: Colors.tealAccent,
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                  ),
+                  horizontalRuleDecoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Colors.white12)),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFooter(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Colors.white12)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Colors.tealAccent),
+            ),
+          ),
+        ],
       ),
     );
   }

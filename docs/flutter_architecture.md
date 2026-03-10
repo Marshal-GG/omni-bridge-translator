@@ -1,3 +1,11 @@
+<!--
+ Copyright (c) 2026 Omni Bridge. All rights reserved.
+ 
+ Licensed under the PERSONAL STUDY & LEARNING LICENSE v1.0.
+ Commercial use and public redistribution of modified versions are strictly prohibited.
+ See the LICENSE file in the project root for full license terms.
+-->
+
 # Flutter App Architecture
 
 ## Overview
@@ -90,7 +98,7 @@ Stop Translation
 - **Always-on-top, frameless, draggable** window using `bitsdojo_window` + `window_manager`
 - **Transparent background** via `flutter_acrylic`
 - **Mini Mode** — collapsed single-line caption
-- **Header** — shows `source → target` language badge (clickable to open Settings) and colorized TealAccent icons.
+- **Header** — Shows the app logo, `source → target` language badge (clickable to open Settings), an uncluttered daily usage display, and action buttons (Compress, History, Settings) with distinct accent colors to prevent visual conflicts.
 - **Display Customization**:
     - **Overlay Opacity**: Adjusted via slider/percent input in Settings.
     - **Font Size**: Adjusted via slider/px input in Settings.

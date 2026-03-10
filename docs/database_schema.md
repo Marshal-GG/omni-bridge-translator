@@ -1,20 +1,66 @@
+<!--
+ Copyright (c) 2026 Omni Bridge. All rights reserved.
+ 
+ Licensed under the PERSONAL STUDY & LEARNING LICENSE v1.0.
+ Commercial use and public redistribution of modified versions are strictly prohibited.
+ See the LICENSE file in the project root for full license terms.
+-->
+
 # Omni Bridge — Firebase Database Schema
 
 ## Overview
 
 | Database | Used For |
 |---|---|
-| **Cloud Firestore** | User profile, subscription quota, session tracking, settings |
+| **Cloud Firestore** | User profile, subscription quota, session tracking, settings, legal docs, admin lists |
 | **Realtime Database (RTDB)** | High-frequency live caption streaming, logs, model usage stats |
 
 ---
 
 ## Firestore Structure
 
-All user data lives under a single root path:
+There are three main root paths in Firestore:
 ```
 users/{uid}/
+system/admins
+legal/{documentId}
 ```
+
+---
+
+### System Configuration — `system/admins`
+
+A singleton document used to manage administrative access to the platform.
+
+```json
+{
+  "emails": [
+    "user1@example.com",
+    "user2@example.com"
+  ]
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `emails` | `array` | List of email strings authorized to access the Admin Panel. |
+
+---
+
+### Legal Documents — `legal/{documentId}`
+
+Stores app policies like terms of service and privacy policy to allow dynamic update without an app release.
+
+```json
+{
+  "content": "# Terms of Service\n\nWelcome to Omni Bridge..."
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `documentId` | `string` | ID, e.g., `"terms_of_service"`, `"privacy_policy"`, `"license"` |
+| `content` | `string` | The full Markdown text format of the document. |
 
 ---
 
@@ -91,6 +137,7 @@ Written by `SubscriptionService._logSubscriptionEvent()` whenever the user's tie
 
 ### 1. Sessions — `users/{uid}/sessions/{sessionId}`
 
+```json
 {
   "sessionId": "abc123xyz",
   "startTime": "2026-03-06T07:30:00Z",
@@ -114,6 +161,7 @@ Written by `SubscriptionService._logSubscriptionEvent()` whenever the user's tie
     "wifi_submask": "255.255.255.0"
   }
 }
+```
 
 | Field | Type | Notes |
 |---|---|---|
@@ -410,6 +458,9 @@ users/{uid}                              ← root user doc (tier, daily/monthly/
     ├── subscription_events/{push-id}    ← tier upgrade / downgrade audit log
     ├── sessions/{sessionId}             ← one doc per app launch
     └── settings/app_preferences         ← single settings doc
+
+system/admins                            ← list of authorized admin emails
+legal/{documentId}                       ← markdown content for app policies (terms, privacy, license)
 
 RTDB:
 users/{uid}/

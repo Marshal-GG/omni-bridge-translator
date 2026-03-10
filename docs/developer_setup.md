@@ -1,3 +1,11 @@
+<!--
+ Copyright (c) 2026 Omni Bridge. All rights reserved.
+ 
+ Licensed under the PERSONAL STUDY & LEARNING LICENSE v1.0.
+ Commercial use and public redistribution of modified versions are strictly prohibited.
+ See the LICENSE file in the project root for full license terms.
+-->
+
 # Developer Setup
 
 This guide covers running Omni Bridge from source for development.
@@ -128,3 +136,56 @@ A `.vscode/settings.json` is included to help manage project execution natively.
 Recommended extensions:
 - **Dart** + **Flutter** (Dart Code)
 - **Python** (Microsoft)
+
+---
+
+## 5. Deployment & Protection
+
+To protect the intellectual property and logic of Omni Bridge, the following steps are recommended for production builds:
+
+### 1. Windows App Obfuscation (Flutter)
+Building with obfuscation makes it significantly harder to reverse-engineer the compiled Dart code.
+
+```powershell
+# Build the Windows application with obfuscation
+flutter build windows --obfuscate --split-debug-info=build/windows/debug_info
+```
+
+> [!IMPORTANT]
+> Keep the `debug_info` folder secure and separate. You will need it to de-obfuscate stack traces if errors occur in production.
+
+### 2. Python Server Obfuscation (PyArmor)
+The Python backend contains core logic that should be protected before packaging. [PyArmor](https://pyarmor.readthedocs.io/) is recommended for this.
+
+```powershell
+# Install PyArmor
+pip install pyarmor
+
+# Obfuscate the server directory
+pyarmor gen server/
+```
+The obfuscated scripts will be generated in the `dist/` folder. Use these files when building your final executable with PyInstaller.
+
+### 3. UI Watermarking
+The application is configured to display a subtle **"Licensed for Personal Study Only"** watermark on all screens. This acts as a visual deterrent against unauthorized commercial reuse of the interface.
+
+---
+
+## 6. Copyright & Legal Safeguards
+
+While copyright is automatic upon creation, formalizing your protection is highly recommended for commercial-grade software.
+
+1. **Formal Registration**: It is recommended to register your software with the **U.S. Copyright Office** (or your local equivalent). This creates a public record of ownership and is a prerequisite for filing infringement lawsuits in many jurisdictions.
+2. **Deposit Source Code**: During registration, you will likely need to deposit a portion of your source code. Ensure you deposit the "Redacted" or key logic portions that you wish to protect most.
+3. **Professional Counsel**: For critical commercial protection, always consult with an Intellectual Property (IP) attorney to ensure your custom license and registration are robust.
+
+---
+
+## 7. Additional Developer Documentation
+
+- [Flutter Architecture](flutter_architecture.md)
+- [Python Server Architecture](python_architecture.md)
+- [Database Schema](database_schema.md)
+- [Monetization Plan](monetization_plan.md)
+- [Google Auth Troubleshooting](google_auth_troubleshooting.md)
+- [Publishing a New Release](github_releases_guide.md)

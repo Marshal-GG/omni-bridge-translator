@@ -139,18 +139,6 @@ For NVIDIA Riva ASR / NMT or Llama translation:
 
 ---
 
-## 🛠️ For Developers
-
-- [Flutter Architecture](docs/flutter_architecture.md)
-- [Python Server Architecture](docs/python_architecture.md)
-- [Database Schema](docs/database_schema.md)
-- [Monetization Plan](docs/monetization_plan.md)
-- [Google Auth Troubleshooting](docs/google_auth_troubleshooting.md)
-- [Publishing a New Release](docs/github_releases_guide.md)
-- [Developer Setup](docs/developer_setup.md)
-
----
-
 ## 📄 License
 
 Personal Study & Learning License (Restricted) — see [LICENSE](LICENSE) for details. **No commercial use or mod distribution.**

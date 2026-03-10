@@ -1,3 +1,9 @@
+# Copyright (c) 2026 Omni Bridge. All rights reserved.
+# 
+# Licensed under the PERSONAL STUDY & LEARNING LICENSE v1.0.
+# Commercial use and public redistribution of modified versions are strictly prohibited.
+# See the LICENSE file in the project root for full license terms.
+
 """
 audio_meter.py — Lightweight real-time RMS audio level meter.
 

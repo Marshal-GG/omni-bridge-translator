@@ -12,11 +12,12 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# IDEs
 *.iml
 *.ipr
 *.iws
 .idea/
+.vs/
 
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
@@ -61,6 +62,8 @@ env/
 *.spec
 dist/
 build/
+build_output/
+installers/
 analyze.txt
 asr_error.log
 server/asr_error.log
@@ -86,6 +89,9 @@ firebase-debug.log
 firebase-debug.*.log
 *.firebase
 firebase.json
+.firebaserc
+firestore.indexes.json
+firestore.rules
 
 # Additional ignores
 task.md

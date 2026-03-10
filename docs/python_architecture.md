@@ -1,3 +1,11 @@
+<!--
+ Copyright (c) 2026 Omni Bridge. All rights reserved.
+ 
+ Licensed under the PERSONAL STUDY & LEARNING LICENSE v1.0.
+ Commercial use and public redistribution of modified versions are strictly prohibited.
+ See the LICENSE file in the project root for full license terms.
+-->
+
 # Python Server Architecture
 
 ## Overview
@@ -64,8 +72,8 @@ Core pipeline orchestrator:
 |-------|------|-------|
 | `WhisperModel` | ASR (offline) | 4 sizes, auto-downloaded; resamples to 16kHz |
 | `SpeechRecognitionModel` | ASR (online) | Google Cloud Speech via `speech_recognition` |
-| `RivaModel` | ASR + Translation | NVIDIA NIM endpoint (API key required) |
-| `LlamaModel` | Translation | Llama 3.1 8B via NVIDIA NIM (OpenAI-compatible) |
+| `RivaModel` | ASR + Translation | NVIDIA NIM `riva-parakeet`/`riva-canary` ASR + `riva-translate-4b-instruct-v1.1` Translation |
+| `LlamaModel` | Translation | `meta/llama-3.1-8b-instruct` via NVIDIA NIM (OpenAI-compatible) |
 | `GoogleModel` | Translation | `deep-translator` → Google Translate |
 | `MyMemoryModel` | Translation | Free REST API, ~5k chars/day without email |
 
