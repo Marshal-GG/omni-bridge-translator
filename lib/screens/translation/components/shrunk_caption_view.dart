@@ -24,7 +24,6 @@ Widget buildShrunkCaptionView(
       ),
       child: Stack(
         children: [
-          MoveWindow(),
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -62,6 +61,9 @@ Widget buildShrunkCaptionView(
               ),
             ),
           ),
+          // Transparent drag region on top so dragging over text moves the window
+          // onDoubleTap: () {} disables the default maximize on double-click
+          Positioned.fill(child: MoveWindow(onDoubleTap: () {})),
         ],
       ),
     ),

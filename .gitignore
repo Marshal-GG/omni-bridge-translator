@@ -77,8 +77,9 @@ server/riva_functions.txt
 *.lib
 windows/flutter/ephemeral/
 
-# Firebase configuration & secrets
+# Firebase & Google credentials
 firebase_options.dart
+app_config.dart
 google-services.json
 GoogleService-Info.plist
 firebase-debug.log

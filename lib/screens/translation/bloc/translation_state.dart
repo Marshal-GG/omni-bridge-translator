@@ -26,6 +26,8 @@ class TranslationState extends Equatable {
   // Auto-detect warning – set when server overrides 'auto' with a detected lang
   final String? autoDetectWarning;
 
+  final int navToSubscriptionTrigger;
+
   const TranslationState({
     required this.isShrunk,
     required this.isRunning,
@@ -45,6 +47,7 @@ class TranslationState extends Equatable {
     this.autoDetectWarning,
     this.quotaStatus,
     this.isQuotaExceeded = false,
+    this.navToSubscriptionTrigger = 0,
   });
 
   factory TranslationState.initial() {
@@ -68,6 +71,7 @@ class TranslationState extends Equatable {
       autoDetectWarning: null,
       quotaStatus: null,
       isQuotaExceeded: false,
+      navToSubscriptionTrigger: 0,
     );
   }
 
@@ -90,6 +94,7 @@ class TranslationState extends Equatable {
     Object? autoDetectWarning = _sentinel,
     SubscriptionStatus? quotaStatus,
     bool? isQuotaExceeded,
+    int? navToSubscriptionTrigger,
   }) {
     return TranslationState(
       isShrunk: isShrunk ?? this.isShrunk,
@@ -116,6 +121,8 @@ class TranslationState extends Equatable {
           : autoDetectWarning as String?,
       quotaStatus: quotaStatus ?? this.quotaStatus,
       isQuotaExceeded: isQuotaExceeded ?? this.isQuotaExceeded,
+      navToSubscriptionTrigger:
+          navToSubscriptionTrigger ?? this.navToSubscriptionTrigger,
     );
   }
 
@@ -139,6 +146,7 @@ class TranslationState extends Equatable {
     autoDetectWarning,
     quotaStatus,
     isQuotaExceeded,
+    navToSubscriptionTrigger,
   ];
 }
 

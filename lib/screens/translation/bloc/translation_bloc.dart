@@ -112,9 +112,16 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       asrClient.stop();
       emit(state.copyWith(isRunning: false));
     } else {
-      if (state.isQuotaExceeded && state.activeApiKey.isEmpty) {
+      if (state.isQuotaExceeded) {
+        emit(state.copyWith(
+          navToSubscriptionTrigger: state.navToSubscriptionTrigger + 1,
+        ));
         add(QuotaExceededEvent());
         return;
+      }
+      if (state.activeApiKey.trim().isEmpty) {
+        // Just acknowledging the user's "whether key provided or not"
+        // But for now, we just start if quota is ok.
       }
       asrClient.start(
         sourceLang: state.activeSourceLang,
@@ -134,9 +141,12 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     final bool exceeded = event.status.isExceeded;
     emit(state.copyWith(quotaStatus: event.status, isQuotaExceeded: exceeded));
 
-    if (exceeded && state.isRunning && state.activeApiKey.isEmpty) {
+    if (exceeded && state.isRunning) {
       asrClient.stop();
-      emit(state.copyWith(isRunning: false));
+      emit(state.copyWith(
+        isRunning: false,
+        navToSubscriptionTrigger: state.navToSubscriptionTrigger + 1,
+      ));
       add(QuotaExceededEvent());
     }
   }

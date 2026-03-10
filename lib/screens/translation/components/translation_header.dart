@@ -15,7 +15,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
     child: Row(
       children: [
         const SizedBox(width: 10),
-        const Icon(Icons.translate, size: 14, color: Colors.tealAccent),
+        Image.asset('assets/icon.png', width: 14, height: 14),
         const SizedBox(width: 8),
         const Text(
           'Omni Bridge: Live AI Translator',
@@ -57,7 +57,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
           splashRadius: 16,
         ),
         IconButton(
-          icon: const Icon(Icons.compress, size: 14, color: Colors.white70),
+          icon: const Icon(Icons.compress, size: 14, color: Colors.amberAccent),
           onPressed: () => bloc.add(ToggleShrinkEvent()),
           tooltip: 'Collapse to Captions',
           padding: const EdgeInsets.all(8),
@@ -65,7 +65,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
           splashRadius: 16,
         ),
         IconButton(
-          icon: const Icon(Icons.history, size: 14, color: Colors.white70),
+          icon: const Icon(Icons.history, size: 14, color: Colors.greenAccent),
           onPressed: () => Navigator.pushNamed(context, '/history-panel'),
           tooltip: 'History',
           padding: const EdgeInsets.all(8),
@@ -84,7 +84,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                   icon: const Icon(
                     Icons.settings,
                     size: 14,
-                    color: Colors.white54,
+                    color: Colors.pinkAccent,
                   ),
                   tooltip: 'Menu',
                   offset: const Offset(0, 32),
@@ -289,7 +289,7 @@ class _QuotaUsageText extends StatelessWidget {
     final String tierName = status?.tier.name.toUpperCase() ?? '...';
     final bool isPro = status?.tier == SubscriptionTier.pro;
 
-    final formatter = NumberFormat('#,###');
+    final formatter = NumberFormat.compact();
     final usedStr = status != null
         ? formatter.format(status!.dailyCharsUsed)
         : '...';
@@ -302,52 +302,49 @@ class _QuotaUsageText extends StatelessWidget {
         ? Colors.redAccent
         : (progress > 0.7 ? Colors.orangeAccent : Colors.tealAccent);
 
-    return Tooltip(
-      message: 'Daily Token Usage: $usedStr / $limitStr ($tierName)',
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.25),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: color.withValues(alpha: 0.4)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$usedStr / $limitStr',
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                fontFamily: 'monospace',
-                letterSpacing: 0.5,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$usedStr / $limitStr',
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              fontFamily: 'monospace',
+              letterSpacing: 0.5,
+            ),
+          ),
+          if (status != null) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 4,
+                vertical: 1.5,
+              ),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                tierName,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
-            if (status != null) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 5,
-                  vertical: 1.5,
-                ),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  tierName,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ],
           ],
-        ),
+        ],
       ),
     );
   }
