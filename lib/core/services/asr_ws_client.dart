@@ -7,6 +7,10 @@ import 'translation_service.dart';
 
 /// Connects to the Python flutter_server.py via WebSocket,
 /// sends the start command, and feeds translated captions to [asrTextController].
+///
+/// The WebSocket connection is kept alive across toggle off→on cycles to avoid
+/// the WASAPI cold-start delay on every toggle. Only [dispose] fully tears down
+/// the connection (called on app shutdown).
 class AsrWebSocketClient {
   TranslationService? _service;
 
@@ -14,20 +18,17 @@ class AsrWebSocketClient {
 
   void Function(double inputLevel, double outputLevel)? onAudioLevel;
 
-  void start({
-    String sourceLang = 'auto',
-    String targetLang = 'en',
-    bool useMic = false,
-    int? inputDeviceIndex,
-    int? outputDeviceIndex,
-    String translationModel = 'google',
-    String apiKey = '',
-    String transcriptionModel = 'online',
-  }) {
+  AsrWebSocketClient() {
+    _ensureService();
+  }
+
+  /// Creates the [TranslationService] and pre-connects the WebSocket
+  /// so the connection is ready before the user presses play.
+  void _ensureService() {
+    if (_service != null) return;
     const url = '127.0.0.1';
     const port = 8765;
-    debugPrint('ASR WS connecting to: ws://$url:$port/captions');
-
+    debugPrint('ASR WS pre-connecting to: ws://$url:$port/captions');
     _service = TranslationService(serverHost: url, serverPort: port);
 
     _service!.captions.listen((msg) {
@@ -43,7 +44,7 @@ class AsrWebSocketClient {
         return;
       }
 
-      // Override signal from backend — handled by the UI layer, not shown in captions
+      // Override signal from backend — handled by the UI layer
       if (msg.sourceLangOverride != null) return;
 
       if (msg.isSystemMessage) {
@@ -55,16 +56,15 @@ class AsrWebSocketClient {
         final errMsg = msg.text.trim().isNotEmpty
             ? msg.text.trim()
             : 'The server returned an error while processing audio.';
-
         asrTextController.showSystemMessage('⚠ Error: $errMsg.');
         return;
       }
+
       final text = msg.text.trim();
       if (text.isEmpty) return;
 
       if (msg.isFinal) {
         asrTextController.commitFinal(text);
-        // Feed into history — msg.original is the transcription, text is translation
         final transcription = msg.original.trim().isNotEmpty
             ? msg.original.trim()
             : text;
@@ -73,6 +73,25 @@ class AsrWebSocketClient {
         asrTextController.updateInterim(text);
       }
     });
+
+    // Pre-connect after a short delay so the server has time to settle.
+    // Fire-and-forget — does not block UI startup.
+    Future.delayed(const Duration(milliseconds: 500), _service!.preConnect);
+  }
+
+  void start({
+    String sourceLang = 'auto',
+    String targetLang = 'en',
+    bool useMic = false,
+    int? inputDeviceIndex,
+    int? outputDeviceIndex,
+    String translationModel = 'google',
+    String apiKey = '',
+    String transcriptionModel = 'online',
+  }) {
+    // Reuse the existing service + connection if already live.
+    // This avoids the WebSocket handshake + WASAPI cold-start on every toggle.
+    _ensureService();
 
     _service!.start(
       sourceLang: sourceLang,
@@ -110,12 +129,10 @@ class AsrWebSocketClient {
       apiKey: apiKey,
       transcriptionModel: transcriptionModel,
     );
-    // Keep HistoryService in sync with the current source/target lang
     HistoryService.instance.configure(
       sourceLang: sourceLang,
       targetLang: targetLang,
-      translateFn: (text, src, tgt) async =>
-          text, // placeholder; real fn passed by overlay
+      translateFn: (text, src, tgt) async => text,
     );
   }
 
@@ -156,8 +173,15 @@ class AsrWebSocketClient {
     };
   }
 
+  /// Soft-stop: tells the server to pause audio capture but keeps the WebSocket
+  /// open. The next [start] call skips the handshake and fires immediately.
   void stop() {
-    _service?.stop();
+    _service?.sendStopCommand();
+  }
+
+  /// Hard-stop: fully tears down the WebSocket. Only call on app shutdown.
+  Future<void> dispose() async {
+    await _service?.stop();
     _service = null;
   }
 }

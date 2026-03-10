@@ -17,10 +17,13 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   int _lastLineCount = 0;
 
   TranslationBloc({required this.asrClient})
-    : super(TranslationState.initial().copyWith(
-        quotaStatus: SubscriptionService.instance.currentStatus,
-        isQuotaExceeded: SubscriptionService.instance.currentStatus?.isExceeded ?? false,
-      )) {
+    : super(
+        TranslationState.initial().copyWith(
+          quotaStatus: SubscriptionService.instance.currentStatus,
+          isQuotaExceeded:
+              SubscriptionService.instance.currentStatus?.isExceeded ?? false,
+        ),
+      ) {
     on<UpdateQuotaEvent>(_onUpdateQuota);
     on<QuotaExceededEvent>(_onQuotaExceeded);
     on<ToggleShrinkEvent>(_onToggleShrink);
@@ -42,12 +45,16 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       add(UpdateQuotaEvent(initialStatus));
     } else {
       // If we are logged out or initializing, default to an initial safe status instead of null
-      add(UpdateQuotaEvent(SubscriptionStatus(
-        tier: SubscriptionTier.free,
-        dailyCharsUsed: 0,
-        dailyLimit: 10000,
-        dailyResetAt: DateTime.now(), // Ignored here
-      )));
+      add(
+        UpdateQuotaEvent(
+          SubscriptionStatus(
+            tier: SubscriptionTier.free,
+            dailyCharsUsed: 0,
+            dailyLimit: 10000,
+            dailyResetAt: DateTime.now(), // Ignored here
+          ),
+        ),
+      );
     }
 
     _statusSub = SubscriptionService.instance.statusStream.listen((status) {
@@ -58,23 +65,14 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   void _initAsr() {
     add(LoadSettingsEvent());
 
-    if (state.isRunning && !state.isQuotaExceeded) {
-      asrClient.start(
-        sourceLang: state.activeSourceLang,
-        targetLang: state.activeTargetLang,
-        useMic: state.activeUseMic,
-        inputDeviceIndex: state.activeInputDeviceIndex,
-        outputDeviceIndex: state.activeOutputDeviceIndex,
-        translationModel: state.activeTranslationModel,
-        apiKey: state.activeApiKey,
-        transcriptionModel: state.activeTranscriptionModel,
-      );
-    }
+    // Note: AsrWebSocketClient pre-connects the WebSocket on construction.
+    // Actual audio capture only starts when the user toggles on (ToggleRunningEvent).
 
     _captionSub = asrClient.captions?.listen((msg) {
       if (msg.usageStats != null) {
         if (state.activeApiKey.isEmpty) {
-          final totalTokens = (msg.usageStats!['total_tokens'] as num?)?.toInt() ?? 0;
+          final totalTokens =
+              (msg.usageStats!['total_tokens'] as num?)?.toInt() ?? 0;
           if (totalTokens > 0) {
             SubscriptionService.instance.incrementChars(totalTokens);
           }
@@ -113,9 +111,11 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       emit(state.copyWith(isRunning: false));
     } else {
       if (state.isQuotaExceeded) {
-        emit(state.copyWith(
-          navToSubscriptionTrigger: state.navToSubscriptionTrigger + 1,
-        ));
+        emit(
+          state.copyWith(
+            navToSubscriptionTrigger: state.navToSubscriptionTrigger + 1,
+          ),
+        );
         add(QuotaExceededEvent());
         return;
       }
@@ -143,10 +143,12 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
     if (exceeded && state.isRunning) {
       asrClient.stop();
-      emit(state.copyWith(
-        isRunning: false,
-        navToSubscriptionTrigger: state.navToSubscriptionTrigger + 1,
-      ));
+      emit(
+        state.copyWith(
+          isRunning: false,
+          navToSubscriptionTrigger: state.navToSubscriptionTrigger + 1,
+        ),
+      );
       add(QuotaExceededEvent());
     }
   }
@@ -223,7 +225,6 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       );
     }
   }
-
 
   Future<void> _onCaptionTextChanged(
     CaptionTextChangedEvent event,
@@ -361,7 +362,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   Future<void> close() {
     _captionSub?.cancel();
     _statusSub?.cancel();
-    asrClient.stop();
+    asrClient.dispose(); // hard-stop: closes WebSocket fully
     return super.close();
   }
 }

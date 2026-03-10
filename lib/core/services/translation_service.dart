@@ -106,7 +106,17 @@ class TranslationService {
   /// Stream of incoming caption messages from the server
   Stream<CaptionMessage> get captions => _captionController.stream;
 
-  /// Connect to server WebSocket then send start command
+  /// Pre-connect the WebSocket without sending a start payload.
+  /// Call this early (e.g. on construction) so the handshake is ready
+  /// before the user presses play for the first time.
+  void preConnect() {
+    if (_channel != null) return; // already connected
+    _intentionallyStopped = false;
+    _connect(); // fire-and-forget; reconnect logic handles failures
+  }
+
+  /// Connect to server WebSocket then send start command.
+  /// If already connected, skips the handshake and just re-sends the payload.
   Future<void> start({
     String sourceLang = 'auto',
     String targetLang = 'en',
@@ -127,7 +137,14 @@ class TranslationService {
     _apiKey = apiKey;
     _transcriptionModel = transcriptionModel;
     _reconnectAttempt = 0;
-    await _connect();
+
+    if (_channel != null) {
+      // Already connected — skip handshake, just send the payload immediately.
+      debugPrint('[WS] Already connected — sending start payload directly.');
+      _sendStartPayload();
+    } else {
+      await _connect();
+    }
   }
 
   Future<void> _connect() async {
@@ -302,7 +319,16 @@ class TranslationService {
     );
   }
 
-  /// Send stop command and close WebSocket (no auto-reconnect after this)
+  /// Soft-stop: sends stop to server but keeps WebSocket open.
+  /// Use this for toggle-off so the next [start] fires immediately.
+  void sendStopCommand() {
+    if (_channel != null) {
+      _channel!.sink.add(jsonEncode({'cmd': 'stop'}));
+    }
+  }
+
+  /// Hard-stop: send stop, close WebSocket, cancel auto-reconnect.
+  /// Use this only on app shutdown.
   Future<void> stop() async {
     _intentionallyStopped = true;
     _reconnectTimer?.cancel();

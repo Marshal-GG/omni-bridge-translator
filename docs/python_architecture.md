@@ -51,9 +51,12 @@ Core pipeline orchestrator:
 - **Desktop loopback**: captures system audio via WASAPI (Windows-only, `pyaudiowpatch`)
 - **Microphone**: captures mic input via standard PyAudio
 - Volume scaling applied before sending to ASR
-- **Hybrid Audio Chunking**: Implements a dual-trigger flushing strategy for ASR chunks:
-  - VAD-based flush: Triggers after 0.5s of silence to reduce latency.
-  - Time-based limit: Enforces a maximum duration (e.g., 3.5s) per chunk to guarantee API translation calls even during continuous speech, avoiding rate-limits and stalls.
+- **Hybrid Audio Chunking**: Implements an adaptive dual-trigger flushing strategy for ASR chunks:
+  - VAD-based flush: Triggers after 0.3s of silence to reduce latency.
+  - Rate-limit adaptive limit: Dynamically enforces a maximum duration per chunk to guarantee API translation calls stay within the NIM 40 RPM account-wide tier.
+    - 3.0s chunks if both ASR and Translation use NIM keyed services (2 calls per chunk = 40 RPM).
+    - 1.5s chunks if only one service uses NIM (1 call per chunk = 40 RPM).
+    - 0.75s chunks if relying purely on free/local services (no limit).
 
 ### `models/`
 

@@ -45,11 +45,28 @@ NVIDIA_API_KEY=your_nvidia_nim_key_here
 
 ### 2. Flutter App Configuration
 
-The Flutter app uses `lib/core/config/app_config.dart` to store non-sensitive client-side keys (Firebase, Google Client ID). This file is compiled into the application, removing the need for a distributed `.env` file.
+Credentials are kept out of source control using two gitignored Dart files. Each has a committed example template to copy from.
 
-To update client keys:
-1. Open `lib/core/config/app_config.dart`.
-2. Update the constants with your development keys.
+**Step 1 — Firebase options:**
+
+```powershell
+copy lib\firebase_options.example.dart lib\firebase_options.dart
+```
+
+Open `lib/firebase_options.dart` and fill in your Firebase project values.  
+Get them from: [Firebase Console](https://console.firebase.google.com) → Project Settings → Your apps → SDK setup.
+
+**Step 2 — Google client ID:**
+
+```powershell
+copy lib\core\config\app_config.example.dart lib\core\config\app_config.dart
+```
+
+Open `lib/core/config/app_config.dart` and fill in your `googleClientId`.  
+Get it from: [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials → OAuth 2.0 Client IDs.
+
+> [!IMPORTANT]
+> `firebase_options.dart` and `app_config.dart` are listed in `.gitignore` and must **never** be committed.
 
 ### Run the server
 

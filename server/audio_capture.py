@@ -226,9 +226,9 @@ class AudioCapture:
         # Tuning for API Rate Limit (e.g. 40 RPM ~ 1 chunk per 1.5s per service)
         # using max 3.5s chunk ensures ~17 RPM continuous speech.
         SILENCE_THRESHOLD = 300      # RMS below this = silence  (tune if needed)
-        SILENCE_DURATION  = 0.5      # seconds of silence to trigger early flush (was 0.2)
-        MIN_SPEECH_DURATION = 0.5    # don't flush if chunk is shorter than this (was 0.3)
-        MAX_CHUNK_DURATION  = 3.5    # always flush after this many seconds (was 1.0)
+        SILENCE_DURATION  = 0.3      # seconds of silence to trigger early flush
+        MIN_SPEECH_DURATION = 0.4    # don't flush if chunk is shorter than this
+        MAX_CHUNK_DURATION  = self.chunk_duration  # adaptive: set by flutter_server.py
 
         silence_frames_needed = int(native_rate * SILENCE_DURATION)
         min_speech_frames     = int(native_rate * MIN_SPEECH_DURATION)

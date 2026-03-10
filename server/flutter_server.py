@@ -357,9 +357,20 @@ async def start_capture(
             nim_api = NimApiClient(
                 api_key=current_api_key,
             )
+            # Adaptive chunk duration — guarantees account-wide NIM usage stays ≤ 40 RPM.
+            # NIM's 40 RPM limit is account-wide (shared across all model calls).
+            #   2 keyed → 2 API calls per chunk → need ≥ 3.0s  (2 × 20 chunks/min = 40 RPM)
+            #   1 keyed → 1 API call per chunk  → need ≥ 1.5s  (1 × 40 chunks/min = 40 RPM)
+            #   0 keyed → no NIM calls          → 0.75s (free services, no rate limit)
+            _keyed_count = (
+                (1 if transcription_model in {"riva"} else 0) +
+                (1 if translation_model   in {"riva", "llama"} else 0)
+            )
+            _chunk_dur = {0: 0.75, 1: 1.5, 2: 3.0}.get(_keyed_count, 1.5)
+
             audio_capture = AudioCapture(
                 sample_rate=16000,
-                chunk_duration=1.0,
+                chunk_duration=_chunk_dur,
                 use_mic=current_use_mic,
                 input_device_index=current_input_device_index,
                 output_device_index=current_output_device_index,
