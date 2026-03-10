@@ -30,14 +30,6 @@ try:
 except ImportError:
     HAS_PSUTIL = False
 
-from dotenv import load_dotenv
-from pathlib import Path
-
-# Load environment variables from .env next to this script,
-# regardless of the working directory the process was launched from.
-_ENV_FILE = Path(__file__).parent / ".env"
-load_dotenv(dotenv_path=_ENV_FILE)
-
 import uvicorn
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -84,11 +76,6 @@ audio_thread = None
 _meter_task = None
 _event_loop: asyncio.AbstractEventLoop = None  # Set on startup; used by sync callbacks
 _pyaudio_lock: asyncio.Lock = None             # Serialises PyAudio opens to avoid WASAPI crash
-
-# Fetch API key securely from environment
-API_KEY = os.getenv("NVIDIA_API_KEY")
-if not API_KEY:
-    print("WARNING: NVIDIA_API_KEY is not set in .env!")
 
 current_source_lang: str = "auto"
 current_target_lang: str = "en"
@@ -340,8 +327,8 @@ async def start_capture(
     current_output_device_index = output_device_index
     current_transcription_model = transcription_model
     current_translation_model = translation_model or ai_engine  # fallback to ai_engine
-    # Use the user-supplied key if non-empty, otherwise fall back to .env
-    current_api_key = api_key if api_key else (API_KEY or "")
+    # Use the user-supplied key if non-empty
+    current_api_key = api_key or ""
 
     # Guard: Riva/Llama translation requires an API key
     if current_translation_model in ("riva", "llama") and not current_api_key:

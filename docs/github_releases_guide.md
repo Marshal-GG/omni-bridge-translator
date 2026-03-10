@@ -19,15 +19,15 @@ The executable (`omni_bridge.exe`) requires several DLLs and the `data` folder t
 
 1. Navigate to `build\windows\x64\runner\`.
 2. Right-click the `Release` folder and select **Compress to ZIP file**.
-3. Rename the resulting zip to something descriptive, e.g., `omni_bridge_v1.2.2_windows.zip`.
+3. Rename the resulting zip to something descriptive, e.g., `omni_bridge_v1.2.3_windows.zip`.
 
 ## Step 3: Create a GitHub Release
 
 1. Go to your GitHub repository: [Marshal-GG/omni-bridge-translator](https://github.com/Marshal-GG/omni-bridge-translator).
 2. On the right sidebar, click **Releases** -> **Create a new release** (or "Draft a new release").
-3. **Choose a tag**: Type the version number exactly as it appears in your `pubspec.yaml` (e.g., `v1.2.2`).
+3. **Choose a tag**: Type the version number exactly as it appears in your `pubspec.yaml` (e.g., `v1.2.3`).
    - *Note: The update service expects the "v" prefix or a direct semver string.*
-4. **Release title**: Give it a name, e.g., `Omni Bridge Release v1.2.2`.
+4. **Release title**: Give it a name, e.g., `Omni Bridge Release v1.2.3`.
 5. **Describe this release**: Add a few bullet points about what changed.
 6. **Attach binaries**: Drag and drop your ZIP file created in Step 2 into the "Attach binaries by dropping them here" area.
 7. Click **Publish release**.

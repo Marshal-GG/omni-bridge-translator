@@ -50,9 +50,6 @@ class AppInitializer {
       );
     }
 
-    // Environment variables are now partially stored in AppConfig (Dart)
-    // await dotenv.load(fileName: '.env');
-
     try {
       // Initialize Firebase
       await Firebase.initializeApp(

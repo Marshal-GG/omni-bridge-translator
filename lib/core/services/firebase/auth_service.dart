@@ -35,9 +35,7 @@ class AuthService {
   }
 
   void _initialize() {
-    // Inject the redirect URL if provided in the environment variables
-    // final redirectUrl = dotenv.env['AUTH_SUCCESS_REDIRECT_URL'] ?? '';
-    const redirectUrl = ''; // Default empty if not using environment overrides
+    const redirectUrl = ''; // Default empty
     final customHtml = customAuthSuccessHtml.replaceFirst(
       '{{REDIRECT_URL}}',
       redirectUrl,

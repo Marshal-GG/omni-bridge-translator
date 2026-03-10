@@ -34,23 +34,6 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### Environment Variables
-
-Copy the example env file and fill in your keys:
-
-```powershell
-copy .env.example .env
-```
-
-Edit `server/.env`:
-
-```env
-NVIDIA_API_KEY=your_nvidia_nim_key_here
-```
-
-> [!IMPORTANT]
-> The `server/.env` file is for local development only. It is **not** bundled with the installer. Users will need to provide their own keys in the app settings for distributed builds.
-
 ### 2. Flutter App Configuration
 
 Credentials are kept out of source control using two gitignored Dart files. Each has a committed example template to copy from.
@@ -102,11 +85,18 @@ flutter run -d windows
 
 ## 4. Building for Production
 
-### Python server → EXE
+### Python server → EXE (Production)
+
+To create a production build, you must first obfuscate the source code and then package it:
 
 ```powershell
 cd server
 .\.venv\Scripts\activate
+
+# 1. Obfuscate source code
+pyarmor gen --output dist_obfuscated .
+
+# 2. Package into EXE (Spec file automatically uses dist_obfuscated)
 pyinstaller --noconfirm --clean omni_bridge_server.spec
 ```
 
@@ -122,7 +112,7 @@ flutter build windows
 
 Open `installer_setup.iss` in [Inno Setup Compiler](https://jrsoftware.org/isinfo.php) and click **Compile**.
 
-Output: `installers/OmniBridge_Setup.exe`
+Output: `installers/OmniBridge_Setup_v1.2.3.exe`
 
 ---
 
@@ -131,7 +121,6 @@ Output: `installers/OmniBridge_Setup.exe`
 A `.vscode/settings.json` is included to help manage project execution natively. This file configures:
 - **`python.defaultInterpreterPath`**: Automatically points to the `server/.venv/Scripts/python.exe` virtual environment. If you encounter interpreter path errors, ensure your virtual environment was created precisely as `server/.venv`.
 - **`python.venvFolders`** and **`python.analysis.extraPaths`**: Helps VS Code resolve server modules accurately without manual configuration for linting and IntelliSense.
-- **`python.terminal.useEnvFile`**: Loads environment variables when utilizing the integrated terminal.
 
 Recommended extensions:
 - **Dart** + **Flutter** (Dart Code)
@@ -155,19 +144,19 @@ flutter build windows --obfuscate --split-debug-info=build/windows/debug_info
 > Keep the `debug_info` folder secure and separate. You will need it to de-obfuscate stack traces if errors occur in production.
 
 ### 2. Python Server Obfuscation (PyArmor)
-The Python backend contains core logic that should be protected before packaging. [PyArmor](https://pyarmor.readthedocs.io/) is recommended for this.
+The Python backend contains core logic protected with [PyArmor](https://pyarmor.readthedocs.io/) before packaging.
 
 ```powershell
-# Install PyArmor
-pip install pyarmor
+# 1. Navigate to server
+cd server
 
-# Obfuscate the server directory
-pyarmor gen server/
+# 2. Generate obfuscated scripts
+pyarmor gen --output dist_obfuscated .
+
+# 3. Build the EXE
+pyinstaller omni_bridge_server.spec
 ```
-The obfuscated scripts will be generated in the `dist/` folder. Use these files when building your final executable with PyInstaller.
-
-### 3. UI Watermarking
-The application is configured to display a subtle **"Licensed for Personal Study Only"** watermark on all screens. This acts as a visual deterrent against unauthorized commercial reuse of the interface.
+The `omni_bridge_server.spec` file is pre-configured to automatically source files from `dist_obfuscated/` if the folder exists, ensuring the final `.exe` contains only protected bytecode.
 
 ---
 

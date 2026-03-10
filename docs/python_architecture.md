@@ -98,10 +98,10 @@ Flutter "start" command
 - **GoogleModel**: when `source == target` (non-auto), the original text is returned directly (no API call) — `deep-translator` rejects same-language pairs
 - **MyMemoryModel**: passes through normally; the API returns the original text for same-language pairs
 
-## Environment Variables
+---
 
-| Variable | Used By |
-|----------|---------|
-| `NVIDIA_API_KEY` | RivaModel, LlamaModel |
+## Build & Distribution
 
-Set in `server/.env` (copy from `server/.env.example`).
+- **Obfuscation**: Core server logic is protected using **PyArmor** (`pyarmor gen --output dist_obfuscated .`).
+- **Packaging**: The obfuscated scripts are bundled into a single-file executable using **PyInstaller** (`omni_bridge_server.spec`).
+- **Dynamic Spec**: The spec file automatically detects the `dist_obfuscated` directory and uses it as the source if present.

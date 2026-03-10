@@ -1,7 +1,7 @@
 ; Omni Bridge - Inno Setup Installer Script
 
 #define MyAppName "Omni Bridge: Live AI Translator"
-#define MyAppVersion "1.2.2"
+#define MyAppVersion "1.2.3"
 #define MyAppPublisher "Marshal"
 #define MyAppExeName "omni_bridge.exe"
 #define MyAppURL "https://github.com/Marshal-GG/omni-bridge-translator"
@@ -36,6 +36,7 @@ SolidCompression=yes
 WizardStyle=modern
 ; Minimum Windows 10 (1809 / RS5 — build 17763)
 MinVersion=10.0.17763
+LicenseFile=docs\legal\LICENSE
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -54,11 +55,9 @@ Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignorever
 ; Standalone Python backend server
 Source: "server\dist\omni_bridge_server.exe"; DestDir: "{app}"; Flags: ignoreversion
 
-; Flutter app .env (contains GOOGLE_CLIENT_ID)
-; Source: ".env"; DestDir: "{app}"; Flags: ignoreversion
+; Legal documents
+Source: "docs\legal\*"; DestDir: "{app}\docs\legal"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; Python server .env (contains API keys)
-; Source: "server\.env"; DestDir: "{app}"; Flags: ignoreversion
 
 ; (Optional) VC++ Redistributables — uncomment if users see "missing VCRUNTIME" errors:
 ; Source: "redist\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
@@ -85,10 +84,10 @@ Root: HKCR; Subkey: "omni-bridge\shell\open\command"; ValueType: string; ValueDa
 
 ; Register the reversed Google Client ID as a second protocol
 ; This is mandatory for Google OAuth redirect to trigger the "Open App" prompt in browsers
-Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-c3h4v2pha56t4939hld31sdhllg1tcc9"; ValueType: string; ValueData: "URL:Google Auth Protocol"; Flags: uninsdeletekey
-Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-c3h4v2pha56t4939hld31sdhllg1tcc9"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
-Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-c3h4v2pha56t4939hld31sdhllg1tcc9\DefaultIcon"; ValueType: string; ValueData: "{app}\{#MyAppExeName},0"
-Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-c3h4v2pha56t4939hld31sdhllg1tcc9\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
+Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-7c9m4sag4p7lubjsim25f76ha9oja77g"; ValueType: string; ValueData: "URL:Google Auth Protocol"; Flags: uninsdeletekey
+Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-7c9m4sag4p7lubjsim25f76ha9oja77g"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-7c9m4sag4p7lubjsim25f76ha9oja77g\DefaultIcon"; ValueType: string; ValueData: "{app}\{#MyAppExeName},0"
+Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-7c9m4sag4p7lubjsim25f76ha9oja77g\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
 [UninstallRun]
 ; Kill the Python server process during uninstall
@@ -144,8 +143,11 @@ begin
     DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\omni_bridge');
     DeleteRegKeyIfExists(HKCU, 'Software\Marshal\omni_bridge');
     DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\Omni Bridge');
+    
+    // 3. Wipe OLD/OUTDATED Google Auth Registry Keys (manual cleanup not needed if done here)
+    DeleteRegKeyIfExists(HKCR, 'com.googleusercontent.apps.883780252017-c3h4v2pha56t4939hld31sdhllg1tcc9');
 
-    // 3. Delete any PyInstaller %TEMP%\omni_bridge* extractions from old runs
+    // 4. Delete any PyInstaller %TEMP%\omni_bridge* extractions from old runs
     TempDir := ExpandConstant('{tmp}');
     TempDir := ExtractFilePath(TempDir); // Parent of {tmp} is the actual %TEMP%
     if FindFirst(TempDir + 'omni_bridge*', FindRec) then
