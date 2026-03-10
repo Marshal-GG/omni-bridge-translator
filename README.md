@@ -7,7 +7,7 @@
 
 [![Download Latest](https://img.shields.io/github/v/release/Marshal-GG/omni-bridge-translator?label=Download&style=for-the-badge&color=teal)](https://github.com/Marshal-GG/omni-bridge-translator/releases/latest)
 [![Platform](https://img.shields.io/badge/Platform-Windows-blue?style=for-the-badge&logo=windows)](https://github.com/Marshal-GG/omni-bridge-translator/releases)
-[![License](https://img.shields.io/github/license/Marshal-GG/omni-bridge-translator?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-Restricted_Study_Only-black.svg)](LICENSE)
 
 </div>
 
@@ -153,7 +153,7 @@ For NVIDIA Riva ASR / NMT or Llama translation:
 
 ## 📄 License
 
-MIT — see [LICENSE](LICENSE) for details.
+Personal Study & Learning License (Restricted) — see [LICENSE](LICENSE) for details. **No commercial use or mod distribution.**
 
 ---
 

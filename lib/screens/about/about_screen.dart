@@ -4,7 +4,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/update_service.dart';
 
-
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
 
@@ -72,16 +71,13 @@ class _AboutScreenState extends State<AboutScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF161616),
-                Color(0xFF0F0F0F),
-              ],
+              colors: [Color(0xFF161616), Color(0xFF0F0F0F)],
             ),
           ),
           child: Column(
             children: [
               _buildHeader(context),
-            const Divider(height: 1, color: Colors.white10),
+              const Divider(height: 1, color: Colors.white10),
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -118,7 +114,8 @@ class _AboutScreenState extends State<AboutScreen> {
                                       ),
                                       const SizedBox(width: 16),
                                       Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           const Text(
                                             'Omni Bridge',
@@ -154,8 +151,8 @@ class _AboutScreenState extends State<AboutScreen> {
                                                   onPressed:
                                                       _updateStatus ==
                                                           UpdateStatus.checking
-                                                              ? null
-                                                              : _checkForUpdate,
+                                                      ? null
+                                                      : _checkForUpdate,
                                                   style: OutlinedButton.styleFrom(
                                                     padding:
                                                         const EdgeInsets.symmetric(
@@ -165,20 +162,27 @@ class _AboutScreenState extends State<AboutScreen> {
                                                     side: BorderSide(
                                                       color:
                                                           _updateStatus ==
-                                                              UpdateStatus.checking
+                                                              UpdateStatus
+                                                                  .checking
                                                           ? Colors.white10
-                                                           : Colors.tealAccent
+                                                          : Colors.tealAccent
                                                                 .withValues(
                                                                   alpha: 0.3,
                                                                 ),
                                                     ),
                                                     shape: RoundedRectangleBorder(
                                                       borderRadius:
-                                                          BorderRadius.circular(8),
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
                                                     ),
-                                                     foregroundColor:
-                                                         Colors.tealAccent,
-                                                     backgroundColor: Colors.tealAccent.withValues(alpha: 0.02),
+                                                    foregroundColor:
+                                                        Colors.tealAccent,
+                                                    backgroundColor: Colors
+                                                        .tealAccent
+                                                        .withValues(
+                                                          alpha: 0.02,
+                                                        ),
                                                   ),
                                                   child:
                                                       _updateStatus ==
@@ -188,18 +192,22 @@ class _AboutScreenState extends State<AboutScreen> {
                                                           height: 10,
                                                           child:
                                                               CircularProgressIndicator(
-                                                                strokeWidth: 1.5,
-                                                                color: Colors.white38,
+                                                                strokeWidth:
+                                                                    1.5,
+                                                                color: Colors
+                                                                    .white38,
                                                               ),
                                                         )
                                                       : Text(
                                                           _updateStatus ==
-                                                                  UpdateStatus.idle
+                                                                  UpdateStatus
+                                                                      .idle
                                                               ? 'Check for updates'
                                                               : 'Check again',
-                                                          style: const TextStyle(
-                                                            fontSize: 11,
-                                                          ),
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 11,
+                                                              ),
                                                         ),
                                                 ),
                                               ),
@@ -207,10 +215,12 @@ class _AboutScreenState extends State<AboutScreen> {
                                               if (_updateStatus !=
                                                       UpdateStatus.idle &&
                                                   _updateStatus !=
-                                                      UpdateStatus.checking) ...[
+                                                      UpdateStatus
+                                                          .checking) ...[
                                                 const SizedBox(height: 4),
                                                 Row(
-                                                  mainAxisSize: MainAxisSize.min,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
                                                   children: [
                                                     if (_updateStatus ==
                                                         UpdateStatus.upToDate)
@@ -218,19 +228,22 @@ class _AboutScreenState extends State<AboutScreen> {
                                                         Icons
                                                             .check_circle_outline_rounded,
                                                         size: 11,
-                                                        color: Colors.tealAccent,
+                                                        color:
+                                                            Colors.tealAccent,
                                                       )
                                                     else if (_updateStatus ==
                                                         UpdateStatus.available)
                                                       const Icon(
                                                         Icons.upgrade_rounded,
                                                         size: 11,
-                                                        color: Colors.orangeAccent,
+                                                        color:
+                                                            Colors.orangeAccent,
                                                       )
                                                     else if (_updateStatus ==
                                                         UpdateStatus.error)
                                                       const Icon(
-                                                        Icons.error_outline_rounded,
+                                                        Icons
+                                                            .error_outline_rounded,
                                                         size: 11,
                                                         color: Colors.redAccent,
                                                       ),
@@ -240,7 +253,8 @@ class _AboutScreenState extends State<AboutScreen> {
                                                       const Text(
                                                         'Up to date',
                                                         style: TextStyle(
-                                                          color: Colors.tealAccent,
+                                                          color:
+                                                              Colors.tealAccent,
                                                           fontSize: 10,
                                                         ),
                                                       )
@@ -251,23 +265,27 @@ class _AboutScreenState extends State<AboutScreen> {
                                                         child: Text(
                                                           'v${_updateResult?.latestVersion} available — Download',
                                                           style: const TextStyle(
-                                                            color:
-                                                                Colors.orangeAccent,
+                                                            color: Colors
+                                                                .orangeAccent,
                                                             fontSize: 10,
-                                                            decoration: TextDecoration
-                                                                .underline,
+                                                            decoration:
+                                                                TextDecoration
+                                                                    .underline,
                                                             decorationColor:
-                                                                Colors.orangeAccent,
+                                                                Colors
+                                                                    .orangeAccent,
                                                           ),
                                                         ),
                                                       )
                                                     else if (_updateStatus ==
                                                         UpdateStatus.error)
                                                       Text(
-                                                        _updateResult?.errorMessage ??
+                                                        _updateResult
+                                                                ?.errorMessage ??
                                                             'Check failed.',
                                                         style: const TextStyle(
-                                                          color: Colors.redAccent,
+                                                          color:
+                                                              Colors.redAccent,
                                                           fontSize: 10,
                                                         ),
                                                       ),
@@ -285,16 +303,17 @@ class _AboutScreenState extends State<AboutScreen> {
                                   // ── Row 1: About | Features ────────────────────
                                   IntrinsicHeight(
                                     child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
                                       children: [
-                                          Expanded(
-                                            child: _InfoCard(
-                                              icon: Icons.info_outline_rounded,
-                                              title: 'About Omni Bridge',
-                                              content:
-                                                  'Omni Bridge is your ultimate companion for real-time accessibility and global communication. By leveraging state-of-the-art AI from Google, NVIDIA, and OpenAI, it provides ultra-low latency live captions and translations directly on your Windows desktop.\n\nWhether you are attending a meeting in a foreign language, watching content without subtitles, or need assistive technology for hearing clarity, Omni Bridge captures any audio source — system output or microphone — and delivers synchronized, highly accurate text in a customizable, transparent overlay.',
-                                            ),
+                                        Expanded(
+                                          child: _InfoCard(
+                                            icon: Icons.info_outline_rounded,
+                                            title: 'About Omni Bridge',
+                                            content:
+                                                'Omni Bridge is your ultimate companion for real-time accessibility and global communication. By leveraging state-of-the-art AI from Google, NVIDIA, and OpenAI, it provides ultra-low latency live captions and translations directly on your Windows desktop.\n\nWhether you are attending a meeting in a foreign language, watching content without subtitles, or need assistive technology for hearing clarity, Omni Bridge captures any audio source — system output or microphone — and delivers synchronized, highly accurate text in a customizable, transparent overlay.',
                                           ),
+                                        ),
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: _InfoCard(
@@ -311,7 +330,8 @@ class _AboutScreenState extends State<AboutScreen> {
                                                       'Mic & Desktop Audio Capture',
                                                 ),
                                                 _FeatureRow(
-                                                  icon: Icons.psychology_rounded,
+                                                  icon:
+                                                      Icons.psychology_rounded,
                                                   label:
                                                       'AI Transcription: Google, Whisper, Riva',
                                                 ),
@@ -332,7 +352,8 @@ class _AboutScreenState extends State<AboutScreen> {
                                                       'Full Session Caption History',
                                                 ),
                                                 _FeatureRow(
-                                                  icon: Icons.cloud_done_rounded,
+                                                  icon:
+                                                      Icons.cloud_done_rounded,
                                                   label:
                                                       'Synced Settings via Firebase',
                                                 ),
@@ -348,7 +369,8 @@ class _AboutScreenState extends State<AboutScreen> {
                                   // ── Row 2: Built With | Support + Legal ────────
                                   IntrinsicHeight(
                                     child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
                                       children: [
                                         Expanded(
                                           child: _InfoCard(
@@ -380,7 +402,8 @@ class _AboutScreenState extends State<AboutScreen> {
                                                 CrossAxisAlignment.stretch,
                                             children: const [
                                               _InfoCard(
-                                                icon: Icons.help_outline_rounded,
+                                                icon:
+                                                    Icons.help_outline_rounded,
                                                 title: 'Support & Feedback',
                                                 content:
                                                     'For issues, feature requests, or general feedback, please reach out via the project repository or contact the developer directly.',
@@ -390,7 +413,7 @@ class _AboutScreenState extends State<AboutScreen> {
                                                 icon: Icons.gavel_rounded,
                                                 title: 'License & Privacy',
                                                 content:
-                                                    'This software is provided for personal use. API keys are stored locally. Analytics are anonymous. We do not sell or share your data.',
+                                                    'Licensed for Personal Study & Learning only. You may use this code to learn, but any commercial use or public distribution of modified versions is strictly prohibited. Your privacy is respected; no personal data is shared.',
                                               ),
                                             ],
                                           ),
@@ -452,10 +475,14 @@ class _AboutScreenState extends State<AboutScreen> {
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.03),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.03,
+                                        ),
                                         borderRadius: BorderRadius.circular(20),
                                         border: Border.all(
-                                          color: Colors.white.withValues(alpha: 0.05),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.05,
+                                          ),
                                         ),
                                       ),
                                       child: Text(
