@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/services/subscription_service.dart';
+import '../../../core/services/firebase/subscription_service.dart';
 
 Widget buildQuotaUsageBar(SubscriptionStatus status) {
   final color = status.progress > 0.9

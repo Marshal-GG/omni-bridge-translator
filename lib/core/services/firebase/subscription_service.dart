@@ -28,12 +28,34 @@ class SubscriptionStatus {
   bool get isExceeded => !isUnlimited && dailyCharsUsed >= dailyLimit;
 }
 
+class SubscriptionPlan {
+  final String id;
+  final String name;
+  final String price;
+  final String description;
+  final List<String> features;
+  final bool isPopular;
+
+  const SubscriptionPlan({
+    required this.id,
+    required this.name,
+    required this.price,
+    required this.description,
+    required this.features,
+    this.isPopular = false,
+  });
+}
+
 class SubscriptionService {
   SubscriptionService._();
   static final SubscriptionService instance = SubscriptionService._();
 
   static const String _rtdbBaseUrl =
       'https://omni-bridge-ai-translator-default-rtdb.firebaseio.com';
+
+  // --- Dynamic Monetization Config ---
+  Map<String, dynamic>? _monetizationConfig;
+  StreamSubscription? _monetizationSub;
 
   final _statusController = StreamController<SubscriptionStatus>.broadcast();
   Stream<SubscriptionStatus> get statusStream => _statusController.stream;
@@ -48,6 +70,7 @@ class SubscriptionService {
   StreamSubscription? _rtdbUsageSub;
 
   void init() {
+    _listenToMonetizationConfig();
     FirebaseAuth.instance.authStateChanges().listen((user) {
       _userSub?.cancel();
       _rtdbUsageSub?.cancel();
@@ -62,22 +85,32 @@ class SubscriptionService {
     });
   }
 
-  void _listenToRTDBUsage(String uid) async {
-    // We cannot easily use standard RTDB snapshot listening without firebase_database plugin,
-    // so we'll poll it periodically, OR we can add `firebase_database` plugin. 
-    // Let's implement pooling as a fallback if `http` is the only way we access RTDB currently.
-    // Wait, let's just add polling every 5 seconds since we are doing REST calls.
-    // Or better, let's check `pubspec.yaml` to see if `firebase_database` is available.
-    // It's requested to "listen to this specific path in RTDB instead of Firestore". 
-    // I will use `http.get` initially, but setting up a Stream involves periodic polling unless we use `firebase_database`.
-    // Actually, RTDB supports REST streaming via Server-Sent Events (SSE). 
-    // Alternatively I'll use `Timer.periodic`.
-    
-    // For now, I'll set up a Timer that polls every 3 seconds while active.
-    // Let's implement it inside a separate method properly.
+  void _listenToMonetizationConfig() {
+    _monetizationSub?.cancel();
+    _monetizationSub = FirebaseFirestore.instance
+        .collection('system')
+        .doc('monetization')
+        .snapshots()
+        .listen((doc) {
+          if (doc.exists) {
+            _monetizationConfig = doc.data();
+            debugPrint(
+              '[Subscription] Monetization config updated from Firestore',
+            );
+
+            // Refresh current status if we have one to apply new limits
+            if (_currentStatus != null) {
+              _updateCurrentStatus();
+            }
+          }
+        });
   }
 
-  // Polling mechanism since RTDB REST is used. 
+  void _listenToRTDBUsage(String uid) async {
+    _startUsagePolling(uid);
+  }
+
+  // Polling mechanism since RTDB REST is used.
   Timer? _usagePollTimer;
 
   void _startUsagePolling(String uid) {
@@ -94,15 +127,19 @@ class SubscriptionService {
       if (user == null) return;
       final idToken = await user.getIdToken();
       final now = DateTime.now();
-      final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final url = Uri.parse('$_rtdbBaseUrl/users/$uid/daily_usage/$todayStr/tokens.json?auth=$idToken');
-      
+      final todayStr =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final url = Uri.parse(
+        '$_rtdbBaseUrl/users/$uid/daily_usage/$todayStr/tokens.json?auth=$idToken',
+      );
+
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final tokensUsed = (data as num?)?.toInt() ?? 0;
-        
-        if (_currentStatus != null && _currentStatus!.dailyCharsUsed != tokensUsed) {
+
+        if (_currentStatus != null &&
+            _currentStatus!.dailyCharsUsed != tokensUsed) {
           _updateCurrentStatus(dailyCharsUsed: tokensUsed);
         }
       }
@@ -111,14 +148,19 @@ class SubscriptionService {
     }
   }
 
-  void _updateCurrentStatus({int? dailyCharsUsed, SubscriptionTier? tier, DateTime? resetAt}) {
+  void _updateCurrentStatus({
+    int? dailyCharsUsed,
+    SubscriptionTier? tier,
+    DateTime? resetAt,
+  }) {
     if (_currentStatus == null && tier == null) return;
-    
+
     final wasExceeded = _currentStatus?.isExceeded ?? false;
     final newTier = tier ?? _currentStatus?.tier ?? SubscriptionTier.free;
     final newUsed = dailyCharsUsed ?? _currentStatus?.dailyCharsUsed ?? 0;
-    final newReset = resetAt ?? _currentStatus?.dailyResetAt ?? _getNextDailyReset();
-    
+    final newReset =
+        resetAt ?? _currentStatus?.dailyResetAt ?? _getNextDailyReset();
+
     _currentStatus = SubscriptionStatus(
       tier: newTier,
       dailyCharsUsed: newUsed,
@@ -141,41 +183,42 @@ class SubscriptionService {
         .doc(uid)
         .snapshots()
         .listen((doc) {
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (!doc.exists) {
-          _initializeUserDoc(uid);
-          return;
-        }
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (!doc.exists) {
+              _initializeUserDoc(uid);
+              return;
+            }
 
-        final data = doc.data()!;
-        final tierStr = data['tier'] as String? ?? 'free';
-        final tier = _parseTier(tierStr);
-        // Notice we don't pull dailyCharsUsed from Firestore anymore.
-        final resetAt = (data['dailyResetAt'] as Timestamp?)?.toDate() ??
-            _getNextDailyReset();
+            final data = doc.data()!;
+            final tierStr = data['tier'] as String? ?? 'free';
+            final tier = _parseTier(tierStr);
+            // Notice we don't pull dailyCharsUsed from Firestore anymore.
+            final resetAt =
+                (data['dailyResetAt'] as Timestamp?)?.toDate() ??
+                _getNextDailyReset();
 
-        // Check if we need to reset daily quota (it's a new day)
-        if (DateTime.now().isAfter(resetAt)) {
-          // We don't reset RTDB daily quota here because it's path-based (new day = new path).
-          // But we might want to update the DB's `dailyResetAt` to the next day so this doesn't trigger continually.
-          _resetDailyQuota(uid);
-          return;
-        }
+            // Check if we need to reset daily quota (it's a new day)
+            if (DateTime.now().isAfter(resetAt)) {
+              // We don't reset RTDB daily quota here because it's path-based (new day = new path).
+              // But we might want to update the DB's `dailyResetAt` to the next day so this doesn't trigger continually.
+              _resetDailyQuota(uid);
+              return;
+            }
 
-        // Detect tier change and log a subscription event
-        if (_lastKnownTier != null && _lastKnownTier != tier) {
-          _logSubscriptionEvent(
-            uid: uid,
-            fromTier: _lastKnownTier!,
-            toTier: tier,
-          );
-        }
-        _lastKnownTier = tier;
+            // Detect tier change and log a subscription event
+            if (_lastKnownTier != null && _lastKnownTier != tier) {
+              _logSubscriptionEvent(
+                uid: uid,
+                fromTier: _lastKnownTier!,
+                toTier: tier,
+              );
+            }
+            _lastKnownTier = tier;
 
-        _updateCurrentStatus(tier: tier, resetAt: resetAt);
-      });
-    });
-        
+            _updateCurrentStatus(tier: tier, resetAt: resetAt);
+          });
+        });
+
     _startUsagePolling(uid);
   }
 
@@ -220,12 +263,10 @@ class SubscriptionService {
 
       // On first upgrade from free, record subscriptionSince + paymentProvider
       if (fromTier == SubscriptionTier.free && isUpgrade) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .update({'subscriptionSince': FieldValue.serverTimestamp(),
-              'paymentProvider': 'razorpay',
-            });
+        await FirebaseFirestore.instance.collection('users').doc(uid).update({
+          'subscriptionSince': FieldValue.serverTimestamp(),
+          'paymentProvider': 'razorpay',
+        });
       }
 
       debugPrint('[Subscription] Event logged: $event ($fromTier → $toTier)');
@@ -257,15 +298,15 @@ class SubscriptionService {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
       final idToken = await user.getIdToken();
-      final url = Uri.parse(
-        '$_rtdbBaseUrl/users/$uid/logs.json?auth=$idToken',
-      );
+      final url = Uri.parse('$_rtdbBaseUrl/users/$uid/logs.json?auth=$idToken');
       await http.post(
         url,
         body: jsonEncode({
           'event': 'quota_exceeded',
           'data': {
-            'tier': _tierToString(_currentStatus?.tier ?? SubscriptionTier.free),
+            'tier': _tierToString(
+              _currentStatus?.tier ?? SubscriptionTier.free,
+            ),
             'dailyLimit': _currentStatus?.dailyLimit ?? 0,
             'dailyCharsUsed': _currentStatus?.dailyCharsUsed ?? 0,
           },
@@ -278,14 +319,16 @@ class SubscriptionService {
     }
   }
 
-  Future<void> openCheckout(SubscriptionTier tier) async {
+  Future<void> openCheckout(String tierId) async {
     // Razorpay payment link placeholder
-    // In production, these would be your real Razorpay Payment Links or a custom cloud function URL
-    final String url = tier == SubscriptionTier.pro
-        ? 'https://razorpay.me/@omnibridgepro'
-        : tier == SubscriptionTier.plus
-        ? 'https://razorpay.me/@omnibridgeplus'
-        : 'https://razorpay.me/@omnibridgeweekly'; // Still uses the weekly URL for the basic tier for now
+    final config =
+        _monetizationConfig?['payment_links'] as Map<String, dynamic>?;
+
+    final String url = tierId == 'pro'
+        ? (config?['pro'] ?? 'https://razorpay.me/@omnibridgepro')
+        : tierId == 'plus'
+        ? (config?['plus'] ?? 'https://razorpay.me/@omnibridgeplus')
+        : (config?['basic'] ?? 'https://razorpay.me/@omnibridgemonetization');
 
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
@@ -321,7 +364,6 @@ class SubscriptionService {
 
   SubscriptionTier _parseTier(String tier) {
     switch (tier.toLowerCase()) {
-      case 'weekly': // Legacy support
       case 'basic':
         return SubscriptionTier.basic;
       case 'plus':
@@ -360,28 +402,148 @@ class SubscriptionService {
   }
 
   int _getLimitForTier(SubscriptionTier tier) {
+    final limits = _monetizationConfig?['limits'] as Map<String, dynamic>?;
+
     switch (tier) {
       case SubscriptionTier.basic:
-        return 50000;
+        return limits?['basic'] ?? 50000;
       case SubscriptionTier.plus:
-        return 100000;
+        return limits?['plus'] ?? 100000;
       case SubscriptionTier.pro:
-        return 999999999; // Effectively unlimited
+        return limits?['pro'] ?? 999999999; // Effectively unlimited
       default:
-        return 10000;
+        return limits?['free'] ?? 10000;
     }
+  }
+
+  /// Gets the price string for a tier from Firestore.
+  String getPriceForTier(SubscriptionTier tier) {
+    final prices = _monetizationConfig?['prices'] as Map<String, dynamic>?;
+    switch (tier) {
+      case SubscriptionTier.free:
+        return prices?['free'] ?? '₹0';
+      case SubscriptionTier.basic:
+        return prices?['basic'] ?? '₹49';
+      case SubscriptionTier.plus:
+        return prices?['plus'] ?? '₹149';
+      case SubscriptionTier.pro:
+        return prices?['pro'] ?? '₹399';
+    }
+  }
+
+  /// Gets the tier requirement for an engine or whisper size.
+  SubscriptionTier getRequirement(
+    String category,
+    String key,
+    SubscriptionTier fallback,
+  ) {
+    final requirements =
+        _monetizationConfig?['requirements'] as Map<String, dynamic>?;
+    if (requirements == null || !requirements.containsKey(category)) {
+      return fallback;
+    }
+
+    final categoryMap = requirements[category] as Map<String, dynamic>;
+    if (!categoryMap.containsKey(key)) return fallback;
+
+    return _parseTier(categoryMap[key] as String);
+  }
+
+  /// Gets the display name for a tier from Firestore.
+  String getNameForTier(SubscriptionTier tier) {
+    final names = _monetizationConfig?['names'] as Map<String, dynamic>?;
+    switch (tier) {
+      case SubscriptionTier.free:
+        return names?['free'] ?? 'Free';
+      case SubscriptionTier.basic:
+        return names?['basic'] ?? 'Basic';
+      case SubscriptionTier.plus:
+        return names?['plus'] ?? 'Plus';
+      case SubscriptionTier.pro:
+        return names?['pro'] ?? 'Pro';
+    }
+  }
+
+  /// List of plans dynamically evaluated from _monetizationConfig
+  List<SubscriptionPlan> get availablePlans {
+    final names =
+        _monetizationConfig?['names'] as Map<String, dynamic>? ??
+        {'free': 'Free', 'basic': 'Basic', 'plus': 'Plus', 'pro': 'Pro'};
+    final prices =
+        _monetizationConfig?['prices'] as Map<String, dynamic>? ??
+        {'free': '₹0', 'basic': '₹49', 'plus': '₹149', 'pro': '₹399'};
+    final descriptions =
+        _monetizationConfig?['descriptions'] as Map<String, dynamic>? ??
+        {
+          'free': 'For casual users',
+          'basic': 'For short trips',
+          'plus': 'For active learners',
+          'pro': 'For power users',
+        };
+    final featuresMap =
+        _monetizationConfig?['features'] as Map<String, dynamic>? ??
+        {
+          'free': [
+            '10,000 Chars Daily',
+            'Standard Models',
+            'Basic Live Captions',
+          ],
+          'basic': [
+            '50,000 Chars Daily',
+            'Same-Session History',
+            'High-Speed Translation',
+            'Standard Live Captions',
+          ],
+          'plus': [
+            '100,000 Chars Daily',
+            '3-Day History Access',
+            'Advanced Live Captions',
+            'Priority Support',
+            'Offline Model Support',
+          ],
+          'pro': [
+            'Unlimited Daily Chars',
+            'Intelligent Context Refresh (5s)',
+            'Auto-Correct Live Captions',
+            'Unlimited History Access',
+            'Premium Translation Engines',
+            '24/7 Priority Support',
+          ],
+        };
+
+    final order =
+        _monetizationConfig?['order'] as List<dynamic>? ??
+        ['free', 'basic', 'plus', 'pro'];
+    final popular = _monetizationConfig?['popular'] as String? ?? 'plus';
+
+    return order.map((key) {
+      final id = key.toString();
+      return SubscriptionPlan(
+        id: id,
+        name: names[id]?.toString() ?? id,
+        price: prices[id]?.toString() ?? (id == 'free' ? '₹0' : ''),
+        description: descriptions[id]?.toString() ?? '',
+        features:
+            (featuresMap[id] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
+        isPopular: id == popular,
+      );
+    }).toList();
   }
 
   SubscriptionStatus _getDefaultStatus() {
     return SubscriptionStatus(
       tier: SubscriptionTier.free,
       dailyCharsUsed: 0,
-      dailyLimit: 10000,
+      dailyLimit: _getLimitForTier(SubscriptionTier.free),
       dailyResetAt: _getNextDailyReset(),
     );
   }
 
   void dispose() {
+    _monetizationSub?.cancel();
     _userSub?.cancel();
     _rtdbUsageSub?.cancel();
     _usagePollTimer?.cancel();

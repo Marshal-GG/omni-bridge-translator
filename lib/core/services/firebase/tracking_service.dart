@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../navigation/global_navigator.dart';
+import '../../navigation/global_navigator.dart';
 
 class TrackingService {
   TrackingService._();
@@ -176,24 +176,29 @@ class TrackingService {
         .doc(uid)
         .snapshots()
         .listen((snapshot) {
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (snapshot.exists) {
-          final data = snapshot.data();
-          if (data is Map<String, dynamic> && data['forceLogout'] == true) {
-            debugPrint('[Tracking] Remote forceLogout detected for user $uid');
-            _handleRemoteLogout();
-          }
-        }
-      });
-    });
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (snapshot.exists) {
+              final data = snapshot.data();
+              if (data is Map<String, dynamic> && data['forceLogout'] == true) {
+                debugPrint(
+                  '[Tracking] Remote forceLogout detected for user $uid',
+                );
+                _handleRemoteLogout();
+              }
+            }
+          });
+        });
 
     // 2. Sync Initial App Settings to RTDB
     try {
       final settingsUrl = await _getRTDBUrl('sessions/$_currentSessionId');
       if (settingsUrl != null) {
-        await http.patch(settingsUrl, body: jsonEncode({
-          'started_at': {'.sv': 'timestamp'},
-        }));
+        await http.patch(
+          settingsUrl,
+          body: jsonEncode({
+            'started_at': {'.sv': 'timestamp'},
+          }),
+        );
       }
     } catch (e) {
       debugPrint('[Tracking] Failed to sync session start to RTDB: $e');
@@ -203,7 +208,7 @@ class TrackingService {
   void _handleRemoteLogout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('current_session_id_$uid');
-    
+
     // Auth state listener handles the rest
     await FirebaseAuth.instance.signOut();
 
@@ -241,13 +246,16 @@ class TrackingService {
       try {
         final settingsUrl = await _getRTDBUrl('sessions/$_currentSessionId');
         if (settingsUrl != null) {
-          await http.patch(settingsUrl, body: jsonEncode({
-            'ended_at': {'.sv': 'timestamp'},
-            'duration_seconds': duration,
-          }));
+          await http.patch(
+            settingsUrl,
+            body: jsonEncode({
+              'ended_at': {'.sv': 'timestamp'},
+              'duration_seconds': duration,
+            }),
+          );
         }
       } catch (e) {
-         debugPrint('[Tracking] Failed to sync session end to RTDB: $e');
+        debugPrint('[Tracking] Failed to sync session end to RTDB: $e');
       }
 
       debugPrint('[Tracking] Session $_currentSessionId ended');
@@ -271,15 +279,18 @@ class TrackingService {
 
     try {
       final duration = DateTime.now().difference(_sessionStartTime!).inSeconds;
-      
+
       // RTDB-only ping for active session detection
       try {
         final settingsUrl = await _getRTDBUrl('sessions/$_currentSessionId');
         if (settingsUrl != null) {
-          await http.patch(settingsUrl, body: jsonEncode({
-            'last_ping_at': {'.sv': 'timestamp'},
-            'duration_seconds': duration,
-          }));
+          await http.patch(
+            settingsUrl,
+            body: jsonEncode({
+              'last_ping_at': {'.sv': 'timestamp'},
+              'duration_seconds': duration,
+            }),
+          );
         }
       } catch (e) {
         debugPrint('[Tracking] Failed to ping RTDB session: $e');
@@ -489,8 +500,9 @@ class TrackingService {
       // 3. Overall Daily Token Usage Update in RTDB
       final now = DateTime.now();
       // Pad month and day to ensure strictly YYYY-MM-DD
-      final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      
+      final todayStr =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
       final dailyUsageUrl = await _getRTDBUrl('daily_usage/$todayStr');
       if (dailyUsageUrl != null && totalTokens > 0) {
         await http.patch(
@@ -505,7 +517,9 @@ class TrackingService {
       }
 
       // 4. Per-Day, Per-Model Tokens Update in RTDB
-      final dailyModelUsageUrl = await _getRTDBUrl('daily_usage/$todayStr/models/$engine');
+      final dailyModelUsageUrl = await _getRTDBUrl(
+        'daily_usage/$todayStr/models/$engine',
+      );
       if (dailyModelUsageUrl != null) {
         await http.patch(
           dailyModelUsageUrl,
@@ -523,18 +537,20 @@ class TrackingService {
 
       // 5. Application Errors / API Failures Update in RTDB
       if (stats['error'] != null) {
-        final dailyErrorUrl = await _getRTDBUrl('daily_usage/$todayStr/errors/$engine');
+        final dailyErrorUrl = await _getRTDBUrl(
+          'daily_usage/$todayStr/errors/$engine',
+        );
         if (dailyErrorUrl != null) {
-           await http.patch(
-             dailyErrorUrl,
-             body: jsonEncode({
-               'failed_calls': {
-                 '.sv': {'increment': 1},
-               },
-               'last_error': stats['error'],
-               'last_error_time': {'.sv': 'timestamp'},
-             }),
-           );
+          await http.patch(
+            dailyErrorUrl,
+            body: jsonEncode({
+              'failed_calls': {
+                '.sv': {'increment': 1},
+              },
+              'last_error': stats['error'],
+              'last_error_time': {'.sv': 'timestamp'},
+            }),
+          );
         }
       }
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
-import '../../core/services/auth_service.dart';
+import '../../core/services/firebase/auth_service.dart';
 
 import 'components/startup_header.dart';
 

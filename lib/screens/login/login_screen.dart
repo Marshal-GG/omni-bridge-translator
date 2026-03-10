@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../core/services/auth_service.dart';
+import '../../core/services/firebase/auth_service.dart';
 
 import 'components/login_header.dart';
 import 'components/login_branding.dart';
@@ -124,7 +124,6 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _error = e.message ?? 'Failed to send reset email.');
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -253,7 +252,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               // Google button with proper logo
                               _GoogleSignInButton(onPressed: _signInWithGoogle),
                               const SizedBox(height: 12),
-
 
                               // View Tutorial button
                               TextButton.icon(

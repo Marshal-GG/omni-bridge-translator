@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'routes/routes_config.dart';
 import 'services/python_server_manager.dart';
-import 'services/tracking_service.dart';
+import 'services/firebase/tracking_service.dart';
 
 Future<void> initializeWindow() async {
   await Window.initialize();

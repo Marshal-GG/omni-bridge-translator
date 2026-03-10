@@ -3,9 +3,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../firebase_options.dart';
 import 'config/app_config.dart';
-import 'services/auth_service.dart';
-import 'services/tracking_service.dart';
-import 'services/subscription_service.dart';
+import 'services/firebase/auth_service.dart';
+import 'services/firebase/tracking_service.dart';
+import 'services/firebase/subscription_service.dart';
 import 'tray_manager.dart';
 import 'window_manager.dart';
 

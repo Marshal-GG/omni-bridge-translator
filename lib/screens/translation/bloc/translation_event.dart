@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../../core/services/subscription_service.dart';
+import '../../../core/services/firebase/subscription_service.dart';
 
 abstract class TranslationEvent extends Equatable {
   const TranslationEvent();

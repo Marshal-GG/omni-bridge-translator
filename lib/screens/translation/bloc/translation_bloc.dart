@@ -6,9 +6,9 @@ import 'package:window_manager/window_manager.dart';
 import 'translation_event.dart';
 import 'translation_state.dart';
 import '../../../core/services/asr_ws_client.dart';
-import '../../../core/services/tracking_service.dart';
+import '../../../core/services/firebase/tracking_service.dart';
 import '../../../core/services/asr_text_controller.dart';
-import '../../../core/services/subscription_service.dart';
+import '../../../core/services/firebase/subscription_service.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final AsrWebSocketClient asrClient;

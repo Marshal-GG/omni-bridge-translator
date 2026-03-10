@@ -10,7 +10,7 @@ export '../../screens/about/about_screen.dart';
 export '../../screens/subscription/subscription_screen.dart';
 
 // services & models
-export '../services/auth_service.dart';
+export '../services/firebase/auth_service.dart';
 export '../services/history_service.dart';
 export '../../models/history_entry.dart';
 

@@ -9,7 +9,7 @@ import '../bloc/settings_event.dart';
 import '../bloc/settings_state.dart';
 import '../../../core/constants/languages.dart';
 import '../../../core/services/whisper_service.dart';
-import '../../../core/services/subscription_service.dart';
+import '../../../core/services/firebase/subscription_service.dart';
 import 'settings_helpers.dart';
 
 Widget buildLanguagesTab(BuildContext context, SettingsState state) {
@@ -229,14 +229,6 @@ Widget buildTranslationModelSelector(
   final currentTier =
       SubscriptionService.instance.currentStatus?.tier ?? SubscriptionTier.free;
 
-  // Minimum tier required per engine
-  const engineTierRequirements = <String, SubscriptionTier>{
-    'google': SubscriptionTier.free,
-    'mymemory': SubscriptionTier.free,
-    'riva': SubscriptionTier.basic,
-    'llama': SubscriptionTier.basic,
-  };
-
   const translationModels = {
     'google': 'Google Translate',
     'mymemory': 'MyMemory',
@@ -245,7 +237,12 @@ Widget buildTranslationModelSelector(
   };
 
   bool hasAccess(String engineKey) {
-    final required = engineTierRequirements[engineKey] ?? SubscriptionTier.free;
+    if (engineKey == 'google' || engineKey == 'mymemory') return true;
+    final required = SubscriptionService.instance.getRequirement(
+      'engines',
+      engineKey,
+      SubscriptionTier.basic,
+    );
     return _tierRank(currentTier) >= _tierRank(required);
   }
 
@@ -280,7 +277,11 @@ Widget buildTranslationModelSelector(
             highlightColor: Colors.transparent,
             hoverColor: Colors.transparent,
             mouseCursor: SystemMouseCursors.basic,
-            icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.white38),
+            icon: Icon(
+              Icons.keyboard_arrow_down,
+              size: 18,
+              color: Colors.white38,
+            ),
           ),
           onChanged: (entry) {
             if (entry != null && hasAccess(entry.key)) {
@@ -340,7 +341,9 @@ Widget buildTranslationModelSelector(
                 splashColor: itemHasAccess
                     ? Colors.tealAccent.withValues(alpha: 0.2)
                     : Colors.transparent,
-                highlightColor: itemHasAccess ? Colors.white10 : Colors.transparent,
+                highlightColor: itemHasAccess
+                    ? Colors.white10
+                    : Colors.transparent,
                 hoverColor: itemHasAccess ? Colors.white10 : Colors.transparent,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -370,7 +373,9 @@ Widget buildTranslationModelSelector(
                       ),
                       if (!itemHasAccess) ...[
                         const SizedBox(width: 8),
-                        _buildTierLockBadge('Weekly+'),
+                        _buildTierLockBadge(
+                          '${SubscriptionService.instance.getNameForTier(SubscriptionService.instance.getRequirement('engines', item.key, SubscriptionTier.basic))}+',
+                        ),
                       ],
                       if (isCurrentlySelected) ...[
                         const SizedBox(width: 8),
@@ -687,27 +692,27 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
       'medium': 'Medium (~1.5 GB) - High Accuracy',
     };
 
-    // Minimum tier required per Whisper size
-    const whisperTierRequirements = <String, SubscriptionTier>{
-      'tiny': SubscriptionTier.free,
-      'base': SubscriptionTier.free,
-      'small': SubscriptionTier.basic,
-      'medium': SubscriptionTier.plus,
-    };
-
     final currentTier =
         SubscriptionService.instance.currentStatus?.tier ??
         SubscriptionTier.free;
 
     bool whisperHasAccess(String size) {
-      final required = whisperTierRequirements[size] ?? SubscriptionTier.free;
+      if (size == 'tiny' || size == 'base') return true;
+      final required = SubscriptionService.instance.getRequirement(
+        'whisper',
+        size,
+        size == 'medium' ? SubscriptionTier.plus : SubscriptionTier.basic,
+      );
       return _tierRank(currentTier) >= _tierRank(required);
     }
 
     String whisperLockLabel(String size) {
-      if (size == 'small') return 'Weekly+';
-      if (size == 'medium') return 'Plus+';
-      return '';
+      final required = SubscriptionService.instance.getRequirement(
+        'whisper',
+        size,
+        size == 'medium' ? SubscriptionTier.plus : SubscriptionTier.basic,
+      );
+      return '${SubscriptionService.instance.getNameForTier(required)}+';
     }
 
     return Container(
@@ -809,72 +814,72 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
                   ),
                   isExpanded: true,
                   style: const TextStyle(color: Colors.white, fontSize: 12),
-                onChanged: (val) {
-                  if (val != null && whisperHasAccess(val)) {
-                    widget.onModelChanged('whisper-$val');
-                  } else if (val != null && !whisperHasAccess(val)) {
-                    Navigator.pushNamed(context, '/history-panel');
-                  }
-                },
-                items: modelOptions.entries.map((e) {
-                  final isRecommended = e.key == 'base';
-                  final isDownloaded = _downloadedModels[e.key] == true;
-                  final hasAccess = whisperHasAccess(e.key);
-                  final lockLabel = whisperLockLabel(e.key);
-                  return DropdownMenuItem<String>(
-                    value: e.key,
-                    enabled: hasAccess,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          e.value,
-                          style: TextStyle(
-                            color: hasAccess ? Colors.white : Colors.white30,
-                          ),
-                        ),
-                        if (!hasAccess) ...[
-                          const SizedBox(width: 8),
-                          _buildTierLockBadge(lockLabel),
-                        ],
-                        if (isRecommended && hasAccess) ...[
-                          const SizedBox(width: 8),
-                          _buildRecommendedBadge(
-                            isActive: e.key == _currentSize,
-                          ),
-                        ],
-                        if (isDownloaded && hasAccess) ...[
-                          const SizedBox(width: 8),
-                          _buildDownloadedBadge(),
-                        ],
-                      ],
-                    ),
-                  );
-                }).toList(),
-                selectedItemBuilder: (BuildContext context) {
-                  return modelOptions.entries.map((e) {
+                  onChanged: (val) {
+                    if (val != null && whisperHasAccess(val)) {
+                      widget.onModelChanged('whisper-$val');
+                    } else if (val != null && !whisperHasAccess(val)) {
+                      Navigator.pushNamed(context, '/history-panel');
+                    }
+                  },
+                  items: modelOptions.entries.map((e) {
                     final isRecommended = e.key == 'base';
                     final isDownloaded = _downloadedModels[e.key] == true;
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(e.value),
-                        if (isRecommended) ...[
-                          const SizedBox(width: 8),
-                          _buildRecommendedBadge(isActive: true),
+                    final hasAccess = whisperHasAccess(e.key);
+                    final lockLabel = whisperLockLabel(e.key);
+                    return DropdownMenuItem<String>(
+                      value: e.key,
+                      enabled: hasAccess,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            e.value,
+                            style: TextStyle(
+                              color: hasAccess ? Colors.white : Colors.white30,
+                            ),
+                          ),
+                          if (!hasAccess) ...[
+                            const SizedBox(width: 8),
+                            _buildTierLockBadge(lockLabel),
+                          ],
+                          if (isRecommended && hasAccess) ...[
+                            const SizedBox(width: 8),
+                            _buildRecommendedBadge(
+                              isActive: e.key == _currentSize,
+                            ),
+                          ],
+                          if (isDownloaded && hasAccess) ...[
+                            const SizedBox(width: 8),
+                            _buildDownloadedBadge(),
+                          ],
                         ],
-                        if (isDownloaded) ...[
-                          const SizedBox(width: 8),
-                          _buildDownloadedBadge(),
-                        ],
-                      ],
+                      ),
                     );
-                  }).toList();
-                },
+                  }).toList(),
+                  selectedItemBuilder: (BuildContext context) {
+                    return modelOptions.entries.map((e) {
+                      final isRecommended = e.key == 'base';
+                      final isDownloaded = _downloadedModels[e.key] == true;
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(e.value),
+                          if (isRecommended) ...[
+                            const SizedBox(width: 8),
+                            _buildRecommendedBadge(isActive: true),
+                          ],
+                          if (isDownloaded) ...[
+                            const SizedBox(width: 8),
+                            _buildDownloadedBadge(),
+                          ],
+                        ],
+                      );
+                    }).toList();
+                  },
+                ),
               ),
             ),
           ),
-        ),
 
           if (isDownloading) ...[
             const SizedBox(height: 12),

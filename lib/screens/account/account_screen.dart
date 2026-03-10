@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import '../../core/services/auth_service.dart';
-import '../../core/services/subscription_service.dart';
+import '../../core/services/firebase/auth_service.dart';
+import '../../core/services/firebase/subscription_service.dart';
 
 import 'components/account_header.dart';
 import 'components/account_avatar.dart';
@@ -30,7 +30,7 @@ class _AccountScreenState extends State<AccountScreen> {
     super.initState();
     final user = AuthService.instance.currentUser.value;
     _nameController.text = user?.displayName ?? '';
-    
+
     PackageInfo.fromPlatform().then((info) {
       if (mounted) setState(() => _version = info.version);
     });
@@ -107,7 +107,9 @@ class _AccountScreenState extends State<AccountScreen> {
       child: Row(
         children: [
           Icon(
-            isSoon ? Icons.auto_mode_rounded : Icons.radio_button_unchecked_rounded,
+            isSoon
+                ? Icons.auto_mode_rounded
+                : Icons.radio_button_unchecked_rounded,
             size: 14,
             color: isSoon ? Colors.orangeAccent : Colors.white24,
           ),
@@ -116,7 +118,9 @@ class _AccountScreenState extends State<AccountScreen> {
             child: Text(
               label,
               style: TextStyle(
-                color: isSoon ? Colors.white.withValues(alpha: 0.8) : Colors.white38,
+                color: isSoon
+                    ? Colors.white.withValues(alpha: 0.8)
+                    : Colors.white38,
                 fontSize: 12,
                 fontWeight: isSoon ? FontWeight.w500 : FontWeight.normal,
               ),
@@ -158,10 +162,7 @@ class _AccountScreenState extends State<AccountScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF161616),
-                Color(0xFF0F0F0F),
-              ],
+              colors: [Color(0xFF161616), Color(0xFF0F0F0F)],
             ),
           ),
           child: Column(
@@ -199,11 +200,16 @@ class _AccountScreenState extends State<AccountScreen> {
                                 child: Padding(
                                   padding: const EdgeInsets.all(16),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const Row(
                                         children: [
-                                          Icon(Icons.person_outline_rounded, size: 16, color: Colors.tealAccent),
+                                          Icon(
+                                            Icons.person_outline_rounded,
+                                            size: 16,
+                                            color: Colors.tealAccent,
+                                          ),
                                           SizedBox(width: 8),
                                           Text(
                                             'PROFILE INFORMATION',
@@ -225,8 +231,13 @@ class _AccountScreenState extends State<AccountScreen> {
                                         onSave: _updateName,
                                       ),
                                       const Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 12),
-                                        child: Divider(height: 1, color: Colors.white10),
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        child: Divider(
+                                          height: 1,
+                                          color: Colors.white10,
+                                        ),
                                       ),
                                       buildAccountEmailInfo(user),
                                     ],
@@ -237,13 +248,18 @@ class _AccountScreenState extends State<AccountScreen> {
 
                               // ── Plan Details Card ──────────────────────────
                               StreamBuilder<SubscriptionStatus>(
-                                stream: SubscriptionService.instance.statusStream,
-                                initialData: SubscriptionService.instance.currentStatus,
+                                stream:
+                                    SubscriptionService.instance.statusStream,
+                                initialData:
+                                    SubscriptionService.instance.currentStatus,
                                 builder: (context, snapshot) {
                                   final status = snapshot.data;
-                                  if (status == null) return const SizedBox.shrink();
+                                  if (status == null) {
+                                    return const SizedBox.shrink();
+                                  }
 
-                                  final tierName = status.tier.name.toUpperCase();
+                                  final tierName = status.tier.name
+                                      .toUpperCase();
                                   final isUnlimited = status.isUnlimited;
                                   final progress = status.progress;
 
@@ -251,15 +267,20 @@ class _AccountScreenState extends State<AccountScreen> {
                                     child: Padding(
                                       padding: const EdgeInsets.all(16),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Row(
                                             children: [
                                               Container(
-                                                padding: const EdgeInsets.all(8),
+                                                padding: const EdgeInsets.all(
+                                                  8,
+                                                ),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.tealAccent.withValues(alpha: 0.1),
-                                                  borderRadius: BorderRadius.circular(8),
+                                                  color: Colors.tealAccent
+                                                      .withValues(alpha: 0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
                                                 ),
                                                 child: const Icon(
                                                   Icons.auto_awesome_rounded,
@@ -270,14 +291,16 @@ class _AccountScreenState extends State<AccountScreen> {
                                               const SizedBox(width: 12),
                                               Expanded(
                                                 child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
                                                       '$tierName PLAN',
                                                       style: const TextStyle(
                                                         color: Colors.white,
                                                         fontSize: 14,
-                                                        fontWeight: FontWeight.bold,
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                         letterSpacing: 0.5,
                                                       ),
                                                     ),
@@ -299,15 +322,20 @@ class _AccountScreenState extends State<AccountScreen> {
                                           if (!isUnlimited) ...[
                                             const SizedBox(height: 16),
                                             ClipRRect(
-                                              borderRadius: BorderRadius.circular(4),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
                                               child: LinearProgressIndicator(
                                                 value: progress.clamp(0.0, 1.0),
-                                                backgroundColor: Colors.white.withValues(alpha: 0.05),
-                                                valueColor: AlwaysStoppedAnimation<Color>(
-                                                  progress >= 0.9
-                                                      ? Colors.redAccent
-                                                      : Colors.tealAccent,
-                                                ),
+                                                backgroundColor: Colors.white
+                                                    .withValues(alpha: 0.05),
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                      Color
+                                                    >(
+                                                      progress >= 0.9
+                                                          ? Colors.redAccent
+                                                          : Colors.tealAccent,
+                                                    ),
                                                 minHeight: 4,
                                               ),
                                             ),
@@ -318,14 +346,19 @@ class _AccountScreenState extends State<AccountScreen> {
                                             height: 36,
                                             child: OutlinedButton(
                                               onPressed: () {
-                                                Navigator.pushNamed(context, '/subscription');
+                                                Navigator.pushNamed(
+                                                  context,
+                                                  '/subscription',
+                                                );
                                               },
                                               style: OutlinedButton.styleFrom(
                                                 side: BorderSide(
-                                                  color: Colors.tealAccent.withValues(alpha: 0.3),
+                                                  color: Colors.tealAccent
+                                                      .withValues(alpha: 0.3),
                                                 ),
                                                 shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(8),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
                                                 ),
                                               ),
                                               child: const Text(
@@ -353,11 +386,16 @@ class _AccountScreenState extends State<AccountScreen> {
                                 child: Padding(
                                   padding: const EdgeInsets.all(16),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const Row(
                                         children: [
-                                          Icon(Icons.upcoming_rounded, size: 16, color: Colors.orangeAccent),
+                                          Icon(
+                                            Icons.upcoming_rounded,
+                                            size: 16,
+                                            color: Colors.orangeAccent,
+                                          ),
                                           SizedBox(width: 8),
                                           Text(
                                             'PLANNED FEATURES',
@@ -371,9 +409,18 @@ class _AccountScreenState extends State<AccountScreen> {
                                         ],
                                       ),
                                       const SizedBox(height: 12),
-                                      _buildPlannedItem('Audio Translation & Text-to-Speech', true),
-                                      _buildPlannedItem('PDF & Image Document Support', false),
-                                      _buildPlannedItem('Custom Vocabulary & Glossary', false),
+                                      _buildPlannedItem(
+                                        'Audio Translation & Text-to-Speech',
+                                        true,
+                                      ),
+                                      _buildPlannedItem(
+                                        'PDF & Image Document Support',
+                                        false,
+                                      ),
+                                      _buildPlannedItem(
+                                        'Custom Vocabulary & Glossary',
+                                        false,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -385,7 +432,9 @@ class _AccountScreenState extends State<AccountScreen> {
 
                             // ── Footer Actions ────────────────────────────
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
                               child: AccountButton(
                                 icon: Icons.logout_rounded,
                                 label: 'Sign Out',
@@ -393,7 +442,7 @@ class _AccountScreenState extends State<AccountScreen> {
                                 isDanger: true,
                               ),
                             ),
-                            
+
                             const SizedBox(height: 24),
                             _VersionChip(label: 'v$_version'),
                           ],

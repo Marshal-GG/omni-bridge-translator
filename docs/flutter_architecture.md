@@ -36,7 +36,7 @@ lib/
 │   ├── login/          # Sign-in screen (Google, Email, Guest)
 │   ├── settings/       # Audio devices, languages, model selection (with tier-lock badges)
 │   ├── startup/        # Splash screen + onboarding slides
-│   ├── subscription/   # Subscription screen + UpgradeSheet bottom sheet
+│   ├── subscription/   # Subscription screen + functional component widgets + BLoC + UpgradeSheet
 │   └── translation/    # Live caption overlay + header + BLoC
 ├── app.dart            # MaterialApp wrapper + initial routing
 └── main.dart           # Entry point (delegates to AppInitializer, configures update checker)
@@ -51,6 +51,7 @@ lib/
 | `AuthBloc` | Firebase Auth state — Google, Email/Password, Guest |
 | `SettingsBloc` | User preferences (model, language, devices, opacity, font) |
 | `TranslationBloc` | Active translation session, overlay visibility, language overrides |
+| `SubscriptionBloc`| Orchestrates real-time subscription tier details, limits, and features from Firestore |
 
 ---
 

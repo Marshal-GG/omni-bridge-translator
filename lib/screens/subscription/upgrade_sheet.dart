@@ -55,7 +55,7 @@ class UpgradeSheet extends StatelessWidget {
           const SizedBox(height: 24),
           _buildFeatureRow(
             Icons.bolt_rounded,
-            'Weekly: High-Speed Engines & 50k Limit',
+            'Basic: High-Speed Engines & 50k Limit',
           ),
           _buildFeatureRow(
             Icons.history_rounded,

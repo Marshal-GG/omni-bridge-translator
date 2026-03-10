@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../../core/services/subscription_service.dart';
+import '../../../core/services/firebase/subscription_service.dart';
 
 class AdminPanel extends StatefulWidget {
   const AdminPanel({super.key});
@@ -59,15 +59,19 @@ class _AdminPanelState extends State<AdminPanel> {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.manage_accounts_rounded,
-                        size: 16, color: Colors.tealAccent),
+                    Icon(
+                      Icons.manage_accounts_rounded,
+                      size: 16,
+                      color: Colors.tealAccent,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'MANAGE PLANS',
                       style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.tealAccent),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.tealAccent,
+                      ),
                     ),
                   ],
                 ),
@@ -90,8 +94,9 @@ class _AdminPanelState extends State<AdminPanel> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: FutureBuilder<QuerySnapshot>(
-                    future:
-                        FirebaseFirestore.instance.collection('users').get(),
+                    future: FirebaseFirestore.instance
+                        .collection('users')
+                        .get(),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
                         return Center(
@@ -103,14 +108,18 @@ class _AdminPanelState extends State<AdminPanel> {
                                 Text(
                                   'Error: ${snapshot.error}',
                                   style: const TextStyle(
-                                      color: Colors.redAccent, fontSize: 11),
+                                    color: Colors.redAccent,
+                                    fontSize: 11,
+                                  ),
                                   textAlign: TextAlign.center,
                                 ),
                                 const SizedBox(height: 8),
                                 TextButton(
                                   onPressed: () => setState(() {}),
-                                  child: const Text('Retry',
-                                      style: TextStyle(fontSize: 11)),
+                                  child: const Text(
+                                    'Retry',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
                                 ),
                               ],
                             ),
@@ -118,16 +127,17 @@ class _AdminPanelState extends State<AdminPanel> {
                         );
                       }
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                            child: CircularProgressIndicator());
+                        return const Center(child: CircularProgressIndicator());
                       }
 
                       final docs = snapshot.data!.docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
-                        final name =
-                            (data['displayName'] ?? '').toString().toLowerCase();
-                        final email =
-                            (data['email'] ?? '').toString().toLowerCase();
+                        final name = (data['displayName'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final email = (data['email'] ?? '')
+                            .toString()
+                            .toLowerCase();
                         final q = _adminUserSearch.toLowerCase();
                         return q.isEmpty ||
                             name.contains(q) ||
@@ -139,14 +149,20 @@ class _AdminPanelState extends State<AdminPanel> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text('No users found',
-                                  style: TextStyle(
-                                      fontSize: 12, color: Colors.white54)),
+                              const Text(
+                                'No users found',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white54,
+                                ),
+                              ),
                               const SizedBox(height: 8),
                               TextButton(
                                 onPressed: () => setState(() {}),
-                                child: const Text('Refresh List',
-                                    style: TextStyle(fontSize: 11)),
+                                child: const Text(
+                                  'Refresh List',
+                                  style: TextStyle(fontSize: 11),
+                                ),
                               ),
                             ],
                           ),
@@ -171,37 +187,50 @@ class _AdminPanelState extends State<AdminPanel> {
                             title: Row(
                               children: [
                                 Expanded(
-                                  child: Text(name,
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          color: isSelected
-                                              ? Colors.tealAccent
-                                              : Colors.white)),
+                                  child: Text(
+                                    name,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isSelected
+                                          ? Colors.tealAccent
+                                          : Colors.white,
+                                    ),
+                                  ),
                                 ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: Colors.tealAccent
-                                        .withValues(alpha: 0.1),
+                                    color: Colors.tealAccent.withValues(
+                                      alpha: 0.1,
+                                    ),
                                     borderRadius: BorderRadius.circular(4),
                                     border: Border.all(
-                                        color: Colors.tealAccent
-                                            .withValues(alpha: 0.2)),
+                                      color: Colors.tealAccent.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                    ),
                                   ),
                                   child: Text(
                                     tier.toString().toUpperCase(),
                                     style: const TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.tealAccent),
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.tealAccent,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                            subtitle: Text(email,
-                                style: const TextStyle(
-                                    fontSize: 11, color: Colors.white54)),
+                            subtitle: Text(
+                              email,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.white54,
+                              ),
+                            ),
                             onTap: () {
                               setState(() {
                                 _selectedUserUid = uid;
@@ -219,9 +248,10 @@ class _AdminPanelState extends State<AdminPanel> {
                   Text(
                     'Set Plan for $_selectedUserName:',
                     style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.tealAccent),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.tealAccent,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -234,17 +264,22 @@ class _AdminPanelState extends State<AdminPanel> {
                           label: Text(
                             tier.name.toUpperCase(),
                             style: const TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.bold),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          backgroundColor:
-                              Colors.white.withValues(alpha: 0.05),
+                          backgroundColor: Colors.white.withValues(alpha: 0.05),
                           onPressed: () {
-                            SubscriptionService.instance
-                                .setTierForOtherUser(_selectedUserUid!, tier);
+                            SubscriptionService.instance.setTierForOtherUser(
+                              _selectedUserUid!,
+                              tier,
+                            );
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                  content: Text(
-                                      'Plan updated for $_selectedUserName')),
+                                content: Text(
+                                  'Plan updated for $_selectedUserName',
+                                ),
+                              ),
                             );
                           },
                         ),
@@ -323,10 +358,9 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
   Future<void> _saveEmails(List<String> emails) async {
     setState(() => _saving = true);
     try {
-      await FirebaseFirestore.instance
-          .collection('system')
-          .doc('admins')
-          .set({'emails': emails}, SetOptions(merge: true));
+      await FirebaseFirestore.instance.collection('system').doc('admins').set({
+        'emails': emails,
+      }, SetOptions(merge: true));
       if (mounted) {
         setState(() {
           _adminEmails = emails;
@@ -336,9 +370,9 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Save failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Save failed: $e')));
       }
     }
   }
@@ -366,8 +400,11 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
             // Header
             Row(
               children: [
-                const Icon(Icons.shield_rounded,
-                    size: 16, color: Colors.amberAccent),
+                const Icon(
+                  Icons.shield_rounded,
+                  size: 16,
+                  color: Colors.amberAccent,
+                ),
                 const SizedBox(width: 8),
                 const Text(
                   'ADMIN IDENTITY',
@@ -379,8 +416,11 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.refresh,
-                      size: 16, color: Colors.white38),
+                  icon: const Icon(
+                    Icons.refresh,
+                    size: 16,
+                    color: Colors.white38,
+                  ),
                   tooltip: 'Refresh',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -399,24 +439,26 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
             if (_loading)
               const Center(child: CircularProgressIndicator(strokeWidth: 2))
             else if (_error != null)
-              Text(_error!,
-                  style: const TextStyle(
-                      color: Colors.redAccent, fontSize: 11))
+              Text(
+                _error!,
+                style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+              )
             else if (_adminEmails.isEmpty)
-              const Text('No admin emails configured.',
-                  style: TextStyle(fontSize: 12, color: Colors.white54))
+              const Text(
+                'No admin emails configured.',
+                style: TextStyle(fontSize: 12, color: Colors.white54),
+              )
             else
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: _adminEmails.map((email) {
                   return Chip(
-                    label: Text(email,
-                        style: const TextStyle(fontSize: 11)),
-                    backgroundColor:
-                        Colors.amberAccent.withValues(alpha: 0.1),
+                    label: Text(email, style: const TextStyle(fontSize: 11)),
+                    backgroundColor: Colors.amberAccent.withValues(alpha: 0.1),
                     side: BorderSide(
-                        color: Colors.amberAccent.withValues(alpha: 0.3)),
+                      color: Colors.amberAccent.withValues(alpha: 0.3),
+                    ),
                     deleteIconColor: Colors.redAccent,
                     onDeleted: _saving ? null : () => _removeEmail(email),
                   );
@@ -447,8 +489,10 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : IconButton(
-                        icon: const Icon(Icons.add_circle_outline,
-                            color: Colors.amberAccent),
+                        icon: const Icon(
+                          Icons.add_circle_outline,
+                          color: Colors.amberAccent,
+                        ),
                         tooltip: 'Add admin',
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),

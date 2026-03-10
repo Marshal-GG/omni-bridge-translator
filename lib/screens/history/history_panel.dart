@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import '../../core/services/history_service.dart';
-import '../../core/services/subscription_service.dart';
+import '../../core/services/firebase/subscription_service.dart';
 import '../../models/history_entry.dart';
 import 'components/history_header.dart';
 import 'components/history_list_components.dart';
@@ -72,8 +72,8 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                     icon: Icons.history_toggle_off,
                     title: 'History Unavailable',
                     subtitle:
-                        'Upgrade to Weekly or higher plan to access your translation history.',
-                    requiredTier: 'Weekly+',
+                        'Upgrade to Basic or higher plan to access your translation history.',
+                    requiredTier: 'Basic+',
                   ),
                 ),
               ],
@@ -120,9 +120,13 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                           const Divider(height: 1, color: Colors.white12),
                           Expanded(
                             child: ValueListenableBuilder<List<HistoryEntry>>(
-                              valueListenable: HistoryService.instance.liveEntries,
+                              valueListenable:
+                                  HistoryService.instance.liveEntries,
                               builder: (_, entries, _) {
-                                final filtered = _filterByTier(entries, widget.tier);
+                                final filtered = _filterByTier(
+                                  entries,
+                                  widget.tier,
+                                );
                                 if (filtered.isEmpty) {
                                   return buildHistoryEmptyState(
                                     'No transcriptions yet.\nStart the live translator.',
@@ -166,7 +170,8 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                           else
                             Expanded(
                               child: ValueListenableBuilder<List<HistoryEntry>>(
-                                valueListenable: HistoryService.instance.chunkedEntries,
+                                valueListenable:
+                                    HistoryService.instance.chunkedEntries,
                                 builder: (_, entries, _) {
                                   if (entries.isEmpty) {
                                     return buildHistoryEmptyState(

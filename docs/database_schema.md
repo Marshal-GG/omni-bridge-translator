@@ -23,6 +23,7 @@ There are three main root paths in Firestore:
 ```
 users/{uid}/
 system/admins
+system/monetization
 legal/{documentId}
 ```
 
@@ -44,6 +45,93 @@ A singleton document used to manage administrative access to the platform.
 | Field | Type | Notes |
 |---|---|---|
 | `emails` | `array` | List of email strings authorized to access the Admin Panel. |
+ 
+---
+ 
+### Monetization Configuration — `system/monetization`
+ 
+A singleton document used to manage dynamic pricing, tier names, character limits, and feature gates.
+ 
+```json
+{
+  "names": {
+    "free": "Free",
+    "basic": "Basic",
+    "plus": "Plus",
+    "pro": "Pro"
+  },
+  "prices": {
+    "basic": "₹49",
+    "plus": "₹149",
+    "pro": "₹399"
+  },
+  "descriptions": {
+    "free": "For occasional use",
+    "basic": "For short trips",
+    "plus": "For active learners",
+    "pro": "For power users"
+  },
+  "limits": {
+    "free": 10000,
+    "basic": 50000,
+    "plus": 100000,
+    "pro": 0
+  },
+  "features": {
+    "free": [
+      "10,000 Chars Daily",
+      "Standard Models",
+      "Basic Live Captions"
+    ],
+    "basic": [
+      "50,000 Chars Daily",
+      "Same-Session History",
+      "High-Speed Translation",
+      "Standard Live Captions"
+    ],
+    "plus": [
+      "100,000 Chars Daily",
+      "3-Day History Access",
+      "Advanced Live Captions",
+      "Priority Support",
+      "Offline Model Support"
+    ],
+    "pro": [
+      "Unlimited Daily Chars",
+      "Intelligent Context Refresh (5s)",
+      "Auto-Correct Live Captions",
+      "Unlimited History Access",
+      "Premium Translation Engines",
+      "24/7 Priority Support"
+    ]
+  },
+  "requirements": {
+    "riva": "free",
+    "llama": "plus",
+    "whisper-tiny": "free",
+    "whisper-medium": "pro"
+  },
+  "order": ["free", "basic", "plus", "pro"],
+  "popular": "plus",
+  "payment_links": {
+    "basic": "https://razorpay.me/@omnibridgemonetization",
+    "plus": "https://razorpay.me/@omnibridgeplus",
+    "pro": "https://razorpay.me/@omnibridgepro"
+  }
+}
+```
+ 
+| Field | Type | Notes |
+|---|---|---|
+| `names` | `map` | Display names for each tier |
+| `prices` | `map` | Price strings shown in the UI |
+| `descriptions` | `map` | Short description text for each plan |
+| `limits` | `map` | Daily character limits (0 = unlimited) |
+| `features` | `map` | String arrays of features for each plan |
+| `requirements` | `map` | Minimum tier required for specific engines or features |
+| `order` | `array` | Determines the correct visual order to render plans |
+| `popular` | `string` | The ID of the tier to highlight as "Popular" |
+| `payment_links` | `map` | Direct checkout links for each paid tier |
 
 ---
 
@@ -96,16 +184,16 @@ Created automatically on first login by `SubscriptionService`. Holds subscriptio
 | `forceLogout` | `bool` | Set to `true` to force logout all sessions for this user |
 | `createdAt` | `Timestamp` | Server timestamp of first sign-in / document creation |
 
-**Daily token limits by tier:**
-
+**Daily token limits by tier (Defaults, dynamically updated via `system/monetization`):**
+ 
 | Tier | Limit |
 |---|---|
 | `free` | 10,000 tokens/day |
 | `basic` | 50,000 tokens/day |
 | `plus` | 100,000 tokens/day |
 | `pro` | Unlimited |
-
-> Payment links are handled via Razorpay (see `SubscriptionService.openCheckout`). Setting the `tier` field directly in Firestore (or via a backend function) upgrades the user.
+ 
+> Quota limits, pricing, and feature gate requirements are fetched dynamically from `system/monetization`. Payment links are handled via Razorpay (see `SubscriptionService.openCheckout`). Setting the `tier` field directly in Firestore (or via a backend function) upgrades the user.
 
 ---
 
@@ -460,6 +548,7 @@ users/{uid}                              ← root user doc (tier, daily/monthly/
     └── settings/app_preferences         ← single settings doc
 
 system/admins                            ← list of authorized admin emails
+system/monetization                      ← dynamic pricing, limits, and feature requirements
 legal/{documentId}                       ← markdown content for app policies (terms, privacy, license)
 
 RTDB:

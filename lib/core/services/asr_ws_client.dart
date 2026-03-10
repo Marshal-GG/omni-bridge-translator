@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../routes/routes_config.dart';
 import 'asr_text_controller.dart';
-import 'tracking_service.dart';
+import 'firebase/tracking_service.dart';
 import 'translation_service.dart';
 
 /// Connects to the Python flutter_server.py via WebSocket,

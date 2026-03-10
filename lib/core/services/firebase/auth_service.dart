@@ -10,7 +10,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'tracking_service.dart';
-import '../navigation/global_navigator.dart';
+import '../../navigation/global_navigator.dart';
 
 class AuthService {
   AuthService._();
@@ -256,7 +256,6 @@ class AuthService {
     await TrackingService.instance.logEvent('Password Reset Requested');
   }
 
-
   Future<void> updateDisplayName(String newName) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -284,7 +283,6 @@ class AuthService {
     // Ensure we redirect to splash on manual sign out as well
     await GlobalNavigator.pushNamedAndRemoveUntil('/splash', (route) => false);
   }
-
 
   Future<void> _saveUserToFirestore(User user) async {
     try {

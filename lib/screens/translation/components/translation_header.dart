@@ -6,7 +6,7 @@ import '../bloc/translation_bloc.dart';
 import '../bloc/translation_event.dart';
 import '../bloc/translation_state.dart';
 import '../../../core/services/update_service.dart';
-import '../../../core/services/subscription_service.dart';
+import '../../../core/services/firebase/subscription_service.dart';
 
 Widget buildTranslationHeader(BuildContext context, TranslationState state) {
   final bloc = context.read<TranslationBloc>();
@@ -171,10 +171,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                 child: InkWell(
                                   onTap: () {
                                     Navigator.pop(context);
-                                    Navigator.pushNamed(
-                                      context,
-                                      '/account',
-                                    );
+                                    Navigator.pushNamed(context, '/account');
                                   },
                                   child: const Padding(
                                     padding: EdgeInsets.symmetric(
@@ -325,10 +322,7 @@ class _QuotaUsageText extends StatelessWidget {
           if (status != null) ...[
             const SizedBox(width: 6),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 4,
-                vertical: 1.5,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(4),
