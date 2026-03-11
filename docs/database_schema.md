@@ -14,6 +14,36 @@
 |---|---|
 | **Cloud Firestore** | User profile, subscription quota, session tracking, settings, legal docs, admin lists |
 | **Realtime Database (RTDB)** | High-frequency live caption streaming, logs, model usage stats |
+| **Storage** | (Not used yet) |
+
+---
+
+## Security & Access Control
+
+To protect the integrity of the business model and user sessions without cloud functions, Firestore uses granular **Security Rules**.
+
+| Access Level | Permitted Actions | Restricted Fields |
+|---|---|---|
+| **Admin** | Full Read/Write on all documents. | None. |
+| **User (Owner)** | Read own profile/sessions/settings. Write usage counters and settings. | `tier`, `subscriptionSince`, `paymentProvider`, `forceLogout` (transitions). |
+| **Public** | No access. | All. |
+
+> [!IMPORTANT]
+> **Field-Level Protection**: Users can never upgrade their own `tier` or change `subscriptionSince`. These must be set via the Firebase Console, Admin Panel, or a backend process.
+> 
+> **forceLogout Transition**: Users are permitted to write `forceLogout: false` ONLY if the current value is `true`. This allows the client to "reset" the flag after performing a remote logout, while preventing users from un-banning themselves if an admin sets it to `true`.
+ 
+## Build Mode Isolation
+ 
+To prevent session overlap between development (VS Code) and installed versions, Omni Bridge uses **Named Firebase Apps**.
+ 
+| Build Mode | Firebase App Name | Isolation Level |
+|---|---|---|
+| **Debug** | `OmniBridge-Debug` | Isolated local persistence (Auth tokens, Firestore cache, RTDB local store) |
+| **Release** | `OmniBridge-Release` | Isolated local persistence |
+ 
+> [!NOTE]
+> While both apps point to the same Firebase Project, they are logically separated on the client. This means logging into the Debug version will **not** share a session with the Release version.
 
 ---
 
@@ -50,7 +80,7 @@ A singleton document used to manage administrative access to the platform.
  
 ### Monetization Configuration — `system/monetization`
  
-A singleton document used to manage dynamic pricing, tier names, character limits, and feature gates.
+A singleton document used to manage dynamic pricing, tier names, token limits, and feature gates.
  
 ```json
 {
@@ -75,29 +105,29 @@ A singleton document used to manage dynamic pricing, tier names, character limit
     "free": 10000,
     "basic": 50000,
     "plus": 100000,
-    "pro": 0
+    "pro": -1
   },
   "features": {
     "free": [
-      "10,000 Chars Daily",
+      "10,000 Tokens Daily",
       "Standard Models",
       "Basic Live Captions"
     ],
     "basic": [
-      "50,000 Chars Daily",
+      "50,000 Tokens Daily",
       "Same-Session History",
       "High-Speed Translation",
       "Standard Live Captions"
     ],
     "plus": [
-      "100,000 Chars Daily",
+      "100,000 Tokens Daily",
       "3-Day History Access",
       "Advanced Live Captions",
       "Priority Support",
       "Offline Model Support"
     ],
     "pro": [
-      "Unlimited Daily Chars",
+      "Unlimited Daily Tokens",
       "Intelligent Context Refresh (5s)",
       "Auto-Correct Live Captions",
       "Unlimited History Access",
@@ -132,7 +162,7 @@ A singleton document used to manage dynamic pricing, tier names, character limit
 | `names` | `map` | Display names for each tier |
 | `prices` | `map` | Price strings shown in the UI |
 | `descriptions` | `map` | Short description text for each plan |
-| `limits` | `map` | Daily character limits (0 = unlimited) |
+| `limits` | `map` | Daily token limits (0 = unlimited) |
 | `features` | `map` | String arrays of features for each plan |
 | `requirements` | `map` | Minimum tier required for specific engines or features |
 | `order` | `array` | Determines the correct visual order to render plans |
@@ -160,15 +190,15 @@ Stores app policies like terms of service and privacy policy to allow dynamic up
 
 ### 0. User Profile & Subscription — `users/{uid}` (root document)
 
-Created automatically on first login by `SubscriptionService`. Holds subscription tier, rolling usage counters, and monetization metadata. All char counters use atomic Firestore increments.
+Created automatically on first login by `SubscriptionService._initializeUserDoc()`. Holds subscription tier, rolling usage counters, and monetization metadata. Monthly and lifetime token counters use atomic Firestore increments. **Daily token usage is NOT stored here — it lives exclusively in RTDB** (`users/{uid}/daily_usage/{YYYY-MM-DD}/tokens`) and is polled every 3 seconds by `SubscriptionService`.
 
 ```json
 {
   "tier": "free",
   "dailyResetAt": "2026-03-09T00:00:00Z",
-  "monthlyCharsUsed": 38000,
+  "monthlyTokensUsed": 38000,
   "monthlyResetAt": "2026-04-01T00:00:00Z",
-  "lifetimeCharsUsed": 520400,
+  "lifetimeTokensUsed": 520400,
   "subscriptionSince": "2026-02-01T00:00:00Z",
   "paymentProvider": "razorpay",
   "lastQuotaExceededAt": "2026-03-08T18:30:00Z",
@@ -177,29 +207,29 @@ Created automatically on first login by `SubscriptionService`. Holds subscriptio
 }
 ```
 
-| Field | Type | Notes |
-|---|---|---|
-| `tier` | `string` | Subscription tier: `free` \| `basic` \| `plus` \| `pro` |
-| `dailyResetAt` | `Timestamp` | When the daily quota next resets (midnight local). Daily usage is tracked in RTDB. |
-| `monthlyCharsUsed` | `number` | Characters translated this calendar month (atomic increment) |
-| `monthlyResetAt` | `Timestamp` | When the monthly counter next resets (1st of next month) |
-| `lifetimeCharsUsed` | `number` | All-time cumulative chars, never resets |
-| `subscriptionSince` | `Timestamp?` | When the user first converted from free to paid (set once) |
-| `paymentProvider` | `string?` | Payment provider used: `"razorpay"` |
-| `lastQuotaExceededAt` | `Timestamp?` | Last time the user hit their daily cap |
-| `forceLogout` | `bool` | Set to `true` to force logout all sessions for this user |
-| `createdAt` | `Timestamp` | Server timestamp of first sign-in / document creation |
+| Field | Type | Written at | Notes |
+|---|---|---|---|
+| `tier` | `string` | Creation | **Admin-Write Only.** Subscription tier: `free` \| `basic` \| `plus` \| `pro` |
+| `dailyResetAt` | `Timestamp` | Creation | Midnight of the next day (local). Checked on each Firestore snapshot; updated by `_resetDailyQuota()` when crossed. |
+| `monthlyTokensUsed` | `number` | Creation / Monthly reset | Tokens translated this billing period. Reset to `0` by `_resetMonthlyQuota()` when `monthlyResetAt` is crossed. |
+| `monthlyResetAt` | `Timestamp` | Creation → First upgrade → Monthly reset | Initially the 1st of next calendar month. On first paid upgrade, anchored to `now + 30 days` (billing-cycle). Each subsequent reset advances it by another 30 days. |
+| `lifetimeTokensUsed` | `number` | Creation | All-time cumulative tokens, never resets |
+| `subscriptionSince` | `Timestamp?` | First upgrade | **Admin-Write Only.** Set once when the user first upgrades from `free` |
+| `paymentProvider` | `string?` | First upgrade | **Admin-Write Only.** Payment provider used: `"razorpay"` |
+| `lastQuotaExceededAt` | `Timestamp?` | On quota hit | Server timestamp of the most recent daily cap breach |
+| `forceLogout` | `bool` | Admin write | **Global** logout flag. Admin sets `true` to kick; rules allow user-reset to `false` only after kick. |
+| `createdAt` | `Timestamp` | Creation | Server timestamp of first sign-in / document creation |
 
-**Daily token limits by tier (Defaults, dynamically updated via `system/monetization`):**
+**Daily token limits by tier (defaults; dynamically overridden by `system/monetization`):**
  
-| Tier | Limit |
-|---|---|
-| `free` | 10,000 tokens/day |
-| `basic` | 50,000 tokens/day |
-| `plus` | 100,000 tokens/day |
-| `pro` | Unlimited |
+| Tier | Firestore `limits` value | Effective limit |
+|---|---|---|
+| `free` | `10000` | 10,000 tokens/day |
+| `basic` | `50000` | 50,000 tokens/day |
+| `plus` | `100000` | 100,000 tokens/day |
+| `pro` | `-1` | Unlimited (`isUnlimited = dailyLimit < 0`) |
  
-> Quota limits, pricing, and feature gate requirements are fetched dynamically from `system/monetization`. Payment links are handled via Razorpay (see `SubscriptionService.openCheckout`). Setting the `tier` field directly in Firestore (or via a backend function) upgrades the user.
+> Quota limits, pricing, and feature gate requirements are fetched dynamically from `system/monetization`. Payment links are handled via Razorpay (see `SubscriptionService.openCheckout()`). Setting the `tier` field directly in Firestore (or via a backend function) upgrades the user; the Firestore listener in `_listenToUserDoc()` detects the change and fires a `subscription_events` log automatically.
 
 ---
 
@@ -225,7 +255,7 @@ Written by `SubscriptionService._logSubscriptionEvent()` whenever the user's tie
 | `timestamp` | `Timestamp` | Server timestamp of the change |
 | `via` | `string` | Payment provider (`"razorpay"`) |
 
-> Quota-exceeded events are logged to `users/{uid}/logs/{push-id}` in RTDB (see RTDB Event Logs below) with `event: "quota_exceeded"` and a `data` object containing `tier` and `dailyLimit`.
+> Quota-exceeded events are logged to `users/{uid}/logs/{push-id}` in RTDB (see RTDB Event Logs below) with `event: "quota_exceeded"` and a `data` object containing `tier`, `dailyLimit`, and `dailyTokensUsed`. `lastQuotaExceededAt` on the root Firestore user doc is also updated at the same time.
 
 ---
 
@@ -265,8 +295,11 @@ Written by `SubscriptionService._logSubscriptionEvent()` whenever the user's tie
 | `appReopenedAt` | `Timestamp?` | Timestamp when an existing session is resumed |
 | `durationSeconds` | `number` | `endTime - startTime` in seconds (updated on app exit) |
 | `isEnded` | `bool` | `false` while running, `true` after user logs out |
-| `forceLogout` | `bool` | `true` triggers a remote logout for this specific session |
+| `forceLogout` | `bool` | **Per-session** logout flag. Setting `true` kicks only this specific session (e.g. remotely revoking one device). Detected by `TrackingService` session-doc listener. |
 | `device.*` | `map` | OS + network snapshot at session start |
+
+> [!NOTE]
+> Two `forceLogout` flags exist at different levels: `users/{uid}.forceLogout` (global — kicks all devices at once) and `users/{uid}/sessions/{sessionId}.forceLogout` (per-session — kicks a single device). Both are monitored by `TrackingService` and call `_handleRemoteLogout()` when triggered.
 
 ---
 
@@ -347,8 +380,8 @@ One node written **per translation call**. Never updated after creation.
 | `model` | `string` | Exact model variant used |
 | `latency_ms` | `number` | Round-trip time from send → receive |
 | `total_tokens` | `number` | LLM token consumption (0 for Riva) |
-| `input_chars` | `number` | Character count of source text |
-| `output_chars` | `number` | Character count of translated text |
+| `input_tokens` | `number` | Token count of source text |
+| `output_tokens` | `number` | Token count of translated text |
 | `fallback_from` | `string?` | Set if this was a retry after engine failure |
 | `error` | `string?` | Error message if the translation failed |
 | `sessionId` | `string` | Links back to the Firestore session document |
@@ -367,8 +400,8 @@ One node **per engine**, updated atomically on every translation. Use this to an
   "total_calls": 1482,
   "total_tokens": 0,
   "total_latency_ms": 622440,
-  "total_input_chars": 128940,
-  "total_output_chars": 139200,
+  "total_input_tokens": 128940,
+  "total_output_tokens": 139200,
   "last_used": 1741244995000
 }
 
@@ -378,8 +411,8 @@ One node **per engine**, updated atomically on every translation. Use this to an
   "total_calls": 34,
   "total_tokens": 41200,
   "total_latency_ms": 306000,
-  "total_input_chars": 2890,
-  "total_output_chars": 3100,
+  "total_input_tokens": 2890,
+  "total_output_tokens": 3100,
   "last_used": 1741243330000
 }
 
@@ -389,8 +422,8 @@ One node **per engine**, updated atomically on every translation. Use this to an
   "total_calls": 210,
   "total_tokens": 0,
   "total_latency_ms": 89040,
-  "total_input_chars": 18200,
-  "total_output_chars": 19500,
+  "total_input_tokens": 18200,
+  "total_output_tokens": 19500,
   "last_used": 1741240530000
 }
 
@@ -400,8 +433,8 @@ One node **per engine**, updated atomically on every translation. Use this to an
   "total_calls": 45,
   "total_tokens": 0,
   "total_latency_ms": 32000,
-  "total_input_chars": 4500,
-  "total_output_chars": 4550,
+  "total_input_tokens": 4500,
+  "total_output_tokens": 4550,
   "last_used": 1741249800000
 }
 
@@ -411,8 +444,8 @@ One node **per engine**, updated atomically on every translation. Use this to an
   "total_calls": 120,
   "total_tokens": 0,
   "total_latency_ms": 96000,
-  "total_input_chars": 12000,
-  "total_output_chars": 0,
+  "total_input_tokens": 12000,
+  "total_output_tokens": 0,
   "last_used": 1741251600000
 }
 ```
@@ -483,9 +516,9 @@ Exceptions caught at runtime. Filtered — noisy widget lifecycle errors are sup
 
 ---
 
-### 6. Daily Usage (Telemetry) — `users/{uid}/daily_usage/{YYYY-MM-DD}`
+### 6. Daily Usage (Quota) — `users/{uid}/daily_usage/{YYYY-MM-DD}`
 
-Tracks aggregated telemetry for a specific day. Useful for real-time dashboards answering "How much quota has been consumed today across engines?". Updated atomically on translation completion.
+Tracks aggregated usage for a specific calendar day. The path key is the date string (`YYYY-MM-DD` in local time). This is the **primary source** for the user's daily token quota — `SubscriptionService` polls `tokens` every **3 seconds** and surfaces it as `SubscriptionStatus.dailyTokensUsed`.
 
 ```json
 {
@@ -513,12 +546,16 @@ Tracks aggregated telemetry for a specific day. Useful for real-time dashboards 
 }
 ```
 
+
 | Sub-path | Type | Notes |
 |---|---|---|
-| `tokens` | `number` | Total tokens consumed for all models today (incrementally updated) |
-| `models/{engine}/tokens` | `number` | Tokens mapped to a specific engine today |
-| `models/{engine}/calls` | `number` | Number of successful translations for the engine today |
+| `tokens` | `number` | **Total `input_tokens + output_tokens`** for all engines today (primary daily quota counter, polled every 3 s by `SubscriptionService`) |
+| `last_updated` | `number` | RTDB server timestamp of the last write |
+| `models/{engine}/tokens` | `number` | `input_tokens + output_tokens` for a specific engine today |
+| `models/{engine}/calls` | `number` | Successful translation calls for the engine today |
 | `errors/{engine}/failed_calls` | `number` | Non-fatal translation API errors grouped by engine |
+| `errors/{engine}/last_error` | `string` | Last error message for the engine |
+| `errors/{engine}/last_error_time` | `number` | RTDB timestamp of the last error |
 
 ---
 

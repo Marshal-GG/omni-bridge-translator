@@ -31,11 +31,8 @@ class GoogleModel:
                     "engine": "google-translate",
                     "model": "google-translate",
                     "latency_ms": 0,
-                    "prompt_tokens": 0,
-                    "completion_tokens": 0,
-                    "total_tokens": 0,
-                    "input_chars": len(text),
-                    "output_chars": len(text),
+                    "input_tokens": len(text),
+                    "output_tokens": len(text),
                     "same_lang_passthrough": True,
                 }
             key = (src, target_lang)
@@ -49,11 +46,8 @@ class GoogleModel:
                 "engine": "google-translate",
                 "model": "google-translate",
                 "latency_ms": latency_ms,
-                "prompt_tokens": 0,
-                "completion_tokens": 0,
-                "total_tokens": 0,
-                "input_chars": len(text),
-                "output_chars": len(result) if result else 0,
+                "input_tokens": len(text),
+                "output_tokens": len(result) if result else 0,
             }
             return (result if result else None), stats
         except Exception as e:
@@ -64,5 +58,5 @@ class GoogleModel:
                 "model": "google-translate",
                 "latency_ms": latency_ms,
                 "error": str(e),
-                "input_chars": len(text),
+                "input_tokens": len(text),
             }

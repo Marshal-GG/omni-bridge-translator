@@ -74,8 +74,8 @@ class SpeechRecognitionModel:
                     "engine": "google-asr",
                     "model": "speech_recognition",
                     "latency_ms": latency_ms,
-                    "input_chars": len(transcript),
-                    "output_chars": 0,
+                    "input_tokens": len(transcript),
+                    "output_tokens": 0,
                 }
             return transcript, stats
 

@@ -259,7 +259,7 @@ class _AccountScreenState extends State<AccountScreen> {
                                     return const SizedBox.shrink();
                                   }
 
-                                  final tierName = status.tier.name
+                                  final tierName = SubscriptionService.instance.getNameForTier(status.tier)
                                       .toUpperCase();
                                   final isUnlimited = status.isUnlimited;
                                   final progress = status.progress;
@@ -308,8 +308,8 @@ class _AccountScreenState extends State<AccountScreen> {
                                                     const SizedBox(height: 2),
                                                     Text(
                                                       isUnlimited
-                                                          ? 'Unlimited character translation'
-                                                          : '${status.dailyCharsUsed} / ${status.dailyLimit} chars used today',
+                                                          ? 'Unlimited token translation'
+                                                          : '${status.dailyTokensUsed} / ${status.dailyLimit} tokens used today',
                                                       style: const TextStyle(
                                                         color: Colors.white54,
                                                         fontSize: 11,

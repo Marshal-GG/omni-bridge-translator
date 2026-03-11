@@ -10,7 +10,7 @@
 
 ## Overview
 
-The Python server is the local backend for Omni Bridge. It captures system audio (or microphone), runs ASR and translation, and streams results to the Flutter UI via WebSocket.
+The Python server is the local backend for Omni Bridge. It captures system audio (or microphone), runs ASR and translation, and streams results to the Flutter UI via WebSocket. It calculates **engine-agnostic token counts** (input + output) for every translation call, serving as the source of truth for the quota system.
 
 ---
 
@@ -52,10 +52,12 @@ WebSocket server (`ws://127.0.0.1:8765`). Handles all command routing from the F
 Core pipeline orchestrator:
 - Dynamically loads the configured ASR model and translation model
 - Feeds audio chunks from `audio_capture.py` → ASR model → translation model
-- Broadcasts `{ originalText, translatedText, isFinal, stats }` payloads
-- Manages model switching without full restart
-- Writes ASR errors safely to a dedicated `logs/asr_error.log` file instead of the project root.
-- **Offline Model Memory Management**: Explicitly unloads Whisper offline models from memory when switching to other engines to release system resources.
+- Broadcasts `{ originalText, translatedText, isFinal, usage_stats }` payloads.
+- Calculates `input_tokens` and `output_tokens` for **every** engine (including Google and MyMemory).
+- Manages model switching (ASR and Translation) without a full pipeline restart.
+- Writes ASR-specific connectivity and parsing errors to `logs/asr_error.log`.
+- **TODO**: Add a diagnostic script to bundle local logs for user support submissions.
+- **Offline Model Memory Management**: Explicitly unloads Whisper models from RAM when switching to cloud engines.
 
 ### `audio_capture.py`
 - **Desktop loopback**: captures system audio via WASAPI (Windows-only, `pyaudiowpatch`)
@@ -89,8 +91,17 @@ Flutter "start" command
         └─ audio_capture.py (loopback / mic)
             └─ audio chunks → ASR model
                 └─ transcript text → Translation model
-                    └─ { originalText, translatedText, isFinal }
-                        └─ WebSocket → Flutter UI (Used by HistoryService for 5s context refresh)
+{
+  "originalText": "...",
+  "translatedText": "...",
+  "isFinal": true,
+  "usage_stats": [
+    { "engine": "whisper", "latency_ms": 120, "input_tokens": 45 },
+    { "engine": "llama", "latency_ms": 350, "input_tokens": 45, "output_tokens": 52 }
+  ]
+}
+```
+*Note: The Flutter client maps these stats to RTDB paths for quota enforcement.*
 ```
 
 ---
@@ -105,5 +116,5 @@ Flutter "start" command
 ## Build & Distribution
 
 - **Obfuscation**: Core server logic is protected using **PyArmor** (`pyarmor gen --output dist_obfuscated .`).
-- **Packaging**: The obfuscated scripts are bundled into a single-file executable using **PyInstaller** (`omni_bridge_server.spec`).
-- **Dynamic Spec**: The spec file automatically detects the `dist_obfuscated` directory and uses it as the source if present.
+- **Packaging**: Obfuscated scripts are bundled into a single-file executable using **PyInstaller** (`omni_bridge_server.spec`).
+- **Dynamic Spec**: The spec file automatically detects the existence of `dist_obfuscated` and maps it to the internal source tree during the build.

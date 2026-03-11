@@ -43,8 +43,8 @@ class MyMemoryModel:
                 "engine": "mymemory-translate",
                 "model": "mymemory-free",
                 "latency_ms": latency_ms,
-                "input_chars": len(text),
-                "output_chars": len(result) if result else 0,
+                "input_tokens": len(text),
+                "output_tokens": len(result) if result else 0,
             }
 
         except Exception as e:
@@ -55,5 +55,5 @@ class MyMemoryModel:
                 "model": "mymemory-free",
                 "latency_ms": latency_ms,
                 "error": str(e),
-                "input_chars": len(text),
+                "input_tokens": len(text),
             }

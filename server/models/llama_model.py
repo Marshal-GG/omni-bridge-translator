@@ -78,11 +78,10 @@ class LlamaModel:
                 "engine": "llama-translate",
                 "model": self.MODEL_ID,
                 "latency_ms": latency_ms,
-                "prompt_tokens": usage.prompt_tokens if usage else 0,
-                "completion_tokens": usage.completion_tokens if usage else 0,
-                "total_tokens": usage.total_tokens if usage else 0,
-                "input_chars": len(text),
-                "output_chars": len(result),
+                "api_prompt_tokens": usage.prompt_tokens if usage else 0,
+                "api_completion_tokens": usage.completion_tokens if usage else 0,
+                "input_tokens": len(text),
+                "output_tokens": len(result),
             }
             return result, stats
         except Exception as e:
@@ -93,5 +92,5 @@ class LlamaModel:
                 "model": self.MODEL_ID,
                 "latency_ms": latency_ms,
                 "error": str(e),
-                "input_chars": len(text),
+                "input_tokens": len(text),
             }

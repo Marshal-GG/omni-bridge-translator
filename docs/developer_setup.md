@@ -15,6 +15,7 @@ This guide covers running Omni Bridge from source for development.
 - **Windows 10/11** (required for WASAPI loopback audio capture)
 - **Flutter SDK** 3.x+ — [flutter.dev](https://flutter.dev/docs/get-started/install/windows)
 - **Python 3.11+** — [python.org](https://python.org)
+- **Firebase CLI** — [firebase.google.com/docs/cli](https://firebase.google.com/docs/cli)
 
 ---
 
@@ -56,6 +57,20 @@ copy lib\core\config\app_config.example.dart lib\core\config\app_config.dart
 Open `lib/core/config/app_config.dart` and fill in your `googleClientId`.  
 Get it from: [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials → OAuth 2.0 Client IDs.
 
+**Step 3 — Firebase Services:**
+
+1.  **Firestore**: Enable Firestore Database (Native mode) in the Firebase Console.
+2.  **Realtime Database**: Enable Realtime Database for usage tracking.
+3.  **Authentication**: Enable Google Sign-In and Anonymous authentication.
+
+**Step 4 — Deploying Security Rules:**
+
+From the project root, ensure you are logged in to the Firebase CLI (`firebase login`) and then deploy the security rules:
+
+```powershell
+firebase deploy --only firestore:rules
+```
+
 > [!IMPORTANT]
 > `firebase_options.dart` and `app_config.dart` are listed in `.gitignore` and must **never** be committed.
 
@@ -79,6 +94,15 @@ From the project root:
 ```powershell
 flutter pub get
 flutter run -d windows
+```
+
+### Resetting Environment
+
+If you need to test fresh logins or clear the local session cache (e.g., when switching Firebase projects during development), run the cleanup script:
+
+```powershell
+# From project root
+.\scripts\clear_app_data.ps1
 ```
 
 ---

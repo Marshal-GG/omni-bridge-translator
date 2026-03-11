@@ -2,7 +2,7 @@
 
 ## Overview
 
-Omni Bridge uses a **3-tier paid subscription model** (plus a free tier) to balance server costs with user accessibility. Subscriptions are purchased via Razorpay and reflected instantly in the app through a Firestore listener. All usage is tracked server-side by LLM token count so limits cannot be bypassed on the client.
+Omni Bridge uses a **3-tier paid subscription model** (plus a free tier) to balance server costs with user accessibility. Subscriptions are purchased via Razorpay and reflected instantly in the app through a Firestore listener. All usage is tracked by **token count** (input + output) in RTDB, providing an engine-agnostic metric that scales across local and cloud models.
 
 ---
 
@@ -11,7 +11,7 @@ Omni Bridge uses a **3-tier paid subscription model** (plus a free tier) to bala
 | Feature | **Free** | **Basic** | **Plus** | **Pro** |
 | :--- | :--- | :--- | :--- | :--- |
 | **Price** | ₹0 | ₹49/week | ₹149/month | ₹399/month |
-| **Daily Quota** | 10,000 chars | 50,000 chars | 100,000 chars | Unlimited |
+| **Daily Quota** | 10,000 tokens | 50,000 tokens | 100,000 tokens | Unlimited |
 | **History Access** | ❌ None | 🕒 Same session | 📅 3 days | ✅ Unlimited |
 | **Models** | Standard | High-Speed | Advanced AI | Premium Engines |
 | **Live Captions** | Basic | Standard | Advanced | Auto-Correct |
@@ -30,21 +30,19 @@ Omni Bridge uses a **3-tier paid subscription model** (plus a free tier) to bala
 
 ---
 
-## Quota Tracking
-
-Usage is tracked by **character count** of the translated output text, pushed live to RTDB.
+Usage is tracked by **token count** (Input + Output tokens), pushed live to RTDB. This ensures that even free engines (like Google Translate) still contribute to the daily quota, preventing cost leakage.
 
 | Counter | Resets | Field |
 |---|---|---|
 | Daily | Midnight (local) | `users/{uid}/daily_usage/{YYYY-MM-DD}/tokens` (RTDB) |
-| Monthly | 1st of each month | `monthlyCharsUsed` (Firestore) |
-| Lifetime | Never | `lifetimeCharsUsed` (Firestore) |
+| Monthly | Billing-cycle (30 days from upgrade) | `monthlyTokensUsed` (Firestore) |
+| Lifetime | Never | `lifetimeTokensUsed` (Firestore) |
 
 All counters use **atomic increments** (ServerValue logic in RTDB, `FieldValue.increment()` in Firestore) — concurrent writes are safe. The `SubscriptionService` provides a live `statusStream` so the UI reacts instantly when quotas change.
 
 ### Quota Exceeded Behaviour
 
-When a user's daily characters cross their tier's `dailyLimit`:
+When a user's daily tokens cross their tier's `dailyLimit`:
 1. `lastQuotaExceededAt` is written to Firestore (timestamp of first breach).
 2. A `quota_exceeded` event is posted to the RTDB `logs/` stream with `tier` and `dailyLimit`.
 3. The UI navigates the user to the History page, where the contextual `UpgradeSheet` is automatically displayed for free-tier users to encourage conversion.
@@ -94,22 +92,24 @@ This enables LTV calculations and churn analysis over time.
 ### Firestore & RTDB
 
 | Field | Written By | Notes |
-|---|---|---|
-| `tier` | Webhook / manual | Source of truth for subscription level |
-| `daily_usage/{dt}/tokens` | `TrackingService.logModelUsage()` | Atomic RTDB increment (Daily Quota) |
-| `monthlyCharsUsed` | `SubscriptionService.incrementChars()` | Atomic increment |
-| `monthlyResetAt` | `SubscriptionService._resetMonthlyQuota()` | Set on each monthly reset |
-| `lifetimeCharsUsed` | `SubscriptionService.incrementChars()` | Atomic increment, never resets |
+|---|---|---|---|
+| `tier` | Webhook / manual | **Admin-Protected.** Source of truth for tier. |
+| `daily_usage/{dt}/tokens` | `TrackingService.logModelUsage()` | **Input + Output Tokens.** Atomic RTDB increment. |
+| `monthlyTokensUsed` | `SubscriptionService.incrementTokens()` | Atomic increment. Reset after 30 days. |
+| `monthlyResetAt` | `SubscriptionService._resetMonthlyQuota()` | Advanced by 30 days on reset. |
+| `lifetimeTokensUsed` | `SubscriptionService.incrementTokens()` | Atomic increment, never resets. |
 | `subscriptionSince` | `SubscriptionService._logSubscriptionEvent()` | Set once on first paid upgrade |
 | `paymentProvider` | `SubscriptionService._logSubscriptionEvent()` | Set once on first paid upgrade |
 | `lastQuotaExceededAt` | `SubscriptionService._logQuotaExceeded()` | Updated each time quota is first crossed |
 | `createdAt` | `SubscriptionService._initializeUserDoc()` | Set once at account creation |
 
-### Character Counting
-The Python server sends character counts in translation metadata payloads. The Flutter client passes it to `SubscriptionService` to track against limits.
+### Token Counting
+The Python server sends token counts for both **Input** (from ASR) and **Output** (from Translator) in translation metadata payloads. The Flutter client passes these to `SubscriptionService` to track against limits in RTDB.
 
 ### Enforcement
-`SubscriptionService` exposes a live `statusStream`. The `TranslationBloc` (or UI layer) checks `SubscriptionStatus.isExceeded` before starting a translation — if exceeded, it shows `UpgradeSheet` instead of sending the audio.
+- **Client-Side Polling**: `SubscriptionService` polls the RTDB `daily_usage/tokens` node every 3 seconds.
+- **Gatekeeping**: `TranslationBloc` checks `SubscriptionStatus.isExceeded` before starting sessions. If exceeded, the app prevents audio capture and displays the `UpgradeSheet`.
+- **Backend Rules**: Firestore security rules block unauthorized writes to `tier` and other sensitive fields.
 
 ---
 

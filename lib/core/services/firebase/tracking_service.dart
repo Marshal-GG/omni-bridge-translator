@@ -2,17 +2,24 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:omni_bridge/core/services/firebase/subscription_service.dart';
 import '../../navigation/global_navigator.dart';
 
 class TrackingService {
   TrackingService._();
   static final TrackingService instance = TrackingService._();
+
+  String get _appName => kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
+  FirebaseApp get _app => Firebase.app(_appName);
+  FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
+  FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
 
   String? _currentSessionId;
   DateTime? _sessionStartTime;
@@ -29,11 +36,11 @@ class TrackingService {
   bool get hasActiveSession => _currentSessionId != null;
 
   /// Get current user ID
-  String? get uid => FirebaseAuth.instance.currentUser?.uid;
+  String? get uid => _auth.currentUser?.uid;
 
   /// Helper to get authenticated RTDB URL
   Future<Uri?> _getRTDBUrl(String path) async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _auth.currentUser;
     if (user == null || uid == null) return null;
 
     final idToken = await user.getIdToken();
@@ -99,7 +106,7 @@ class TrackingService {
     bool isNewSession = true;
 
     if (cachedSessionId != null) {
-      sessionRef = FirebaseFirestore.instance
+      sessionRef = _firestore
           .collection('users')
           .doc(uid)
           .collection('sessions')
@@ -128,7 +135,7 @@ class TrackingService {
     }
 
     if (isNewSession) {
-      sessionRef = FirebaseFirestore.instance
+      sessionRef = _firestore
           .collection('users')
           .doc(uid)
           .collection('sessions')
@@ -173,7 +180,7 @@ class TrackingService {
 
     // Listen to User document for global forceLogout
     _userSub?.cancel();
-    _userSub = FirebaseFirestore.instance
+    _userSub = _firestore
         .collection('users')
         .doc(uid)
         .snapshots()
@@ -213,8 +220,30 @@ class TrackingService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('current_session_id_$uid');
 
+    // Reset forceLogout to false so re-enabling the account doesn't immediately
+    // re-trigger another logout on next login. Done client-side since no Cloud Functions.
+    try {
+      if (uid != null) {
+        // Reset global flag
+        await _firestore.collection('users').doc(uid).update({
+          'forceLogout': false,
+        });
+        // Reset per-session flag if we know the session ID
+        if (_currentSessionId != null) {
+          await _firestore
+              .collection('users')
+              .doc(uid)
+              .collection('sessions')
+              .doc(_currentSessionId)
+              .update({'forceLogout': false});
+        }
+      }
+    } catch (e) {
+      debugPrint('[Tracking] Failed to reset forceLogout: $e');
+    }
+
     // Auth state listener handles the rest
-    await FirebaseAuth.instance.signOut();
+    await _auth.signOut();
 
     // Force redirection to Splash Screen (which handles Onboarding/Login logic)
     await GlobalNavigator.pushNamedAndRemoveUntil('/splash', (route) => false);
@@ -231,7 +260,7 @@ class TrackingService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('current_session_id_$uid');
 
-      final sessionRef = FirebaseFirestore.instance
+      final sessionRef = _firestore
           .collection('users')
           .doc(uid)
           .collection('sessions')
@@ -318,7 +347,7 @@ class TrackingService {
     }
 
     try {
-      await FirebaseFirestore.instance
+      await _firestore
           .collection('users')
           .doc(uid)
           .collection('settings')
@@ -341,7 +370,7 @@ class TrackingService {
     }
 
     try {
-      final doc = await FirebaseFirestore.instance
+      final doc = await _firestore
           .collection('users')
           .doc(uid)
           .collection('settings')
@@ -456,14 +485,14 @@ class TrackingService {
     final engine = stats['engine'] as String? ?? 'unknown';
     final totalTokens = (stats['total_tokens'] as num?)?.toInt() ?? 0;
     final latencyMs = (stats['latency_ms'] as num?)?.toInt() ?? 0;
-    final inputChars = (stats['input_chars'] as num?)?.toInt() ?? 0;
-    final outputChars = (stats['output_chars'] as num?)?.toInt() ?? 0;
+    final inputTokens = (stats['input_tokens'] as num?)?.toInt() ?? 0;
+    final outputTokens = (stats['output_tokens'] as num?)?.toInt() ?? 0;
 
     try {
       // 1. Individual usage log entry
       final usageUrl = await _getRTDBUrl('model_usage');
       if (usageUrl != null) {
-        await http.post(
+        await _httpClient.post(
           usageUrl,
           body: jsonEncode({
             'engine': engine,
@@ -472,8 +501,8 @@ class TrackingService {
             'prompt_tokens': stats['prompt_tokens'] ?? 0,
             'completion_tokens': stats['completion_tokens'] ?? 0,
             'total_tokens': totalTokens,
-            'input_chars': inputChars,
-            'output_chars': outputChars,
+            'input_tokens': inputTokens,
+            'output_tokens': outputTokens,
             'source_lang': stats['source_lang'] ?? 'unknown',
             'target_lang': stats['target_lang'] ?? 'unknown',
             'fallback_from': stats['fallback_from'],
@@ -487,7 +516,7 @@ class TrackingService {
       // 2. Per-engine running totals — RTDB atomic increments via REST
       final statsUrl = await _getRTDBUrl('model_stats/$engine');
       if (statsUrl != null) {
-        await http.patch(
+        await _httpClient.patch(
           statsUrl,
           body: jsonEncode({
             'engine': engine,
@@ -500,11 +529,11 @@ class TrackingService {
             'total_latency_ms': {
               '.sv': {'increment': latencyMs},
             },
-            'total_input_chars': {
-              '.sv': {'increment': inputChars},
+            'total_input_tokens': {
+              '.sv': {'increment': inputTokens},
             },
-            'total_output_chars': {
-              '.sv': {'increment': outputChars},
+            'total_output_tokens': {
+              '.sv': {'increment': outputTokens},
             },
             'last_used': {'.sv': 'timestamp'},
           }),
@@ -512,25 +541,28 @@ class TrackingService {
       }
 
       // 3. Overall Daily Token Usage Update in RTDB
+      // Always uses inputTokens + outputTokens so the quota counter is consistent
+      // across all engines (LLM token counts vary per engine and are not comparable).
       final now = DateTime.now();
       // Pad month and day to ensure strictly YYYY-MM-DD
       final todayStr =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final dailyTokens = inputTokens + outputTokens;
 
       final dailyUsageUrl = await _getRTDBUrl('daily_usage/$todayStr');
-      if (dailyUsageUrl != null && totalTokens > 0) {
+      if (dailyUsageUrl != null && dailyTokens > 0) {
         await http.patch(
           dailyUsageUrl,
           body: jsonEncode({
             'tokens': {
-              '.sv': {'increment': totalTokens},
+              '.sv': {'increment': dailyTokens},
             },
             'last_updated': {'.sv': 'timestamp'},
           }),
         );
       }
 
-      // 4. Per-Day, Per-Model Tokens Update in RTDB
+      // 4. Per-Day, Per-Model Token Usage Update in RTDB
       final dailyModelUsageUrl = await _getRTDBUrl(
         'daily_usage/$todayStr/models/$engine',
       );
@@ -539,7 +571,7 @@ class TrackingService {
           dailyModelUsageUrl,
           body: jsonEncode({
             'tokens': {
-              '.sv': {'increment': totalTokens},
+              '.sv': {'increment': dailyTokens},
             },
             'calls': {
               '.sv': {'increment': 1},
@@ -569,6 +601,9 @@ class TrackingService {
               .timeout(const Duration(seconds: 5));
         }
       }
+
+      // 6. Update Firestore lifetime/monthly counters
+      await SubscriptionService.instance.incrementTokens(dailyTokens);
 
       debugPrint(
         '[Tracking] Logged model usage to RTDB: $engine (tokens: $totalTokens)',

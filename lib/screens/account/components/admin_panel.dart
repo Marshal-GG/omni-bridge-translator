@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../../core/services/firebase/auth_service.dart';
 import '../../../core/services/firebase/subscription_service.dart';
-import '../../../models/subscription_models.dart';
 
 class AdminPanel extends StatefulWidget {
   const AdminPanel({super.key});
@@ -24,13 +23,13 @@ class _AdminPanelState extends State<AdminPanel> {
   }
 
   Future<void> _checkAdminAccess() async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = AuthService.instance.auth.currentUser;
     if (user == null || user.email == null) {
       if (mounted) setState(() => _isAdmin = false);
       return;
     }
     try {
-      final doc = await FirebaseFirestore.instance
+      final doc = await AuthService.instance.firestore
           .collection('system')
           .doc('admins')
           .get();
@@ -94,8 +93,8 @@ class _AdminPanelState extends State<AdminPanel> {
                     color: Colors.black12,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: FutureBuilder<QuerySnapshot>(
-                    future: FirebaseFirestore.instance
+                  child: FutureBuilder(
+                    future: AuthService.instance.firestore
                         .collection('users')
                         .get(),
                     builder: (context, snapshot) {
@@ -132,7 +131,7 @@ class _AdminPanelState extends State<AdminPanel> {
                       }
 
                       final docs = snapshot.data!.docs.where((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
+                        final data = doc.data();
                         final name = (data['displayName'] ?? '')
                             .toString()
                             .toLowerCase();
@@ -173,13 +172,12 @@ class _AdminPanelState extends State<AdminPanel> {
                       return ListView.builder(
                         itemCount: docs.length,
                         itemBuilder: (context, index) {
-                          final data =
-                              docs[index].data() as Map<String, dynamic>;
+                          final data = docs[index].data();
                           final uid = data['uid'] ?? 'unknown';
                           final name = data['displayName'] ?? 'No Name';
                           final email = data['email'] ?? 'No Email';
                           final isSelected = _selectedUserUid == uid;
-                          final tier = data['tier'] ?? 'free';
+                          final tier = data['tier'] ?? SubscriptionService.instance.defaultTier;
 
                           return ListTile(
                             dense: true,
@@ -258,12 +256,13 @@ class _AdminPanelState extends State<AdminPanel> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: SubscriptionTier.values.map((tier) {
+                    children: SubscriptionService.instance.availablePlans.map((plan) {
+                      final tier = plan.id;
                       return SizedBox(
                         height: 32,
                         child: ActionChip(
                           label: Text(
-                            tier.name.toUpperCase(),
+                            SubscriptionService.instance.getNameForTier(tier).toUpperCase(),
                             style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -335,7 +334,7 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
       _error = null;
     });
     try {
-      final doc = await FirebaseFirestore.instance
+      final doc = await AuthService.instance.firestore
           .collection('system')
           .doc('admins')
           .get();
@@ -359,7 +358,7 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
   Future<void> _saveEmails(List<String> emails) async {
     setState(() => _saving = true);
     try {
-      await FirebaseFirestore.instance.collection('system').doc('admins').set({
+      await AuthService.instance.firestore.collection('system').doc('admins').set({
         'emails': emails,
       }, SetOptions(merge: true));
       if (mounted) {

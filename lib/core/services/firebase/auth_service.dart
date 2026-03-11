@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,6 +18,14 @@ class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();
 
+  String get _appName => kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
+  FirebaseApp get _app => Firebase.app(_appName);
+  FirebaseAuth get auth => FirebaseAuth.instanceFor(app: _app);
+  FirebaseFirestore get firestore => FirebaseFirestore.instanceFor(app: _app);
+
+  FirebaseAuth get _auth => auth;
+  FirebaseFirestore get _firestore => firestore;
+
   /// Exposes the current signed-in user (or null if not signed in).
   ValueNotifier<User?> currentUser = ValueNotifier(null);
 
@@ -26,7 +36,7 @@ class AuthService {
 
   void init() {
     // Immediate initialization of currentUser for route determination
-    currentUser.value = FirebaseAuth.instance.currentUser;
+    currentUser.value = _auth.currentUser;
 
     // We delay the full initialization until after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -52,7 +62,7 @@ class AuthService {
     );
 
     // Listen to Firebase auth state changes automatically
-    _authStateSub = FirebaseAuth.instance.authStateChanges().listen((
+    _authStateSub = _auth.authStateChanges().listen((
       user,
     ) async {
       // Ensure state updates happen on the UI thread to avoid Windows threading errors
@@ -75,12 +85,12 @@ class AuthService {
 
     // Attempt silent sign-in on init
     _googleSignIn.silentSignIn().then((credentials) async {
-      if (credentials != null && FirebaseAuth.instance.currentUser == null) {
+      if (credentials != null && _auth.currentUser == null) {
         final credential = GoogleAuthProvider.credential(
           accessToken: credentials.accessToken,
           idToken: credentials.idToken,
         );
-        await FirebaseAuth.instance.signInWithCredential(credential);
+        await _auth.signInWithCredential(credential);
         await TrackingService.instance.logEvent('Silent Sign In via Init');
       }
     });
@@ -138,7 +148,8 @@ class AuthService {
 
         // If it's an iOS client ID, we use the custom scheme redirect
         // format: com.googleusercontent.apps.XXX:/oauth2redirect
-        String redirectUri = 'omni-bridge://auth';
+        final protocol = kDebugMode ? 'omni-bridge-debug' : 'omni-bridge';
+        String redirectUri = '$protocol://auth';
         if (clientId.isNotEmpty &&
             clientId.contains('.apps.googleusercontent.com')) {
           final scheme = clientId.split('.').reversed.join('.');
@@ -208,7 +219,7 @@ class AuthService {
         accessToken: result.accessToken,
         idToken: result.idToken,
       );
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(
+      final userCredential = await _auth.signInWithCredential(
         credential,
       );
       if (userCredential.user != null) {
@@ -227,8 +238,8 @@ class AuthService {
     String email,
     String password,
   ) async {
-    final userCredential = await FirebaseAuth.instance
-        .signInWithEmailAndPassword(email: email, password: password);
+    final userCredential =
+        await _auth.signInWithEmailAndPassword(email: email, password: password);
     if (userCredential.user != null) {
       await _saveUserToFirestore(userCredential.user!);
       await TrackingService.instance.logEvent('Sign In With Email/Password');
@@ -240,8 +251,8 @@ class AuthService {
     String email,
     String password,
   ) async {
-    final userCredential = await FirebaseAuth.instance
-        .createUserWithEmailAndPassword(email: email, password: password);
+    final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email, password: password);
     if (userCredential.user != null) {
       await _saveUserToFirestore(userCredential.user!);
       await TrackingService.instance.logEvent('Registered With Email/Password');
@@ -250,16 +261,16 @@ class AuthService {
   }
 
   Future<void> sendPasswordReset(String email) async {
-    await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+    await _auth.sendPasswordResetEmail(email: email);
     await TrackingService.instance.logEvent('Password Reset Requested');
   }
 
   Future<void> updateDisplayName(String newName) async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _auth.currentUser;
     if (user != null) {
       await user.updateDisplayName(newName);
       await user.reload();
-      final updatedUser = FirebaseAuth.instance.currentUser;
+      final updatedUser = _auth.currentUser;
       currentUser.value = updatedUser;
 
       // Sync the updated name to the users collection
@@ -276,7 +287,7 @@ class AuthService {
     // internal HTTP server state, causing the next signIn() to hang.
     await TrackingService.instance.logEvent('User Signed Out');
     await TrackingService.instance.endSession();
-    await FirebaseAuth.instance.signOut();
+    await _auth.signOut();
 
     // Ensure we redirect to splash on manual sign out as well
     await GlobalNavigator.pushNamedAndRemoveUntil('/splash', (route) => false);
@@ -284,9 +295,7 @@ class AuthService {
 
   Future<void> _saveUserToFirestore(User user) async {
     try {
-      final userRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid);
+      final userRef = _firestore.collection('users').doc(user.uid);
       final docSnapshot = await userRef.get();
 
       final Map<String, dynamic> data = {

@@ -283,21 +283,23 @@ class _QuotaUsageText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String tierName = status?.tier.name.toUpperCase() ?? '...';
-    final bool isPro = status?.tier == SubscriptionTier.pro;
+    final String tierName = status != null ? status!.tier.toUpperCase() : '...';
+    final bool isUnlimited = status?.isUnlimited ?? false;
 
     final formatter = NumberFormat.compact();
     final usedStr = status != null
-        ? formatter.format(status!.dailyCharsUsed)
+        ? formatter.format(status!.dailyTokensUsed)
         : '...';
     final limitStr = status != null
-        ? (isPro ? '∞' : formatter.format(status!.dailyLimit))
+        ? (isUnlimited ? '∞' : formatter.format(status!.dailyLimit))
         : '...';
 
     final double progress = status?.progress ?? 0.0;
-    final color = progress > 0.9
-        ? Colors.redAccent
-        : (progress > 0.7 ? Colors.orangeAccent : Colors.tealAccent);
+    final color = isUnlimited
+        ? Colors.tealAccent
+        : (progress > 0.9
+            ? Colors.redAccent
+            : (progress > 0.7 ? Colors.orangeAccent : Colors.tealAccent));
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),

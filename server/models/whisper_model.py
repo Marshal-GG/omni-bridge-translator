@@ -222,8 +222,8 @@ class WhisperModel:
                     "engine": "whisper-asr",
                     "model": f"whisper-{self._size}",
                     "latency_ms": latency_ms,
-                    "input_chars": len(transcript),
-                    "output_chars": 0,
+                    "input_tokens": len(transcript),
+                    "output_tokens": 0,
                 }
             return transcript, stats
         except Exception as e:

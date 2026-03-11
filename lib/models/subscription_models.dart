@@ -1,44 +1,24 @@
-enum SubscriptionTier {
-  free,
-  basic,
-  plus,
-  pro;
-
-  int get rank {
-    switch (this) {
-      case SubscriptionTier.free:
-        return 0;
-      case SubscriptionTier.basic:
-        return 1;
-      case SubscriptionTier.plus:
-        return 2;
-      case SubscriptionTier.pro:
-        return 3;
-    }
-  }
-}
-
 class SubscriptionStatus {
-  final SubscriptionTier tier;
-  final int dailyCharsUsed;
+  final String tier;
+  final int dailyTokensUsed;
   final int dailyLimit;
   final DateTime dailyResetAt;
 
   const SubscriptionStatus({
     required this.tier,
-    required this.dailyCharsUsed,
+    required this.dailyTokensUsed,
     required this.dailyLimit,
     required this.dailyResetAt,
   });
 
-  bool get isUnlimited => tier == SubscriptionTier.pro;
-  double get progress => dailyLimit == 0 ? 0 : dailyCharsUsed / dailyLimit;
-  bool get isExceeded => !isUnlimited && dailyCharsUsed >= dailyLimit;
+  bool get isUnlimited => dailyLimit < 0;
+  double get progress => dailyLimit <= 0 ? 0 : dailyTokensUsed / dailyLimit;
+  bool get isExceeded => !isUnlimited && dailyTokensUsed >= dailyLimit;
 
   factory SubscriptionStatus.fromJson(Map<String, dynamic> json) {
     return SubscriptionStatus(
-      tier: _parseTier(json['tier'] as String? ?? 'free'),
-      dailyCharsUsed: json['dailyCharsUsed'] as int? ?? 0,
+      tier: json['tier'] as String? ?? '',
+      dailyTokensUsed: json['dailyTokensUsed'] as int? ?? 0,
       dailyLimit: json['dailyLimit'] as int? ?? 0,
       dailyResetAt: json['dailyResetAt'] != null
           ? DateTime.parse(json['dailyResetAt'] as String)
@@ -48,24 +28,11 @@ class SubscriptionStatus {
 
   Map<String, dynamic> toJson() {
     return {
-      'tier': tier.name,
-      'dailyCharsUsed': dailyCharsUsed,
+      'tier': tier,
+      'dailyTokensUsed': dailyTokensUsed,
       'dailyLimit': dailyLimit,
       'dailyResetAt': dailyResetAt.toIso8601String(),
     };
-  }
-
-  static SubscriptionTier _parseTier(String tier) {
-    switch (tier.toLowerCase()) {
-      case 'basic':
-        return SubscriptionTier.basic;
-      case 'plus':
-        return SubscriptionTier.plus;
-      case 'pro':
-        return SubscriptionTier.pro;
-      default:
-        return SubscriptionTier.free;
-    }
   }
 }
 

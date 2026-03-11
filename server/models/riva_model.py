@@ -97,8 +97,8 @@ class RivaModel:
                 "engine": "riva-asr",
                 "model": model_name,
                 "latency_ms": int((time.monotonic() - start) * 1000),
-                "input_chars": len(transcript),
-                "output_chars": 0,
+                "input_tokens": len(transcript),
+                "output_tokens": 0,
             }
         return transcript, stats
 
@@ -165,10 +165,9 @@ class RivaModel:
             "engine": "riva-translate",
             "model": model_name,
             "latency_ms": latency_ms,
-            "prompt_tokens": usage.prompt_tokens if usage else 0,
-            "completion_tokens": usage.completion_tokens if usage else 0,
-            "total_tokens": usage.total_tokens if usage else 0,
-            "input_chars": len(text),
-            "output_chars": len(result),
+            "api_prompt_tokens": usage.prompt_tokens if usage else 0,
+            "api_completion_tokens": usage.completion_tokens if usage else 0,
+            "input_tokens": len(text),
+            "output_tokens": len(result),
         }
         return result, stats

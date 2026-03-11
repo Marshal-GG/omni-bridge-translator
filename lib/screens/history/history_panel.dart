@@ -19,7 +19,7 @@ class HistoryPanel extends StatelessWidget {
       stream: SubscriptionService.instance.statusStream,
       initialData: SubscriptionService.instance.currentStatus,
       builder: (context, snapshot) {
-        final tier = snapshot.data?.tier ?? SubscriptionTier.free;
+        final tier = snapshot.data?.tier ?? SubscriptionService.instance.defaultTier;
         return _HistoryPanelBody(tier: tier);
       },
     );
@@ -27,7 +27,7 @@ class HistoryPanel extends StatelessWidget {
 }
 
 class _HistoryPanelBody extends StatefulWidget {
-  final SubscriptionTier tier;
+  final String tier;
   const _HistoryPanelBody({required this.tier});
 
   @override
@@ -38,7 +38,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
   @override
   void initState() {
     super.initState();
-    if (widget.tier == SubscriptionTier.free) {
+    if (SubscriptionService.instance.getTierRank(widget.tier) == 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           showUpgradeSheet(context);
@@ -49,8 +49,9 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
 
   @override
   Widget build(BuildContext context) {
-    // Free: blocked entirely — showing upgrade sheet via callback above.
-    if (widget.tier == SubscriptionTier.free) {
+    final rank = SubscriptionService.instance.getTierRank(widget.tier);
+    // Base tier (0): blocked entirely — showing upgrade sheet via callback above.
+    if (rank == 0) {
       return WindowBorder(
         color: Colors.white10,
         width: 1,
@@ -68,13 +69,13 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
               children: [
                 buildHistoryHeader(context, onClear: () {}),
                 const Divider(height: 1, color: Colors.white10),
-                const Expanded(
+                Expanded(
                   child: _TierGateView(
                     icon: Icons.history_toggle_off,
                     title: 'History Unavailable',
                     subtitle:
-                        'Upgrade to Basic or higher plan to access your translation history.',
-                    requiredTier: 'Basic+',
+                        'Upgrade to ${SubscriptionService.instance.getNameForRank(1)} or higher plan to access your translation history.',
+                    requiredTier: '${SubscriptionService.instance.getNameForRank(1)}+',
                   ),
                 ),
               ],
@@ -84,7 +85,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
       );
     }
 
-    final isPro = widget.tier == SubscriptionTier.pro;
+    final isPro = SubscriptionService.instance.isHighestTier(widget.tier);
 
     return WindowBorder(
       color: Colors.white10,
@@ -158,14 +159,14 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                           ),
                           const Divider(height: 1, color: Colors.white12),
                           if (!isPro)
-                            const Expanded(
+                            Expanded(
                               child: _TierGateView(
                                 icon: Icons.auto_fix_high,
-                                title: 'Pro Feature',
+                                title: '${SubscriptionService.instance.getNameForRank(SubscriptionService.instance.getTierRank(widget.tier) + 1)} Feature',
                                 subtitle:
-                                    'Upgrade to Pro to unlock Intelligent Context Refresh — '
+                                    'Upgrade to ${SubscriptionService.instance.getNameForRank(SubscriptionService.instance.getTierRank(widget.tier) + 1)} to unlock Intelligent Context Refresh — '
                                     'AI that corrects translations up to 5 seconds back in real time.',
-                                requiredTier: 'Pro',
+                                requiredTier: SubscriptionService.instance.getNameForRank(SubscriptionService.instance.getTierRank(widget.tier) + 1),
                               ),
                             )
                           else
@@ -200,30 +201,27 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
   }
 
   /// Subtitle shown under the Live Transcripts column header.
-  String _historySubtitle(SubscriptionTier tier) {
-    switch (tier) {
-      case SubscriptionTier.free:
-        return 'No history available';
-      case SubscriptionTier.basic:
-        return 'Current session only';
-      case SubscriptionTier.plus:
-        return 'Last 3 days';
-      case SubscriptionTier.pro:
-        return 'Unlimited history';
-    }
+  String _historySubtitle(String tier) {
+    final rank = SubscriptionService.instance.getTierRank(tier);
+    if (rank == 0) return 'No history available';
+    if (rank == 1) return 'Current session only';
+    if (rank == 2) return 'Last 3 days';
+    return 'Unlimited history';
   }
 
-  /// Filter entries based on the user's tier.
+  /// Filter entries based on the user's tier's history rank.
   List<HistoryEntry> _filterByTier(
     List<HistoryEntry> entries,
-    SubscriptionTier tier,
+    String tier,
   ) {
-    if (tier == SubscriptionTier.pro) return entries;
-    if (tier == SubscriptionTier.plus) {
+    final rank = SubscriptionService.instance.getTierRank(tier);
+    if (rank >= 3) return entries; // Unlimited
+    if (rank == 2) {
       final cutoff = DateTime.now().subtract(const Duration(days: 3));
       return entries.where((e) => e.timestamp.isAfter(cutoff)).toList();
     }
-    return entries;
+    // rank == 1 is session only, UI handles liveEntries lifetime.
+    return entries; 
   }
 }
 

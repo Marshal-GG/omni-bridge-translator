@@ -78,9 +78,9 @@ lib/
 | `TranslationService` | Sends start/stop/settings commands to the WebSocket server |
 | `PythonServerManager` | Manages the lifecycle of the Python WebSocket server. Includes auto-restart resilience with exponential backoff if the server crashes. |
 | `WhisperService` | Manages local Whisper model downloads, status, and deletion |
-| `TrackingService` | Logs session stats, hardware metadata, heartbeat, and remote server errors to RTDB (Uses persistent `http.Client`) |
-| `SubscriptionService`| Manages dynamic plans, limits, and character usage from Firestore/RTDB (Uses persistent `http.Client`) |
-| `AuthService` | Firebase Auth + custom URL schemes for Windows Google Sign-In redirects |
+| `TrackingService` | Logs session stats, hardware metadata, and engine-agnostic **token usage** (input + output) to RTDB. Monitors the two-level `forceLogout` system (Global + Session) to perform remote kicks. |
+| `SubscriptionService`| Manages dynamic plans and token usage. Enforces client-side **Monthly Resets** using a rolling 30-day billing cycle anchored to the user's first upgrade. |
+| `AuthService` | Firebase Auth + custom URL schemes for Windows Google Sign-In redirects. |
 
 ---
 
@@ -170,3 +170,23 @@ The history button in the overlay header and locked engine selections now route 
 - **Account Screen**:
     - **Plan Visualization**: Real-time progress bar shows daily token usage for capped tiers.
     - **Planned Features**: A dedicated "Todo" section informs users of upcoming capabilities (Audio TTS, PDF support, etc.).
+
+---
+
+## Security Architecture
+
+The app follows a **"Trust but Verify (via Rules)"** model, performing critical enforcement client-side while relying on Firestore Security Rules for backend integrity.
+
+### 1. Quota Enforcement Logic
+- **Daily Quota**: Monitored by `SubscriptionService` via a 3-second RTDB polling loop. If `dailyTokensUsed >= dailyLimit`, the UI switches to a blocked state using `QuotaExceededGate`.
+- **Monthly Quota**: Enforced client-side. The app checks if `monthlyResetAt` is in the past; if so, it atomically zeros `monthlyTokensUsed` and advances the reset timestamp by 30 days.
+
+### 2. Remote Session Termination (`forceLogout`)
+Two monitoring streams in `TrackingService` enable remote kicks without Cloud Functions:
+1. **Global Hook**: Listens to `users/{uid}/forceLogout`.
+2. **Session Hook**: Listens to `users/{uid}/sessions/{sessionId}/forceLogout`.
+
+When a kick is triggered, the client resets the flag to `false` (permitted by transition-based security rules) and signs out the user locally.
+
+### 3. Field-Level Protection
+Firestore rules block users from modifying their own `tier`, `subscriptionSince`, or `paymentProvider`. This ensures that even if the client is compromised, the user cannot artificially upgrade their account or manipulate billing metadata.

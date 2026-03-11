@@ -47,7 +47,13 @@ class PythonServerManager {
         }
 
         debugPrint('Starting bundled Python server: $pyPath');
-        _serverProcess = await Process.start(pyPath, []);
+        _serverProcess = await Process.start(
+          pyPath,
+          [],
+          environment: {
+            if (kDebugMode) 'OMNI_BRIDGE_DEBUG': 'true',
+          },
+        );
 
         // Pipe Python stdout/stderr to Flutter console for visibility
         _serverProcess!.stdout.transform(utf8.decoder).listen((data) {

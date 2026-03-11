@@ -89,6 +89,16 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
+#ifdef _DEBUG
+            VALUE "CompanyName", "Marshal" "\0"
+            VALUE "FileDescription", "Omni Bridge: Live AI Translator (Debug)" "\0"
+            VALUE "FileVersion", VERSION_AS_STRING "\0"
+            VALUE "InternalName", "omni_bridge" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Marshal. All rights reserved." "\0"
+            VALUE "OriginalFilename", "omni_bridge.exe" "\0"
+            VALUE "ProductName", "Omni Bridge: Live AI Translator (Debug)" "\0"
+            VALUE "ProductVersion", VERSION_AS_STRING "\0"
+#else
             VALUE "CompanyName", "Marshal" "\0"
             VALUE "FileDescription", "Omni Bridge: Live AI Translator" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
@@ -97,6 +107,7 @@ BEGIN
             VALUE "OriginalFilename", "omni_bridge.exe" "\0"
             VALUE "ProductName", "Omni Bridge: Live AI Translator" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
+#endif
         END
     END
     BLOCK "VarFileInfo"

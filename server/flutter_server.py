@@ -25,11 +25,20 @@ import time
 from typing import Set
 
 # Create a robust logging setup that avoids Windows Program Files permission issues
-appdata = os.environ.get("APPDATA", "")
-if appdata:
-    LOG_DIR = os.path.join(appdata, "com.marshal", "Omni Bridge", "logs")
+is_frozen = getattr(sys, 'frozen', False)
+is_debug = os.environ.get("OMNI_BRIDGE_DEBUG") == "true"
+
+if not is_frozen or is_debug:
+    # In development or debug mode, log locally to the server/logs directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    LOG_DIR = os.path.join(script_dir, "logs")
 else:
-    LOG_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "com.marshal", "Omni Bridge", "logs")
+    # In production (frozen EXE), log to AppData
+    appdata = os.environ.get("APPDATA", "")
+    if appdata:
+        LOG_DIR = os.path.join(appdata, "com.marshal", "Omni Bridge", "logs")
+    else:
+        LOG_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "com.marshal", "Omni Bridge", "logs")
 
 try:
     if not os.path.exists(LOG_DIR):
@@ -143,8 +152,8 @@ def caption_callback(text, is_error, is_final=True, original_text=None, usage_st
             if isinstance(usage_stats, list):
                 for stat in usage_stats:
                     if not stat.get("total_tokens"):
-                        total_c = stat.get("input_chars", 0) + stat.get("output_chars", 0)
-                        stat["total_tokens"] = max(1, total_c // 4) if total_c > 0 else 0
+                        total_c = stat.get("input_tokens", 0) + stat.get("output_tokens", 0)
+                        stat["total_tokens"] = total_c
 
                     stats_msg = {
                         "type": "usage_stats",
@@ -155,8 +164,8 @@ def caption_callback(text, is_error, is_final=True, original_text=None, usage_st
                     asyncio.run_coroutine_threadsafe(broadcast(stats_msg), _event_loop)
             else:
                 if not usage_stats.get("total_tokens"):
-                    total_c = usage_stats.get("input_chars", 0) + usage_stats.get("output_chars", 0)
-                    usage_stats["total_tokens"] = max(1, total_c // 4) if total_c > 0 else 0
+                    total_c = usage_stats.get("input_tokens", 0) + usage_stats.get("output_tokens", 0)
+                    usage_stats["total_tokens"] = total_c
 
                 stats_msg = {
                     "type": "usage_stats",

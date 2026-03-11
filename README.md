@@ -72,16 +72,19 @@ Auto-detect source language, or manually select from: English, Spanish, French, 
 ### 👤 Account & Sync
 - Sign in with **Google**, **Email/Password**, or use as **Guest**
 - Settings sync to the cloud — your preferences follow you
-- Session activity and translation usage are tracked securely per device
+- **Remote Device Management**: Revoke sessions or sign out of all devices from your account settings
+- Session activity and translation usage are tracked securely per session
 
 ### 💳 Subscription Tiers
 
-| Tier | Price | Daily Quota |
-|------|-------|-------------|
+| Tier | Price | Daily Quota (Tokens) |
+|------|-------|--------------------------|
 | **Free** | ₹0 | 10,000 tokens/day |
 | **Basic** | ₹49/week | 50,000 tokens/day |
 | **Plus** | ₹149/month | 100,000 tokens/day |
 | **Pro** | ₹399/month | Unlimited |
+
+> Usage is calculated as the sum of input (source) and output (translated) tokens across all engines.
 
 Pro unlocks **Intelligent Context Refresh** (5-second retroactive correction), unlimited history access, and priority support. Clear visual indicators (teal highlights) and real-time usage tracking in the Account screen help you manage your plan. Upgrade from within the app via Razorpay.
 
@@ -135,6 +138,7 @@ For NVIDIA Riva ASR / NMT or Llama translation:
 | No captions appearing | Make sure the server is running (tray icon or `start_server.bat`) |
 | Google Sign-In redirect fails | See [Google Auth Troubleshooting](docs/google_auth_troubleshooting.md) |
 | Whisper model not working | Download it in **Settings → Transcription Method → Whisper Offline** |
+| Debug and Release share data | See [Session Isolation & Cleanup](docs/session_isolation_guide.md) |
 | Audio not captured | Check that your audio device is set as the Windows default playback device |
 
 ---

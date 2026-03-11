@@ -6,7 +6,7 @@ Widget buildCurrentUsageDisplay({
   required SubscriptionStatus status,
   required NumberFormat formatter,
 }) {
-  if (status.tier == SubscriptionTier.pro) {
+  if (status.isUnlimited) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -14,14 +14,14 @@ Widget buildCurrentUsageDisplay({
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.2)),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.check_circle_rounded, color: Colors.tealAccent, size: 16),
-          SizedBox(width: 8),
+          const Icon(Icons.check_circle_rounded, color: Colors.tealAccent, size: 16),
+          const SizedBox(width: 8),
           Text(
-            'PRO UNLIMITED ACCESS ACTIVE',
-            style: TextStyle(
+            '${status.tier.toUpperCase()} UNLIMITED ACCESS ACTIVE',
+            style: const TextStyle(
               color: Colors.tealAccent,
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -68,14 +68,17 @@ Widget buildCurrentUsageDisplay({
           style: const TextStyle(color: Colors.white38, fontSize: 10),
           children: [
             TextSpan(
-              text: formatter.format(status.dailyCharsUsed),
+              text: formatter.format(status.dailyTokensUsed),
               style: const TextStyle(
                 color: Colors.tealAccent,
                 fontWeight: FontWeight.w700,
               ),
             ),
+            const TextSpan(
+              text: ' / ',
+            ),
             TextSpan(
-              text: ' / ${formatter.format(status.dailyLimit)} characters used',
+              text: '${formatter.format(status.dailyLimit)} tokens used',
             ),
           ],
         ),

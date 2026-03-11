@@ -20,7 +20,9 @@ class AppInitializer {
     if (Platform.isWindows) {
       await WindowsSingleInstance.ensureSingleInstance(
         args,
-        "omni_bridge_translator_instance",
+        kDebugMode
+            ? "omni_bridge_translator_instance_debug"
+            : "omni_bridge_translator_instance",
         onSecondWindow: (newArgs) {
           debugPrint(
             '[SingleInstance] Second window detected with args: $newArgs',
@@ -51,8 +53,10 @@ class AppInitializer {
     }
 
     try {
-      // Initialize Firebase
+      // Initialize Firebase with a unique name to isolate sessions
+      final appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
       await Firebase.initializeApp(
+        name: appName,
         options: DefaultFirebaseOptions.currentPlatform,
       );
 
@@ -88,7 +92,8 @@ class AppInitializer {
 
     // Register custom protocol for Windows
     if (!kIsWeb) {
-      await protocolHandler.register('omni-bridge');
+      final protocol = kDebugMode ? 'omni-bridge-debug' : 'omni-bridge';
+      await protocolHandler.register(protocol);
 
       // Also register the reversed Google Client ID as a protocol
       // This is required for the iOS Client ID redirection strategy
@@ -109,7 +114,8 @@ class AppInitializer {
       debugPrint('[DeepLink] Stream received: $uri');
       final uriStr = uri.toString();
       final isGoogleRedirect = uriStr.contains('oauth2redirect');
-      final isAppRedirect = uri.scheme == 'omni-bridge';
+      final appProtocol = kDebugMode ? 'omni-bridge-debug' : 'omni-bridge';
+      final isAppRedirect = uri.scheme == appProtocol;
 
       if (isGoogleRedirect || isAppRedirect) {
         debugPrint('[DeepLink] Passing stream URI to AuthService');
@@ -124,7 +130,8 @@ class AppInitializer {
         debugPrint('[DeepLink] Initial URI caught: $initialUri');
         final uriStr = initialUri.toString();
         final isGoogleRedirect = uriStr.contains('oauth2redirect');
-        final isAppRedirect = initialUri.scheme == 'omni-bridge';
+        final appProtocol = kDebugMode ? 'omni-bridge-debug' : 'omni-bridge';
+        final isAppRedirect = initialUri.scheme == appProtocol;
 
         if (isGoogleRedirect || isAppRedirect) {
           debugPrint('[DeepLink] Passing initial URI to AuthService');
@@ -140,9 +147,13 @@ class AppInitializer {
 
     // Determine initial route
 
+    // Use the named app instance for Auth
+    final appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
+    final auth = FirebaseAuth.instanceFor(app: Firebase.app(appName));
+
     // Wait for initial auth state to be resolved (useful for desktop where it might take a moment to load from storage)
     try {
-      await FirebaseAuth.instance.authStateChanges().first.timeout(
+      await auth.authStateChanges().first.timeout(
         const Duration(seconds: 1),
       );
     } catch (_) {
@@ -150,7 +161,7 @@ class AppInitializer {
     }
 
     // Use FirebaseAuth directly since AuthService might not have initialized its ValueNotifier yet
-    final isLoggedIn = FirebaseAuth.instance.currentUser != null;
+    final isLoggedIn = auth.currentUser != null;
 
     String initialRoute = '/splash';
     if (isLoggedIn) {

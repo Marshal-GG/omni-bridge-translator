@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:url_launcher/url_launcher.dart';
@@ -13,6 +14,11 @@ import 'package:omni_bridge/models/subscription_models.dart';
 class SubscriptionService {
   SubscriptionService._();
   static final SubscriptionService instance = SubscriptionService._();
+
+  String get _appName => kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
+  FirebaseApp get _app => Firebase.app(_appName);
+  FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
+  FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
 
   static const String _rtdbBaseUrl =
       'https://omni-bridge-ai-translator-default-rtdb.firebaseio.com';
@@ -30,14 +36,14 @@ class SubscriptionService {
   SubscriptionStatus? get currentStatus => _currentStatus;
 
   // Tracks current tier to detect upgrade/downgrade events
-  SubscriptionTier? _lastKnownTier;
+  String? _lastKnownTier;
 
   StreamSubscription? _userSub;
   StreamSubscription? _rtdbUsageSub;
 
   void init() {
     _listenToMonetizationConfig();
-    FirebaseAuth.instance.authStateChanges().listen((user) {
+    _auth.authStateChanges().listen((user) {
       _userSub?.cancel();
       _rtdbUsageSub?.cancel();
       _lastKnownTier = null;
@@ -53,7 +59,7 @@ class SubscriptionService {
 
   void _listenToMonetizationConfig() {
     _monetizationSub?.cancel();
-    _monetizationSub = FirebaseFirestore.instance
+    _monetizationSub = _firestore
         .collection('system')
         .doc('monetization')
         .snapshots()
@@ -87,9 +93,9 @@ class SubscriptionService {
     });
   }
 
-  Future<void> _fetchDailyUsage(String uid) async {
+  Future<void> _fetchDailyUsage(String uid, {int retryCount = 0}) async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final user = _auth.currentUser;
       if (user == null) return;
       final idToken = await user.getIdToken();
       final now = DateTime.now();
@@ -108,40 +114,49 @@ class SubscriptionService {
         final tokensUsed = (data as num?)?.toInt() ?? 0;
 
         if (_currentStatus != null &&
-            _currentStatus!.dailyCharsUsed != tokensUsed) {
-          _updateCurrentStatus(dailyCharsUsed: tokensUsed);
+            _currentStatus!.dailyTokensUsed != tokensUsed) {
+          _updateCurrentStatus(dailyTokensUsed: tokensUsed);
         }
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        // Auth error, might need token refresh but we'll let the next poll handle it
+        debugPrint('[Subscription] RTDB fetch auth error: ${response.statusCode}');
       }
     } on TimeoutException {
       debugPrint('[Subscription] RTDB usage fetch timed out.');
     } catch (e) {
-      debugPrint('[Subscription] Failed to fetch daily usage: $e');
+      if (retryCount < 3 && (e.toString().contains('Connection closed') || e.toString().contains('ClientException'))) {
+        final delay = Duration(milliseconds: 500 * (retryCount + 1));
+        debugPrint('[Subscription] RTDB fetch failed ($e), retrying in ${delay.inMilliseconds}ms... (Attempt ${retryCount + 1})');
+        await Future.delayed(delay);
+        return _fetchDailyUsage(uid, retryCount: retryCount + 1);
+      }
+      debugPrint('[Subscription] Failed to fetch daily usage after retries: $e');
     }
   }
 
   void _updateCurrentStatus({
-    int? dailyCharsUsed,
-    SubscriptionTier? tier,
+    int? dailyTokensUsed,
+    String? tier,
     DateTime? resetAt,
   }) {
     if (_currentStatus == null && tier == null) return;
 
     final wasExceeded = _currentStatus?.isExceeded ?? false;
-    final newTier = tier ?? _currentStatus?.tier ?? SubscriptionTier.free;
-    final newUsed = dailyCharsUsed ?? _currentStatus?.dailyCharsUsed ?? 0;
+    final newTier = tier ?? _currentStatus?.tier ?? defaultTier;
+    final newUsed = dailyTokensUsed ?? _currentStatus?.dailyTokensUsed ?? 0;
     final newReset =
         resetAt ?? _currentStatus?.dailyResetAt ?? _getNextDailyReset();
 
     _currentStatus = SubscriptionStatus(
       tier: newTier,
-      dailyCharsUsed: newUsed,
+      dailyTokensUsed: newUsed,
       dailyLimit: _getLimitForTier(newTier),
       dailyResetAt: newReset,
     );
     _statusController.add(_currentStatus!);
 
     if (!wasExceeded && (_currentStatus?.isExceeded ?? false)) {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final uid = _auth.currentUser?.uid;
       if (uid != null) {
         _logQuotaExceeded(uid);
       }
@@ -149,7 +164,7 @@ class SubscriptionService {
   }
 
   void _listenToUserDoc(String uid) {
-    _userSub = FirebaseFirestore.instance
+    _userSub = _firestore
         .collection('users')
         .doc(uid)
         .snapshots()
@@ -161,9 +176,9 @@ class SubscriptionService {
             }
 
             final data = doc.data()!;
-            final tierStr = data['tier'] as String? ?? 'free';
-            final tier = _parseTier(tierStr);
-            // Notice we don't pull dailyCharsUsed from Firestore anymore.
+            final tierStr = data['tier'] as String? ?? defaultTier;
+            final tier = tierStr;
+            // Notice we don't pull dailyTokensUsed from Firestore anymore.
             final resetAt =
                 (data['dailyResetAt'] as Timestamp?)?.toDate() ??
                 _getNextDailyReset();
@@ -173,6 +188,15 @@ class SubscriptionService {
               // We don't reset RTDB daily quota here because it's path-based (new day = new path).
               // But we might want to update the DB's `dailyResetAt` to the next day so this doesn't trigger continually.
               _resetDailyQuota(uid);
+              return;
+            }
+
+            // Check if we need to reset monthly quota
+            final monthlyResetAt =
+                (data['monthlyResetAt'] as Timestamp?)?.toDate();
+            if (monthlyResetAt != null &&
+                DateTime.now().isAfter(monthlyResetAt)) {
+              _resetMonthlyQuota(uid);
               return;
             }
 
@@ -189,54 +213,70 @@ class SubscriptionService {
             _updateCurrentStatus(tier: tier, resetAt: resetAt);
           });
         });
-
-    _startUsagePolling(uid);
   }
 
   Future<void> _initializeUserDoc(String uid) async {
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'tier': 'free',
+    await _firestore.collection('users').doc(uid).set({
+      'tier': defaultTier,
       'dailyResetAt': Timestamp.fromDate(_getNextDailyReset()),
-      'monthlyCharsUsed': 0,
+      'monthlyTokensUsed': 0,
       'monthlyResetAt': Timestamp.fromDate(_getNextMonthlyReset()),
-      'lifetimeCharsUsed': 0,
+      'lifetimeTokensUsed': 0,
+      'forceLogout': false,
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
   Future<void> _resetDailyQuota(String uid) async {
-    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+    await _firestore.collection('users').doc(uid).update({
       'dailyResetAt': Timestamp.fromDate(_getNextDailyReset()),
     });
+  }
+
+  /// Resets the monthly token counter and advances monthlyResetAt by 30 days
+  /// (rolling billing-cycle reset, not calendar-month reset).
+  Future<void> _resetMonthlyQuota(String uid) async {
+    await _firestore.collection('users').doc(uid).update({
+      'monthlyTokensUsed': 0,
+      'monthlyResetAt': Timestamp.fromDate(
+        DateTime.now().add(const Duration(days: 30)),
+      ),
+    });
+    debugPrint('[Subscription] Monthly quota reset for $uid');
   }
 
   /// Logs a tier change event to the `subscription_events` sub-collection.
   Future<void> _logSubscriptionEvent({
     required String uid,
-    required SubscriptionTier fromTier,
-    required SubscriptionTier toTier,
+    required String fromTier,
+    required String toTier,
   }) async {
-    final isUpgrade = _tierRank(toTier) > _tierRank(fromTier);
+    final isUpgrade = getTierRank(toTier) > getTierRank(fromTier);
     final event = isUpgrade ? 'upgraded' : 'downgraded';
 
     try {
-      await FirebaseFirestore.instance
+      await _firestore
           .collection('users')
           .doc(uid)
           .collection('subscription_events')
           .add({
             'event': event,
-            'from': _tierToString(fromTier),
-            'to': _tierToString(toTier),
+            'from': fromTier,
+            'to': toTier,
             'timestamp': FieldValue.serverTimestamp(),
             'via': 'razorpay',
           });
 
       // On first upgrade from free, record subscriptionSince + paymentProvider
-      if (fromTier == SubscriptionTier.free && isUpgrade) {
-        await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      // and anchor the billing-cycle monthly reset to 30 days from now.
+      if (fromTier == defaultTier && isUpgrade) {
+        await _firestore.collection('users').doc(uid).update({
           'subscriptionSince': FieldValue.serverTimestamp(),
           'paymentProvider': 'razorpay',
+          'monthlyTokensUsed': 0,
+          'monthlyResetAt': Timestamp.fromDate(
+            DateTime.now().add(const Duration(days: 30)),
+          ),
         });
       }
 
@@ -246,14 +286,14 @@ class SubscriptionService {
     }
   }
 
-  /// Increments char usage counters for lifetime/monthly, wait for RTDB to update daily.
-  Future<void> incrementChars(int count) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+  /// Increments token usage counters for lifetime/monthly, wait for RTDB to update daily.
+  Future<void> incrementTokens(int count) async {
+    final uid = _auth.currentUser?.uid;
     if (uid == null) return;
 
-    await FirebaseFirestore.instance.collection('users').doc(uid).update({
-      'monthlyCharsUsed': FieldValue.increment(count),
-      'lifetimeCharsUsed': FieldValue.increment(count),
+    await _firestore.collection('users').doc(uid).update({
+      'monthlyTokensUsed': FieldValue.increment(count),
+      'lifetimeTokensUsed': FieldValue.increment(count),
     });
   }
 
@@ -261,12 +301,12 @@ class SubscriptionService {
   Future<void> _logQuotaExceeded(String uid) async {
     try {
       // Update Firestore timestamp
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      await _firestore.collection('users').doc(uid).update({
         'lastQuotaExceededAt': FieldValue.serverTimestamp(),
       });
 
       // Log to RTDB so it appears in the event stream alongside other app events
-      final user = FirebaseAuth.instance.currentUser;
+      final user = _auth.currentUser;
       if (user == null) return;
       final idToken = await user.getIdToken();
       final url = Uri.parse('$_rtdbBaseUrl/users/$uid/logs.json?auth=$idToken');
@@ -276,11 +316,10 @@ class SubscriptionService {
             body: jsonEncode({
               'event': 'quota_exceeded',
               'data': {
-                'tier': _tierToString(
-                  _currentStatus?.tier ?? SubscriptionTier.free,
-                ),
+                'tier': _currentStatus?.tier ?? defaultTier,
+
                 'dailyLimit': _currentStatus?.dailyLimit ?? 0,
-                'dailyCharsUsed': _currentStatus?.dailyCharsUsed ?? 0,
+                'dailyTokensUsed': _currentStatus?.dailyTokensUsed ?? 0,
               },
               'timestamp': {'.sv': 'timestamp'},
             }),
@@ -295,32 +334,29 @@ class SubscriptionService {
   }
 
   Future<void> openCheckout(String tierId) async {
-    // Razorpay payment link placeholder
     final config =
         _monetizationConfig?['payment_links'] as Map<String, dynamic>?;
 
-    final String url = tierId == 'pro'
-        ? (config?['pro'] ?? 'https://razorpay.me/@omnibridgepro')
-        : tierId == 'plus'
-        ? (config?['plus'] ?? 'https://razorpay.me/@omnibridgeplus')
-        : (config?['basic'] ?? 'https://razorpay.me/@omnibridgemonetization');
+    final String? url = config?[tierId] as String?;
 
-    if (await canLaunchUrl(Uri.parse(url))) {
+    if (url != null && await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } else {
+      debugPrint('[Subscription] No payment link found for tier: $tierId');
     }
   }
 
   /// Manually updates the user tier in Firestore (Debug only).
-  Future<void> setTierDebug(SubscriptionTier tier) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+  Future<void> setTierDebug(String tier) async {
+    final uid = _auth.currentUser?.uid;
     if (uid == null) return;
     await setTierForOtherUser(uid, tier);
   }
 
   /// Updates the tier for any user (Admin only).
-  Future<void> setTierForOtherUser(String uid, SubscriptionTier tier) async {
-    await FirebaseFirestore.instance.collection('users').doc(uid).update({
-      'tier': _tierToString(tier),
+  Future<void> setTierForOtherUser(String uid, String tier) async {
+    await _firestore.collection('users').doc(uid).update({
+      'tier': tier,
     });
     debugPrint('[Subscription] Tier for $uid set to $tier');
   }
@@ -337,80 +373,69 @@ class SubscriptionService {
     return DateTime(now.year, now.month + 1, 1);
   }
 
-  SubscriptionTier _parseTier(String tier) {
-    switch (tier.toLowerCase()) {
-      case 'basic':
-        return SubscriptionTier.basic;
-      case 'plus':
-        return SubscriptionTier.plus;
-      case 'pro':
-        return SubscriptionTier.pro;
-      default:
-        return SubscriptionTier.free;
-    }
+  /// Returns the dynamically determined default (fallback) tier
+  String get defaultTier {
+    final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];
+    return order.isNotEmpty ? order.first.toString() : '';
   }
 
-  String _tierToString(SubscriptionTier tier) {
-    switch (tier) {
-      case SubscriptionTier.basic:
-        return 'basic';
-      case SubscriptionTier.plus:
-        return 'plus';
-      case SubscriptionTier.pro:
-        return 'pro';
-      default:
-        return 'free';
-    }
+  /// Returns true if the tier is the highest available tier
+  bool isHighestTier(String tier) {
+    final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];
+    if (order.isEmpty) return false;
+    return order.last.toString() == tier;
   }
 
-  int _tierRank(SubscriptionTier tier) {
-    switch (tier) {
-      case SubscriptionTier.free:
-        return 0;
-      case SubscriptionTier.basic:
-        return 1;
-      case SubscriptionTier.plus:
-        return 2;
-      case SubscriptionTier.pro:
-        return 3;
-    }
+  /// Returns the tier mapped to the given index order
+  String getTierAt(int index) {
+    final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];
+    if (order.isEmpty) return '';
+    if (index < 0) return order.first.toString();
+    if (index >= order.length) return order.last.toString();
+    return order[index].toString();
   }
 
-  int _getLimitForTier(SubscriptionTier tier) {
+  /// Returns the display name for a tier at a given rank index.
+  String getNameForRank(int rank) {
+    return getNameForTier(getTierAt(rank));
+  }
+
+  int getTierRank(String tier) {
+    if (tier == defaultTier) return 0;
+    final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];
+    if (order.contains(tier)) {
+      return order.indexOf(tier);
+    }
+    return 0;
+  }
+
+  bool tierHasAccess(String currentTier, String requiredTier) {
+    return getTierRank(currentTier) >= getTierRank(requiredTier);
+  }
+
+  int _getLimitForTier(String tier) {
+    // Before monetization config loads, return safe defaults:
+    // default tier gets 10,000 tokens, any paid tier gets -1 (unlimited flag)
+    // so Pro users don't briefly flash as quota-exceeded on cold start.
+    if (_monetizationConfig == null) {
+      return tier == defaultTier ? 10000 : -1;
+    }
+
     final limits = _monetizationConfig?['limits'] as Map<String, dynamic>?;
-
-    switch (tier) {
-      case SubscriptionTier.basic:
-        return limits?['basic'] ?? 50000;
-      case SubscriptionTier.plus:
-        return limits?['plus'] ?? 100000;
-      case SubscriptionTier.pro:
-        return limits?['pro'] ?? 999999999; // Effectively unlimited
-      default:
-        return limits?['free'] ?? 10000;
-    }
+    return (limits?[tier] as num?)?.toInt() ?? 0;
   }
 
   /// Gets the price string for a tier from Firestore.
-  String getPriceForTier(SubscriptionTier tier) {
+  String getPriceForTier(String tier) {
     final prices = _monetizationConfig?['prices'] as Map<String, dynamic>?;
-    switch (tier) {
-      case SubscriptionTier.free:
-        return prices?['free'] ?? '₹0';
-      case SubscriptionTier.basic:
-        return prices?['basic'] ?? '₹49';
-      case SubscriptionTier.plus:
-        return prices?['plus'] ?? '₹149';
-      case SubscriptionTier.pro:
-        return prices?['pro'] ?? '₹399';
-    }
+    return prices?[tier] ?? '';
   }
 
   /// Gets the tier requirement for an engine or whisper size.
-  SubscriptionTier getRequirement(
+  String getRequirement(
     String category,
     String key,
-    SubscriptionTier fallback,
+    String fallback,
   ) {
     final requirements =
         _monetizationConfig?['requirements'] as Map<String, dynamic>?;
@@ -421,82 +446,33 @@ class SubscriptionService {
     final categoryMap = requirements[category] as Map<String, dynamic>;
     if (!categoryMap.containsKey(key)) return fallback;
 
-    return _parseTier(categoryMap[key] as String);
+    return categoryMap[key] as String;
   }
 
   /// Gets the display name for a tier from Firestore.
-  String getNameForTier(SubscriptionTier tier) {
+  String getNameForTier(String tier) {
+    if (tier == defaultTier && defaultTier.isEmpty) return 'Free';
     final names = _monetizationConfig?['names'] as Map<String, dynamic>?;
-    switch (tier) {
-      case SubscriptionTier.free:
-        return names?['free'] ?? 'Free';
-      case SubscriptionTier.basic:
-        return names?['basic'] ?? 'Basic';
-      case SubscriptionTier.plus:
-        return names?['plus'] ?? 'Plus';
-      case SubscriptionTier.pro:
-        return names?['pro'] ?? 'Pro';
-    }
+    return names?[tier] ?? tier.toUpperCase();
   }
 
   /// List of plans dynamically evaluated from _monetizationConfig
   List<SubscriptionPlan> get availablePlans {
-    final names =
-        _monetizationConfig?['names'] as Map<String, dynamic>? ??
-        {'free': 'Free', 'basic': 'Basic', 'plus': 'Plus', 'pro': 'Pro'};
-    final prices =
-        _monetizationConfig?['prices'] as Map<String, dynamic>? ??
-        {'free': '₹0', 'basic': '₹49', 'plus': '₹149', 'pro': '₹399'};
-    final descriptions =
-        _monetizationConfig?['descriptions'] as Map<String, dynamic>? ??
-        {
-          'free': 'For casual users',
-          'basic': 'For short trips',
-          'plus': 'For active learners',
-          'pro': 'For power users',
-        };
-    final featuresMap =
-        _monetizationConfig?['features'] as Map<String, dynamic>? ??
-        {
-          'free': [
-            '10,000 Chars Daily',
-            'Standard Models',
-            'Basic Live Captions',
-          ],
-          'basic': [
-            '50,000 Chars Daily',
-            'Same-Session History',
-            'High-Speed Translation',
-            'Standard Live Captions',
-          ],
-          'plus': [
-            '100,000 Chars Daily',
-            '3-Day History Access',
-            'Advanced Live Captions',
-            'Priority Support',
-            'Offline Model Support',
-          ],
-          'pro': [
-            'Unlimited Daily Chars',
-            'Intelligent Context Refresh (5s)',
-            'Auto-Correct Live Captions',
-            'Unlimited History Access',
-            'Premium Translation Engines',
-            '24/7 Priority Support',
-          ],
-        };
+    final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];
+    if (order.isEmpty) return [];
 
-    final order =
-        _monetizationConfig?['order'] as List<dynamic>? ??
-        ['free', 'basic', 'plus', 'pro'];
-    final popular = _monetizationConfig?['popular'] as String? ?? 'plus';
+    final names = _monetizationConfig?['names'] as Map<String, dynamic>? ?? {};
+    final prices = _monetizationConfig?['prices'] as Map<String, dynamic>? ?? {};
+    final descriptions = _monetizationConfig?['descriptions'] as Map<String, dynamic>? ?? {};
+    final featuresMap = _monetizationConfig?['features'] as Map<String, dynamic>? ?? {};
+    final popular = _monetizationConfig?['popular'] as String? ?? '';
 
     return order.map((key) {
       final id = key.toString();
       return SubscriptionPlan(
         id: id,
-        name: names[id]?.toString() ?? id,
-        price: prices[id]?.toString() ?? (id == 'free' ? '₹0' : ''),
+        name: names[id]?.toString() ?? id.toUpperCase(),
+        price: prices[id]?.toString() ?? '',
         description: descriptions[id]?.toString() ?? '',
         features:
             (featuresMap[id] as List<dynamic>?)
@@ -510,9 +486,9 @@ class SubscriptionService {
 
   SubscriptionStatus _getDefaultStatus() {
     return SubscriptionStatus(
-      tier: SubscriptionTier.free,
-      dailyCharsUsed: 0,
-      dailyLimit: _getLimitForTier(SubscriptionTier.free),
+      tier: defaultTier,
+      dailyTokensUsed: 0,
+      dailyLimit: _getLimitForTier(defaultTier),
       dailyResetAt: _getNextDailyReset(),
     );
   }

@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'routes/routes_config.dart';
 import 'services/python_server_manager.dart';
 import 'services/firebase/tracking_service.dart';
@@ -31,8 +30,8 @@ Future<void> initializeWindow() async {
 void configureMainWindow() async {
   appWindow.title = "Omni Bridge: Live AI Translator";
 
-  // Use FirebaseAuth directly since AuthService might not have initialized its ValueNotifier yet
-  if (FirebaseAuth.instance.currentUser != null) {
+  // Use FirebaseAuth through AuthService for named instance isolation
+  if (AuthService.instance.auth.currentUser != null) {
     await windowManager.setResizable(true);
     await windowManager.setMinimumSize(const Size(300, 150));
     await windowManager.setSize(const Size(730, 150));

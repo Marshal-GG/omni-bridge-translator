@@ -49,8 +49,8 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       add(
         UpdateQuotaEvent(
           SubscriptionStatus(
-            tier: SubscriptionTier.free,
-            dailyCharsUsed: 0,
+            tier: SubscriptionService.instance.defaultTier,
+            dailyTokensUsed: 0,
             dailyLimit: 10000,
             dailyResetAt: DateTime.now(), // Ignored here
           ),
@@ -76,7 +76,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           if (usage != null) {
             final totalTokens = (usage['total_tokens'] as num?)?.toInt() ?? 0;
             if (totalTokens > 0) {
-              SubscriptionService.instance.incrementChars(totalTokens);
+              SubscriptionService.instance.incrementTokens(totalTokens);
             }
           }
         }

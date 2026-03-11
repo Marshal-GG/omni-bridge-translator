@@ -9,7 +9,6 @@ import '../bloc/settings_event.dart';
 import '../bloc/settings_state.dart';
 import '../../../core/constants/languages.dart';
 import '../../../core/services/whisper_service.dart';
-import '../../../models/subscription_models.dart';
 import '../../../core/services/firebase/subscription_service.dart';
 import 'settings_helpers.dart';
 
@@ -230,7 +229,7 @@ Widget buildTranslationModelSelector(
   SettingsState state,
 ) {
   final currentTier =
-      SubscriptionService.instance.currentStatus?.tier ?? SubscriptionTier.free;
+      SubscriptionService.instance.currentStatus?.tier ?? SubscriptionService.instance.defaultTier;
 
   const translationModels = {
     'google': 'Google Translate',
@@ -244,9 +243,9 @@ Widget buildTranslationModelSelector(
     final required = SubscriptionService.instance.getRequirement(
       'engines',
       engineKey,
-      SubscriptionTier.basic,
+      SubscriptionService.instance.getTierAt(1),
     );
-    return currentTier.rank >= required.rank;
+    return SubscriptionService.instance.tierHasAccess(currentTier, required);
   }
 
   const enginesThatNeedKey = {'riva', 'llama'};
@@ -377,7 +376,7 @@ Widget buildTranslationModelSelector(
                       if (!itemHasAccess) ...[
                         const SizedBox(width: 8),
                         _buildTierLockBadge(
-                          '${SubscriptionService.instance.getNameForTier(SubscriptionService.instance.getRequirement('engines', item.key, SubscriptionTier.basic))}+',
+                          '${SubscriptionService.instance.getNameForTier(SubscriptionService.instance.getRequirement('engines', item.key, SubscriptionService.instance.getTierAt(1)))}+',
                         ),
                       ],
                       if (isCurrentlySelected) ...[
@@ -697,23 +696,23 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
 
     final currentTier =
         SubscriptionService.instance.currentStatus?.tier ??
-        SubscriptionTier.free;
+        SubscriptionService.instance.defaultTier;
 
     bool whisperHasAccess(String size) {
       if (size == 'tiny' || size == 'base') return true;
       final required = SubscriptionService.instance.getRequirement(
         'whisper',
         size,
-        size == 'medium' ? SubscriptionTier.plus : SubscriptionTier.basic,
+        size == 'medium' ? SubscriptionService.instance.getTierAt(2) : SubscriptionService.instance.getTierAt(1),
       );
-      return currentTier.rank >= required.rank;
+      return SubscriptionService.instance.tierHasAccess(currentTier, required);
     }
 
     String whisperLockLabel(String size) {
       final required = SubscriptionService.instance.getRequirement(
         'whisper',
         size,
-        size == 'medium' ? SubscriptionTier.plus : SubscriptionTier.basic,
+        size == 'medium' ? SubscriptionService.instance.getTierAt(2) : SubscriptionService.instance.getTierAt(1),
       );
       return '${SubscriptionService.instance.getNameForTier(required)}+';
     }
