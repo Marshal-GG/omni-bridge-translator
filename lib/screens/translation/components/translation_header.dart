@@ -298,8 +298,8 @@ class _QuotaUsageText extends StatelessWidget {
     final color = isUnlimited
         ? Colors.tealAccent
         : (progress > 0.9
-            ? Colors.redAccent
-            : (progress > 0.7 ? Colors.orangeAccent : Colors.tealAccent));
+              ? Colors.redAccent
+              : (progress > 0.7 ? Colors.orangeAccent : Colors.tealAccent));
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),

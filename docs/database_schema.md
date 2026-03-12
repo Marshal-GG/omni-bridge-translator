@@ -12,8 +12,8 @@
 
 | Database | Used For |
 |---|---|
-| **Cloud Firestore** | User profile, subscription quota, session tracking, settings, legal docs, admin lists |
-| **Realtime Database (RTDB)** | High-frequency live caption streaming, logs, model usage stats |
+| **Cloud Firestore** | User profile, historical usage archives, session tracking, settings, legal docs, admin lists |
+| **Realtime Database (RTDB)** | Live captions, logs, real-time usage metrics (daily, monthly, lifetime) |
 | **Storage** | (Not used yet) |
 
 ---
@@ -190,7 +190,7 @@ Stores app policies like terms of service and privacy policy to allow dynamic up
 
 ### 0. User Profile & Subscription — `users/{uid}` (root document)
 
-Created automatically on first login by `SubscriptionService._initializeUserDoc()`. Holds subscription tier, rolling usage counters, and monetization metadata. Monthly and lifetime token counters use atomic Firestore increments. **Daily token usage is NOT stored here — it lives exclusively in RTDB** (`users/{uid}/daily_usage/{YYYY-MM-DD}/tokens`) and is polled every 3 seconds by `SubscriptionService`.
+Created automatically on first login by `SubscriptionService._initializeUserDoc()`. Holds subscription tier, monetization metadata, and billing anchors. **All active usage counters (daily, monthly, lifetime) live exclusively in RTDB** to prevent Firestore write rate-limiting. Firestore is used as a cold-storage archive for completed months/subscription cycles.
 
 ```json
 {
@@ -211,9 +211,9 @@ Created automatically on first login by `SubscriptionService._initializeUserDoc(
 |---|---|---|---|
 | `tier` | `string` | Creation | **Admin-Write Only.** Subscription tier: `free` \| `basic` \| `plus` \| `pro` |
 | `dailyResetAt` | `Timestamp` | Creation | Midnight of the next day (local). Checked on each Firestore snapshot; updated by `_resetDailyQuota()` when crossed. |
-| `monthlyTokensUsed` | `number` | Creation / Monthly reset | Tokens translated this billing period. Reset to `0` by `_resetMonthlyQuota()` when `monthlyResetAt` is crossed. |
-| `monthlyResetAt` | `Timestamp` | Creation → First upgrade → Monthly reset | Initially the 1st of next calendar month. On first paid upgrade, anchored to `now + 30 days` (billing-cycle). Each subsequent reset advances it by another 30 days. |
-| `lifetimeTokensUsed` | `number` | Creation | All-time cumulative tokens, never resets |
+| `monthlyTokensUsed` | `number` | creation | (DEPRECATED) Cold storage only. See RTDB `usage/totals`. |
+| `monthlyResetAt` | `Timestamp` | creation → First upgrade → Monthly reset | Initially the 1st of next calendar month. On first paid upgrade, anchored to `now + 30 days` (billing-cycle). Each subsequent reset advances it by another 30 days. Used as the anchor for Subscription Rollovers. |
+| `lifetimeTokensUsed` | `number` | creation | (DEPRECATED) Cold storage only. See RTDB `usage/totals`. |
 | `subscriptionSince` | `Timestamp?` | First upgrade | **Admin-Write Only.** Set once when the user first upgrades from `free` |
 | `paymentProvider` | `string?` | First upgrade | **Admin-Write Only.** Payment provider used: `"razorpay"` |
 | `lastQuotaExceededAt` | `Timestamp?` | On quota hit | Server timestamp of the most recent daily cap breach |
@@ -256,6 +256,31 @@ Written by `SubscriptionService._logSubscriptionEvent()` whenever the user's tie
 | `via` | `string` | Payment provider (`"razorpay"`) |
 
 > Quota-exceeded events are logged to `users/{uid}/logs/{push-id}` in RTDB (see RTDB Event Logs below) with `event: "quota_exceeded"` and a `data` object containing `tier`, `dailyLimit`, and `dailyTokensUsed`. `lastQuotaExceededAt` on the root Firestore user doc is also updated at the same time.
+
+---
+
+### 0b. Usage History (Archives)
+
+Historical usage is archived from RTDB to Firestore collections during rollovers performed by `SubscriptionService._checkAndPerformRollovers()`.
+
+#### Calendar Archives — `users/{uid}/usage_history_calendar/{YYYY_MM}`
+Archived on the 1st of every month for all users.
+```json
+{
+  "tokens": 45000,
+  "archivedAt": "2026-04-01T00:00:05Z"
+}
+```
+
+#### Subscription Archives — `users/{uid}/usage_history_subscription/{cycle_range}`
+Archived on the subscription reset date for paid members.
+```json
+{
+  "tokens": 78200,
+  "period": "2026-03-01__2026-03-31",
+  "archivedAt": "2026-03-31T18:30:00Z"
+}
+```
 
 ---
 
@@ -345,9 +370,35 @@ Single document synced whenever the user saves settings.
 
 ## Realtime Database (RTDB) Structure
 
-Written via RTDB REST POSTs. Avoids Firestore write cost for high-frequency streaming data and logs.
+Written via RTDB REST multi-path `PATCH` or `POST` requests. Avoids Firestore write cost for high-frequency streaming data, logs, and all active token usage counters.
 
-### 1. Model Usage Log — `users/{uid}/model_usage/{push-id}`
+### 1. Cumulative Usage (Totals) — `users/{uid}/usage/totals`
+
+The **Single Source of Truth** for current user usage. Polled every 3 seconds by `SubscriptionService`.
+
+```json
+{
+  "lifetime": 120500,
+  "calendar_monthly": 15200,
+  "subscription_monthly": 15200,
+  "weekly": 5000,
+  "last_calendar_month": "2026_03",
+  "last_week": "2026-03-03"
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `lifetime` | `number` | All-time tokens used. Atomic increments. |
+| `calendar_monthly` | `number` | Tokens used in current calendar month. Resets on 1st. |
+| `subscription_monthly` | `number` | Tokens used in current billing cycle (paid tiers). |
+| `weekly` | `number` | Tokens used in current week (Monday start). Resets on Monday. |
+| `last_calendar_month` | `string` | Tracks current period in RTDB (e.g., `"2026_03"`) to trigger archive on month change. |
+| `last_week` | `string` | Tracks current week in RTDB (e.g., `"2026-03-03"`, which is a Monday) to trigger archive on week change. |
+
+---
+
+### 2. Model Usage Log — `users/{uid}/model_usage/{push-id}`
 
 One node written **per translation call**. Never updated after creation.
 
@@ -595,22 +646,22 @@ Written on session start, ping, and end to provide a lightweight real-time mirro
 
 ```text
 Firestore:
-users/{uid}                              ← root user doc (tier, daily/monthly/lifetime quota, monetization metadata)
-    ├── subscription_events/{push-id}    ← tier upgrade / downgrade audit log
-    ├── sessions/{sessionId}             ← one doc per app launch
+users/{uid}                              ← root user doc (tier, billing anchors, metadata)
+    ├── usage_history_calendar/{YYYY_MM} ← monthly cold storage
+    ├── usage_history_subscription/{...} ← subscription cycle cold storage
+    ├── subscription_events/{push-id}    ← tier audit log
+    ├── sessions/{sessionId}             ← session metadata
+    ├── usage_history_weekly/{YYYY_MM_DD} ← weekly cold storage, archived every Monday
     └── settings/app_preferences         ← single settings doc
-
-system/admins                            ← list of authorized admin emails
-system/monetization                      ← dynamic pricing, limits, and feature requirements
-legal/{documentId}                       ← markdown content for app policies (terms, privacy, license)
 
 RTDB:
 users/{uid}/
+    ├── usage/totals                     ← live counters (lifetime, calendar, weekly, sub-monthly)
+    ├── daily_usage/{YYYY-MM-DD}         ← per-day aggregated tracking
     ├── captions/{push-id}               ← live caption stream
     ├── logs/{push-id}                   ← general events (incl. quota_exceeded)
     ├── error_logs/{push-id}             ← runtime exceptions
-    ├── model_usage/{push-id}            ← one node per translation call
-    ├── model_stats/{engine}             ← engine totals (atomic increments via REST)
-    ├── daily_usage/{YYYY-MM-DD}         ← per-day aggregated tracking (tokens, calls, errors)
+    ├── model_usage/{push-id}            ← translation call logs
+    ├── model_stats/{engine}             ← engine totals
     └── sessions/{sessionId}             ← real-time mirror of active session state
 ```

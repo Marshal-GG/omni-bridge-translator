@@ -73,6 +73,7 @@ Auto-detect source language, or manually select from: English, Spanish, French, 
 - Sign in with **Google**, **Email/Password**, or use as **Guest**
 - Settings sync to the cloud — your preferences follow you
 - **Remote Device Management**: Revoke sessions or sign out of all devices from your account settings
+- **Weekly Usage Tracking**: Monitor your token consumption across daily, weekly, and monthly periods
 - Session activity and translation usage are tracked securely per session
 
 ### 💳 Subscription Tiers

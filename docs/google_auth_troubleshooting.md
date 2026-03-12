@@ -57,3 +57,8 @@ If you see `Pipe create failed` in the terminal or if the `[Auth]` logs don't sh
 ### 5. Code Extraction Failure
 If the app receives the link but fails to log in, it might be unable to "find" the `code` parameter.
 - **Solution:** Check the terminal logs. `AuthService` now includes a regex fallback to find `code=` in the raw string even if the URI parser fails.
+### 6. "firebase_auth/unknown-error" in Debug Mode
+This error often occurs when the app is initialized with one set of project credentials but attempts to authenticate against another project's OAuth client.
+- **Cause**: The `DefaultFirebaseOptions.debug` configuration used placeholder values (like `omni-bridge-test`) while the `AuthService` was sending a credential for the production project (`omni-bridge-ai-translator`).
+- **Solution**: Ensure that `lib/firebase_options.dart` has identical `apiKey`, `appId`, and `projectId` in both `debug` and `release` configurations if you are using the same Firebase project for both. 
+- **Wait, what about Session Isolation?**: You can still maintain local session isolation by using uniquely named Firebase Apps (e.g., `OmniBridge-Debug`) in `Firebase.initializeApp()`, even if they point to the same cloud project. This prevents the debugger from overwriting the installed app's local storage.

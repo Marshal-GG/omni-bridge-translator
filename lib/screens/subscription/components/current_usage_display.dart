@@ -62,27 +62,70 @@ Widget buildCurrentUsageDisplay({
           minHeight: 5,
         ),
       ),
-      const SizedBox(height: 6),
-      RichText(
-        text: TextSpan(
-          style: const TextStyle(color: Colors.white38, fontSize: 10),
-          children: [
-            TextSpan(
-              text: formatter.format(status.dailyTokensUsed),
-              style: const TextStyle(
-                color: Colors.tealAccent,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const TextSpan(
-              text: ' / ',
-            ),
-            TextSpan(
-              text: '${formatter.format(status.dailyLimit)} tokens used',
-            ),
-          ],
-        ),
+      const SizedBox(height: 8),
+      Text(
+        '${formatter.format(status.dailyTokensUsed)} / ${formatter.format(status.dailyLimit)} today',
+        style: const TextStyle(color: Colors.white38, fontSize: 10),
+      ),
+      const SizedBox(height: 16),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          _UsageBadge(
+            label: 'WEEKLY',
+            value: formatter.format(status.weeklyTokensUsed),
+          ),
+          _UsageBadge(
+            label: 'MONTHLY',
+            value: formatter.format(status.monthlyTokensUsed),
+          ),
+          _UsageBadge(
+            label: 'LIFETIME',
+            value: formatter.format(status.lifetimeTokensUsed),
+          ),
+        ],
       ),
     ],
   );
+}
+
+class _UsageBadge extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _UsageBadge({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              color: Colors.white38,
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.tealAccent,
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

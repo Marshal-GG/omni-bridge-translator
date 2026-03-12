@@ -315,6 +315,25 @@ class _AccountScreenState extends State<AccountScreen> {
                                                         fontSize: 11,
                                                       ),
                                                     ),
+                                                    const SizedBox(height: 4),
+                                                    Row(
+                                                      children: [
+                                                          _UsageBadge(
+                                                            label: 'WEEKLY',
+                                                            value: status.weeklyTokensUsed.toString(),
+                                                          ),
+                                                          const SizedBox(width: 8),
+                                                          _UsageBadge(
+                                                            label: 'MONTHLY',
+                                                            value: status.monthlyTokensUsed.toString(),
+                                                          ),
+                                                          const SizedBox(width: 8),
+                                                          _UsageBadge(
+                                                            label: 'LIFETIME',
+                                                            value: status.lifetimeTokensUsed.toString(),
+                                                          ),
+                                                        ],
+                                                      ),
                                                   ],
                                                 ),
                                               ),
@@ -483,6 +502,46 @@ class _VersionChip extends StatelessWidget {
           fontWeight: FontWeight.w600,
           letterSpacing: 1.2,
         ),
+      ),
+    );
+  }
+}
+
+class _UsageBadge extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _UsageBadge({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              color: Colors.white38,
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.tealAccent,
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -78,11 +78,11 @@ lib/
 | `TranslationService` | Sends start/stop/settings commands to the WebSocket server |
 | `PythonServerManager` | Manages the lifecycle of the Python WebSocket server. Includes auto-restart resilience with exponential backoff if the server crashes. |
 | `WhisperService` | Manages local Whisper model downloads, status, and deletion |
-| `TrackingService` | Logs session stats, hardware metadata, and engine-agnostic **token usage** to RTDB.
+| `TrackingService` | Logs session stats, hardware metadata, and engine-agnostic **token usage** to RTDB. It is the **sole source of truth for incrementing usage** counters (daily, weekly, monthly, lifetime) atomically. 
     - **Sequential Sync**: Implemented a locking/buffering mechanism for captions to ensure that even with multiple worker threads, the database always reflects the latest state.
-    - **Usage Aggregation**: Buffers tokens locally and uses multi-path PATCH to reduce HTTP volume by ~80%.
+    - **Usage Aggregation**: Buffers tokens locally and uses multi-path PATCH to reduce RTDB write volume by ~80%.
     - **Robustness**: Wraps all RTDB calls in an exponential backoff retry handler to handle transient `HandshakeException` or network jitter. |
-| `SubscriptionService`| Manages dynamic plans and token usage. Enforces client-side **Monthly Resets** using a rolling 30-day billing cycle anchored to the user's first upgrade. |
+| `SubscriptionService`| Manages real-time subscription state and aggregate token usage. Polled every 3 seconds from RTDB (daily, weekly, monthly, lifetime). Implements **Triple Rollover Logic** (Calendar Month, Weekly, and Subscription Cycle) for archiving usage to Firestore. |
 | `AuthService` | Firebase Auth + custom URL schemes for Windows Google Sign-In redirects. |
 
 ---
@@ -172,6 +172,7 @@ The history button in the overlay header and locked engine selections now route 
 - **Version Tracking**: Every major screen displays a consistent "Version Chip" (e.g., `OMNI BRIDGE V1.0.0`) in the footer or designated areas for easy reference.
 - **Account Screen**:
     - **Plan Visualization**: Real-time progress bar shows daily token usage for capped tiers.
+    - **Usage Metrics**: Displays verified **MONTHLY** and **LIFETIME** token counts in the subscription card, sourced live from RTDB.
     - **Planned Features**: A dedicated "Todo" section informs users of upcoming capabilities (Audio TTS, PDF support, etc.).
 
 ---
@@ -181,8 +182,11 @@ The history button in the overlay header and locked engine selections now route 
 The app follows a **"Trust but Verify (via Rules)"** model, performing critical enforcement client-side while relying on Firestore Security Rules for backend integrity.
 
 ### 1. Quota Enforcement Logic
-- **Daily Quota**: Monitored by `SubscriptionService` via a 3-second RTDB polling loop. If `dailyTokensUsed >= dailyLimit`, the UI switches to a blocked state using `QuotaExceededGate`.
-- **Monthly Quota**: Enforced client-side. The app checks if `monthlyResetAt` is in the past; if so, it atomically zeros `monthlyTokensUsed` and advances the reset timestamp by 30 days.
+- **Real-Time Polling**: `SubscriptionService` polls the `/usage/totals` and `/daily_usage` paths in RTDB every 3 seconds. The UI (Account Screen, Overlay Header) reacts immediately to these updates.
+- **Triple Rollover Logic**: 
+    - **Calendar Rollover**: On month change (detected at launch or runtime), all-time tokens for that month are archived to Firestore (`usage_history_calendar`) and the RTDB counter is reset.
+    - **Weekly Rollover**: Every Monday (local), weekly tokens are archived to `usage_history_weekly` and the RTDB counter is reset.
+    - **Subscription Rollover**: For paid members, usage is tracked relative to their `monthlyResetAt` date. When crossed, usage is archived to `usage_history_subscription` and the RTDB cycle counter is reset.
 
 ### 2. Remote Session Termination (`forceLogout`)
 Two monitoring streams in `TrackingService` enable remote kicks without Cloud Functions:

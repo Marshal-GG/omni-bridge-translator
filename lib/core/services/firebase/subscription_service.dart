@@ -79,7 +79,130 @@ class SubscriptionService {
   }
 
   void _listenToRTDBUsage(String uid) async {
+    // 1. Initial Rollover Check
+    await _checkAndPerformRollovers(uid);
+    // 2. Start Polling
     _startUsagePolling(uid);
+  }
+
+  Future<void> _checkAndPerformRollovers(String uid) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+      final idToken = await user.getIdToken();
+
+      // Fetch current aggregates and status
+      final url = Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken');
+      final resp = await _httpClient.get(url);
+      if (resp.statusCode != 200) return;
+      final totals = jsonDecode(resp.body) as Map<String, dynamic>? ?? {};
+
+      final now = DateTime.now();
+
+      // --- 1. Calendar Rollover ---
+      final currentMonthStr = '${now.year}_${now.month.toString().padLeft(2, '0')}';
+      final lastCalendarMonth = totals['last_calendar_month'] as String? ?? currentMonthStr;
+
+      if (currentMonthStr != lastCalendarMonth) {
+        final calendarUsed = (totals['calendar_monthly'] as num?)?.toInt() ?? 0;
+        // Archive to Firestore
+        await _firestore
+            .collection('users')
+            .doc(uid)
+            .collection('usage_history_calendar')
+            .doc(lastCalendarMonth)
+            .set({
+          'tokens': calendarUsed,
+          'archivedAt': FieldValue.serverTimestamp(),
+        });
+        // Reset in RTDB
+        await _httpClient.patch(
+          Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken'),
+          body: jsonEncode({
+            'calendar_monthly': 0,
+            'last_calendar_month': currentMonthStr,
+          }),
+        );
+        debugPrint('[Subscription] Calendar rollover performed: $lastCalendarMonth');
+      }
+
+      // --- 1.5 Weekly Rollover ---
+      // Determine the Monday of the current week
+      final currentMonday = now.subtract(Duration(days: now.weekday - 1));
+      final currentWeekStr = '${currentMonday.year}_${currentMonday.month.toString().padLeft(2, '0')}_${currentMonday.day.toString().padLeft(2, '0')}';
+      final lastWeekStr = totals['last_week'] as String? ?? currentWeekStr;
+
+      if (currentWeekStr != lastWeekStr) {
+        final weeklyUsed = (totals['weekly'] as num?)?.toInt() ?? 0;
+        // Archive to Firestore
+        await _firestore
+            .collection('users')
+            .doc(uid)
+            .collection('usage_history_weekly')
+            .doc(lastWeekStr)
+            .set({
+          'tokens': weeklyUsed,
+          'archivedAt': FieldValue.serverTimestamp(),
+        });
+        // Reset in RTDB
+        await _httpClient.patch(
+          Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken'),
+          body: jsonEncode({
+            'weekly': 0,
+            'last_week': currentWeekStr,
+          }),
+        );
+        debugPrint('[Subscription] Weekly rollover performed: $lastWeekStr');
+      }
+
+      // --- 2. Subscription Rollover (Paid only) ---
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      if (!userDoc.exists) return;
+      final userData = userDoc.data()!;
+      final tier = userData['tier'] as String? ?? defaultTier;
+
+      if (tier != defaultTier) {
+        DateTime monthlyResetAt = (userData['monthlyResetAt'] as Timestamp?)?.toDate() ?? now.add(const Duration(days: 30));
+        
+        if (now.isAfter(monthlyResetAt)) {
+          final subUsed = (totals['subscription_monthly'] as num?)?.toInt() ?? 0;
+          final cycleLabel = '${monthlyResetAt.subtract(const Duration(days: 30)).toIso8601String().split('T')[0]}__${monthlyResetAt.toIso8601String().split('T')[0]}';
+          
+          // Archive to Firestore
+          await _firestore
+              .collection('users')
+              .doc(uid)
+              .collection('usage_history_subscription')
+              .doc(cycleLabel)
+              .set({
+            'tokens': subUsed,
+            'period': cycleLabel,
+            'archivedAt': FieldValue.serverTimestamp(),
+          });
+
+          // "Catch up" reset dates if multiple months were missed
+          while (now.isAfter(monthlyResetAt)) {
+            monthlyResetAt = monthlyResetAt.add(const Duration(days: 30));
+          }
+
+          // Reset in RTDB and update Reset Date
+          await Future.wait([
+            _httpClient.patch(
+              Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken'),
+              body: jsonEncode({
+                'subscription_monthly': 0,
+              }),
+            ),
+            _firestore.collection('users').doc(uid).update({
+              'monthlyResetAt': Timestamp.fromDate(monthlyResetAt),
+            }),
+          ]);
+          debugPrint('[Subscription] Subscription rollover performed for period ending $cycleLabel');
+        }
+      }
+    } catch (e) {
+      debugPrint('[Subscription] Rollover check failed: $e');
+    }
   }
 
   // Polling mechanism since RTDB REST is used.
@@ -101,41 +224,60 @@ class SubscriptionService {
       final now = DateTime.now();
       final todayStr =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final url = Uri.parse(
+
+      // 1. Fetch Daily Usage
+      final dailyUrl = Uri.parse(
         '$_rtdbBaseUrl/users/$uid/daily_usage/$todayStr/tokens.json?auth=$idToken',
       );
-
-      final response = await _httpClient
-          .get(url)
+      final dailyResponse = await _httpClient
+          .get(dailyUrl)
           .timeout(const Duration(seconds: 5));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final tokensUsed = (data as num?)?.toInt() ?? 0;
+      // 2. Fetch Aggregates (Monthly, Lifetime, etc.)
+      final aggregatesUrl = Uri.parse(
+        '$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken',
+      );
+      final aggregatesResponse = await _httpClient
+          .get(aggregatesUrl)
+          .timeout(const Duration(seconds: 5));
 
-        if (_currentStatus != null &&
-            _currentStatus!.dailyTokensUsed != tokensUsed) {
-          _updateCurrentStatus(dailyTokensUsed: tokensUsed);
-        }
-      } else if (response.statusCode == 401 || response.statusCode == 403) {
-        // Auth error, might need token refresh but we'll let the next poll handle it
-        debugPrint('[Subscription] RTDB fetch auth error: ${response.statusCode}');
+      if (dailyResponse.statusCode == 200 &&
+          aggregatesResponse.statusCode == 200) {
+        final dailyData = jsonDecode(dailyResponse.body);
+        final aggregatesData = jsonDecode(aggregatesResponse.body) as Map<String, dynamic>? ?? {};
+
+        final dailyUsed = (dailyData as num?)?.toInt() ?? 0;
+        final lifetimeUsed = (aggregatesData['lifetime'] as num?)?.toInt() ?? 0;
+        final calendarUsed = (aggregatesData['calendar_monthly'] as num?)?.toInt() ?? 0;
+        final subUsed = (aggregatesData['subscription_monthly'] as num?)?.toInt() ?? 0;
+        final weeklyUsed = (aggregatesData['weekly'] as num?)?.toInt() ?? 0;
+
+        _updateCurrentStatus(
+          dailyTokensUsed: dailyUsed,
+          weeklyTokensUsed: weeklyUsed,
+          monthlyTokensUsed: subUsed > 0 ? subUsed : calendarUsed, // Preference for sub cycle if paid
+          lifetimeTokensUsed: lifetimeUsed,
+        );
       }
     } on TimeoutException {
       debugPrint('[Subscription] RTDB usage fetch timed out.');
     } catch (e) {
-      if (retryCount < 3 && (e.toString().contains('Connection closed') || e.toString().contains('ClientException'))) {
+      if (retryCount < 3 &&
+          (e.toString().contains('Connection closed') ||
+              e.toString().contains('ClientException'))) {
         final delay = Duration(milliseconds: 500 * (retryCount + 1));
-        debugPrint('[Subscription] RTDB fetch failed ($e), retrying in ${delay.inMilliseconds}ms... (Attempt ${retryCount + 1})');
         await Future.delayed(delay);
         return _fetchDailyUsage(uid, retryCount: retryCount + 1);
       }
-      debugPrint('[Subscription] Failed to fetch daily usage after retries: $e');
+      debugPrint('[Subscription] Failed to fetch usage counts: $e');
     }
   }
 
   void _updateCurrentStatus({
     int? dailyTokensUsed,
+    int? weeklyTokensUsed,
+    int? monthlyTokensUsed,
+    int? lifetimeTokensUsed,
     String? tier,
     DateTime? resetAt,
   }) {
@@ -143,13 +285,19 @@ class SubscriptionService {
 
     final wasExceeded = _currentStatus?.isExceeded ?? false;
     final newTier = tier ?? _currentStatus?.tier ?? defaultTier;
-    final newUsed = dailyTokensUsed ?? _currentStatus?.dailyTokensUsed ?? 0;
+    final newDailyUsed = dailyTokensUsed ?? _currentStatus?.dailyTokensUsed ?? 0;
+    final newWeeklyUsed = weeklyTokensUsed ?? _currentStatus?.weeklyTokensUsed ?? 0;
+    final newMonthlyUsed = monthlyTokensUsed ?? _currentStatus?.monthlyTokensUsed ?? 0;
+    final newLifetimeUsed = lifetimeTokensUsed ?? _currentStatus?.lifetimeTokensUsed ?? 0;
     final newReset =
         resetAt ?? _currentStatus?.dailyResetAt ?? _getNextDailyReset();
 
     _currentStatus = SubscriptionStatus(
       tier: newTier,
-      dailyTokensUsed: newUsed,
+      dailyTokensUsed: newDailyUsed,
+      weeklyTokensUsed: newWeeklyUsed,
+      monthlyTokensUsed: newMonthlyUsed,
+      lifetimeTokensUsed: newLifetimeUsed,
       dailyLimit: _getLimitForTier(newTier),
       dailyResetAt: newReset,
     );
@@ -286,16 +434,7 @@ class SubscriptionService {
     }
   }
 
-  /// Increments token usage counters for lifetime/monthly, wait for RTDB to update daily.
-  Future<void> incrementTokens(int count) async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) return;
-
-    await _firestore.collection('users').doc(uid).update({
-      'monthlyTokensUsed': FieldValue.increment(count),
-      'lifetimeTokensUsed': FieldValue.increment(count),
-    });
-  }
+  /// Increments token usage counters in RTDB for lifetime, monthly, and daily usage.
 
   /// Logs a quota_exceeded event to RTDB and updates `lastQuotaExceededAt`.
   Future<void> _logQuotaExceeded(String uid) async {
@@ -488,6 +627,9 @@ class SubscriptionService {
     return SubscriptionStatus(
       tier: defaultTier,
       dailyTokensUsed: 0,
+      weeklyTokensUsed: 0,
+      monthlyTokensUsed: 0,
+      lifetimeTokensUsed: 0,
       dailyLimit: _getLimitForTier(defaultTier),
       dailyResetAt: _getNextDailyReset(),
     );

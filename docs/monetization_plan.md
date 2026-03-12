@@ -2,7 +2,7 @@
 
 ## Overview
 
-Omni Bridge uses a **3-tier paid subscription model** (plus a free tier) to balance server costs with user accessibility. Subscriptions are purchased via Razorpay and reflected instantly in the app through a Firestore listener. All usage is tracked by **token count** (input + output) in RTDB, providing an engine-agnostic metric that scales across local and cloud models.
+Omni Bridge uses a **3-tier paid subscription model** (plus a free tier) to balance server costs with user accessibility. Subscriptions are purchased via Razorpay and reflected instantly in the app through- **Real-time Monitoring**: Daily, **weekly**, and monthly usage is tracked in RTDB and streamed to the UI. All usage is tracked by **token count** (input + output) in RTDB, providing an engine-agnostic metric that scales across local and cloud models.
 
 ---
 
@@ -35,8 +35,10 @@ Usage is tracked by **token count** (Input + Output tokens), pushed live to RTDB
 | Counter | Resets | Field |
 |---|---|---|
 | Daily | Midnight (local) | `users/{uid}/daily_usage/{YYYY-MM-DD}/tokens` (RTDB) |
-| Monthly | Billing-cycle (30 days from upgrade) | `monthlyTokensUsed` (Firestore) |
-| Lifetime | Never | `lifetimeTokensUsed` (Firestore) |
+| Weekly | Monday (local) | `users/{uid}/usage/totals/weekly` (RTDB) |
+| Monthly | Calendar | `users/{uid}/usage/totals/calendar_monthly` (RTDB) |
+| Subscription | Billing-cycle (30 days) | `users/{uid}/usage/totals/subscription_monthly` (RTDB) |
+| Lifetime | Never | `users/{uid}/usage/totals/lifetime` (RTDB) |
 
 All counters use **atomic increments** (ServerValue logic in RTDB, `FieldValue.increment()` in Firestore) — concurrent writes are safe. The `SubscriptionService` provides a live `statusStream` so the UI reacts instantly when quotas change.
 
@@ -94,10 +96,11 @@ This enables LTV calculations and churn analysis over time.
 | Field | Written By | Notes |
 |---|---|---|---|
 | `tier` | Webhook / manual | **Admin-Protected.** Source of truth for tier. |
-| `daily_usage/{dt}/tokens` | `TrackingService.logModelUsage()` | **Input + Output Tokens.** Atomic RTDB increment. |
-| `monthlyTokensUsed` | `SubscriptionService.incrementTokens()` | Atomic increment. Reset after 30 days. |
-| `monthlyResetAt` | `SubscriptionService._resetMonthlyQuota()` | Advanced by 30 days on reset. |
-| `lifetimeTokensUsed` | `SubscriptionService.incrementTokens()` | Atomic increment, never resets. |
+| `usage/totals/weekly` | `TrackingService` | Atomic RTDB increment. Reset weekly. |
+| `usage/totals/calendar_monthly`| `TrackingService` | **Daily/Monthly total.** Atomic RTDB increment. |
+| `usage/totals/subscription_monthly`| `TrackingService` | Atomic RTDB increment. Reset by `SubscriptionService`. |
+| `monthlyResetAt` | `SubscriptionService._resetMonthlyQuota()` | Advanced by 30 days on reset (Firestore anchor). |
+| `usage/totals/lifetime` | `TrackingService` | Atomic RTDB increment, never resets. |
 | `subscriptionSince` | `SubscriptionService._logSubscriptionEvent()` | Set once on first paid upgrade |
 | `paymentProvider` | `SubscriptionService._logSubscriptionEvent()` | Set once on first paid upgrade |
 | `lastQuotaExceededAt` | `SubscriptionService._logQuotaExceeded()` | Updated each time quota is first crossed |

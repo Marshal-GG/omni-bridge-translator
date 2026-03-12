@@ -51,6 +51,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           SubscriptionStatus(
             tier: SubscriptionService.instance.defaultTier,
             dailyTokensUsed: 0,
+            weeklyTokensUsed: 0,
+            monthlyTokensUsed: 0,
+            lifetimeTokensUsed: 0,
             dailyLimit: 10000,
             dailyResetAt: DateTime.now(), // Ignored here
           ),
@@ -70,17 +73,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     // Actual audio capture only starts when the user toggles on (ToggleRunningEvent).
 
     _captionSub = asrClient.captions?.listen((msg) {
-      if (msg.usageStats != null) {
-        if (state.activeApiKey.isEmpty) {
-          final usage = msg.usageStats;
-          if (usage != null) {
-            final totalTokens = (usage['total_tokens'] as num?)?.toInt() ?? 0;
-            if (totalTokens > 0) {
-              SubscriptionService.instance.incrementTokens(totalTokens);
-            }
-          }
-        }
-      }
+      // Usage stats are now handled exclusively by TrackingService._flushUsage via logModelUsage
 
       final override = msg.sourceLangOverride;
       if (override != null && !isClosed) {

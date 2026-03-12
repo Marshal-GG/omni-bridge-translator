@@ -1,12 +1,18 @@
 class SubscriptionStatus {
   final String tier;
   final int dailyTokensUsed;
+  final int weeklyTokensUsed;
+  final int monthlyTokensUsed;
+  final int lifetimeTokensUsed;
   final int dailyLimit;
   final DateTime dailyResetAt;
 
   const SubscriptionStatus({
     required this.tier,
     required this.dailyTokensUsed,
+    required this.weeklyTokensUsed,
+    required this.monthlyTokensUsed,
+    required this.lifetimeTokensUsed,
     required this.dailyLimit,
     required this.dailyResetAt,
   });
@@ -19,6 +25,9 @@ class SubscriptionStatus {
     return SubscriptionStatus(
       tier: json['tier'] as String? ?? '',
       dailyTokensUsed: json['dailyTokensUsed'] as int? ?? 0,
+      weeklyTokensUsed: json['weeklyTokensUsed'] as int? ?? 0,
+      monthlyTokensUsed: json['monthlyTokensUsed'] as int? ?? 0,
+      lifetimeTokensUsed: json['lifetimeTokensUsed'] as int? ?? 0,
       dailyLimit: json['dailyLimit'] as int? ?? 0,
       dailyResetAt: json['dailyResetAt'] != null
           ? DateTime.parse(json['dailyResetAt'] as String)
@@ -30,6 +39,9 @@ class SubscriptionStatus {
     return {
       'tier': tier,
       'dailyTokensUsed': dailyTokensUsed,
+      'weeklyTokensUsed': weeklyTokensUsed,
+      'monthlyTokensUsed': monthlyTokensUsed,
+      'lifetimeTokensUsed': lifetimeTokensUsed,
       'dailyLimit': dailyLimit,
       'dailyResetAt': dailyResetAt.toIso8601String(),
     };

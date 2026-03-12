@@ -10,7 +10,6 @@ import 'package:http/http.dart' as http;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import './subscription_service.dart';
 import '../../navigation/global_navigator.dart';
 
 class TrackingService {
@@ -723,16 +722,30 @@ class TrackingService {
         }
       }
 
+      // 4. Update aggregates (Lifetime & Monthly) - Consolidated here for atomicity
+      if (totalDailyTokens > 0) {
+        updates['usage/totals/lifetime'] = {
+          '.sv': {'increment': totalDailyTokens}
+        };
+        updates['usage/totals/calendar_monthly'] = {
+          '.sv': {'increment': totalDailyTokens}
+        };
+        updates['usage/totals/subscription_monthly'] = {
+          '.sv': {'increment': totalDailyTokens}
+        };
+        updates['usage/totals/weekly'] = {
+          '.sv': {'increment': totalDailyTokens}
+        };
+      }
+
       if (updates.isNotEmpty) {
         await _wrapRTDBRequest(
           () => _httpClient.patch(url, body: jsonEncode(updates)),
           context: 'flushUsage (Multi-Path)',
         );
-        debugPrint('[Tracking] Flushed aggregated usage stats to RTDB.');
-      }
-      // 6. Update Firestore lifetime/monthly counters
-      if (totalDailyTokens > 0) {
-        await SubscriptionService.instance.incrementTokens(totalDailyTokens);
+        debugPrint(
+          '[Tracking] Flushed aggregated usage stats to RTDB (+$totalDailyTokens tokens).',
+        );
       }
     } catch (e) {
       debugPrint('[Tracking] Failed to log model usage to RTDB: $e');
