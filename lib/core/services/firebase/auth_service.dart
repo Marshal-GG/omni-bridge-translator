@@ -18,13 +18,14 @@ class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();
 
-  String get _appName => kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
+  static final String _appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
   FirebaseApp get _app => Firebase.app(_appName);
-  FirebaseAuth get auth => FirebaseAuth.instanceFor(app: _app);
-  FirebaseFirestore get firestore => FirebaseFirestore.instanceFor(app: _app);
+  FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
+  FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
 
-  FirebaseAuth get _auth => auth;
-  FirebaseFirestore get _firestore => firestore;
+  // Public getters used by UI components (e.g., AdminPanel)
+  FirebaseAuth get auth => _auth;
+  FirebaseFirestore get firestore => _firestore;
 
   /// Exposes the current signed-in user (or null if not signed in).
   ValueNotifier<User?> currentUser = ValueNotifier(null);

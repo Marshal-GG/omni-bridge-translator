@@ -110,6 +110,7 @@ function Remove-RegKey ($Path) {
 if ($ClearDebug) {
     Remove-RegKey "HKCU:\Software\$Company\$DebugName"
     Remove-RegKey "HKCU:\Software\omni_bridge"
+    Remove-RegKey "HKCU:\Software\Marshal\omni_bridge"
 }
 
 if ($ClearRelease) {
@@ -118,6 +119,8 @@ if ($ClearRelease) {
     }
     Remove-RegKey "HKCU:\Software\com.marshal\omni_bridge"
     Remove-RegKey "HKCU:\Software\com.marshal\Omni Bridge"
+    Remove-RegKey "HKCU:\Software\Marshal\omni_bridge"
+    Remove-RegKey "HKCU:\Software\Marshal\Omni Bridge: Live AI Translator"
 }
 
 # 4. Clear Local Project Logs and Temp Files

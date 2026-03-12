@@ -97,7 +97,7 @@ class AsrTextController extends ValueNotifier<String> {
   void _startTyping() {
     if (_typingTimer != null) return;
 
-    _typingTimer = Timer.periodic(const Duration(milliseconds: 15), (timer) {
+    _typingTimer = Timer.periodic(const Duration(milliseconds: 10), (timer) {
       if (value == _targetValue) {
         _stopTyping();
         return;
@@ -111,10 +111,11 @@ class AsrTextController extends ValueNotifier<String> {
             : _targetValue;
       }
 
-      // Type 4 chars at a time for "super fast" feel
-      const int charsToType = 4;
+      // Variable speed based on how far behind we are
       int remaining = _targetValue.length - value.length;
       if (remaining > 0) {
+        // Base speed is 4 chars, but catch up faster if we're way behind (> 50 chars)
+        int charsToType = remaining > 50 ? 8 : 4;
         int take = remaining < charsToType ? remaining : charsToType;
         value = _targetValue.substring(0, value.length + take);
       }
@@ -125,6 +126,7 @@ class AsrTextController extends ValueNotifier<String> {
     _typingTimer?.cancel();
     _typingTimer = null;
   }
+
 
   void clear() {
     _stopTyping();

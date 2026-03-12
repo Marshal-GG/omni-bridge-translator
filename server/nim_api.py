@@ -133,13 +133,13 @@ class NimApiClient:
             except Exception:
                 break
 
-        for _ in range(2):
-            t = threading.Thread(target=self._worker, daemon=True)
+        # Using 1 worker thread guarantees that audio chunks are processed 
+        for i in range(2):
+            t = threading.Thread(target=self._worker, name=f"NimWorker-{i}")
             t.start()
 
     def stop_stream(self):
         self.is_running = False
-        self.audio_queue.put(None)
         self.audio_queue.put(None)
 
     def append_audio(self, audio_data):

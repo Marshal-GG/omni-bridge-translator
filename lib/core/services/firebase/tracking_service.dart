@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -9,14 +10,14 @@ import 'package:http/http.dart' as http;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:omni_bridge/core/services/firebase/subscription_service.dart';
+import './subscription_service.dart';
 import '../../navigation/global_navigator.dart';
 
 class TrackingService {
   TrackingService._();
   static final TrackingService instance = TrackingService._();
 
-  String get _appName => kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
+  static final String _appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
   FirebaseApp get _app => Firebase.app(_appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
@@ -27,9 +28,19 @@ class TrackingService {
   StreamSubscription<DocumentSnapshot>? _sessionSub;
   StreamSubscription<DocumentSnapshot>? _userSub;
 
-  final http.Client _httpClient = http.Client();
+  http.Client get _httpClient => _clientInstance ??= http.Client();
+  http.Client? _clientInstance;
 
-  static const String _rtdbBaseUrl =
+  // Buffer for aggregating usage stats to reduce RTDB writes
+  final Map<String, dynamic> _usageBuffer = {};
+  Timer? _usageFlushTimer;
+
+  // Sync control for high-frequency captions
+  bool _isSyncingInterim = false;
+  Map<String, dynamic>? _pendingInterim;
+  int _lastCaptionTimestamp = 0;
+
+  final String _rtdbBaseUrl =
       'https://omni-bridge-ai-translator-default-rtdb.firebaseio.com';
 
   /// Check if a session is currently active
@@ -45,6 +56,48 @@ class TrackingService {
 
     final idToken = await user.getIdToken();
     return Uri.parse('$_rtdbBaseUrl/users/$uid/$path.json?auth=$idToken');
+  }
+
+  /// Wraps an RTDB HTTP request with retry logic for transient network errors.
+  Future<http.Response?> _wrapRTDBRequest(
+    Future<http.Response> Function() request, {
+    int maxRetries = 3,
+    String? context,
+  }) async {
+    int attempts = 0;
+    while (attempts < maxRetries) {
+      try {
+        final response = await request().timeout(const Duration(seconds: 5));
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return response;
+        } else {
+          debugPrint(
+            '[Tracking] RTDB Request ($context) failed with status: ${response.statusCode}',
+          );
+          return response; // Return even on 4xx/5xx to handle specifically if needed
+        }
+      } catch (e) {
+        attempts++;
+        final isLastAttempt = attempts >= maxRetries;
+        final isTransient = e is HandshakeException ||
+            e is SocketException ||
+            e is http.ClientException ||
+            e is TimeoutException;
+
+        if (isTransient && !isLastAttempt) {
+          final delay = Duration(milliseconds: 500 * attempts);
+          debugPrint(
+            '[Tracking] RTDB Request ($context) transient error: $e. Retrying in ${delay.inMilliseconds}ms... (Attempt $attempts)',
+          );
+          await Future.delayed(delay);
+          continue;
+        }
+
+        debugPrint('[Tracking] RTDB Request ($context) fatal error: $e');
+        if (isLastAttempt) return null;
+      }
+    }
+    return null;
   }
 
   /// Collects device hardware and network info.
@@ -202,14 +255,15 @@ class TrackingService {
     try {
       final settingsUrl = await _getRTDBUrl('sessions/$_currentSessionId');
       if (settingsUrl != null) {
-        await _httpClient
-            .patch(
-              settingsUrl,
-              body: jsonEncode({
-                'started_at': {'.sv': 'timestamp'},
-              }),
-            )
-            .timeout(const Duration(seconds: 5));
+        await _wrapRTDBRequest(
+          () => _httpClient.patch(
+            settingsUrl,
+            body: jsonEncode({
+              'started_at': {'.sv': 'timestamp'},
+            }),
+          ),
+          context: 'startSession',
+        );
       }
     } catch (e) {
       debugPrint('[Tracking] Failed to sync session start to RTDB: $e');
@@ -279,15 +333,16 @@ class TrackingService {
       try {
         final settingsUrl = await _getRTDBUrl('sessions/$_currentSessionId');
         if (settingsUrl != null) {
-          await _httpClient
-              .patch(
-                settingsUrl,
-                body: jsonEncode({
-                  'ended_at': {'.sv': 'timestamp'},
-                  'duration_seconds': duration,
-                }),
-              )
-              .timeout(const Duration(seconds: 5));
+          await _wrapRTDBRequest(
+            () => _httpClient.patch(
+              settingsUrl,
+              body: jsonEncode({
+                'ended_at': {'.sv': 'timestamp'},
+                'duration_seconds': duration,
+              }),
+            ),
+            context: 'endSession',
+          );
         }
       } catch (e) {
         debugPrint('[Tracking] Failed to sync session end to RTDB: $e');
@@ -305,6 +360,8 @@ class TrackingService {
       _sessionSub = null;
       _userSub?.cancel();
       _userSub = null;
+      _usageFlushTimer?.cancel(); // Cancel any pending flush
+      _usageBuffer.clear(); // Clear any buffered data
     }
   }
 
@@ -319,15 +376,16 @@ class TrackingService {
       try {
         final settingsUrl = await _getRTDBUrl('sessions/$_currentSessionId');
         if (settingsUrl != null) {
-          await _httpClient
-              .patch(
-                settingsUrl,
-                body: jsonEncode({
-                  'last_ping_at': {'.sv': 'timestamp'},
-                  'duration_seconds': duration,
-                }),
-              )
-              .timeout(const Duration(seconds: 5));
+          await _wrapRTDBRequest(
+            () => _httpClient.patch(
+              settingsUrl,
+              body: jsonEncode({
+                'last_ping_at': {'.sv': 'timestamp'},
+                'duration_seconds': duration,
+              }),
+            ),
+            context: 'pingSession',
+          );
         }
       } catch (e) {
         debugPrint('[Tracking] Failed to ping RTDB session: $e');
@@ -395,17 +453,18 @@ class TrackingService {
       final url = await _getRTDBUrl('logs');
       if (url == null) return;
 
-      await _httpClient
-          .post(
-            url,
-            body: jsonEncode({
-              'event': eventName,
-              'data': data ?? {},
-              'timestamp': {'.sv': 'timestamp'},
-              'sessionId': _currentSessionId,
-            }),
-          )
-          .timeout(const Duration(seconds: 5));
+      await _wrapRTDBRequest(
+        () => _httpClient.post(
+          url,
+          body: jsonEncode({
+            'event': eventName,
+            'data': data ?? {},
+            'timestamp': {'.sv': 'timestamp'},
+            'sessionId': _currentSessionId,
+          }),
+        ),
+        context: 'logEvent: $eventName',
+      );
       debugPrint('[Tracking] Logged event to RTDB: $eventName');
     } catch (e) {
       debugPrint('[Tracking] Error logging event to RTDB: $e');
@@ -426,17 +485,18 @@ class TrackingService {
       final url = await _getRTDBUrl('error_logs');
       if (url == null) return;
 
-      await _httpClient
-          .post(
-            url,
-            body: jsonEncode({
-              'message': message,
-              'error': errorStr,
-              'timestamp': {'.sv': 'timestamp'},
-              'sessionId': _currentSessionId,
-            }),
-          )
-          .timeout(const Duration(seconds: 5));
+      await _wrapRTDBRequest(
+        () => _httpClient.post(
+          url,
+          body: jsonEncode({
+            'message': message,
+            'error': errorStr,
+            'timestamp': {'.sv': 'timestamp'},
+            'sessionId': _currentSessionId,
+          }),
+        ),
+        context: 'logError',
+      );
       debugPrint('[Tracking] Logged error to RTDB: $message');
     } catch (e) {
       debugPrint('[Tracking] Failed to log error to RTDB: $e');
@@ -454,160 +514,226 @@ class TrackingService {
   ) async {
     if (uid == null) return;
 
-    try {
-      final url = await _getRTDBUrl('captions');
-      if (url == null) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
 
-      await _httpClient
-          .post(
-            url,
-            body: jsonEncode({
-              'originalText': originalText,
-              'translatedText': translatedText,
-              'sourceLang': sourceLang,
-              'targetLang': targetLang,
-              'translationModel': translationModel,
-              'isFinal': isFinal,
-              'timestamp': {'.sv': 'timestamp'},
-              'sessionId': _currentSessionId ?? 'unknown',
-            }),
-          )
-          .timeout(const Duration(seconds: 5));
+    try {
+      if (isFinal) {
+        // 1. Permanent Log (Append)
+        final url = await _getRTDBUrl('captions');
+        if (url != null) {
+          await _wrapRTDBRequest(
+            () => _httpClient.post(
+              url,
+              body: jsonEncode({
+                'originalText': originalText,
+                'translatedText': translatedText,
+                'sourceLang': sourceLang,
+                'targetLang': targetLang,
+                'translationModel': translationModel,
+                'isFinal': true,
+                'timestamp': {'.sv': 'timestamp'},
+                'sessionId': _currentSessionId ?? 'unknown',
+              }),
+            ),
+            context: 'syncLiveCaption:Final',
+          );
+        }
+        // 2. Clear interim node
+        final interimUrl = await _getRTDBUrl('current_caption');
+        if (interimUrl != null) {
+          await _httpClient.delete(interimUrl);
+        }
+        // 3. Flush buffered usage stats on final segment
+        await _flushUsage();
+
+        // Reset interim sync state on final
+        _lastCaptionTimestamp = now;
+        _pendingInterim = null;
+      } else {
+        // Drop if this is older than what we've already handled (unlikely with 1 worker but safe)
+        if (now < _lastCaptionTimestamp) return;
+
+        // Prepare the data
+        final data = {
+          'originalText': originalText,
+          'translatedText': translatedText,
+          'sourceLang': sourceLang,
+          'targetLang': targetLang,
+          'translationModel': translationModel,
+          'isFinal': false,
+          'timestamp': {'.sv': 'timestamp'},
+          'sessionId': _currentSessionId ?? 'unknown',
+        };
+
+        if (_isSyncingInterim) {
+          // just update the pending buffer; the in-flight request will pick up the latest on completion
+          _pendingInterim = data;
+          return;
+        }
+
+        await _syncInterimSequentially(data);
+      }
     } catch (e) {
       debugPrint('[Tracking] Error pushing live caption to RTDB: $e');
     }
   }
 
-  /// Log AI model translation usage stats to RTDB via REST API
-  Future<void> logModelUsage(Map<String, dynamic> stats) async {
-    if (uid == null) return;
-
-    final engine = stats['engine'] as String? ?? 'unknown';
-    final totalTokens = (stats['total_tokens'] as num?)?.toInt() ?? 0;
-    final latencyMs = (stats['latency_ms'] as num?)?.toInt() ?? 0;
-    final inputTokens = (stats['input_tokens'] as num?)?.toInt() ?? 0;
-    final outputTokens = (stats['output_tokens'] as num?)?.toInt() ?? 0;
+  /// Ensures only one 'current_caption' write is in flight at a time.
+  Future<void> _syncInterimSequentially(Map<String, dynamic> data) async {
+    _isSyncingInterim = true;
+    _pendingInterim = null;
 
     try {
-      // 1. Individual usage log entry
-      final usageUrl = await _getRTDBUrl('model_usage');
-      if (usageUrl != null) {
-        await _httpClient.post(
-          usageUrl,
-          body: jsonEncode({
-            'engine': engine,
-            'model': stats['model'] ?? 'unknown',
-            'latency_ms': latencyMs,
-            'prompt_tokens': stats['prompt_tokens'] ?? 0,
-            'completion_tokens': stats['completion_tokens'] ?? 0,
-            'total_tokens': totalTokens,
-            'input_tokens': inputTokens,
-            'output_tokens': outputTokens,
-            'source_lang': stats['source_lang'] ?? 'unknown',
-            'target_lang': stats['target_lang'] ?? 'unknown',
-            'fallback_from': stats['fallback_from'],
-            'error': stats['error'],
-            'sessionId': _currentSessionId,
-            'timestamp': {'.sv': 'timestamp'},
-          }),
+      final url = await _getRTDBUrl('current_caption');
+      if (url != null) {
+        await _wrapRTDBRequest(
+          () => _httpClient.put(
+            url, // Use PUT for the whole node to be cleaner
+            body: jsonEncode(data),
+          ),
+          context: 'syncLiveCaption:Interim',
+          maxRetries: 0,
         );
       }
-
-      // 2. Per-engine running totals — RTDB atomic increments via REST
-      final statsUrl = await _getRTDBUrl('model_stats/$engine');
-      if (statsUrl != null) {
-        await _httpClient.patch(
-          statsUrl,
-          body: jsonEncode({
-            'engine': engine,
-            'total_calls': {
-              '.sv': {'increment': 1},
-            },
-            'total_tokens': {
-              '.sv': {'increment': totalTokens},
-            },
-            'total_latency_ms': {
-              '.sv': {'increment': latencyMs},
-            },
-            'total_input_tokens': {
-              '.sv': {'increment': inputTokens},
-            },
-            'total_output_tokens': {
-              '.sv': {'increment': outputTokens},
-            },
-            'last_used': {'.sv': 'timestamp'},
-          }),
-        );
+    } finally {
+      _isSyncingInterim = false;
+      // If a new update arrived while we were writing, sync it now
+      if (_pendingInterim != null) {
+        final nextData = _pendingInterim!;
+        _pendingInterim = null;
+        _syncInterimSequentially(nextData);
       }
+    }
+  }
 
-      // 3. Overall Daily Token Usage Update in RTDB
-      // Always uses inputTokens + outputTokens so the quota counter is consistent
-      // across all engines (LLM token counts vary per engine and are not comparable).
+  /// Buffers usage stats and aggregates them to reduce HTTP calls.
+  void logModelUsage(Map<String, dynamic> stats) {
+    try {
+      final engine = stats['engine'] as String? ?? 'unknown';
+      final inputTokens = (stats['input_tokens'] as num?)?.toInt() ?? 0;
+      final outputTokens = (stats['output_tokens'] as num?)?.toInt() ?? 0;
+      final latencyMs = (stats['latency_ms'] as num?)?.toInt() ?? 0;
+
+      // Accumulate in buffer
+      _usageBuffer[engine] ??= {
+        'total_tokens': 0,
+        'input_tokens': 0,
+        'output_tokens': 0,
+        'latency_ms': 0,
+        'calls': 0,
+        'last_model': stats['model'],
+        'last_error': stats['error'],
+      };
+
+      final b = _usageBuffer[engine];
+      b['total_tokens'] += (inputTokens + outputTokens);
+      b['input_tokens'] += inputTokens;
+      b['output_tokens'] += outputTokens;
+      b['latency_ms'] += latencyMs;
+      b['calls'] += 1;
+      b['last_model'] = stats['model'];
+      if (stats['error'] != null) b['last_error'] = stats['error'];
+
+      // Periodic flush or wait for isFinal
+      _usageFlushTimer?.cancel();
+      _usageFlushTimer = Timer(const Duration(seconds: 3), () => _flushUsage());
+
+      debugPrint(
+        '[Tracking] Buffered model usage: $engine (+$inputTokens/+$outputTokens tokens)',
+      );
+    } catch (e) {
+      debugPrint('[Tracking] Error buffering model usage: $e');
+    }
+  }
+
+  /// Flushes all buffered usage stats to RTDB in a single multi-path PATCH.
+  Future<void> _flushUsage() async {
+    if (_usageBuffer.isEmpty) return;
+    _usageFlushTimer?.cancel();
+
+    final Map<String, dynamic> bufferCopy = Map.from(_usageBuffer);
+    _usageBuffer.clear();
+
+    final user = _auth.currentUser;
+    if (user == null || uid == null) return;
+
+    try {
+      final idToken = await user.getIdToken();
+      final url = Uri.parse('$_rtdbBaseUrl/users/$uid.json?auth=$idToken');
+
+      final Map<String, dynamic> updates = {};
       final now = DateTime.now();
-      // Pad month and day to ensure strictly YYYY-MM-DD
       final todayStr =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final dailyTokens = inputTokens + outputTokens;
 
-      final dailyUsageUrl = await _getRTDBUrl('daily_usage/$todayStr');
-      if (dailyUsageUrl != null && dailyTokens > 0) {
-        await http.patch(
-          dailyUsageUrl,
-          body: jsonEncode({
-            'tokens': {
-              '.sv': {'increment': dailyTokens},
-            },
-            'last_updated': {'.sv': 'timestamp'},
-          }),
-        );
-      }
+      int totalDailyTokens = 0;
 
-      // 4. Per-Day, Per-Model Token Usage Update in RTDB
-      final dailyModelUsageUrl = await _getRTDBUrl(
-        'daily_usage/$todayStr/models/$engine',
-      );
-      if (dailyModelUsageUrl != null) {
-        await http.patch(
-          dailyModelUsageUrl,
-          body: jsonEncode({
-            'tokens': {
-              '.sv': {'increment': dailyTokens},
-            },
-            'calls': {
-              '.sv': {'increment': 1},
-            },
-            'last_updated': {'.sv': 'timestamp'},
-          }),
-        );
-      }
+      for (final entry in bufferCopy.entries) {
+        final engine = entry.key;
+        final data = entry.value;
 
-      // 5. Application Errors / API Failures Update in RTDB
-      if (stats['error'] != null) {
-        final dailyErrorUrl = await _getRTDBUrl(
-          'daily_usage/$todayStr/errors/$engine',
-        );
-        if (dailyErrorUrl != null) {
-          await _httpClient
-              .patch(
-                dailyErrorUrl,
-                body: jsonEncode({
-                  'failed_calls': {
-                    '.sv': {'increment': 1},
-                  },
-                  'last_error': stats['error'],
-                  'last_error_time': {'.sv': 'timestamp'},
-                }),
-              )
-              .timeout(const Duration(seconds: 5));
+        // 1. Stats update (Increment)
+        updates['model_stats/$engine/total_calls'] = {
+          '.sv': {'increment': data['calls']},
+        };
+        updates['model_stats/$engine/total_tokens'] = {
+          '.sv': {'increment': data['total_tokens']},
+        };
+        updates['model_stats/$engine/total_input_tokens'] = {
+          '.sv': {'increment': data['input_tokens']},
+        };
+        updates['model_stats/$engine/total_output_tokens'] = {
+          '.sv': {'increment': data['output_tokens']},
+        };
+        updates['model_stats/$engine/total_latency_ms'] = {
+          '.sv': {'increment': data['latency_ms']},
+        };
+        updates['model_stats/$engine/last_used'] = {'.sv': 'timestamp'};
+        updates['model_stats/$engine/engine'] = engine;
+
+        // 2. Daily total update
+        if (data['total_tokens'] > 0) {
+          updates['daily_usage/$todayStr/tokens'] = {
+            '.sv': {'increment': data['total_tokens']},
+          };
+          updates['daily_usage/$todayStr/last_updated'] = {'.sv': 'timestamp'};
+
+          updates['daily_usage/$todayStr/models/$engine/tokens'] = {
+            '.sv': {'increment': data['total_tokens']},
+          };
+          updates['daily_usage/$todayStr/models/$engine/calls'] = {
+            '.sv': {'increment': data['calls']},
+          };
+          updates['daily_usage/$todayStr/models/$engine/last_updated'] = {
+            '.sv': 'timestamp',
+          };
+          totalDailyTokens += data['total_tokens'] as int;
+        }
+
+        // 3. Error tracking
+        if (data['last_error'] != null) {
+          updates['daily_usage/$todayStr/errors/$engine/failed_calls'] = {
+            '.sv': {'increment': data['calls']},
+          };
+          updates['daily_usage/$todayStr/errors/$engine/last_error'] =
+              data['last_error'];
+          updates['daily_usage/$todayStr/errors/$engine/last_error_time'] = {
+            '.sv': 'timestamp',
+          };
         }
       }
 
+      if (updates.isNotEmpty) {
+        await _wrapRTDBRequest(
+          () => _httpClient.patch(url, body: jsonEncode(updates)),
+          context: 'flushUsage (Multi-Path)',
+        );
+        debugPrint('[Tracking] Flushed aggregated usage stats to RTDB.');
+      }
       // 6. Update Firestore lifetime/monthly counters
-      await SubscriptionService.instance.incrementTokens(dailyTokens);
-
-      debugPrint(
-        '[Tracking] Logged model usage to RTDB: $engine (tokens: $totalTokens)',
-      );
+      if (totalDailyTokens > 0) {
+        await SubscriptionService.instance.incrementTokens(totalDailyTokens);
+      }
     } catch (e) {
       debugPrint('[Tracking] Failed to log model usage to RTDB: $e');
     }

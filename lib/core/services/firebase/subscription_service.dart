@@ -15,7 +15,7 @@ class SubscriptionService {
   SubscriptionService._();
   static final SubscriptionService instance = SubscriptionService._();
 
-  String get _appName => kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
+  static final String _appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
   FirebaseApp get _app => Firebase.app(_appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);

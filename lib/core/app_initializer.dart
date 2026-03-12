@@ -53,7 +53,12 @@ class AppInitializer {
     }
 
     try {
-      // Initialize Firebase with a unique name to isolate sessions
+      // 1. Initialize Default App (satisfies plugins that expect [DEFAULT])
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+
+      // 2. Initialize Named App (provides true session isolation for Windows)
       final appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
       await Firebase.initializeApp(
         name: appName,
@@ -147,7 +152,7 @@ class AppInitializer {
 
     // Determine initial route
 
-    // Use the named app instance for Auth
+    // Use the named app instance for Auth (session isolation)
     final appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
     final auth = FirebaseAuth.instanceFor(app: Firebase.app(appName));
 

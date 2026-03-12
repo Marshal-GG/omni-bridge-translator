@@ -490,7 +490,14 @@ Exceptions caught at runtime. Filtered — noisy widget lifecycle errors are sup
 
 ### 5. Live Captions — `users/{uid}/captions/{auto-push-id}`
 
+Omni Bridge uses a dual-node strategy for caption streaming to maintain a clean history while providing real-time updates:
+
+1.  **Interim Result (`current_caption`)**: While `isFinal` is `false`, the client **overwrites** this specific node. This prevents RTDB from filling with millions of partial sentence fragments.
+2.  **Final Result (`captions/{push-id}`)**: When `isFinal` is `true`, the client **appends** the full sentence to the history.
+
 ```json
+// Interim: users/{uid}/current_caption
+// Final:   users/{uid}/captions/abc123xyz
 {
   "originalText": "Good morning everyone",
   "translatedText": "सभी को सुप्रभात",
@@ -519,6 +526,9 @@ Exceptions caught at runtime. Filtered — noisy widget lifecycle errors are sup
 ### 6. Daily Usage (Quota) — `users/{uid}/daily_usage/{YYYY-MM-DD}`
 
 Tracks aggregated usage for a specific calendar day. The path key is the date string (`YYYY-MM-DD` in local time). This is the **primary source** for the user's daily token quota — `SubscriptionService` polls `tokens` every **3 seconds** and surfaces it as `SubscriptionStatus.dailyTokensUsed`.
+
+> [!TIP]
+> **Performance Optimization**: To minimize HTTP overhead, the client buffers usage tokens locally and flushes them to this node using a single **multi-path `PATCH`** request. This updates the global `tokens` count and the model-specific `models/{engine}/tokens` counters simultaneously.
 
 ```json
 {

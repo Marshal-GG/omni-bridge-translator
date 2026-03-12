@@ -142,6 +142,7 @@ begin
     DeleteRegKeyIfExists(HKCU, 'Software\omni_bridge');
     DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\omni_bridge');
     DeleteRegKeyIfExists(HKCU, 'Software\Marshal\omni_bridge');
+    DeleteRegKeyIfExists(HKCU, 'Software\Marshal\Omni Bridge: Live AI Translator');
     DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\Omni Bridge');
     
     // 3. Wipe OLD/OUTDATED Google Auth Registry Keys (manual cleanup not needed if done here)
@@ -172,8 +173,9 @@ begin
     DelTree(ExpandConstant('{userappdata}\com.marshal\{#MyAppName}'), True, True, True);
     // - LocalAppData
     DelTree(ExpandConstant('{localappdata}\com.marshal\{#MyAppName}'), True, True, True);
-    // - Firebase/Firestore Caches
-    DelTree(ExpandConstant('{localappdata}\firestore'), True, True, True);
-    DelTree(ExpandConstant('{localappdata}\firebase-heartbeat'), True, True, True);
+    // - Firebase/Firestore Caches (Isolated to OmniBridge-Release)
+    DelTree(ExpandConstant('{localappdata}\firestore\OmniBridge-Release'), True, True, True);
+    DelTree(ExpandConstant('{localappdata}\firebase-heartbeat\OmniBridge-Release'), True, True, True);
+    DelTree(ExpandConstant('{localappdata}\google-services-desktop-auth\OmniBridge-Release'), True, True, True);
   end;
 end;

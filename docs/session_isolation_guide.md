@@ -47,6 +47,21 @@ To prevent "Session Bleed" (where logging into one version affects the other), w
   - `AuthService`, `TrackingService`, and `SubscriptionService` all use `FirebaseAuth.instanceFor(app: ...)` and `FirebaseFirestore.instanceFor(app: ...)` referencing the mode-specific app name.
   - This ensures that logging in as User A in Debug DOES NOT affect the Release version, even if they share the same OS-level product name (though they don't).
 
+## The Two-App Strategy
+
+To ensure absolute cache isolation between the Development (Debug) environment and the Production (Release) environment, Omni Bridge uses two distinct Firebase Project IDs:
+
+- **Debug**: `omni-bridge-test`
+- **Release**: `omni-bridge-prod`
+
+This strategy prevents the "Permission Denied" errors that occur when a single Firebase project's local cache is accessed by two differently signed executables.
+
+### Implementation Details
+
+1.  **Dynamic Initialization**: `AppInitializer` detects the build mode (`kDebugMode`) and selects the appropriate `FirebaseOptions`.
+2.  **Isolated Storage**: The Firebase SDK creates separate cache directories based on the App ID/Project ID, ensuring no overlap.
+3.  **Cleanup**: The `clear_app_data.ps1` script is configured to respect these boundaries, only targeting the relevant environment's cache when needed.
+
 ---
 
 ## 2. Advanced Data Cleanup Utility

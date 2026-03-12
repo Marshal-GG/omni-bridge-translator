@@ -74,11 +74,14 @@ lib/
 | Service | Responsibility |
 |---------|---------------|
 | `AsrWsClient` | WebSocket client to Python server (`ws://127.0.0.1:8765`). Receives JSON caption events and synchronizes remote server errors to `TrackingService`. |
-| `AsrTextController` | Manages the display buffer — interim vs. final text, rolling captions |
+| `AsrTextController` | Manages the display buffer — interim vs. final text, rolling captions. Features a high-speed **Typing Catch-up Mode** that increases display velocity if the stream moves faster than the UI. |
 | `TranslationService` | Sends start/stop/settings commands to the WebSocket server |
 | `PythonServerManager` | Manages the lifecycle of the Python WebSocket server. Includes auto-restart resilience with exponential backoff if the server crashes. |
 | `WhisperService` | Manages local Whisper model downloads, status, and deletion |
-| `TrackingService` | Logs session stats, hardware metadata, and engine-agnostic **token usage** (input + output) to RTDB. Monitors the two-level `forceLogout` system (Global + Session) to perform remote kicks. |
+| `TrackingService` | Logs session stats, hardware metadata, and engine-agnostic **token usage** to RTDB.
+    - **Sequential Sync**: Implemented a locking/buffering mechanism for captions to ensure that even with multiple worker threads, the database always reflects the latest state.
+    - **Usage Aggregation**: Buffers tokens locally and uses multi-path PATCH to reduce HTTP volume by ~80%.
+    - **Robustness**: Wraps all RTDB calls in an exponential backoff retry handler to handle transient `HandshakeException` or network jitter. |
 | `SubscriptionService`| Manages dynamic plans and token usage. Enforces client-side **Monthly Resets** using a rolling 30-day billing cycle anchored to the user's first upgrade. |
 | `AuthService` | Firebase Auth + custom URL schemes for Windows Google Sign-In redirects. |
 

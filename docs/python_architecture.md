@@ -50,13 +50,9 @@ WebSocket server (`ws://127.0.0.1:8765`). Handles all command routing from the F
 
 ### `nim_api.py`
 Core pipeline orchestrator:
-- Dynamically loads the configured ASR model and translation model
-- Feeds audio chunks from `audio_capture.py` → ASR model → translation model
-- Broadcasts `{ originalText, translatedText, isFinal, usage_stats }` payloads.
-- Calculates `input_tokens` and `output_tokens` for **every** engine (including Google and MyMemory).
-- Manages model switching (ASR and Translation) without a full pipeline restart.
-- Writes ASR-specific connectivity and parsing errors to `logs/asr_error.log`.
-- **TODO**: Add a diagnostic script to bundle local logs for user support submissions.
+- **ASR-Translation Pipeline**: Orchestrates the flow from audio capture to translation.
+- **Worker Management**: Uses a multi-threaded architecture (2 workers by default) to maximize translation throughput.
+- **Logging**: Writes ASR-specific connectivity and parsing errors to `logs/asr_error.log`.
 - **Offline Model Memory Management**: Explicitly unloads Whisper models from RAM when switching to cloud engines.
 
 ### `audio_capture.py`
