@@ -68,4 +68,34 @@ class WhisperService {
     } catch (_) {}
     return false;
   }
+
+  /// Returns aggregated status for all models (Whisper, Riva, Llama, etc.)
+  Future<List<dynamic>> getModelStatuses() async {
+    try {
+      final resp = await http
+          .get(Uri.parse('$_base/models/status'))
+          .timeout(_timeout);
+      if (resp.statusCode == 200) {
+        return jsonDecode(resp.body) as List<dynamic>;
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('WhisperService.getModelStatuses error: $e');
+    }
+    return [];
+  }
+
+  /// Explicitly unloads the Whisper model from memory.
+  Future<bool> unloadModel() async {
+    try {
+      final resp = await http
+          .post(Uri.parse('$_base/whisper/unload'))
+          .timeout(_timeout);
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        return data['status'] == 'unloaded';
+      }
+    } catch (_) {}
+    return false;
+  }
 }

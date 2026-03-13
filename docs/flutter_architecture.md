@@ -48,7 +48,7 @@ lib/
 │   ├── about/          # Version info, update checker, links
 │   ├── history/        # Caption history panel (tier-gated: Basic+ entry, Pro-only 5s column. Features a custom glassy `history_header.dart`)
 │   ├── login/          # Sign-in screen (Google, Email, Guest)
-│   ├── settings/       # Audio devices, languages, model selection (with tier-lock badges)
+│   ├── settings/       # Tab-based user preferences (Translation, Display, Input & Output)
 │   ├── startup/        # Splash screen + onboarding slides
 │   ├── subscription/   # Subscription screen + functional component widgets + BLoC + UpgradeSheet
 │   └── translation/    # Live caption overlay + header + BLoC
@@ -79,10 +79,10 @@ lib/
 | `PythonServerManager` | Manages the lifecycle of the Python WebSocket server. Includes auto-restart resilience with exponential backoff if the server crashes. |
 | `WhisperService` | Manages local Whisper model downloads, status, and deletion |
 | `TrackingService` | Logs session stats, hardware metadata, and engine-agnostic **token usage** to RTDB. It is the **sole source of truth for incrementing usage** counters (daily, weekly, monthly, lifetime) atomically. 
-    - **Sequential Sync**: Implemented a locking/buffering mechanism for captions to ensure that even with multiple worker threads, the database always reflects the latest state.
+    - **Sequential Interim Syncing**: For real-time features like live captions, it ensures only one \"current_caption\" write is in flight at a time. This prevents race conditions and ensures chronological consistency in high-frequency data streams.
     - **Usage Aggregation**: Buffers tokens locally and uses multi-path PATCH to reduce RTDB write volume by ~80%.
     - **Robustness**: Wraps all RTDB calls in an exponential backoff retry handler to handle transient `HandshakeException` or network jitter. |
-| `SubscriptionService`| Manages real-time subscription state and aggregate token usage. Polled every 3 seconds from RTDB (daily, weekly, monthly, lifetime). Implements **Triple Rollover Logic** (Calendar Month, Weekly, and Subscription Cycle) for archiving usage to Firestore. |
+| `SubscriptionService`| Manages real-time subscription state and aggregate token usage. Polled every 3 seconds from RTDB (daily, weekly, monthly, lifetime). Implements **Triple Rollover Logic** (Calendar Month, Weekly, and Subscription Cycle) for archiving usage data to Firestore. |
 | `AuthService` | Firebase Auth + custom URL schemes for Windows Google Sign-In redirects. |
 
 ---
@@ -136,11 +136,12 @@ Enforcement is centralized in `SubscriptionService` via the `getRequirement(feat
 | Engine | Requirement Key | Default Tier |
 |---|---|---|
 | Google Translate | `google` | Free |
+| Google Cloud | `google_api` | Free |
 | MyMemory | `mymemory` | Free |
 | NVIDIA Riva | `riva` | Basic+ |
 | Llama 3.1 8B | `llama` | Plus+ |
 
-Locked engines are rendered dimmed with an orange `🔒 Basic+` badge. Tapping a locked option opens `UpgradeSheet`.
+Locked engines are rendered dimmed with an orange `🔒 Basic+` badge. Tapped locked options trigger descriptive tooltips or `UpgradeSheet`.
 
 ### Whisper Offline Model Sizes (Settings → Transcription Method)
 
@@ -165,10 +166,9 @@ Locked sizes are disabled in the `DropdownButton` and show a lock badge. Selecti
 
 The history button in the overlay header and locked engine selections now route all users to `/history-panel`. For Free-tier users, the panel automatically displays the `UpgradeSheet` on entry, providing a contextual upgrade prompt. The panel uses a standardized glassy header (`buildHistoryHeader`) with window controls and a premium dark gradient background.
 
-### Feature-Specific UI Patterns
-
 - **Glassy Aesthetics**: All main windows (Account, Settings, About, History) utilize a `WindowBorder` with a dark gradient background (`#161616` to `#0F0F0F`) and translucent cards.
-- **Standardized Headers**: Custom internal headers (e.g., `buildAccountHeader`, `buildHistoryHeader`) replace standard AppBars to provide consistent window management controls (Minimize, Close, Drag) and navigation.
+- **Glassy Header**: A semi-transparent standard header used across all main screens, providing consistent window management controls (Minimize, Close, Drag) and navigation via `bitsdojo_window`.
+- **Standardized Window Controls**: Custom minimize/close buttons for a consistent Windows native feel across all screens.
 - **Version Tracking**: Every major screen displays a consistent "Version Chip" (e.g., `OMNI BRIDGE V1.0.0`) in the footer or designated areas for easy reference.
 - **Account Screen**:
     - **Plan Visualization**: Real-time progress bar shows daily token usage for capped tiers.
@@ -188,7 +188,12 @@ The app follows a **"Trust but Verify (via Rules)"** model, performing critical 
     - **Weekly Rollover**: Every Monday (local), weekly tokens are archived to `usage_history_weekly` and the RTDB counter is reset.
     - **Subscription Rollover**: For paid members, usage is tracked relative to their `monthlyResetAt` date. When crossed, usage is archived to `usage_history_subscription` and the RTDB cycle counter is reset.
 
-### 2. Remote Session Termination (`forceLogout`)
+### 2. Multi-Engine Translation Hub
+The `NimApiClient` (Python) and its client-side orchestration handle multiple engines with built-in resilience:
+- **Fallback Logic**: If the primary engine (e.g., `google_api`) fails, the system automatically falls back to a free alternative (`google` free) to maintain service continuity.
+- **Access Gating**: Feature access is enforced via `SubscriptionService.tierHasAccess()`, which checks against dynamic requirements from `system/monetization`.
+
+### 3. Remote Session Termination (`forceLogout`)
 Two monitoring streams in `TrackingService` enable remote kicks without Cloud Functions:
 1. **Global Hook**: Listens to `users/{uid}/forceLogout`.
 2. **Session Hook**: Listens to `users/{uid}/sessions/{sessionId}/forceLogout`.

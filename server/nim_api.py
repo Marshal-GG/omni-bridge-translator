@@ -15,15 +15,19 @@ Legacy `ai_engine` parameter is still accepted for backward compat
 (determines translation engine when translation_model is absent).
 """
 
-import threading
 import queue
+import os
+import threading
+import logging
+import time
 
 from models.riva_model import RivaModel
 from models.llama_model import LlamaModel
 from models.google_model import GoogleModel
+from models.google_cloud_model import GoogleCloudModel
 from models.mymemory_model import MyMemoryModel
 from models.speech_recognition_model import SpeechRecognitionModel
-from models.whisper_model import WhisperModel
+from models.whisper_model import WhisperModel, get_gpu_info
 
 # Valid transcription model IDs
 _WHISPER_SIZES = {"whisper-tiny", "whisper-base", "whisper-small", "whisper-medium"}
@@ -35,15 +39,29 @@ class NimApiClient:
     Transcription and translation are now independently configurable.
     """
 
-    def __init__(self, api_key: str):
-        self.api_key = api_key
+    def __init__(self, nvidia_api_key: str = "", google_json_path: str = ""):
+        self.nvidia_api_key = nvidia_api_key
+        if not google_json_path:
+            # Auto-detect JSON in server/json/
+            json_dir = os.path.join(os.path.dirname(__file__), "json")
+            if os.path.exists(json_dir):
+                files = [f for f in os.listdir(json_dir) if f.endswith(".json")]
+                if files:
+                    google_json_path = os.path.join(json_dir, files[0])
+                    logging.info(f"[NimApiClient] Auto-detected Google JSON: {google_json_path}")
+
+        self.google_json_path = google_json_path
         self.is_running = False
         self.audio_queue: queue.Queue = queue.Queue()
+        self._translation_queue: queue.Queue = queue.Queue()
+        self._whisper_suspended = False
+        self._is_first_chunk = True
 
         # Instantiate all engines upfront
-        self.riva = RivaModel(api_key)
-        self.llama = LlamaModel(api_key)
+        self.riva = RivaModel(nvidia_api_key)
+        self.llama = LlamaModel(nvidia_api_key)
         self.google = GoogleModel()
+        self.google_api = GoogleCloudModel(google_json_path)
         self.mymemory = MyMemoryModel()
         self.speech_recognition = SpeechRecognitionModel()
         self.whisper = WhisperModel("base")   # model_size updated per session
@@ -58,10 +76,12 @@ class NimApiClient:
 
     # ── Key management ───────────────────────────────────────────────────────
 
-    def set_api_key(self, api_key: str):
-        self.api_key = api_key
-        self.riva.reload(api_key)
-        self.llama.reload(api_key)
+    def set_api_keys(self, nvidia_key: str, google_json_path: str):
+        self.nvidia_api_key = nvidia_key
+        self.google_json_path = google_json_path
+        self.riva.reload(nvidia_key)
+        self.llama.reload(nvidia_key)
+        self.google_api.reload(google_json_path)
 
     # ── Stream lifecycle ─────────────────────────────────────────────────────
 
@@ -74,6 +94,7 @@ class NimApiClient:
         transcription_model: str = "online",
         translation_model: str = "",        # empty → derive from ai_engine
         callback=None,
+        suspended: bool = False,
     ):
         # Derive translation_model from legacy ai_engine if not provided
         if not translation_model:
@@ -82,6 +103,8 @@ class NimApiClient:
                 "llama":  "llama",
                 "riva":   "riva",
             }.get(ai_engine, "google")
+
+        logging.info(f"[NimApiClient] Starting stream: transcription={transcription_model}, translation={translation_model}, lang={source_lang}->{target_lang}, suspended={suspended}")
 
         # Normalise whisper-* IDs
         transcription_model = transcription_model.lower().strip()
@@ -106,13 +129,20 @@ class NimApiClient:
                         True, is_final=True,
                     )
                 return
+            self._whisper_suspended = suspended
+            self._is_first_chunk = True
         else:
             # Explicitly unload the Whisper model from memory when not in use
-            self.whisper.unload_model()
+            self.whisper_unload()
 
-        if translation_model in ("riva", "llama") and not self.riva.is_ready():
+        if translation_model == "google_api" and not self.google_json_path:
             if callback:
-                callback("Error: API Key is missing for the selected translation engine.", True, is_final=True)
+                callback("Error: Google Cloud Service Account JSON is missing. Open Settings -> Translation Engine.", True, is_final=True)
+            return
+
+        if translation_model in ("riva", "llama") and not self.nvidia_api_key:
+            if callback:
+                callback("Error: NVIDIA API Key is missing for the selected translation engine.", True, is_final=True)
             return
 
         if self.is_running:
@@ -134,13 +164,75 @@ class NimApiClient:
                 break
 
         # Using 1 worker thread guarantees that audio chunks are processed 
-        for i in range(2):
-            t = threading.Thread(target=self._worker, name=f"NimWorker-{i}")
-            t.start()
+        # in the exact order they were recorded, and reduces resource usage.
+        t_audio = threading.Thread(target=self._worker, name="NimAudioWorker", daemon=True)
+        t_audio.start()
+
+        # Dedicated translation worker to avoid blocking ASR
+        t_trans = threading.Thread(target=self._translation_worker, name="NimTranslationWorker", daemon=True)
+        t_trans.start()
+
+    def get_all_statuses(self) -> list:
+        """Aggregate statuses from all available models into a flat list."""
+        all_statuses = []
+        
+        # ASR Models
+        if self.whisper:
+            all_statuses.extend(self.whisper.get_all_statuses())
+            
+        # Add System GPU status
+        gpu_info = get_gpu_info()
+        all_statuses.append({
+            "name": "system-gpu",
+            "status": "available" if gpu_info["available"] else "unavailable",
+            "ready": gpu_info["available"],
+            "message": f"GPU: {gpu_info['name']}" if gpu_info["available"] else "No compatible GPU detected",
+            "device_name": gpu_info["name"],
+            "vram_used": gpu_info.get("vram_used", 0.0),
+            "vram_total": gpu_info.get("vram_total", 0.0),
+            "details": gpu_info
+        })
+            
+        if self.riva:
+            all_statuses.append(self.riva.get_status())
+            
+        if self.speech_recognition:
+            all_statuses.append(self.speech_recognition.get_status())
+            
+        # Translation Models
+        if self.llama:
+            all_statuses.append(self.llama.get_status())
+            
+        if self.google:
+            all_statuses.append(self.google.get_status())
+            
+        if self.google_api:
+            all_statuses.append(self.google_api.get_status())
+            
+        if self.mymemory:
+            all_statuses.append(self.mymemory.get_status())
+            
+        return all_statuses
+
+
+    def whisper_unload(self):
+        """Explicitly unload Whisper and mark as suspended to prevent re-load until restart."""
+        self._whisper_suspended = True
+        self.whisper.unload_model()
 
     def stop_stream(self):
         self.is_running = False
         self.audio_queue.put(None)
+        self._translation_queue.put(None)
+
+    def audio_clear(self):
+        """Drain audio and translation queues."""
+        while not self.audio_queue.empty():
+            try: self.audio_queue.get_nowait()
+            except: break
+        while not self._translation_queue.empty():
+            try: self._translation_queue.get_nowait()
+            except: break
 
     def append_audio(self, audio_data):
         if self.is_running:
@@ -172,15 +264,25 @@ class NimApiClient:
                     break
 
                 # ── ASR ─────────────────────────────────────────────────────
+                asr_start_time = time.monotonic()
                 try:
                     asr_stats = None
                     if use_riva_asr:
                         transcript, asr_stats = self.riva.transcribe(chunk.tobytes(), config)
                     elif use_whisper:
-                        transcript, asr_stats = self.whisper.transcribe(
-                            chunk.tobytes(), self._sample_rate,
-                            source_lang=self._source_lang,
-                        )
+                        if self._whisper_suspended:
+                            if self._is_first_chunk:
+                                logging.info("[NimApiClient] Whisper is suspended. Skipping transcription until Play is clicked.")
+                                self._is_first_chunk = False
+                            transcript, asr_stats = None, None
+                        else:
+                            if self._is_first_chunk:
+                                logging.info(f"[NimApiClient] Loading/Starting Whisper model: {self._transcription_model}")
+                                self._is_first_chunk = False
+                            transcript, asr_stats = self.whisper.transcribe(
+                                chunk.tobytes(), self._sample_rate,
+                                source_lang=self._source_lang,
+                            )
                     else:
                         # Online Google free ASR
                         transcript, asr_stats = self.speech_recognition.transcribe(
@@ -189,18 +291,18 @@ class NimApiClient:
                             source_lang=self._source_lang,
                         )
                 except Exception as asr_err:
-                    err_str = str(asr_err)
+                    _ = str(asr_err)
                     try:
                         log_dir = "logs"
                         if not os.path.exists(log_dir):
                             os.makedirs(log_dir)
                         with open(os.path.join(log_dir, "asr_error.log"), "a") as f:
-                            f.write(f"[ASR ERROR] model={self._transcription_model} lang={asr_lang} err={err_str}\n")
+                            f.write(f"[ASR ERROR] model={self._transcription_model} lang={asr_lang} err={asr_err}\n")
                     except Exception:
                         pass
 
                     if use_riva_asr and use_auto and not fell_back:
-                        print(f"[ASR] Auto mode failed ({err_str[:120]}), falling back to en-US")
+                        print(f"[ASR] Auto mode failed ({asr_err}), falling back to en-US")
                         asr_lang = "en-US"
                         self._source_lang = "en"
                         config = self.riva.make_asr_config(self._sample_rate, asr_lang)
@@ -215,17 +317,64 @@ class NimApiClient:
                             continue
                     else:
                         if self._callback:
-                            self._callback(f"ASR Error: {err_str[:200]}", True, is_final=True)
+                            self._callback(f"ASR Error: {asr_err}", True, is_final=True)
                         continue
 
                 if not transcript:
                     continue
 
+                asr_total_time = int((time.monotonic() - asr_start_time) * 1000)
+                logging.info(f"[ASR] Latency: {asr_total_time}ms | Engine: {self._transcription_model} | Text: {transcript[:50]}...")
+
                 clean = self._clean_stutters(transcript)
+                
+                # Offload translation to the dedicated worker
+                # Offload translation to the dedicated worker with a creation timestamp
+                self._translation_queue.put({
+                    "text": clean,
+                    "asr_stats": asr_stats,
+                    "created_at": time.time()
+                })
+
+            except queue.Empty:
+                continue
+            except Exception as e:
+                if self._callback:
+                    self._callback(f"ASR Error: {e}", True, is_final=True)
+
+    def _translation_worker(self):
+        """Worker thread that processes transcripts from the translation queue."""
+        while self.is_running:
+            try:
+                item = self._translation_queue.get(timeout=1.0)
+                if item is None:
+                    break
+                
+                # Skip stale items if queue is backing up to prevent lag accumulation
+                while not self._translation_queue.empty():
+                    next_item = self._translation_queue.get_nowait()
+                    if next_item is None:
+                        # Put it back so the main loop can break on the next iteration
+                        self._translation_queue.put(None)
+                        break
+                    # Replace current item with the newer one
+                    item = next_item
+                
+                dwell_time = int((time.time() - item["created_at"]) * 1000)
+                clean = item["text"]
+                asr_stats = item["asr_stats"]
 
                 # ── Translation ──────────────────────────────────────────
                 if self._target_lang and self._target_lang != "none":
+                    trans_start_time = time.monotonic()
                     translated, trans_stats = self._translate(clean, self._source_lang, self._target_lang)
+                    trans_total_time = int((time.monotonic() - trans_start_time) * 1000)
+                    
+                    if trans_stats:
+                        trans_stats["queue_dwell_ms"] = dwell_time
+
+                    logging.info(f"[Translation] Latency: {trans_total_time}ms | Queue Dwell: {dwell_time}ms | Engine: {self._translation_model}")
+                    
                     stats_list = []
                     if asr_stats:
                         stats_list.append(asr_stats)
@@ -241,8 +390,9 @@ class NimApiClient:
             except queue.Empty:
                 continue
             except Exception as e:
+                logging.error(f"[TranslationWorker] Error: {e}")
                 if self._callback:
-                    self._callback(f"ASR Error: {e}", True, is_final=True)
+                    self._callback(f"Translation Error: {e}", True, is_final=True)
 
     # ── Translation dispatcher ────────────────────────────────────────────────
 
@@ -269,6 +419,15 @@ class NimApiClient:
                 result, stats = self.llama.translate(text, target_lang)
                 stats["fallback_from"] = "riva"
                 return result, stats
+
+        if self._translation_model == "google_api":
+            result, stats = self.google_api.translate(text, source_lang, target_lang)
+            if result:
+                return result, stats
+            # Fallback to Google Free
+            result, stats = self.google.translate(text, source_lang, target_lang)
+            stats["fallback_from"] = "google_api"
+            return result or text, stats
 
         # Default: Google Translate
         result, stats = self.google.translate(text, source_lang, target_lang)

@@ -43,6 +43,7 @@ class AppSettings extends Equatable {
       outputDeviceIndex: null,
       desktopVolume: 1.0,
       micVolume: 1.0,
+    /// The translation model to use (e.g., 'google', 'google_api', 'mymemory', 'riva', 'llama')
       translationModel: 'google',
       apiKey: '',
       transcriptionModel: 'online',

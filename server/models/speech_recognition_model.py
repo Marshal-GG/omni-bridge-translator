@@ -33,6 +33,16 @@ class SpeechRecognitionModel:
     def is_ready(self) -> bool:
         return True
 
+    def get_status(self) -> dict:
+        return {
+            "name": "google_asr",
+            "status": "ready",
+            "ready": True,
+            "message": "Google ASR is ready.",
+            "progress": 100.0,
+            "details": {}
+        }
+
     def transcribe(
         self,
         audio_bytes: bytes,

@@ -9,13 +9,17 @@ import 'translation_state.dart';
 import '../../../core/services/asr_ws_client.dart';
 import '../../../core/services/firebase/tracking_service.dart';
 import '../../../core/services/asr_text_controller.dart';
+import '../../../core/services/firebase/auth_service.dart';
 import '../../../core/services/firebase/subscription_service.dart';
+import '../../../core/services/whisper_service.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final AsrWebSocketClient asrClient;
   StreamSubscription? _captionSub;
   StreamSubscription? _statusSub;
+  StreamSubscription? _authSub;
   int _lastLineCount = 0;
+  final WhisperService _whisperService = WhisperService();
 
   TranslationBloc({required this.asrClient})
     : super(
@@ -31,12 +35,38 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     on<ToggleRunningEvent>(_onToggleRunning);
     on<CaptionTextChangedEvent>(_onCaptionTextChanged);
     on<SourceLangOverrideEvent>(_onSourceLangOverride);
+    on<ModelStatusChangedEvent>(_onModelStatusChanged);
     on<ApplySettingsEvent>(_onApplySettings);
     on<LoadSettingsEvent>(_onLoadSettings);
     on<LangErrorEvent>(_onLangError);
 
+    // Initial load of model statuses
+    _fetchInitialModelStatuses();
+
     _initAsr();
     _initQuotaListener();
+    _initAuthListener();
+  }
+
+  Future<void> _fetchInitialModelStatuses() async {
+    try {
+      final statuses = await _whisperService.getModelStatuses();
+      add(ModelStatusChangedEvent(statuses));
+    } catch (e) {
+      debugPrint('Error fetching initial model statuses: $e');
+    }
+  }
+
+  void _initAuthListener() {
+    // Re-load settings whenever the user signs in
+    AuthService.instance.currentUser.addListener(_onAuthChanged);
+  }
+
+  void _onAuthChanged() {
+    if (AuthService.instance.currentUser.value != null && !isClosed) {
+      debugPrint('[TranslationBloc] Auth detected, reloading settings...');
+      add(LoadSettingsEvent());
+    }
   }
 
   void _initQuotaListener() {
@@ -80,6 +110,35 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         add(SourceLangOverrideEvent(override));
       }
 
+      if (msg.modelStatuses != null) {
+        add(ModelStatusChangedEvent(msg.modelStatuses!));
+      }
+      if (msg.usageStats != null) {
+        // This part of the instruction seems to be a copy-paste error from the _initQuotaListener.
+        // Assuming the intent was to process usageStats if they come from the ASR client.
+        // However, the original code states "Usage stats are now handled exclusively by TrackingService._flushUsage via logModelUsage".
+        // I will add the `if (msg.usageStats != null)` block as requested, but without a clear action for `usageStats` here,
+        // I'll leave it empty or add a debugPrint. Given the context, `UpdateQuotaEvent` is for `SubscriptionStatus`, not raw `usageStats`.
+        // I will assume the user meant to update quota if usageStats are received, but `UpdateQuotaEvent` takes `SubscriptionStatus`.
+        // For now, I'll just acknowledge the presence of `msg.usageStats` as per the instruction's structure.
+        // If `msg.usageStats` is meant to be converted to a `SubscriptionStatus`, that logic would be needed.
+        // For now, I'll just add the `if (msg.usageStats != null)` block as is, without an action.
+        // Re-reading the instruction: "if (msg.usageStats != null) { add(UpdateQuotaEvent(initialStatus)); }".
+        // This is definitely a copy-paste error from `_initQuotaListener`.
+        // I will add the `if (msg.usageStats != null)` block, but leave its content empty as `initialStatus` is not available here.
+        // Or, if the user intended to update quota based on `msg.usageStats`, the `UpdateQuotaEvent` would need a `SubscriptionStatus` derived from `msg.usageStats`.
+        // Given the instruction, I will add the `if (msg.usageStats != null)` block, but will not add `add(UpdateQuotaEvent(initialStatus));` as it's incorrect here.
+        // I will add a placeholder comment.
+        // If the user meant to update quota, the `msg.usageStats` would need to be processed into a `SubscriptionStatus`.
+        // For now, I'll just add the `if (msg.usageStats != null)` block as requested, but without an action.
+        // Let's re-evaluate the instruction:
+        // `if (msg.usageStats != null) { add(UpdateQuotaEvent(initialStatus)); }`
+        // This is clearly a mistake in the instruction, as `initialStatus` is not in scope here.
+        // I will add the `if (msg.usageStats != null)` block, but leave it empty or with a debugPrint, as the instruction's content is invalid for this context.
+        // I will add a debugPrint to acknowledge it.
+        debugPrint('Received usageStats from ASR client: ${msg.usageStats}');
+      }
+
       final text = msg.text;
       if (text.trim().isNotEmpty) {
         TrackingService.instance.syncLiveCaption(
@@ -99,6 +158,18 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     Emitter<TranslationState> emit,
   ) {
     emit(state.copyWith(activeSourceLang: event.sourceLang));
+  }
+
+  void _onModelStatusChanged(
+      ModelStatusChangedEvent event, Emitter<TranslationState> emit) {
+    // Convert List<dynamic> from server to Map<String, dynamic> indexed by model name
+    final newStatuses = Map<String, dynamic>.from(state.modelStatuses);
+    for (final status in event.statuses) {
+      if (status is Map<String, dynamic> && status.containsKey('name')) {
+        newStatuses[status['name']] = status;
+      }
+    }
+    emit(state.copyWith(modelStatuses: newStatuses));
   }
 
   void _onToggleRunning(
@@ -168,60 +239,65 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     LoadSettingsEvent event,
     Emitter<TranslationState> emit,
   ) async {
-    final settings = await TrackingService.instance.getSettings();
-    if (settings != null) {
-      final targetLang =
-          settings['targetLang'] as String? ?? state.activeTargetLang;
-      final sourceLang =
-          settings['sourceLang'] as String? ?? state.activeSourceLang;
-      final useMic = settings['useMic'] as bool? ?? state.activeUseMic;
-      final fontSize =
-          (settings['fontSize'] as num?)?.toDouble() ?? state.activeFontSize;
-      final isBold = settings['isBold'] as bool? ?? state.activeIsBold;
-      final opacity =
-          (settings['opacity'] as num?)?.toDouble() ?? state.activeOpacity;
-      final translationModel =
-          settings['translationModel'] as String? ??
-          settings['aiEngine'] as String? ??
-          state.activeTranslationModel;
-      final apiKey = settings['apiKey'] as String? ?? '';
-      var transcriptionModel =
-          settings['transcriptionModel'] as String? ??
-          settings['transcriptionEngine'] as String? ??
-          'online';
+    emit(state.copyWith(isSettingsLoading: true));
+    try {
+      final settings = await TrackingService.instance.getSettings();
+      if (settings != null) {
+        final targetLang =
+            settings['targetLang'] as String? ?? state.activeTargetLang;
+        final sourceLang =
+            settings['sourceLang'] as String? ?? state.activeSourceLang;
+        final useMic = settings['useMic'] as bool? ?? state.activeUseMic;
+        final fontSize =
+            (settings['fontSize'] as num?)?.toDouble() ?? state.activeFontSize;
+        final isBold = settings['isBold'] as bool? ?? state.activeIsBold;
+        final opacity =
+            (settings['opacity'] as num?)?.toDouble() ?? state.activeOpacity;
+        final translationModel =
+            settings['translationModel'] as String? ??
+            settings['aiEngine'] as String? ??
+            state.activeTranslationModel;
+        final apiKey = settings['apiKey'] as String? ?? '';
+        var transcriptionModel =
+            settings['transcriptionModel'] as String? ??
+            settings['transcriptionEngine'] as String? ??
+            'online';
 
-      if (transcriptionModel == 'whisper') {
-        transcriptionModel = 'whisper-base';
+        if (transcriptionModel == 'whisper') {
+          transcriptionModel = 'whisper-base';
+        }
+
+        // Update BLoC state natively
+        emit(
+          state.copyWith(
+            activeTargetLang: targetLang,
+            activeSourceLang: sourceLang,
+            activeUseMic: useMic,
+            activeFontSize: fontSize,
+            activeIsBold: isBold,
+            activeOpacity: opacity,
+            activeTranslationModel: translationModel,
+            activeApiKey: apiKey,
+            activeTranscriptionModel: transcriptionModel,
+          ),
+        );
+
+        // Tell underlying ASR engine we changed things on init load
+        asrClient.updateSettings(
+          targetLang: targetLang,
+          sourceLang: sourceLang,
+          useMic: useMic,
+          inputDeviceIndex: state.activeInputDeviceIndex,
+          outputDeviceIndex: state.activeOutputDeviceIndex,
+          desktopVolume: state.activeDesktopVolume,
+          micVolume: state.activeMicVolume,
+          translationModel: translationModel,
+          apiKey: apiKey,
+          transcriptionModel: transcriptionModel,
+        );
       }
-
-      // Update BLoC state natively
-      emit(
-        state.copyWith(
-          activeTargetLang: targetLang,
-          activeSourceLang: sourceLang,
-          activeUseMic: useMic,
-          activeFontSize: fontSize,
-          activeIsBold: isBold,
-          activeOpacity: opacity,
-          activeTranslationModel: translationModel,
-          activeApiKey: apiKey,
-          activeTranscriptionModel: transcriptionModel,
-        ),
-      );
-
-      // Tell underlying ASR engine we changed things on init load
-      asrClient.updateSettings(
-        targetLang: targetLang,
-        sourceLang: sourceLang,
-        useMic: useMic,
-        inputDeviceIndex: state.activeInputDeviceIndex,
-        outputDeviceIndex: state.activeOutputDeviceIndex,
-        desktopVolume: state.activeDesktopVolume,
-        micVolume: state.activeMicVolume,
-        translationModel: translationModel,
-        apiKey: apiKey,
-        transcriptionModel: transcriptionModel,
-      );
+    } finally {
+      emit(state.copyWith(isSettingsLoading: false));
     }
   }
 
@@ -320,6 +396,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         activeTranslationModel: event.translationModel,
         activeApiKey: event.apiKey,
         activeTranscriptionModel: event.transcriptionModel,
+        isSettingsSaving: true,
       ),
     );
 
@@ -330,37 +407,43 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       await windowManager.setSize(Size(730, shrinkHeight));
     }
 
-    asrClient.updateSettings(
-      targetLang: event.targetLang,
-      sourceLang: event.sourceLang,
-      useMic: event.useMic,
-      inputDeviceIndex: event.inputDeviceIndex,
-      outputDeviceIndex: event.outputDeviceIndex,
-      desktopVolume: event.desktopVolume,
-      micVolume: event.micVolume,
-      translationModel: event.translationModel,
-      apiKey: event.apiKey,
-      transcriptionModel: event.transcriptionModel,
-    );
+    try {
+      asrClient.updateSettings(
+        targetLang: event.targetLang,
+        sourceLang: event.sourceLang,
+        useMic: event.useMic,
+        inputDeviceIndex: event.inputDeviceIndex,
+        outputDeviceIndex: event.outputDeviceIndex,
+        desktopVolume: event.desktopVolume,
+        micVolume: event.micVolume,
+        translationModel: event.translationModel,
+        apiKey: event.apiKey,
+        transcriptionModel: event.transcriptionModel,
+      );
 
-    // Sync settings to Firestore
-    TrackingService.instance.syncSettings({
-      'targetLang': event.targetLang,
-      'sourceLang': event.sourceLang,
-      'useMic': event.useMic,
-      'fontSize': event.fontSize,
-      'isBold': event.isBold,
-      'opacity': event.opacity,
-      'translationModel': event.translationModel,
-      'apiKey': event.apiKey,
-      'transcriptionModel': event.transcriptionModel,
-    });
+      // Sync settings to Firestore
+      await TrackingService.instance.syncSettings({
+        'targetLang': event.targetLang,
+        'sourceLang': event.sourceLang,
+        'useMic': event.useMic,
+        'fontSize': event.fontSize,
+        'isBold': event.isBold,
+        'opacity': event.opacity,
+        'translationModel': event.translationModel,
+        'apiKey': event.apiKey,
+        'transcriptionModel': event.transcriptionModel,
+      });
+    } finally {
+      emit(state.copyWith(isSettingsSaving: false));
+    }
   }
 
   @override
   Future<void> close() {
+    AuthService.instance.currentUser.removeListener(_onAuthChanged);
     _captionSub?.cancel();
     _statusSub?.cancel();
+    _authSub?.cancel();
     asrClient.dispose(); // hard-stop: closes WebSocket fully
     return super.close();
   }

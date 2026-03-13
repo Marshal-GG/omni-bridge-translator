@@ -10,6 +10,8 @@ import '../bloc/settings_state.dart';
 import '../../../core/constants/languages.dart';
 import '../../../core/services/whisper_service.dart';
 import '../../../core/services/firebase/subscription_service.dart';
+import '../../translation/bloc/translation_bloc.dart';
+import '../../translation/bloc/translation_state.dart';
 import 'settings_helpers.dart';
 
 Widget buildLanguagesTab(BuildContext context, SettingsState state) {
@@ -232,14 +234,15 @@ Widget buildTranslationModelSelector(
       SubscriptionService.instance.currentStatus?.tier ?? SubscriptionService.instance.defaultTier;
 
   const translationModels = {
-    'google': 'Google Translate',
+    'google': 'Google Translate (Free)',
+    'google_api': 'Google Cloud (Official API)',
     'mymemory': 'MyMemory',
     'riva': 'NVIDIA Riva (Fast, High Quality)',
     'llama': 'Llama 3.1 8B (Accurate, Slower)',
   };
 
   bool hasAccess(String engineKey) {
-    if (engineKey == 'google' || engineKey == 'mymemory') return true;
+    if (engineKey == 'google' || engineKey == 'google_api' || engineKey == 'mymemory') return true;
     final required = SubscriptionService.instance.getRequirement(
       'engines',
       engineKey,
@@ -248,165 +251,205 @@ Widget buildTranslationModelSelector(
     return SubscriptionService.instance.tierHasAccess(currentTier, required);
   }
 
-  const enginesThatNeedKey = {'riva', 'llama'};
-  final needsKey =
-      enginesThatNeedKey.contains(state.settings.translationModel) ||
+  final needsNvidiaKey =
+      ['riva', 'llama'].contains(state.settings.translationModel) ||
       state.settings.transcriptionModel == 'riva';
+
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      sectionLabel('AI Translation Engine'),
-      const SizedBox(height: 8),
-      SizedBox(
-        height: 36,
-        child: DropdownSearch<MapEntry<String, String>>(
-          items: translationModels.entries.toList(),
-          itemAsString: (entry) => entry.value,
-          selectedItem: MapEntry(
-            state.settings.translationModel,
-            translationModels[state.settings.translationModel] ??
+      BlocBuilder<TranslationBloc, TranslationState>(
+        builder: (context, transState) {
+          return SizedBox(
+            height: 36,
+            child: DropdownSearch<MapEntry<String, String>>(
+              items: translationModels.entries.toList(),
+              itemAsString: (entry) => entry.value,
+              selectedItem: MapEntry(
                 state.settings.translationModel,
-          ),
-          onBeforeChange: (prev, next) async {
-            if (next == null) return false;
-            return hasAccess(next.key);
-          },
-          compareFn: (a, b) => a.key == b.key,
-          dropdownButtonProps: const DropdownButtonProps(
-            padding: EdgeInsets.zero,
-            splashColor: Colors.transparent,
-            highlightColor: Colors.transparent,
-            hoverColor: Colors.transparent,
-            mouseCursor: SystemMouseCursors.basic,
-            icon: Icon(
-              Icons.keyboard_arrow_down,
-              size: 18,
-              color: Colors.white38,
-            ),
-          ),
-          onChanged: (entry) {
-            if (entry != null && hasAccess(entry.key)) {
-              Future.delayed(const Duration(milliseconds: 100), () {
-                if (context.mounted) {
-                  context.read<SettingsBloc>().add(
-                    UpdateTempSettingEvent(translationModel: entry.key),
-                  );
+                translationModels[state.settings.translationModel] ??
+                    state.settings.translationModel,
+              ),
+              onBeforeChange: (prev, next) async {
+                if (next == null) return false;
+                return hasAccess(next.key);
+              },
+              compareFn: (a, b) => a.key == b.key,
+              dropdownButtonProps: const DropdownButtonProps(
+                padding: EdgeInsets.zero,
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
+                hoverColor: Colors.transparent,
+                mouseCursor: SystemMouseCursors.basic,
+                icon: Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 18,
+                  color: Colors.white38,
+                ),
+              ),
+              onChanged: (entry) {
+                if (entry != null && hasAccess(entry.key)) {
+                  // Explicitly unload current model from memory upon selection change
+                  WhisperService().unloadModel();
+                  Future.delayed(const Duration(milliseconds: 100), () {
+                    if (context.mounted) {
+                      context.read<SettingsBloc>().add(
+                        UpdateTempSettingEvent(translationModel: entry.key),
+                      );
+                    }
+                  });
                 }
-              });
-            }
-          },
-          dropdownBuilder: (context, selectedItem) {
-            if (selectedItem == null) return const SizedBox();
-            final isRecommended = selectedItem.key == 'google';
-            return Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    selectedItem.value,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    overflow: TextOverflow.ellipsis,
+              },
+              dropdownBuilder: (context, selectedItem) {
+                if (selectedItem == null) return const SizedBox();
+
+                final isRecommended = selectedItem.key == 'google';
+                final statusKey = {
+                  'google': 'google_translate',
+                  'google_api': 'google_api',
+                  'mymemory': 'mymemory',
+                  'riva': 'riva',
+                  'llama': 'llama',
+                }[selectedItem.key];
+
+                return Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        selectedItem.value,
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (statusKey != null) ...[
+                      const SizedBox(width: 8),
+                      ModelStatusIndicator(
+                        status: transState.modelStatuses[statusKey],
+                        compact: true,
+                      ),
+                    ],
+                    if (isRecommended) ...[
+                      const SizedBox(width: 8),
+                      _buildRecommendedBadge(isActive: true),
+                    ],
+                  ],
+                );
+              },
+              popupProps: PopupProps.menu(
+                fit: FlexFit.loose,
+                constraints: const BoxConstraints(maxHeight: 250),
+                interceptCallBacks: true,
+                menuProps: const MenuProps(
+                  backgroundColor: Color(0xFF2C2C2C),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
                   ),
                 ),
-                if (isRecommended) ...[
-                  const SizedBox(width: 8),
-                  _buildRecommendedBadge(isActive: true),
-                ],
-              ],
-            );
-          },
-          popupProps: PopupProps.menu(
-            fit: FlexFit.loose,
-            constraints: const BoxConstraints(maxHeight: 250),
-            interceptCallBacks: true,
-            menuProps: const MenuProps(
-              backgroundColor: Color(0xFF2C2C2C),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(10)),
+                itemBuilder: (context, item, _) {
+                  final isCurrentlySelected =
+                      item.key == state.settings.translationModel;
+                  final isRecommended = item.key == 'google';
+                  final itemHasAccess = hasAccess(item.key);
+                  final statusKey = {
+                    'google': 'google_translate',
+                    'mymemory': 'mymemory',
+                    'riva': 'riva',
+                    'llama': 'llama',
+                  }[item.key];
+
+                  return InkWell(
+                    onTap: () {
+                      if (itemHasAccess) {
+                        Navigator.pop(context);
+                        // Explicitly unload current model from memory upon selection change
+                        WhisperService().unloadModel();
+                        context.read<SettingsBloc>().add(
+                          UpdateTempSettingEvent(translationModel: item.key),
+                        );
+                      }
+                    },
+                    splashColor: itemHasAccess
+                        ? Colors.tealAccent.withValues(alpha: 0.2)
+                        : Colors.transparent,
+                    highlightColor: itemHasAccess
+                        ? Colors.white10
+                        : Colors.transparent,
+                    hoverColor:
+                        itemHasAccess ? Colors.white10 : Colors.transparent,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      color: isCurrentlySelected
+                          ? Colors.tealAccent.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.value,
+                              style: TextStyle(
+                                color: itemHasAccess
+                                    ? (isCurrentlySelected
+                                          ? Colors.white
+                                          : Colors.white70)
+                                    : Colors.white30,
+                                fontWeight: isCurrentlySelected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          if (statusKey != null) ...[
+                            const SizedBox(width: 8),
+                            ModelStatusIndicator(
+                              status: transState.modelStatuses[statusKey],
+                              compact: true,
+                            ),
+                          ],
+                          if (!itemHasAccess) ...[
+                            const SizedBox(width: 8),
+                            _buildTierLockBadge(
+                              '${SubscriptionService.instance.getNameForTier(SubscriptionService.instance.getRequirement('engines', item.key, SubscriptionService.instance.getTierAt(1)))}+',
+                            ),
+                          ],
+                          if (isCurrentlySelected) ...[
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.check,
+                              color: Colors.tealAccent,
+                              size: 18,
+                            ),
+                          ],
+                          if (isRecommended && itemHasAccess) ...[
+                            const SizedBox(width: 8),
+                            _buildRecommendedBadge(
+                              isActive: isCurrentlySelected,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              dropdownDecoratorProps: const DropDownDecoratorProps(
+                baseStyle: TextStyle(color: Colors.white, fontSize: 13),
+                dropdownSearchDecoration: InputDecoration(),
               ),
             ),
-            itemBuilder: (context, item, _) {
-              final isCurrentlySelected =
-                  item.key == state.settings.translationModel;
-              final isRecommended = item.key == 'google';
-              final itemHasAccess = hasAccess(item.key);
-
-              return InkWell(
-                onTap: () {
-                  if (itemHasAccess) {
-                    Navigator.pop(context);
-                    context.read<SettingsBloc>().add(
-                      UpdateTempSettingEvent(translationModel: item.key),
-                    );
-                  } else {}
-                },
-                splashColor: itemHasAccess
-                    ? Colors.tealAccent.withValues(alpha: 0.2)
-                    : Colors.transparent,
-                highlightColor: itemHasAccess
-                    ? Colors.white10
-                    : Colors.transparent,
-                hoverColor: itemHasAccess ? Colors.white10 : Colors.transparent,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  color: isCurrentlySelected
-                      ? Colors.tealAccent.withValues(alpha: 0.1)
-                      : Colors.transparent,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.value,
-                          style: TextStyle(
-                            color: itemHasAccess
-                                ? (isCurrentlySelected
-                                      ? Colors.white
-                                      : Colors.white70)
-                                : Colors.white30,
-                            fontWeight: isCurrentlySelected
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                      if (!itemHasAccess) ...[
-                        const SizedBox(width: 8),
-                        _buildTierLockBadge(
-                          '${SubscriptionService.instance.getNameForTier(SubscriptionService.instance.getRequirement('engines', item.key, SubscriptionService.instance.getTierAt(1)))}+',
-                        ),
-                      ],
-                      if (isCurrentlySelected) ...[
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.check,
-                          color: Colors.tealAccent,
-                          size: 18,
-                        ),
-                      ],
-                      if (isRecommended && itemHasAccess) ...[
-                        const SizedBox(width: 8),
-                        _buildRecommendedBadge(isActive: isCurrentlySelected),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-          dropdownDecoratorProps: const DropDownDecoratorProps(
-            baseStyle: TextStyle(color: Colors.white, fontSize: 13),
-            dropdownSearchDecoration: InputDecoration(),
-          ),
-        ),
+          );
+        },
       ),
-      if (needsKey) ...[
+      if (needsNvidiaKey) ...[
         const SizedBox(height: 16),
-        _ApiKeySection(state: state),
+        _NvidiaApiKeySection(state: state),
       ],
+
       const SizedBox(height: 20),
       _buildTranscriptionModelSection(context, state),
     ],
@@ -422,63 +465,90 @@ Widget _buildTranscriptionModelSection(
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      sectionLabel('Transcription Method'),
-      const SizedBox(height: 10),
-      Row(
-        children: [
-          Expanded(
-            child: _TranscriptionOption(
-              value: 'online',
-              groupValue: state.settings.transcriptionModel,
-              label: 'Google Online',
-              icon: Icons.cloud_outlined,
-              onChanged: (v) => context.read<SettingsBloc>().add(
-                UpdateTempSettingEvent(transcriptionModel: v),
-              ),
+      BlocBuilder<TranslationBloc, TranslationState>(
+        builder: (context, transState) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            sectionLabel('Transcription Method'),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _TranscriptionOption(
+                    value: 'online',
+                    groupValue: state.settings.transcriptionModel,
+                    label: 'Google Online',
+                    icon: Icons.cloud_outlined,
+                    status: transState.modelStatuses['google_asr'],
+                    onChanged: (v) {
+                      // Explicitly unload current model from memory upon selection change
+                      WhisperService().unloadModel();
+                      context.read<SettingsBloc>().add(
+                        UpdateTempSettingEvent(transcriptionModel: v),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _TranscriptionOption(
+                    value: 'riva',
+                    groupValue: state.settings.transcriptionModel,
+                    label: 'NVIDIA Riva',
+                    status: transState.modelStatuses['riva'],
+                    isRecommended: true,
+                    icon: Icons.bolt_rounded,
+                    onChanged: (v) {
+                      // Explicitly unload current model from memory upon selection change
+                      WhisperService().unloadModel();
+                      context.read<SettingsBloc>().add(
+                        UpdateTempSettingEvent(transcriptionModel: v),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _TranscriptionOption(
+                    value: state.settings.transcriptionModel.startsWith('whisper')
+                        ? state.settings.transcriptionModel
+                        : 'whisper-base',
+                    groupValue: state.settings.transcriptionModel,
+                    label: 'Whisper Offline',
+                    status: transState.modelStatuses[state.settings.transcriptionModel.startsWith('whisper') ? state.settings.transcriptionModel : 'whisper-base'],
+                    icon: Icons.offline_bolt_outlined,
+                    onChanged: (v) {
+                      // Explicitly unload current model from memory upon selection change
+                      WhisperService().unloadModel();
+                      context.read<SettingsBloc>().add(
+                        UpdateTempSettingEvent(transcriptionModel: v),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _TranscriptionOption(
-              value: 'riva',
-              groupValue: state.settings.transcriptionModel,
-              label: 'NVIDIA Riva',
-              isRecommended: true,
-              icon: Icons.bolt_rounded,
-              onChanged: (v) => context.read<SettingsBloc>().add(
-                UpdateTempSettingEvent(transcriptionModel: v),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _TranscriptionOption(
-              value: state.settings.transcriptionModel.startsWith('whisper')
-                  ? state.settings.transcriptionModel
-                  : 'whisper-base',
-              groupValue: state.settings.transcriptionModel,
-              label: 'Whisper Offline',
-              icon: Icons.offline_bolt_outlined,
-              onChanged: (v) => context.read<SettingsBloc>().add(
-                UpdateTempSettingEvent(transcriptionModel: v),
-              ),
-            ),
-          ),
-        ],
-      ),
 
-      // Whisper model manager (shown when offline is selected)
-      if (state.settings.transcriptionModel.startsWith('whisper')) ...[
-        const SizedBox(height: 12),
-        _WhisperModelCard(
-          selectedModel: state.settings.transcriptionModel,
-          onModelChanged: (newModel) {
-            context.read<SettingsBloc>().add(
-              UpdateTempSettingEvent(transcriptionModel: newModel),
-            );
-          },
-        ),
-      ],
+            // Whisper model manager (shown when offline is selected)
+            if (state.settings.transcriptionModel.startsWith('whisper')) ...[
+              const SizedBox(height: 12),
+              _WhisperModelCard(
+                selectedModel: state.settings.transcriptionModel,
+                modelStatuses: transState.modelStatuses,
+                onModelChanged: (newModel) {
+                  // Explicitly unload current model from memory upon selection change
+                  WhisperService().unloadModel();
+                  context.read<SettingsBloc>().add(
+                        UpdateTempSettingEvent(transcriptionModel: newModel),
+                      );
+                },
+              ),
+            ],
+          ],
+        );
+      },
+      ),
     ],
   );
 }
@@ -491,6 +561,7 @@ class _TranscriptionOption extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool isRecommended;
+  final dynamic status;
   final ValueChanged<String> onChanged;
 
   const _TranscriptionOption({
@@ -499,6 +570,7 @@ class _TranscriptionOption extends StatelessWidget {
     required this.label,
     required this.icon,
     this.isRecommended = false,
+    this.status,
     required this.onChanged,
   });
 
@@ -530,6 +602,10 @@ class _TranscriptionOption extends StatelessWidget {
               size: 18,
               color: isSelected ? Colors.tealAccent : Colors.white38,
             ),
+            if (status != null) ...[
+              const SizedBox(height: 4),
+              ModelStatusIndicator(status: status, compact: true),
+            ],
             const SizedBox(height: 6),
             Text(
               label,
@@ -555,10 +631,12 @@ class _TranscriptionOption extends StatelessWidget {
 
 class _WhisperModelCard extends StatefulWidget {
   final String selectedModel;
+  final Map<String, dynamic> modelStatuses;
   final ValueChanged<String> onModelChanged;
 
   const _WhisperModelCard({
     required this.selectedModel,
+    required this.modelStatuses,
     required this.onModelChanged,
   });
 
@@ -787,7 +865,9 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
               ],
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          GpuStatusIndicator(status: widget.modelStatuses['system-gpu']),
+          const SizedBox(height: 16),
 
           // Size Selection Dropdown
           DropdownButtonHideUnderline(
@@ -834,11 +914,18 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            e.value,
-                            style: TextStyle(
-                              color: hasAccess ? Colors.white : Colors.white30,
+                          Expanded(
+                            child: Text(
+                              e.value,
+                              style: TextStyle(
+                                color:
+                                    hasAccess ? Colors.white : Colors.white30,
+                              ),
                             ),
+                          ),
+                          ModelStatusIndicator(
+                            status: widget.modelStatuses['whisper-${e.key}'],
+                            compact: true,
                           ),
                           if (!hasAccess) ...[
                             const SizedBox(width: 8),
@@ -865,7 +952,17 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
                       return Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(e.value),
+                          Expanded(
+                            child: Text(
+                              e.value,
+                              style: const TextStyle(color: Colors.white),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          ModelStatusIndicator(
+                            status: widget.modelStatuses['whisper-${e.key}'],
+                            compact: true,
+                          ),
                           if (isRecommended) ...[
                             const SizedBox(width: 8),
                             _buildRecommendedBadge(isActive: true),
@@ -976,18 +1073,20 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
 
 // ─── API Key Section ──────────────────────────────────────────────────────────
 
+// ─── NVIDIA API Key Section ──────────────────────────────────────────────────
+
 enum ApiKeyStatus { missing, verifying, valid, invalidFormat, invalidKey }
 
-class _ApiKeySection extends StatefulWidget {
+class _NvidiaApiKeySection extends StatefulWidget {
   final SettingsState state;
 
-  const _ApiKeySection({required this.state});
+  const _NvidiaApiKeySection({required this.state});
 
   @override
-  State<_ApiKeySection> createState() => _ApiKeySectionState();
+  State<_NvidiaApiKeySection> createState() => _NvidiaApiKeySectionState();
 }
 
-class _ApiKeySectionState extends State<_ApiKeySection> {
+class _NvidiaApiKeySectionState extends State<_NvidiaApiKeySection> {
   late TextEditingController _controller;
   bool _obscure = true;
   Timer? _debounce;
@@ -1013,7 +1112,7 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
   }
 
   @override
-  void didUpdateWidget(_ApiKeySection old) {
+  void didUpdateWidget(_NvidiaApiKeySection old) {
     super.didUpdateWidget(old);
     if (old.state.settings.apiKey != widget.state.settings.apiKey &&
         _controller.text != widget.state.settings.apiKey) {
@@ -1145,7 +1244,7 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
         children: [
           Row(
             children: [
-              sectionLabel('API Key'),
+              sectionLabel('NVIDIA API Key'),
               const SizedBox(width: 8),
               _buildStatusBadge(),
               const Spacer(),
@@ -1188,7 +1287,7 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
       );
     }
 
-    final instructions = _apiKeyInstructions(
+    final instructions = _nvidiaApiKeyInstructions(
       widget.state.settings.translationModel,
       widget.state.settings.transcriptionModel,
     );
@@ -1198,7 +1297,7 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
       children: [
         Row(
           children: [
-            sectionLabel('API Key'),
+            sectionLabel('NVIDIA API Key'),
             const SizedBox(width: 8),
             _buildStatusBadge(),
             if (_status == ApiKeyStatus.valid) ...[
@@ -1289,6 +1388,8 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
   }
 }
 
+
+
 class _ApiKeyInstructions {
   final String description;
   final String label;
@@ -1300,19 +1401,15 @@ class _ApiKeyInstructions {
   });
 }
 
-_ApiKeyInstructions _apiKeyInstructions(
+_ApiKeyInstructions _nvidiaApiKeyInstructions(
   String translationEngine,
   String transcriptionEngine,
 ) {
-  if (translationEngine == 'riva' || transcriptionEngine == 'riva') {
+  if (translationEngine == 'riva' ||
+      transcriptionEngine == 'riva' ||
+      translationEngine == 'llama') {
     return const _ApiKeyInstructions(
       description: 'Generate a free NVIDIA NIM API key.',
-      label: 'https://build.nvidia.com/settings/api-keys',
-      url: 'https://build.nvidia.com/settings/api-keys',
-    );
-  } else if (translationEngine == 'llama') {
-    return const _ApiKeyInstructions(
-      description: 'Generate a free NVIDIA NIM API key to access Llama 3.1 8B.',
       label: 'https://build.nvidia.com/settings/api-keys',
       url: 'https://build.nvidia.com/settings/api-keys',
     );

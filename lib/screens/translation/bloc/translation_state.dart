@@ -7,6 +7,8 @@ class TranslationState extends Equatable {
   final bool isRunning;
   final SubscriptionStatus? quotaStatus;
   final bool isQuotaExceeded;
+  final bool isSettingsLoading;
+  final bool isSettingsSaving;
 
   // Active Settings (Applied to WebSocket)
   final String activeTargetLang;
@@ -27,6 +29,7 @@ class TranslationState extends Equatable {
   final String? autoDetectWarning;
 
   final int navToSubscriptionTrigger;
+  final Map<String, dynamic> modelStatuses;
 
   const TranslationState({
     required this.isShrunk,
@@ -47,7 +50,10 @@ class TranslationState extends Equatable {
     this.autoDetectWarning,
     this.quotaStatus,
     this.isQuotaExceeded = false,
+    this.isSettingsLoading = false,
+    this.isSettingsSaving = false,
     this.navToSubscriptionTrigger = 0,
+    this.modelStatuses = const {},
   });
 
   factory TranslationState.initial() {
@@ -71,7 +77,10 @@ class TranslationState extends Equatable {
       autoDetectWarning: null,
       quotaStatus: null,
       isQuotaExceeded: false,
+      isSettingsLoading: false,
+      isSettingsSaving: false,
       navToSubscriptionTrigger: 0,
+      modelStatuses: {},
     );
   }
 
@@ -94,7 +103,10 @@ class TranslationState extends Equatable {
     Object? autoDetectWarning = _sentinel,
     SubscriptionStatus? quotaStatus,
     bool? isQuotaExceeded,
+    bool? isSettingsLoading,
+    bool? isSettingsSaving,
     int? navToSubscriptionTrigger,
+    Map<String, dynamic>? modelStatuses,
   }) {
     return TranslationState(
       isShrunk: isShrunk ?? this.isShrunk,
@@ -121,33 +133,54 @@ class TranslationState extends Equatable {
           : autoDetectWarning as String?,
       quotaStatus: quotaStatus ?? this.quotaStatus,
       isQuotaExceeded: isQuotaExceeded ?? this.isQuotaExceeded,
+      isSettingsLoading: isSettingsLoading ?? this.isSettingsLoading,
+      isSettingsSaving: isSettingsSaving ?? this.isSettingsSaving,
       navToSubscriptionTrigger:
           navToSubscriptionTrigger ?? this.navToSubscriptionTrigger,
+      modelStatuses: modelStatuses ?? this.modelStatuses,
     );
   }
 
   @override
   List<Object?> get props => [
-    isShrunk,
-    isRunning,
-    activeTargetLang,
-    activeSourceLang,
-    activeUseMic,
-    activeFontSize,
-    activeIsBold,
-    activeOpacity,
-    activeInputDeviceIndex,
-    activeOutputDeviceIndex,
-    activeDesktopVolume,
-    activeMicVolume,
-    activeTranslationModel,
-    activeApiKey,
-    activeTranscriptionModel,
-    autoDetectWarning,
-    quotaStatus,
-    isQuotaExceeded,
-    navToSubscriptionTrigger,
-  ];
+        isShrunk,
+        isRunning,
+        activeTargetLang,
+        activeSourceLang,
+        activeUseMic,
+        activeFontSize,
+        activeIsBold,
+        activeOpacity,
+        activeInputDeviceIndex,
+        activeOutputDeviceIndex,
+        activeDesktopVolume,
+        activeMicVolume,
+        activeTranslationModel,
+        activeApiKey,
+        activeTranscriptionModel,
+        autoDetectWarning,
+        quotaStatus,
+        isQuotaExceeded,
+        isSettingsLoading,
+        isSettingsSaving,
+        navToSubscriptionTrigger,
+        modelStatuses,
+      ];
+
+  String get activeTranslationModelStatusKey {
+    return {
+      'google': 'google_translate',
+      'mymemory': 'mymemory',
+      'riva': 'riva',
+      'llama': 'llama',
+    }[activeTranslationModel] ??
+    activeTranslationModel;
+  }
+
+  String get activeTranscriptionModelStatusKey {
+    if (activeTranscriptionModel == 'online') return 'google_asr';
+    return activeTranscriptionModel;
+  }
 }
 
 // Sentinel to distinguish 'not passed' from explicit null in copyWith

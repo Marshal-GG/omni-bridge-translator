@@ -62,6 +62,7 @@ env/
 *.spec
 !server/omni_bridge_server.spec
 dist/
+dist_obfuscated/
 build/
 build_output/
 installers/
@@ -94,3 +95,8 @@ firestore.rules
 # Additional ignores
 task.md
 update_docs.py
+server/json/*.json
+server/dist_obfuscated/
+server/build/
+server/dist/
+!server/json/.gitkeep

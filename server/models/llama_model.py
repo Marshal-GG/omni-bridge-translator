@@ -39,6 +39,21 @@ class LlamaModel:
     def is_ready(self) -> bool:
         return self.client is not None and bool(self.api_key)
 
+    def get_status(self) -> dict:
+        """Return status for Llama model."""
+        ready = self.is_ready()
+        status = "ready" if ready else ("no_api_key" if not self.api_key else "error")
+        message = "Llama is ready." if ready else ("Llama requires an API key." if not self.api_key else "Llama setup failed.")
+        
+        return {
+            "name": "llama",
+            "status": status,
+            "ready": ready,
+            "message": message,
+            "progress": 100.0 if ready else 0.0,
+            "details": {"has_key": bool(self.api_key)}
+        }
+
     # ── Translation ──────────────────────────────────────────────────────────
 
     def translate(self, text: str, target_lang: str) -> tuple[str, dict]:

@@ -16,3 +16,4 @@ openai-whisper
 deep-translator
 resampy
 pyarmor
+google-cloud-translate

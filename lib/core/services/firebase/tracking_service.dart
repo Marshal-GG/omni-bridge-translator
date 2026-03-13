@@ -399,11 +399,12 @@ class TrackingService {
   /// Sync current Translation Settings to Firestore
   Future<void> syncSettings(Map<String, dynamic> settingsData) async {
     if (uid == null) {
-      debugPrint('[Tracking] Cannot sync settings: UID is null.');
+      debugPrint('[Tracking] Cannot sync settings: UID is null. User may be signed out.');
       return;
     }
 
     try {
+      debugPrint('[Tracking] Attempting to sync settings for UID: $uid');
       await _firestore
           .collection('users')
           .doc(uid)
@@ -413,8 +414,9 @@ class TrackingService {
             ...settingsData,
             'lastUpdated': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
-      debugPrint('[Tracking] User settings synced to Firestore.');
+      debugPrint('[Tracking] User settings successfully synced to Firestore.');
     } catch (e) {
+      debugPrint('[Tracking] Critical error syncing user settings: $e');
       logError('Failed to sync user settings', e);
     }
   }
@@ -422,11 +424,12 @@ class TrackingService {
   /// Get current Translation Settings from Firestore
   Future<Map<String, dynamic>?> getSettings() async {
     if (uid == null) {
-      debugPrint('[Tracking] Cannot fetch settings: UID is null.');
+      debugPrint('[Tracking] Cannot fetch settings: UID is null. User may be signed out.');
       return null;
     }
 
     try {
+      debugPrint('[Tracking] Fetching settings for UID: $uid');
       final doc = await _firestore
           .collection('users')
           .doc(uid)
@@ -435,10 +438,13 @@ class TrackingService {
           .get();
 
       if (doc.exists) {
-        debugPrint('[Tracking] Fetched user settings from Firestore.');
+        debugPrint('[Tracking] Successfully fetched user settings from Firestore.');
         return doc.data();
+      } else {
+        debugPrint('[Tracking] No settings found in Firestore for UID: $uid');
       }
     } catch (e) {
+      debugPrint('[Tracking] Critical error fetching user settings: $e');
       logError('Failed to fetch user settings', e);
     }
     return null;

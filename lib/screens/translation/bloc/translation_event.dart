@@ -104,3 +104,11 @@ class LangErrorEvent extends TranslationEvent {
   @override
   List<Object?> get props => [message];
 }
+/// Fired when the server sends a type:'model_status' message.
+class ModelStatusChangedEvent extends TranslationEvent {
+  final List<dynamic> statuses;
+  const ModelStatusChangedEvent(this.statuses);
+
+  @override
+  List<Object?> get props => [statuses];
+}

@@ -5,6 +5,8 @@ import 'bloc/settings_bloc.dart';
 import 'bloc/settings_event.dart';
 import 'bloc/settings_state.dart';
 import '../translation/bloc/translation_bloc.dart';
+import '../translation/bloc/translation_state.dart';
+
 
 import 'components/settings_footer.dart';
 import 'components/settings_header.dart';
@@ -66,124 +68,186 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
-      builder: (context, state) {
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: WindowBorder(
-            color: Colors.white12,
-            width: 1,
-            child: Container(
-              color: const Color(0xFF121212),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  // Hide content while the window is transitioning to a larger size
-                  // to prevent RenderFlex overflow errors during the animation.
-                  if (constraints.maxHeight < 200) {
-                    return const SizedBox.shrink();
-                  }
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<TranslationBloc, TranslationState>(
+          listenWhen: (previous, current) =>
+              previous.isSettingsLoading && !current.isSettingsLoading,
+          listener: (context, translationState) {
+            context.read<SettingsBloc>().add(
+                  SyncTempSettingsEvent(
+                    targetLang: translationState.activeTargetLang,
+                    sourceLang: translationState.activeSourceLang,
+                    useMic: translationState.activeUseMic,
+                    fontSize: translationState.activeFontSize,
+                    isBold: translationState.activeIsBold,
+                    opacity: translationState.activeOpacity,
+                    inputDeviceIndex: translationState.activeInputDeviceIndex,
+                    outputDeviceIndex: translationState.activeOutputDeviceIndex,
+                    desktopVolume: translationState.activeDesktopVolume,
+                    micVolume: translationState.activeMicVolume,
+                    translationModel: translationState.activeTranslationModel,
+                    apiKey: translationState.activeApiKey,
+                    transcriptionModel:
+                        translationState.activeTranscriptionModel,
+                  ),
+                );
+          },
+        ),
+        BlocListener<TranslationBloc, TranslationState>(
+          listenWhen: (previous, current) =>
+              previous.isSettingsSaving && !current.isSettingsSaving,
+          listener: (context, translationState) {
+            // After saving, sync state and close screen
+            context.read<SettingsBloc>().add(
+                  SyncTempSettingsEvent(
+                    targetLang: translationState.activeTargetLang,
+                    sourceLang: translationState.activeSourceLang,
+                    useMic: translationState.activeUseMic,
+                    fontSize: translationState.activeFontSize,
+                    isBold: translationState.activeIsBold,
+                    opacity: translationState.activeOpacity,
+                    inputDeviceIndex: translationState.activeInputDeviceIndex,
+                    outputDeviceIndex: translationState.activeOutputDeviceIndex,
+                    desktopVolume: translationState.activeDesktopVolume,
+                    micVolume: translationState.activeMicVolume,
+                    translationModel: translationState.activeTranslationModel,
+                    apiKey: translationState.activeApiKey,
+                    transcriptionModel:
+                        translationState.activeTranscriptionModel,
+                  ),
+                );
 
-                  return Column(
-                    children: [
-                      buildSettingsHeader(context),
-                      const Divider(height: 1, color: Colors.white10),
-                      Container(
-                        color: const Color(0xFF1A1A1A),
-                        height: 38,
-                        child: Center(
-                          child: SizedBox(
-                            width: 500,
-                            child: TabBar(
-                              controller: _tabController,
-                              indicatorColor: Colors.tealAccent,
-                              indicatorWeight: 2,
-                              labelColor: Colors.tealAccent,
-                              unselectedLabelColor: Colors.white38,
-                              labelStyle: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'Inter',
+            if (mounted) {
+              Navigator.pop(context);
+            }
+          },
+        ),
+      ],
+      child: BlocBuilder<SettingsBloc, SettingsState>(
+        builder: (context, state) {
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            body: WindowBorder(
+              color: Colors.white12,
+              width: 1,
+              child: Container(
+                color: const Color(0xFF121212),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Hide content while the window is transitioning to a larger size
+                    // to prevent RenderFlex overflow errors during the animation.
+                    if (constraints.maxHeight < 200) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return Column(
+                      children: [
+                        buildSettingsHeader(context),
+                        const Divider(height: 1, color: Colors.white10),
+                        Container(
+                          color: const Color(0xFF1A1A1A),
+                          height: 38,
+                          child: Center(
+                            child: SizedBox(
+                              width: 500,
+                              child: TabBar(
+                                controller: _tabController,
+                                indicatorColor: Colors.tealAccent,
+                                indicatorWeight: 2,
+                                labelColor: Colors.tealAccent,
+                                unselectedLabelColor: Colors.white38,
+                                labelStyle: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'Inter',
+                                ),
+                                labelPadding: EdgeInsets.zero,
+                                tabs: const [
+                                  Tab(text: 'Translation'),
+                                  Tab(text: 'Display'),
+                                  Tab(text: 'Input & Output'),
+                                ],
                               ),
-                              labelPadding: EdgeInsets.zero,
-                              tabs: const [
-                                Tab(text: 'Translation'),
-                                Tab(text: 'Display'),
-                                Tab(text: 'Input & Output'),
-                              ],
                             ),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 500,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      buildLanguagesTab(context, state),
-                                      const SizedBox(height: 28),
-                                      buildTranslationModelSelector(
-                                        context,
-                                        state,
-                                      ),
-                                      const SizedBox(height: 40),
-                                      Center(
-                                        child: _VersionChip(label: 'v$_version'),
-                                      ),
-                                    ],
+                        Expanded(
+                          child: TabBarView(
+                            controller: _tabController,
+                            children: [
+                              SingleChildScrollView(
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 500,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        buildLanguagesTab(context, state),
+                                        const SizedBox(height: 28),
+                                        buildTranslationModelSelector(
+                                          context,
+                                          state,
+                                        ),
+                                        const SizedBox(height: 40),
+                                        Center(
+                                          child: _VersionChip(
+                                            label: 'v$_version',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 500,
-                                  child: Column(
-                                    children: [
-                                      buildDisplayTab(context, state),
-                                      const SizedBox(height: 40),
-                                      _VersionChip(label: 'v$_version'),
-                                    ],
+                              SingleChildScrollView(
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 500,
+                                    child: Column(
+                                      children: [
+                                        buildDisplayTab(context, state),
+                                        const SizedBox(height: 40),
+                                        _VersionChip(label: 'v$_version'),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 500,
-                                  child: Column(
-                                    children: [
-                                      buildInputOutputTab(context, state),
-                                      const SizedBox(height: 40),
-                                      _VersionChip(label: 'v$_version'),
-                                    ],
+                              SingleChildScrollView(
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 500,
+                                    child: Column(
+                                      children: [
+                                        buildInputOutputTab(context, state),
+                                        const SizedBox(height: 40),
+                                        _VersionChip(label: 'v$_version'),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      buildSettingsFooter(context, state),
-                    ],
-                  );
-                },
+                        buildSettingsFooter(context, state),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

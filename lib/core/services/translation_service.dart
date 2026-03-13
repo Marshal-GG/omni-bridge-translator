@@ -185,7 +185,7 @@ class TranslationService {
       'use_mic': _useMic,
       'translation_model': _translationModel,
       'transcription_model': _transcriptionModel,
-      if (_apiKey.isNotEmpty) 'api_key': _apiKey,
+      'api_key': _apiKey,
     };
     if (_inputDeviceIndex != null) {
       payload['input_device_index'] = _inputDeviceIndex;
@@ -228,7 +228,7 @@ class TranslationService {
         'mic_volume': micVolume,
         'translation_model': translationModel,
         'transcription_model': transcriptionModel,
-        if (apiKey.isNotEmpty) 'api_key': apiKey,
+        'api_key': apiKey,
       };
       if (inputDeviceIndex != null) {
         payload['input_device_index'] = inputDeviceIndex;

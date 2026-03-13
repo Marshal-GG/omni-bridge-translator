@@ -75,6 +75,9 @@ A singleton document used to manage administrative access to the platform.
 | Field | Type | Notes |
 |---|---|---|
 | `emails` | `array` | List of email strings authorized to access the Admin Panel. |
+
+> [!NOTE]
+| **Bootstrap Admin**: The email `marshalgcom@gmail.com` is hardcoded as the primary administrator in `firestore.rules` to allow initial system configuration and recovery. |
  
 ---
  
@@ -263,6 +266,15 @@ Written by `SubscriptionService._logSubscriptionEvent()` whenever the user's tie
 
 Historical usage is archived from RTDB to Firestore collections during rollovers performed by `SubscriptionService._checkAndPerformRollovers()`.
 
+#### Weekly Archives — `users/{uid}/usage_history_weekly/{YYYY_MM_DD}`
+Archived every Monday for all users.
+```json
+{
+  "tokens": 12500,
+  "archivedAt": "2026-03-09T00:00:05Z"
+}
+```
+
 #### Calendar Archives — `users/{uid}/usage_history_calendar/{YYYY_MM}`
 Archived on the 1st of every month for all users.
 ```json
@@ -394,7 +406,7 @@ The **Single Source of Truth** for current user usage. Polled every 3 seconds by
 | `subscription_monthly` | `number` | Tokens used in current billing cycle (paid tiers). |
 | `weekly` | `number` | Tokens used in current week (Monday start). Resets on Monday. |
 | `last_calendar_month` | `string` | Tracks current period in RTDB (e.g., `"2026_03"`) to trigger archive on month change. |
-| `last_week` | `string` | Tracks current week in RTDB (e.g., `"2026-03-03"`, which is a Monday) to trigger archive on week change. |
+| `last_week` | `string` | Tracks current week in RTDB (e.g., `"2026_03_03"`, Monday anchor) to trigger archive on week change. |
 
 ---
 
@@ -421,9 +433,9 @@ One node written **per translation call**. Never updated after creation.
 }
 ```
 
-> For Llama / Google, `prompt_tokens`, `completion_tokens` and `total_tokens` are populated.
+> For Llama / Google / Google Cloud, `prompt_tokens`, `completion_tokens` and `total_tokens` are populated.
 
-**Engines:** `riva` | `llama` | `google` | `mymemory` | `whisper`
+**Engines:** `riva` | `llama` | `google` | `google_api` | `mymemory` | `whisper`
 
 | Field | Type | Notes |
 |---|---|---|

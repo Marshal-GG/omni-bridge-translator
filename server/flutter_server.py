@@ -59,6 +59,27 @@ logging.basicConfig(
 )
 logging.info("Initializing Omni Bridge Server...")
 
+def detect_google_json():
+    """Look for a Google Service Account JSON in server/json/ directory."""
+    try:
+        json_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "json")
+        if os.path.exists(json_dir):
+            files = [f for f in os.listdir(json_dir) if f.endswith(".json")]
+            # Filter for files that look like service accounts (contain project_id)
+            for f in files:
+                path = os.path.join(json_dir, f)
+                try:
+                    with open(path, 'r') as jf:
+                        data = json.load(jf)
+                        if "project_id" in data and "private_key" in data:
+                            logging.info(f"[Auto-Detect] Found Google Service Account: {f}")
+                            return path
+                except Exception:
+                    continue
+    except Exception as e:
+        logging.warning(f"[Auto-Detect] Error searching for JSON: {e}")
+    return ""
+
 try:
     import psutil
     HAS_PSUTIL = True
@@ -86,10 +107,14 @@ async def lifespan(app):
     """Capture the running event loop once uvicorn starts, and install a
     global async exception handler so silent task failures are logged
     instead of killing the process."""
-    global _event_loop, _pyaudio_lock
+    global _event_loop, _pyaudio_lock, nim_api
     loop = asyncio.get_running_loop()
     _event_loop = loop
     _pyaudio_lock = asyncio.Lock()
+    
+    # Initialize nim_api early so statuses are available for the UI immediately
+    if nim_api is None:
+        nim_api = NimApiClient()
 
     def _handle_exception(loop, context):
         msg = context.get("exception", context["message"])
@@ -102,7 +127,6 @@ app = FastAPI(lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # --- Active WebSocket connections ---
-active_connections: Set[WebSocket] = set()
 nim_api: NimApiClient = None
 audio_capture: AudioCapture = None
 audio_meter: AudioMeter = AudioMeter()
@@ -117,23 +141,52 @@ current_target_lang: str = "en"
 current_ai_engine: str = "google"            # kept for legacy compat
 current_transcription_model: str = "online"  # online | whisper-tiny | whisper-base | whisper-small | whisper-medium
 current_translation_model: str = "google"    # google | mymemory | riva | llama
-current_api_key: str = ""  # Overridden per-session by the Flutter client
+current_api_key: str = ""  # NVIDIA API key
+current_google_json_path: str = detect_google_json()  # Auto-detected or manual path
 current_use_mic: bool = False
 current_input_device_index: int | None = None
 current_output_device_index: int | None = None
 current_desktop_volume: float = 1.0
 current_mic_volume: float = 1.0
+current_initial_suspension: bool = False
+current_session_id: int = 0
 
 
-async def broadcast(message: dict):
-    """Send a JSON message to all connected Flutter clients."""
-    dead = set()
-    for ws in list(active_connections):
-        try:
-            await ws.send_text(json.dumps(message))
-        except Exception:
-            dead.add(ws)
-    active_connections.difference_update(dead)
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Set[WebSocket] = set()
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.add(websocket)
+
+    async def disconnect(self, websocket: WebSocket):
+        self.active_connections.discard(websocket)
+
+    async def broadcast(self, message: dict):
+        """Send a JSON message to all connected Flutter clients."""
+        if not self.active_connections:
+            return
+        dead = set()
+        for ws in list(self.active_connections):
+            try:
+                await ws.send_text(json.dumps(message))
+            except Exception:
+                dead.add(ws)
+        self.active_connections.difference_update(dead)
+
+    async def broadcast_status(self):
+        """Broadcast the current status of all models to all connected clients."""
+        global nim_api
+        if nim_api:
+            status_data = nim_api.get_all_statuses()
+            message = {
+                "type": "model_status",
+                "models": status_data
+            }
+            await self.broadcast(message)
+
+manager = ConnectionManager()
 
 
 def caption_callback(text, is_error, is_final=True, original_text=None, usage_stats=None):
@@ -146,7 +199,7 @@ def caption_callback(text, is_error, is_final=True, original_text=None, usage_st
         "is_final": is_final,
     }
     if _event_loop and not _event_loop.is_closed():
-        asyncio.run_coroutine_threadsafe(broadcast(msg), _event_loop)
+        asyncio.run_coroutine_threadsafe(manager.broadcast(msg), _event_loop)
         # Emit usage stats as a separate message so Flutter can log them independently
         if usage_stats and not is_error and is_final:
             if isinstance(usage_stats, list):
@@ -161,7 +214,7 @@ def caption_callback(text, is_error, is_final=True, original_text=None, usage_st
                         "target_lang": current_target_lang,
                         **stat,
                     }
-                    asyncio.run_coroutine_threadsafe(broadcast(stats_msg), _event_loop)
+                    asyncio.run_coroutine_threadsafe(manager.broadcast(stats_msg), _event_loop)
             else:
                 if not usage_stats.get("total_tokens"):
                     total_c = usage_stats.get("input_tokens", 0) + usage_stats.get("output_tokens", 0)
@@ -173,15 +226,16 @@ def caption_callback(text, is_error, is_final=True, original_text=None, usage_st
                     "target_lang": current_target_lang,
                     **usage_stats,
                 }
-                asyncio.run_coroutine_threadsafe(broadcast(stats_msg), _event_loop)
+                asyncio.run_coroutine_threadsafe(manager.broadcast(stats_msg), _event_loop)
 
 
-def audio_poll_loop():
+def audio_poll_loop(session_id: int, initial_suspension: bool = False):
     """Background thread: polls audio capture queue and feeds to nim_api."""
-    global is_running, current_source_lang, current_target_lang
+    global is_running, current_source_lang, current_target_lang, current_session_id
     stream_started = False
+    logging.info(f"[audio_poll_loop] Started session {session_id}")
     try:
-        while is_running:
+        while is_running and session_id == current_session_id:
             item = audio_capture.get_audio_chunk()
             if item is not None:
                 chunk, sample_rate = item
@@ -194,14 +248,22 @@ def audio_poll_loop():
                         transcription_model=current_transcription_model,
                         translation_model=current_translation_model,
                         callback=caption_callback,
+                        suspended=initial_suspension,
                     )
                     stream_started = True
                 nim_api.append_audio(chunk)
             else:
                 time.sleep(0.01)
+        
+        if session_id != current_session_id:
+            logging.info(f"[audio_poll_loop] Session {session_id} superseded by {current_session_id}. Exiting.")
+        else:
+            logging.info(f"[audio_poll_loop] Session {session_id} stopping normally.")
+
     except Exception as e:
-        logging.error(f"[audio_poll_loop] Crashed: {e}")
-        is_running = False
+        logging.error(f"[audio_poll_loop] Session {session_id} Crashed: {e}")
+        if session_id == current_session_id:
+            is_running = False
 
 async def audio_level_broadcast_loop():
     """Broadcast audio RMS levels to all connected Flutter clients ~13 fps."""
@@ -211,8 +273,14 @@ async def audio_level_broadcast_loop():
             "input_level": audio_meter.input_level,
             "output_level": audio_meter.output_level,
         }
-        await broadcast(msg)
+        await manager.broadcast(msg)
         await asyncio.sleep(0.075)
+
+async def status_broadcast_loop():
+    """Broadcast model statuses periodically while the server is running."""
+    while is_running:
+        await manager.broadcast_status()
+        await asyncio.sleep(2.0) # Every 2 seconds is enough for status updates
 
 
 # ── Whisper model management endpoints ────────────────────────────────────────
@@ -234,6 +302,7 @@ async def whisper_download(request: Request):
     size = body.get("size", "base")
     started = whisper_start_download(size)
     status = get_download_status(size)
+    asyncio.create_task(manager.broadcast_status()) # Broadcast status after download attempt
     return {"status": "started" if started else status["status"], **status}
 
 
@@ -249,8 +318,25 @@ async def whisper_delete(request: Request):
     """Delete the cached Whisper model for a given size."""
     size = request.query_params.get("size", "base")
     success = whisper_delete_model(size)
+    asyncio.create_task(manager.broadcast_status()) # Broadcast status after deletion
     return {"status": "deleted" if success else "error"}
 
+
+@app.post("/whisper/unload")
+async def whisper_unload():
+    """Explicitly unload the Whisper model from memory/GPU."""
+    nim_api.whisper_unload()
+    asyncio.create_task(manager.broadcast_status())
+    return {"status": "unloaded"}
+
+
+@app.get("/models/status")
+async def get_models_status():
+    """Get the current loading status of all AI models."""
+    global nim_api
+    if nim_api:
+        return nim_api.get_all_statuses()
+    return [] # Return empty list if not init yet, matches Flutter expectations
 
 @app.get("/devices")
 async def list_devices():
@@ -345,14 +431,16 @@ async def start_capture(
     input_device_index: int = None,
     output_device_index: int = None,
     api_key: str = "",
+    google_json_path: str = "",
     transcription_model: str = "online",
-    translation_model: str = "",
+    translation_model: str = "",        # empty → derive from ai_engine
+    initial_suspension: bool = False,
 ):
     global nim_api, audio_capture, is_running, audio_thread, _meter_task
     global current_source_lang, current_target_lang, current_ai_engine, current_use_mic
     global current_input_device_index, current_output_device_index
-    global current_desktop_volume, current_mic_volume, current_api_key
-    global current_transcription_model, current_translation_model
+    global current_desktop_volume, current_mic_volume, current_api_key, current_google_json_path
+    global current_transcription_model, current_translation_model, current_session_id, current_initial_suspension
 
     current_source_lang = source_lang
     current_target_lang = target_lang
@@ -364,16 +452,27 @@ async def start_capture(
     current_translation_model = translation_model or ai_engine  # fallback to ai_engine
     # Use the user-supplied key if non-empty
     current_api_key = api_key or ""
+    current_google_json_path = google_json_path or ""
+    current_initial_suspension = initial_suspension
 
     # Guard: Riva/Llama translation requires an API key
     if current_translation_model in ("riva", "llama") and not current_api_key:
-        await broadcast({
+        await manager.broadcast({
             "type": "error",
-            "text": f"⚠ {current_translation_model.capitalize()} requires an API key. Open Settings → Translation Engine and paste your NVIDIA NIM key.",
+            "text": f"⚠ {current_translation_model.capitalize()} requires an NVIDIA API key. Open Settings → Translation Engine and paste your NVIDIA NIM key.",
             "is_final": True,
             "original": "",
         })
-        return {"status": "error", "message": "API key missing"}
+        return {"status": "error", "message": "NVIDIA API key missing"}
+
+    if current_translation_model == "google_api" and not current_google_json_path:
+        await manager.broadcast({
+            "type": "error",
+            "text": f"⚠ Google Cloud Translation requires a Service Account JSON. Open Settings → Translation Engine and paste your JSON file path.",
+            "is_final": True,
+            "original": "",
+        })
+        return {"status": "error", "message": "Google JSON path missing"}
 
     # Serialise against /devices so two PyAudio instances never open at the same time
     async with _pyaudio_lock:
@@ -382,8 +481,10 @@ async def start_capture(
                 await stop_capture()
                 await asyncio.sleep(0.5)
 
+            current_session_id += 1
             nim_api = NimApiClient(
-                api_key=current_api_key,
+                nvidia_api_key=current_api_key,
+                google_json_path=current_google_json_path,
             )
             # Adaptive chunk duration — guarantees account-wide NIM usage stays ≤ 40 RPM.
             # NIM's 40 RPM limit is account-wide (shared across all model calls).
@@ -407,7 +508,7 @@ async def start_capture(
             )
             is_running = True
             audio_capture.start()
-            audio_thread = threading.Thread(target=audio_poll_loop, daemon=True)
+            audio_thread = threading.Thread(target=audio_poll_loop, args=(current_session_id, current_initial_suspension), daemon=True)
             audio_thread.start()
 
             # Delay meter start by 2 s so audio_capture's WASAPI loopback stream
@@ -421,16 +522,20 @@ async def start_capture(
                     output_device_index=current_output_device_index,
                 )
                 audio_meter.start()
+                _meter_task = asyncio.create_task(audio_level_broadcast_loop())
+                asyncio.create_task(status_broadcast_loop()) # Also start status broadcasting
 
             asyncio.create_task(_delayed_meter_start())
-            _meter_task = asyncio.create_task(audio_level_broadcast_loop())
 
+            asyncio.create_task(manager.broadcast_status()) # Broadcast status after successful start
             return {"status": "started", "source": source_lang, "target": target_lang, "use_mic": current_use_mic}
 
         except Exception as e:
             logging.error(f"[start_capture] Error: {e}")
             is_running = False
-            await broadcast({"type": "error", "text": f"Failed to start capture: {e}", "is_final": True, "original": ""})
+            await manager.broadcast({"type": "error", "text": f"Failed to start capture: {e}", "is_final": True, "original": ""})
+            # Trigger status broadcast (non-blocking)
+            asyncio.create_task(manager.broadcast_status())
             return {"status": "error", "message": str(e)}
 
 
@@ -451,7 +556,7 @@ async def stop_capture():
 
 @app.get("/status")
 async def get_status():
-    return {"running": is_running, "clients": len(active_connections)}
+    return {"running": is_running, "clients": len(manager.active_connections)}
 
 
 # ── WebSocket endpoint ──────────────────────────────────────────────────────
@@ -460,18 +565,17 @@ async def get_status():
 async def captions_ws(websocket: WebSocket):
     """Flutter connects here and receives captions as JSON frames."""
     global current_desktop_volume, current_mic_volume
-    await websocket.accept()
-    active_connections.add(websocket)
+    global current_source_lang, current_target_lang, current_ai_engine, current_use_mic
+    global current_api_key, current_google_json_path, current_transcription_model, current_translation_model
+    await manager.connect(websocket)
     try:
         # Keep connection alive; handle control messages from Flutter
         while True:
             data = await websocket.receive_text()
             msg = json.loads(data)
             # Flutter can send {"cmd": "start", "source": "auto", "target": "en"}
-            if msg.get("cmd") in ("start", "settings_update"):
-                # Parse volume multipliers (1.0 = no change, 0.0 = silence, 2.0 = double)
-                current_desktop_volume = float(msg.get("desktop_volume", 1.0))
-                current_mic_volume = float(msg.get("mic_volume", 1.0))
+            cmd = msg.get("cmd")
+            if cmd == "start":
                 await start_capture(
                     source_lang=msg.get("source", "auto"),
                     target_lang=msg.get("target", "en"),
@@ -480,9 +584,47 @@ async def captions_ws(websocket: WebSocket):
                     input_device_index=msg.get("input_device_index"),
                     output_device_index=msg.get("output_device_index"),
                     api_key=msg.get("api_key", ""),
+                    google_json_path=msg.get("google_json_path", ""),
                     transcription_model=msg.get("transcription_model", "online"),
                     translation_model=msg.get("translation_model", ""),
+                    initial_suspension=False,
                 )
+            elif cmd == "settings_update":
+                # Update settings without forcing a restart if not already running
+                current_source_lang = msg.get("source", current_source_lang)
+                current_target_lang = msg.get("target", current_target_lang)
+                current_ai_engine = msg.get("ai_engine", current_ai_engine)
+                current_use_mic = msg.get("use_mic", current_use_mic)
+                current_api_key = msg.get("api_key", current_api_key)
+                current_google_json_path = msg.get("google_json_path", current_google_json_path)
+                current_transcription_model = msg.get("transcription_model", current_transcription_model)
+                current_translation_model = msg.get("translation_model", current_translation_model)
+                
+                if is_running:
+                    await start_capture(
+                        source_lang=current_source_lang,
+                        target_lang=current_target_lang,
+                        ai_engine=current_ai_engine,
+                        use_mic=current_use_mic,
+                        input_device_index=msg.get("input_device_index"),
+                        output_device_index=msg.get("output_device_index"),
+                        api_key=current_api_key,
+                        google_json_path=current_google_json_path,
+                        transcription_model=current_transcription_model,
+                        translation_model=current_translation_model,
+                        initial_suspension=True,
+                    )
+                else:
+                    logging.info("[WebSocket] Settings updated (idle). Engine will start with new settings on Play.")
+                    # Update nim_api instance if it exists so status reports use new keys immediately
+                    if nim_api:
+                        nim_api.set_api_keys(current_api_key, current_google_json_path)
+                    else:
+                        # Init it if it doesn't exist so we can show "Missing Key" vs "Ready" statuses immediately
+                        nim_api = NimApiClient(current_api_key, current_google_json_path)
+                    # Broadcast status to refresh the UI (GPU indicator, API key statuses etc)
+                    asyncio.create_task(manager.broadcast_status())
+
             elif msg.get("cmd") == "volume_update":
                 # Lightweight volume change — no restart, just update the running capture
                 current_desktop_volume = float(msg.get("desktop_volume", current_desktop_volume))
@@ -493,10 +635,10 @@ async def captions_ws(websocket: WebSocket):
             elif msg.get("cmd") == "stop":
                 await stop_capture()
     except WebSocketDisconnect:
-        active_connections.discard(websocket)
+        await manager.disconnect(websocket)
     except Exception as exc:
         logging.error(f"[WebSocket] Unhandled error: {exc}")
-        active_connections.discard(websocket)
+        await manager.disconnect(websocket)
 
 
 def kill_process_on_port(port: int):

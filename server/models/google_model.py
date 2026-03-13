@@ -16,6 +16,16 @@ class GoogleModel:
     def is_ready(self) -> bool:
         return True  # Always available — no API key needed
 
+    def get_status(self) -> dict:
+        return {
+            "name": "google_translate",
+            "status": "ready",
+            "ready": True,
+            "message": "Google Translate is ready.",
+            "progress": 100.0,
+            "details": {}
+        }
+
     def translate(self, text: str, source_lang: str, target_lang: str) -> tuple[str | None, dict]:
         """
         Translate *text* from *source_lang* to *target_lang*.

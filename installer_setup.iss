@@ -1,7 +1,7 @@
 ; Omni Bridge - Inno Setup Installer Script
 
 #define MyAppName "Omni Bridge - Live AI Translator"
-#define MyAppVersion "1.2.3"
+#define MyAppVersion "1.2.4"
 #define MyAppPublisher "Marshal"
 #define MyAppExeName "omni_bridge.exe"
 #define MyAppURL "https://github.com/Marshal-GG/omni-bridge-translator"

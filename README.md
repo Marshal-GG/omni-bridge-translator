@@ -47,6 +47,7 @@ Whisper comes in 4 sizes — **Tiny, Base, Small, and Medium** — downloadable 
 | Engine | Notes |
 |--------|-------|
 | **Google Translate** | Recommended — free, fast, 100+ languages |
+| **Google Cloud (v3)** | Professional grade gRPC translation (Service Account needed) |
 | **MyMemory** | Free alternative, no key needed |
 | **NVIDIA Riva NMT** | High-quality neural translation |
 | **Llama 3.1 8B** | AI-powered, great for context-aware translations |

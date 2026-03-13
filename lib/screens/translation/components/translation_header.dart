@@ -7,6 +7,7 @@ import '../bloc/translation_event.dart';
 import '../bloc/translation_state.dart';
 import '../../../core/services/update_service.dart';
 import '../../../models/subscription_models.dart';
+import '../../settings/components/settings_helpers.dart';
 
 Widget buildTranslationHeader(BuildContext context, TranslationState state) {
   final bloc = context.read<TranslationBloc>();
@@ -40,6 +41,17 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
           ),
         ),
         const SizedBox(width: 15),
+        // Active Translation Model Status
+        ModelStatusIndicator(
+          status: state.modelStatuses[state.activeTranslationModelStatusKey],
+          compact: true,
+        ),
+        const SizedBox(width: 8),
+        // Active Transcription Model Status
+        ModelStatusIndicator(
+          status: state.modelStatuses[state.activeTranscriptionModelStatusKey],
+          compact: true,
+        ),
         const SizedBox(width: 15),
         Expanded(child: MoveWindow()),
         IconButton(

@@ -24,6 +24,7 @@ a = Analysis(
         'models.google_model',
         'models.llama_model',
         'models.mymemory_model',
+        'models.google_cloud_model',
         'models.speech_recognition_model',
 
         # Core dependencies (manually listed because obfuscation masks them)
@@ -46,6 +47,7 @@ a = Analysis(
         'whisper',
         'deep_translator',
         'resampy',
+        'google.cloud.translate_v3',
         # Internals
         'starlette.routing',
         'starlette.middleware.cors',

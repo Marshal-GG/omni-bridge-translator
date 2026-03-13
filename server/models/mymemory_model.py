@@ -22,6 +22,16 @@ class MyMemoryModel:
     def is_ready(self) -> bool:
         return True
 
+    def get_status(self) -> dict:
+        return {
+            "name": "mymemory",
+            "status": "ready",
+            "ready": True,
+            "message": "MyMemory is ready.",
+            "progress": 100.0,
+            "details": {"has_email": bool(self._email)}
+        }
+
     def translate(self, text: str, source_lang: str, target_lang: str) -> tuple[str | None, dict]:
         start = time.monotonic()
         try:

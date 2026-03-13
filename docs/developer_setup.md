@@ -62,6 +62,10 @@ Get it from: [Google Cloud Console](https://console.cloud.google.com) → APIs &
 1.  **Firestore**: Enable Firestore Database (Native mode) in the Firebase Console.
 2.  **Realtime Database**: Enable Realtime Database for usage tracking.
 3.  **Authentication**: Enable Google Sign-In and Anonymous authentication.
+4.  **Admin Setup**: Add your development email to `system/admins/emails` in Firestore. 
+
+> [!TIP]
+> **Bootstrap Admin**: The email `marshalgcom@gmail.com` is hardcoded as the primary administrator in `firestore.rules`. Use this account for the first login to configure additional administrators if needed.
 
 **Step 4 — Deploying Security Rules:**
 
@@ -98,12 +102,14 @@ flutter run -d windows
 
 ### Resetting Environment
 
-If you need to test fresh logins or clear the local session cache (e.g., when switching Firebase projects during development), run the cleanup script:
+If you need to clear all local data specifically for this project without affecting other Firebase apps on your system, run:
 
 ```powershell
-# From project root
 .\scripts\clear_app_data.ps1
 ```
+
+> [!IMPORTANT]
+> **Safety & Isolation**: This script targets isolated session folders (`OmniBridge-Debug` and `OmniBridge-Release`) within the local AppData directory. This ensures that cleaning your development environment for Omni Bridge does not inadvertently sign you out of other Firebase-enabled apps.
 
 ---
 

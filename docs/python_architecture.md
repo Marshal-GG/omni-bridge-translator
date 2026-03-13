@@ -19,12 +19,14 @@ The Python server is the local backend for Omni Bridge. It captures system audio
 ```
 server/
 ├── models/
+│   ├── google_cloud_model.py   # Google Cloud v3 gRPC (Service Account)
 │   ├── google_model.py         # Google Translate (via deep-translator)
 │   ├── llama_model.py          # Llama 3.1 via NVIDIA NIM (OpenAI-compatible)
 │   ├── mymemory_model.py       # MyMemory free REST translation API
 │   ├── riva_model.py           # NVIDIA Riva NMT + ASR
 │   ├── speech_recognition_model.py  # Google Cloud Speech (online ASR)
 │   └── whisper_model.py        # Offline Whisper ASR (tiny/base/small/medium)
+├── json/                       # (Gitignored) Place Google Service Account JSONs here
 ├── audio_capture.py            # WASAPI loopback + mic capture (pyaudiowpatch)
 ├── audio_meter.py              # Real-time audio level monitoring
 ├── flutter_server.py           # WebSocket server entry point
@@ -43,8 +45,9 @@ server/
 WebSocket server (`ws://127.0.0.1:8765`). Handles all command routing from the Flutter client:
 - `start` — starts audio capture + ASR + translation pipeline
 - `stop` — stops all processing
-- `settings` — hot-updates model / language / device config
+- `settings` — hot-updates model / language / device / API key config (Active session keys are reloaded without restart)
 - `get_devices` — returns available audio input/output devices
+- **Auto-Detection**: Scans the `server/json/` directory for Google Service Account JSON files and initializes the `google_api` engine automatically if found.
 - Streams JSON caption events back to connected Flutter clients
 - **Logging**: Securely writes production debug logs to `%LocalAppData%\OmniBridge\logs\server_debug.log` to avoid write permission errors typically encountered when installed in `C:\Program Files\`.
 
@@ -72,10 +75,11 @@ Core pipeline orchestrator:
 |-------|------|-------|
 | `WhisperModel` | ASR (offline) | 4 sizes, auto-downloaded; resamples to 16kHz |
 | `SpeechRecognitionModel` | ASR (online) | Google Cloud Speech via `speech_recognition` |
-| `RivaModel` | ASR + Translation | NVIDIA NIM `riva-parakeet`/`riva-canary` ASR + `riva-translate-4b-instruct-v1.1` Translation |
-| `LlamaModel` | Translation | `meta/llama-3.1-8b-instruct` via NVIDIA NIM (OpenAI-compatible) |
+| `RivaModel` | ASR + Translation | NVIDIA NIM `riva-parakeet`/`riva-canary` ASR + Translation |
+| `LlamaModel` | Translation | `meta/llama-3.1-8b-instruct` via NVIDIA NIM |
+| `GoogleCloudModel`| Translation | Official Google Cloud v3 gRPC (Requires Service Account JSON) |
 | `GoogleModel` | Translation | `deep-translator` → Google Translate |
-| `MyMemoryModel` | Translation | Free REST API, ~5k chars/day without email |
+| `MyMemoryModel` | Translation | Free REST API, ~5k chars/day |
 
 ---
 
@@ -109,7 +113,25 @@ Flutter "start" command
 
 ---
 
-## Build & Distribution
+## Resilient Fallback Strategy
+
+To ensure service continuity during API outages or quota limits, `NimApiClient` implements a multi-layered fallback strategy:
+
+1. **`google_api` (Cloud)** → Falls back to **`google` (Free)**.
+2. **`riva` (NIM)** → Falls back to **`llama` (NIM)** via local NVIDIA orchestration.
+3. **`mymemory` (REST)** → Falls back to **`google` (Free)**.
+4. **`google` (Free)** → Falls back to **`llama` (NIM)** if the scraping header is blocked.
+
+This logic is hardcoded in the `_translate` dispatcher to ensure a user never encounters a blank screen during a live session.
+
+---
+
+## Environment & Security
+
+- **Dynamic API Keys**: API keys for NVIDIA and Google are transmitted securely over the WebSocket during the `start` or `settings_update` commands. The server does not store these keys persistently; they exist only in the process RAM for the duration of the session.
+- **AppData Logging**: Production server logs are written to `%LOCALAPPDATA%\com.marshal\Omni Bridge\logs\` to circumvent Windows permissions issues in `Program Files`.
+
+---
 
 - **Obfuscation**: Core server logic is protected using **PyArmor** (`pyarmor gen --output dist_obfuscated .`).
 - **Packaging**: Obfuscated scripts are bundled into a single-file executable using **PyInstaller** (`omni_bridge_server.spec`).

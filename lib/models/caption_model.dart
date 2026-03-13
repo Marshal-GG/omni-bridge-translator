@@ -10,6 +10,8 @@ class CaptionMessage {
   final double? outputLevel;
   // Non-null when type == 'usage_stats'
   final Map<String, dynamic>? usageStats;
+  // Non-null when type == 'model_status'
+  final List<dynamic>? modelStatuses;
 
   CaptionMessage({
     required this.text,
@@ -21,6 +23,7 @@ class CaptionMessage {
     this.inputLevel,
     this.outputLevel,
     this.usageStats,
+    this.modelStatuses,
   });
 
   factory CaptionMessage.fromJson(Map<String, dynamic> json) {
@@ -44,6 +47,17 @@ class CaptionMessage {
         isError: false,
         isFinal: false,
         usageStats: Map<String, dynamic>.from(json),
+      );
+    }
+
+    // Model status packet
+    if (json['type'] == 'model_status') {
+      return CaptionMessage(
+        text: '',
+        original: '',
+        isError: false,
+        isFinal: false,
+        modelStatuses: json['models'] as List<dynamic>?,
       );
     }
 
@@ -75,6 +89,7 @@ class CaptionMessage {
       'input_level': inputLevel,
       'output_level': outputLevel,
       'usage_stats': usageStats,
+      'model_statuses': modelStatuses,
     };
   }
 }

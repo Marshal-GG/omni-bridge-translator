@@ -18,7 +18,8 @@ class RivaModel:
 
     def __init__(self, api_key: str):
         self.api_key = api_key
-        self.asr_service = None
+        self.asr_parakeet = None
+        self.asr_canary = None
         self.translate_client = None
         self._setup()
 
@@ -66,6 +67,21 @@ class RivaModel:
 
     def is_ready(self) -> bool:
         return getattr(self, "asr_parakeet", None) is not None and bool(self.api_key)
+
+    def get_status(self) -> dict:
+        """Return status for Riva models."""
+        ready = self.is_ready()
+        status = "ready" if ready else ("no_api_key" if not self.api_key else "error")
+        message = "Riva is ready." if ready else ("Riva requires an API key." if not self.api_key else "Riva setup failed.")
+        
+        return {
+            "name": "riva",
+            "status": status,
+            "ready": ready,
+            "message": message,
+            "progress": 100.0 if ready else 0.0,
+            "details": {"has_key": bool(self.api_key)}
+        }
 
     # ── ASR ──────────────────────────────────────────────────────────────────
 
@@ -139,6 +155,9 @@ class RivaModel:
             )
 
         start = time.monotonic()
+        if not self.translate_client:
+            return text, {"error": "Translate client not initialized"}
+            
         completion = self.translate_client.chat.completions.create(
             model=model_name,
             messages=[
@@ -158,8 +177,8 @@ class RivaModel:
             result,
             flags=re.IGNORECASE,
         ).strip()
-        if result.startswith('"') and result.endswith('"'):
-            result = result[1:-1].strip()
+        if result.startswith('"') and result.endswith('"') and len(result) >= 2:
+            result = str(result[1:-1]).strip()
 
         stats = {
             "engine": "riva-translate",
