@@ -85,7 +85,7 @@ class AudioMeter:
 
     def _measure_loop(self, is_input: bool):
         """Open a pyaudio stream and continuously read RMS levels."""
-        from shared_pyaudio import get_pyaudio
+        from .shared_pyaudio import get_pyaudio
         try:
             p = get_pyaudio()
             device_info = self._resolve_device(p, is_input)

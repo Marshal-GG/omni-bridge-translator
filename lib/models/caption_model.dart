@@ -62,7 +62,7 @@ class CaptionMessage {
     }
 
     final text = json['text'] as String? ?? '';
-    // nim_api sends this magic string when auto-ASR falls back to a specific lang
+    // orchestrator sends this magic string when auto-ASR falls back to a specific lang
     String? magicOverride;
     if (text.startsWith('__source_lang_override__:')) {
       magicOverride = text.split(':').last.trim();

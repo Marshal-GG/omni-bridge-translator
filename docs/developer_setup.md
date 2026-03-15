@@ -24,14 +24,14 @@ This guide covers running Omni Bridge from source for development.
 The Python server acts as the local orchestrator for audio capture and AI processing.
 
 ```powershell
-# 1. Navigate to the server directory
-cd server
-
+# 1. Navigate to the project root (already there usually)
 # 2. Create and activate a Virtual Environment
 python -m venv .venv
 .\.venv\Scripts\activate
 
 # 3. Install core dependencies
+# It is recommended to stay in the root for venv activation, then cd into server
+cd server
 pip install -r requirements.txt
 ```
 
@@ -121,12 +121,16 @@ To create a production build, you must first obfuscate the source code and then 
 
 ```powershell
 cd server
-.\.venv\Scripts\activate
+# if .venv is in root, you might need to activate it from root before and then cd here
+# or just:
+..\.venv\Scripts\activate
 
 # 1. Obfuscate source code
 pyarmor gen --output dist_obfuscated .
 
 # 2. Package into EXE (Spec file automatically uses dist_obfuscated)
+# Ensure the venv from the project root is active:
+# ..\.venv\Scripts\activate 
 pyinstaller --noconfirm --clean omni_bridge_server.spec
 ```
 
@@ -149,7 +153,7 @@ Output: `installers/OmniBridge_Setup_v1.2.3.exe`
 ## VS Code
 
 A `.vscode/settings.json` is included to help manage project execution natively. This file configures:
-- **`python.defaultInterpreterPath`**: Automatically points to the `server/.venv/Scripts/python.exe` virtual environment. If you encounter interpreter path errors, ensure your virtual environment was created precisely as `server/.venv`.
+- **`python.defaultInterpreterPath`**: Automatically points to the `.venv/Scripts/python.exe` virtual environment in the root. If you encounter interpreter path errors, ensure your virtual environment was created in the project root.
 - **`python.venvFolders`** and **`python.analysis.extraPaths`**: Helps VS Code resolve server modules accurately without manual configuration for linting and IntelliSense.
 
 Recommended extensions:
@@ -190,6 +194,8 @@ The `omni_bridge_server.spec` file is pre-configured to automatically source fil
 
 > [!NOTE]
 > When using PyArmor to obfuscate code, dynamic imports (such as `riva` and `riva.client`) may be hidden from PyInstaller. These must be explicitly defined in the `hiddenimports` array within `omni_bridge_server.spec` to prevent `ModuleNotFoundError` in production.
+>
+> **Log Redirection**: PyArmor bug logs are automatically redirected to `server/logs/pyarmor.bug.log` via the local `.pyarmor/config.json`.
 
 ---
 

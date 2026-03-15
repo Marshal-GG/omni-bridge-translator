@@ -151,7 +151,7 @@ Locked engines are rendered dimmed with an orange `🔒 Basic+` badge. Tapped lo
 | base.en | `whisper-base.en` | Free |
 | small | `whisper-small` | Basic+ |
 | medium | `whisper-medium` | Plus+ |
-| large-v3 | `whisper-large-v3`| Pro |
+| large-v3 | `whisper-large-v3`| (Coming Soon) |
 
 Locked sizes are disabled in the `DropdownButton` and show a lock badge. Selecting them opens `UpgradeSheet`.
 
@@ -189,7 +189,7 @@ The app follows a **"Trust but Verify (via Rules)"** model, performing critical 
     - **Subscription Rollover**: For paid members, usage is tracked relative to their `monthlyResetAt` date. When crossed, usage is archived to `usage_history_subscription` and the RTDB cycle counter is reset.
 
 ### 2. Multi-Engine Translation Hub
-The `NimApiClient` (Python) and its client-side orchestration handle multiple engines with built-in resilience:
+The `InferenceOrchestrator` (Python) and its client-side orchestration handle multiple engines with built-in resilience:
 - **Fallback Logic**: If the primary engine (e.g., `google_api`) fails, the system automatically falls back to a free alternative (`google` free) to maintain service continuity.
 - **Access Gating**: Feature access is enforced via `SubscriptionService.tierHasAccess()`, which checks against dynamic requirements from `system/monetization`.
 

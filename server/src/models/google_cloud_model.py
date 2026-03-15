@@ -21,11 +21,16 @@ class GoogleCloudModel:
         self._client = None
         self._location = "global"
         
-        if self.json_path:
-            self._init_client()
+        # Lazy initialization: don't call _init_client() here to avoid startup noise.
 
     def _init_client(self):
         """Initialize the v3 gRPC client using the Service Account JSON."""
+        if not self.json_path:
+            return
+
+        import traceback
+        logging.info(f"[GoogleCloudModel] Initialization triggered by:\n{''.join(traceback.format_stack()[-5:])}")
+
         try:
             full_path = self.json_path
             if not os.path.isabs(full_path):
@@ -52,13 +57,21 @@ class GoogleCloudModel:
             self._client = None
 
     def reload(self, json_path: str):
-        """Update the path and re-initialize the client."""
-        if self.json_path != json_path:
-            self.json_path = json_path.strip()
-            self._init_client()
+        """Update the path if changed. Client will be lazily initialized on next translate."""
+        new_path = json_path.strip()
+        if self.json_path != new_path:
+            self.json_path = new_path
+            self._client = None  # Reset client so next translate() re-initializes
+            # No _init_client() call here!
 
     def is_ready(self) -> bool:
-        return self._client is not None
+        """Smarter ready check: ready if client is live OR if path exists (lazy)."""
+        if self._client is not None:
+            return True
+        if not self.json_path:
+            return False
+        # Check if file exists without initializing heavy client
+        return os.path.isfile(self.json_path)
 
     def get_status(self) -> dict:
         ready = self.is_ready()
@@ -76,6 +89,11 @@ class GoogleCloudModel:
         Translate *text* using Google Cloud v3 gRPC.
         """
         start = time.monotonic()
+        
+        # Initialize client lazily if not already done
+        if self._client is None and self.json_path:
+            self._init_client()
+
         if not self.is_ready():
             return None, {"error": "Google v3 client not initialized"}
 
@@ -103,13 +121,15 @@ class GoogleCloudModel:
             
             result = response.translations[0].translated_text
             latency_ms = int((time.monotonic() - start) * 1000)
-            
-            logging.info(f"[GoogleAPI v3_grpc] Total: {latency_ms}ms | Chars: {len(text)}")
+            logging.info(f"[GoogleAPI v3_grpc] Text: '{text[:20]}...' | Total: {latency_ms}ms | Chars: {len(text)}")
 
             return result, {
                 "engine": "google-cloud-v3-grpc",
                 "latency_ms": latency_ms,
                 "version": "v3_grpc",
+                "input_tokens": len(text),
+                "output_tokens": len(result) if result else 0,
+                # Keep chars for backward compatibility if needed
                 "input_chars": len(text),
                 "output_chars": len(result) if result else 0,
             }

@@ -1,16 +1,10 @@
-<!--
- Copyright (c) 2026 Omni Bridge. All rights reserved.
- 
- Licensed under the PERSONAL STUDY & LEARNING LICENSE v1.0.
- Commercial use and public redistribution of modified versions are strictly prohibited.
- See the LICENSE file in the project root for full license terms.
--->
-
 # Python Server Architecture
 
 ## Overview
 
-The Python server is the local backend for Omni Bridge. It captures system audio (or microphone), runs ASR and translation, and streams results to the Flutter UI via WebSocket. It calculates **engine-agnostic token counts** (input + output) for every translation call, serving as the source of truth for the quota system.
+The Python server is the local backend for Omni Bridge. It captures system audio (or microphone), runs ASR and translation, and streams results to the Flutter UI via WebSocket. 
+
+The server uses an **Asynchronous Modular Architecture** built on **FastAPI** and **uvicorn**, allowing for high-concurrency WebSocket management and non-blocking command execution.
 
 ---
 
@@ -18,121 +12,97 @@ The Python server is the local backend for Omni Bridge. It captures system audio
 
 ```
 server/
-├── models/
-│   ├── google_cloud_model.py   # Google Cloud v3 gRPC (Service Account)
-│   ├── google_model.py         # Google Translate (via deep-translator)
-│   ├── llama_model.py          # Llama 3.1 via NVIDIA NIM (OpenAI-compatible)
-│   ├── mymemory_model.py       # MyMemory free REST translation API
-│   ├── riva_model.py           # NVIDIA Riva NMT + ASR
-│   ├── speech_recognition_model.py  # Google Cloud Speech (online ASR)
-│   └── whisper_model.py        # Offline Whisper ASR (tiny/base/small/medium)
-├── json/                       # (Gitignored) Place Google Service Account JSONs here
-├── audio_capture.py            # WASAPI loopback + mic capture (pyaudiowpatch)
-├── audio_meter.py              # Real-time audio level monitoring
-├── flutter_server.py           # WebSocket server entry point
-├── nim_api.py                  # Core model router and ASR→Translation pipeline
-├── shared_pyaudio.py           # Shared PyAudio instance (avoids conflicts)
+├── src/
+│   ├── audio/
+│   │   ├── capture.py          # WASAPI loopback + mic capture (pyaudiowpatch)
+│   │   ├── handler.py          # Audio status callbacks and broadcasting
+│   │   ├── meter.py            # Real-time audio level monitoring
+│   │   └── shared_pyaudio.py   # Shared PyAudio instance
+│   ├── network/
+│   │   ├── orchestrator.py     # Core pipeline & RateLimiter & Speech Polishing
+│   │   ├── ws_manager.py       # WebSocket connection management
+│   │   ├── router.py           # Command routing (Decouples WS from logic)
+│   │   └── handlers.py         # Specialized command handlers (Session, Device, Config)
+│   ├── utils/
+│   │   └── server_utils.py     # structlog setup & process utilities
+│   └── models/
+│       ├── (ASR & Translation engines)
+├── pyproject.toml              # Modern dependency management
+├── flutter_server.py           # FastAPI Entry point & Handshake
 └── requirements.txt
 ```
-
-**Whisper cache:** `~/.cache/whisper/` (`.pt` files, auto-downloaded)
 
 ---
 
 ## Key Components
 
 ### `flutter_server.py`
-WebSocket server (`ws://127.0.0.1:8765`). Handles all command routing from the Flutter client:
-- `start` — starts audio capture + ASR + translation pipeline
-- `stop` — stops all processing
-- `settings` — hot-updates model / language / device / API key config (Active session keys are reloaded without restart)
-- `get_devices` — returns available audio input/output devices
-- **Auto-Detection**: Scans the `server/json/` directory for Google Service Account JSON files and initializes the `google_api` engine automatically if found.
-- Streams JSON caption events back to connected Flutter clients
-- **Logging**: Securely writes production debug logs to `%LocalAppData%\OmniBridge\logs\server_debug.log` to avoid write permission errors typically encountered when installed in `C:\Program Files\`.
+The FastAPI-based entry point. It bootstraps the `ConnectionManager` and `CommandRouter`, and manages the WebSocket lifecycle.
+- **Handshake**: Upon connection, the server sends a `capabilities` handshake containing details about available GPUs, Whisper model status, and authentication state.
 
-### `nim_api.py`
-Core pipeline orchestrator:
-- **ASR-Translation Pipeline**: Orchestrates the flow from audio capture to translation.
-- **Worker Management**: Uses a multi-threaded architecture (2 workers by default) to maximize translation throughput.
-- **Logging**: Writes ASR-specific connectivity and parsing errors to `logs/asr_error.log`.
-- **Offline Model Memory Management**: Explicitly unloads Whisper models from RAM when switching to cloud engines.
+### `src/network/router.py` & `handlers.py`
+Separates the WebSocket communication layer from business logic.
+- **Router**: Maps incoming JSON commands (`start`, `stop`, `settings`, `get_devices`, `volume`) to specific methods.
+- **ServerContext**: Encapsulates all global state (orchestrator, capture, config) in a single object, passed to all handlers to avoid global variable pitfalls.
+- **Specialized Handlers**:
+  - `SessionHandler`: Manages audio session lifecycle (Start/Stop).
+  - `ConfigHandler`: Handles real-time configuration updates and volume scaling.
+  - `DeviceHandler`: Enumerates WASAPI and Loopback devices for the client.
 
-### `audio_capture.py`
-- **Desktop loopback**: captures system audio via WASAPI (Windows-only, `pyaudiowpatch`)
-- **Microphone**: captures mic input via standard PyAudio
-- Volume scaling applied before sending to ASR
-- **Hybrid Audio Chunking**: Implements an adaptive dual-trigger flushing strategy for ASR chunks:
-  - VAD-based flush: Triggers after 0.3s of silence to reduce latency.
-  - Rate-limit adaptive limit: Dynamically enforces a maximum duration per chunk to guarantee API translation calls stay within the NIM 40 RPM account-wide tier.
-    - 3.0s chunks if both ASR and Translation use NIM keyed services (2 calls per chunk = 40 RPM).
-    - 1.5s chunks if only one service uses NIM (1 call per chunk = 40 RPM).
-    - 0.75s chunks if relying purely on free/local services (no limit).
+### `src/network/orchestrator.py`
+The core intelligence layer.
+- **RateLimiter**: Implements dynamic RPM management for NVIDIA NIM (Riva/Llama) to prevent `429 Too Many Requests` errors.
+- **Speech Polishing**: Uses `pysbd` (Python Sentence Boundary Disambiguation) to segment and deduplicate repetitive stutters or duplicated sentences before translation.
+- **Capabilities Handshake**: Provides a structured report of system readiness (GPU availability, API validity).
 
-### `models/`
-
-| Model | Type | Notes |
-|-------|------|-------|
-| `WhisperModel` | ASR (offline) | 4 sizes, auto-downloaded; resamples to 16kHz |
-| `SpeechRecognitionModel` | ASR (online) | Google Cloud Speech via `speech_recognition` |
-| `RivaModel` | ASR + Translation | NVIDIA NIM `riva-parakeet`/`riva-canary` ASR + Translation |
-| `LlamaModel` | Translation | `meta/llama-3.1-8b-instruct` via NVIDIA NIM |
-| `GoogleCloudModel`| Translation | Official Google Cloud v3 gRPC (Requires Service Account JSON) |
-| `GoogleModel` | Translation | `deep-translator` → Google Translate |
-| `MyMemoryModel` | Translation | Free REST API, ~5k chars/day |
+### `src/utils/server_utils.py`
+Provides centralized infrastructure.
+- **Structured Logging**: Uses `structlog` to output machine-readable JSON logs for better observability and easier debugging.
 
 ---
 
 ## Data Flow
 
-```
-Flutter "start" command
-    └─ flutter_server.py → NimApiClient.start()
-        └─ audio_capture.py (loopback / mic)
-            └─ audio chunks → ASR model
-                └─ transcript text → Translation model
-{
-  "originalText": "...",
-  "translatedText": "...",
-  "isFinal": true,
-  "usage_stats": [
-    { "engine": "whisper", "latency_ms": 120, "input_tokens": 45 },
-    { "engine": "llama", "latency_ms": 350, "input_tokens": 45, "output_tokens": 52 }
-  ]
-}
-```
-*Note: The Flutter client maps these stats to RTDB paths for quota enforcement.*
-```
+```mermaid
+sequenceDiagram
+    participant C as Flutter Client
+    participant S as FastAPI Server
+    participant R as Command Router
+    participant H as Handlers
+    participant O as Orchestrator
 
----
-
-## Same-Language Handling
-
-- **GoogleModel**: when `source == target` (non-auto), the original text is returned directly (no API call) — `deep-translator` rejects same-language pairs
-- **MyMemoryModel**: passes through normally; the API returns the original text for same-language pairs
+    C->>S: Connect (WS)
+    S->>C: Handshake (Capabilities)
+    C->>S: Start Command (JSON)
+    S->>R: Route("start")
+    R->>H: SessionHandler.start(config)
+    H->>O: Initialize (API Keys)
+    H->>H: Start AudioCapture
+    H->>O: Push Chunks
+    O->>C: Stream Captions (JSON)
+```
 
 ---
 
 ## Resilient Fallback Strategy
 
-To ensure service continuity during API outages or quota limits, `NimApiClient` implements a multi-layered fallback strategy:
-
-1. **`google_api` (Cloud)** → Falls back to **`google` (Free)**.
-2. **`riva` (NIM)** → Falls back to **`llama` (NIM)** via local NVIDIA orchestration.
-3. **`mymemory` (REST)** → Falls back to **`google` (Free)**.
-4. **`google` (Free)** → Falls back to **`llama` (NIM)** if the scraping header is blocked.
-
-This logic is hardcoded in the `_translate` dispatcher to ensure a user never encounters a blank screen during a live session.
+The `InferenceOrchestrator` implements a multi-layered fallback strategy to ensure service continuity:
+1. **`google_api`** → Falls back to **`google` (Free)**.
+2. **`riva`** → Falls back to **`llama`** or **`google`**.
+3. **`google` (Free)** → Falls back to **`llama`** if scraping is blocked.
 
 ---
 
-## Environment & Security
+## Observability
 
-- **Dynamic API Keys**: API keys for NVIDIA and Google are transmitted securely over the WebSocket during the `start` or `settings_update` commands. The server does not store these keys persistently; they exist only in the process RAM for the duration of the session.
-- **AppData Logging**: Production server logs are written to `%LOCALAPPDATA%\com.marshal\Omni Bridge\logs\` to circumvent Windows permissions issues in `Program Files`.
-
----
-
-- **Obfuscation**: Core server logic is protected using **PyArmor** (`pyarmor gen --output dist_obfuscated .`).
-- **Packaging**: Obfuscated scripts are bundled into a single-file executable using **PyInstaller** (`omni_bridge_server.spec`).
-- **Dynamic Spec**: The spec file automatically detects the existence of `dist_obfuscated` and maps it to the internal source tree during the build.
+The server now emits structured logs. Example:
+```json
+{
+  "event": "asr_complete",
+  "latency_ms": 150,
+  "model": "riva",
+  "text": "Hello world",
+  "timestamp": "2026-03-15T..."
+}
+```
+Logs are stored in `%LOCALAPPDATA%\OmniBridge\logs\server_debug.log`.

@@ -1,733 +1,84 @@
 # Copyright (c) 2026 Omni Bridge. All rights reserved.
-# 
-# Licensed under the PERSONAL STUDY & LEARNING LICENSE v1.0.
-# Commercial use and public redistribution of modified versions are strictly prohibited.
-# See the LICENSE file in the project root for full license terms.
 
-"""
-Flutter Integration: WebSocket Server
-Wraps nim_api.py + audio_capture.py and streams translated captions to Flutter over WebSocket.
-
-Install dependencies:
-    pip install fastapi uvicorn websockets
-
-Run with:
-    python flutter_server.py
-"""
 import asyncio
-import json
-import logging
 import os
-import signal
 import sys
-import threading
-import time
-from typing import Set
-
-# Create a robust logging setup that avoids Windows Program Files permission issues
-is_frozen = getattr(sys, 'frozen', False)
-is_debug = os.environ.get("OMNI_BRIDGE_DEBUG") == "true"
-
-if not is_frozen or is_debug:
-    # In development or debug mode, log locally to the server/logs directory
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    LOG_DIR = os.path.join(script_dir, "logs")
-else:
-    # In production (frozen EXE), log to AppData
-    appdata = os.environ.get("APPDATA", "")
-    if appdata:
-        LOG_DIR = os.path.join(appdata, "com.marshal", "Omni Bridge", "logs")
-    else:
-        LOG_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "com.marshal", "Omni Bridge", "logs")
-
-try:
-    if not os.path.exists(LOG_DIR):
-        os.makedirs(LOG_DIR, exist_ok=True)
-except Exception:
-    import tempfile
-    LOG_DIR = os.path.join(tempfile.gettempdir(), "omni_bridge_logs")
-    os.makedirs(LOG_DIR, exist_ok=True)
-
-log_file = os.path.join(LOG_DIR, "server.log")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler(log_file, encoding="utf-8"),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logging.info("Initializing Omni Bridge Server...")
-
-def detect_google_json():
-    """Look for a Google Service Account JSON in server/json/ directory."""
-    try:
-        json_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "json")
-        if os.path.exists(json_dir):
-            files = [f for f in os.listdir(json_dir) if f.endswith(".json")]
-            # Filter for files that look like service accounts (contain project_id)
-            for f in files:
-                path = os.path.join(json_dir, f)
-                try:
-                    with open(path, 'r') as jf:
-                        data = json.load(jf)
-                        if "project_id" in data and "private_key" in data:
-                            logging.info(f"[Auto-Detect] Found Google Service Account: {f}")
-                            return path
-                except Exception:
-                    continue
-    except Exception as e:
-        logging.warning(f"[Auto-Detect] Error searching for JSON: {e}")
-    return ""
-
-try:
-    import psutil
-    HAS_PSUTIL = True
-except ImportError:
-    HAS_PSUTIL = False
-
+import logging
 import uvicorn
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-
-# Import existing modules (must be in same directory)
-from nim_api import NimApiClient
-from audio_capture import AudioCapture
-from audio_meter import AudioMeter
-from models.whisper_model import (
-    get_download_status,
-    start_download as whisper_start_download,
-    delete_model as whisper_delete_model,
-)
-
 from contextlib import asynccontextmanager
 
+# Internal imports
+from src.utils.server_utils import kill_other_instances, detect_google_json, setup_logging
+from src.network.ws_manager import ConnectionManager
+from src.network.router import CommandRouter
+from src.network.handlers import ServerContext, SessionHandler, ConfigHandler, DeviceHandler
+
+# --- Setup Logging ---
+def get_log_dir():
+    is_frozen = getattr(sys, 'frozen', False)
+    is_debug = os.environ.get("OMNI_BRIDGE_DEBUG") == "true"
+    if not is_frozen or is_debug:
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+    appdata = os.environ.get("APPDATA", "")
+    return os.path.join(appdata, "com.marshal", "Omni Bridge", "logs")
+
+log_dir = get_log_dir()
+os.makedirs(log_dir, exist_ok=True)
+logger = setup_logging(os.path.join(log_dir, "server.log"))
+
+# --- Global Components ---
+manager = ConnectionManager()
+ctx = ServerContext(manager)
+router = CommandRouter()
+
+# Initialize Handlers
+session_h = SessionHandler(ctx)
+config_h = ConfigHandler(ctx)
+device_h = DeviceHandler(ctx)
+
+# Register Commands
+router.register("start", session_h.start)
+router.register("stop", session_h.stop)
+router.register("settings_update", config_h.update_settings)
+router.register("volume_update", config_h.update_volume)
+router.register("list_devices", device_h.list_devices)
+
 @asynccontextmanager
-async def lifespan(app):
-    """Capture the running event loop once uvicorn starts, and install a
-    global async exception handler so silent task failures are logged
-    instead of killing the process."""
-    global _event_loop, _pyaudio_lock, nim_api
-    loop = asyncio.get_running_loop()
-    _event_loop = loop
-    _pyaudio_lock = asyncio.Lock()
-    
-    # Initialize nim_api early so statuses are available for the UI immediately
-    if nim_api is None:
-        nim_api = NimApiClient()
-
-    def _handle_exception(loop, context):
-        msg = context.get("exception", context["message"])
-        logging.error(f"[asyncio] Unhandled exception in task: {msg}")
-
-    loop.set_exception_handler(_handle_exception)
-    yield  # server runs here
+async def lifespan(app: FastAPI):
+    logger.info("Server starting up...")
+    # Any boot-time logic (e.g. killing instances) happens in __main__
+    yield
+    logger.info("Server shutting down...")
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# --- Active WebSocket connections ---
-nim_api: NimApiClient = None
-audio_capture: AudioCapture = None
-audio_meter: AudioMeter = AudioMeter()
-is_running = False
-audio_thread = None
-_meter_task = None
-_event_loop: asyncio.AbstractEventLoop = None  # Set on startup; used by sync callbacks
-_pyaudio_lock: asyncio.Lock = None             # Serialises PyAudio opens to avoid WASAPI crash
-
-current_source_lang: str = "auto"
-current_target_lang: str = "en"
-current_ai_engine: str = "google"            # kept for legacy compat
-current_transcription_model: str = "online"  # online | whisper-tiny | whisper-base | whisper-small | whisper-medium
-current_translation_model: str = "google"    # google | mymemory | riva | llama
-current_api_key: str = ""  # NVIDIA API key
-current_google_json_path: str = detect_google_json()  # Auto-detected or manual path
-current_use_mic: bool = False
-current_input_device_index: int | None = None
-current_output_device_index: int | None = None
-current_desktop_volume: float = 1.0
-current_mic_volume: float = 1.0
-current_initial_suspension: bool = False
-current_session_id: int = 0
-
-
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: Set[WebSocket] = set()
-
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.add(websocket)
-
-    async def disconnect(self, websocket: WebSocket):
-        self.active_connections.discard(websocket)
-
-    async def broadcast(self, message: dict):
-        """Send a JSON message to all connected Flutter clients."""
-        if not self.active_connections:
-            return
-        dead = set()
-        for ws in list(self.active_connections):
-            try:
-                await ws.send_text(json.dumps(message))
-            except Exception:
-                dead.add(ws)
-        self.active_connections.difference_update(dead)
-
-    async def broadcast_status(self):
-        """Broadcast the current status of all models to all connected clients."""
-        global nim_api
-        if nim_api:
-            status_data = nim_api.get_all_statuses()
-            message = {
-                "type": "model_status",
-                "models": status_data
-            }
-            await self.broadcast(message)
-
-manager = ConnectionManager()
-
-
-def caption_callback(text, is_error, is_final=True, original_text=None, usage_stats=None):
-    """Called by nim_api on each transcript/translation. Broadcasts to all clients.
-    This runs in a background sync thread, so we schedule onto uvicorn's event loop."""
-    msg = {
-        "type": "error" if is_error else "caption",
-        "text": text,
-        "original": original_text or "",
-        "is_final": is_final,
-    }
-    if _event_loop and not _event_loop.is_closed():
-        asyncio.run_coroutine_threadsafe(manager.broadcast(msg), _event_loop)
-        # Emit usage stats as a separate message so Flutter can log them independently
-        if usage_stats and not is_error and is_final:
-            if isinstance(usage_stats, list):
-                for stat in usage_stats:
-                    if not stat.get("total_tokens"):
-                        total_c = stat.get("input_tokens", 0) + stat.get("output_tokens", 0)
-                        stat["total_tokens"] = total_c
-
-                    stats_msg = {
-                        "type": "usage_stats",
-                        "source_lang": current_source_lang,
-                        "target_lang": current_target_lang,
-                        **stat,
-                    }
-                    asyncio.run_coroutine_threadsafe(manager.broadcast(stats_msg), _event_loop)
-            else:
-                if not usage_stats.get("total_tokens"):
-                    total_c = usage_stats.get("input_tokens", 0) + usage_stats.get("output_tokens", 0)
-                    usage_stats["total_tokens"] = total_c
-
-                stats_msg = {
-                    "type": "usage_stats",
-                    "source_lang": current_source_lang,
-                    "target_lang": current_target_lang,
-                    **usage_stats,
-                }
-                asyncio.run_coroutine_threadsafe(manager.broadcast(stats_msg), _event_loop)
-
-
-def audio_poll_loop(session_id: int, initial_suspension: bool = False):
-    """Background thread: polls audio capture queue and feeds to nim_api."""
-    global is_running, current_source_lang, current_target_lang, current_session_id
-    stream_started = False
-    logging.info(f"[audio_poll_loop] Started session {session_id}")
-    try:
-        while is_running and session_id == current_session_id:
-            item = audio_capture.get_audio_chunk()
-            if item is not None:
-                chunk, sample_rate = item
-                if not stream_started:
-                    nim_api.start_stream(
-                        sample_rate=sample_rate,
-                        source_lang=current_source_lang,
-                        target_lang=current_target_lang,
-                        ai_engine=current_ai_engine,
-                        transcription_model=current_transcription_model,
-                        translation_model=current_translation_model,
-                        callback=caption_callback,
-                        suspended=initial_suspension,
-                    )
-                    stream_started = True
-                nim_api.append_audio(chunk)
-            else:
-                time.sleep(0.01)
-        
-        if session_id != current_session_id:
-            logging.info(f"[audio_poll_loop] Session {session_id} superseded by {current_session_id}. Exiting.")
-        else:
-            logging.info(f"[audio_poll_loop] Session {session_id} stopping normally.")
-
-    except Exception as e:
-        logging.error(f"[audio_poll_loop] Session {session_id} Crashed: {e}")
-        if session_id == current_session_id:
-            is_running = False
-
-async def audio_level_broadcast_loop():
-    """Broadcast audio RMS levels to all connected Flutter clients ~13 fps."""
-    while is_running:
-        msg = {
-            "type": "audio_levels",
-            "input_level": audio_meter.input_level,
-            "output_level": audio_meter.output_level,
-        }
-        await manager.broadcast(msg)
-        await asyncio.sleep(0.075)
-
-async def status_broadcast_loop():
-    """Broadcast model statuses periodically while the server is running."""
-    while is_running:
-        await manager.broadcast_status()
-        await asyncio.sleep(2.0) # Every 2 seconds is enough for status updates
-
-
-# ── Whisper model management endpoints ────────────────────────────────────────
-
-@app.get("/whisper/status")
-async def whisper_status(size: str = "base"):
-    """Return Whisper model download status."""
-    return get_download_status(size)
-
-
-@app.post("/whisper/download")
-async def whisper_download(request: Request):
-    """Start background download of a Whisper model."""
-    body = {}
-    try:
-        body = await request.json()
-    except Exception:
-        pass
-    size = body.get("size", "base")
-    started = whisper_start_download(size)
-    status = get_download_status(size)
-    asyncio.create_task(manager.broadcast_status()) # Broadcast status after download attempt
-    return {"status": "started" if started else status["status"], **status}
-
-
-@app.get("/whisper/progress")
-async def whisper_progress(request: Request):
-    """Return current download progress (0–100) for a given model size."""
-    size = request.query_params.get("size", "base")
-    return get_download_status(size)
-
-
-@app.delete("/whisper/model")
-async def whisper_delete(request: Request):
-    """Delete the cached Whisper model for a given size."""
-    size = request.query_params.get("size", "base")
-    success = whisper_delete_model(size)
-    asyncio.create_task(manager.broadcast_status()) # Broadcast status after deletion
-    return {"status": "deleted" if success else "error"}
-
-
-@app.post("/whisper/unload")
-async def whisper_unload():
-    """Explicitly unload the Whisper model from memory/GPU."""
-    nim_api.whisper_unload()
-    asyncio.create_task(manager.broadcast_status())
-    return {"status": "unloaded"}
-
-
-@app.get("/models/status")
-async def get_models_status():
-    """Get the current loading status of all AI models."""
-    global nim_api
-    if nim_api:
-        return nim_api.get_all_statuses()
-    return [] # Return empty list if not init yet, matches Flutter expectations
-
-@app.get("/devices")
-async def list_devices():
-    """Return available mic input (WASAPI only) and loopback output devices."""
-    import pyaudiowpatch as pyaudio
-    inputs = []
-    outputs = []
-    default_input_name = "Default"
-    default_output_name = "Default"
-    # Acquire lock so we don't open PyAudio while audio_capture is initialising
-    async with _pyaudio_lock:
-        try:
-            from shared_pyaudio import get_pyaudio
-            p = get_pyaudio()
-            # 1. Resolve WASAPI host API index safely
-            wasapi_index = -1
-            for i in range(p.get_host_api_count()):
-                try:
-                    hapi = p.get_host_api_info_by_index(i)
-                    if hapi.get("type") == pyaudio.paWASAPI:
-                        wasapi_index = i
-                        break
-                except Exception:
-                    continue
-
-            if wasapi_index == -1:
-                return {"input": [], "output": [], "error": "WASAPI not found"}
-
-            # Resolve default input name
-            for i in range(p.get_device_count()):
-                try:
-                    info = p.get_device_info_by_index(i)
-                    name = info.get("name", "")
-                    if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
-                        continue
-                    if info.get("hostApi") == wasapi_index and info.get("maxInputChannels", 0) > 0:
-                        default_input_name = name
-                        break
-                except Exception:
-                    continue
-
-            # Resolve default output loopback name
-            for loopback in p.get_loopback_device_info_generator():
-                name = loopback.get("name", "")
-                if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
-                    continue
-                default_output_name = name.replace(" [Loopback]", "").strip()
-                break
-
-            # WASAPI input devices only (no duplicates)
-            for i in range(p.get_device_count()):
-                try:
-                    info = p.get_device_info_by_index(i)
-                    name = info.get("name", "")
-                    # Filter out virtual mappings that cause PortAudio drift/assertions
-                    if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
-                        continue
-
-                    if (
-                        info.get("hostApi") == wasapi_index
-                        and info.get("maxInputChannels", 0) > 0
-                        and not info.get("isLoopbackDevice", False)
-                    ):
-                        inputs.append({"index": i, "name": name})
-                except Exception:
-                    continue
-
-            # Loopback outputs
-            for loopback in p.get_loopback_device_info_generator():
-                name = loopback.get("name", "")
-                if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
-                    continue
-                clean_name = name.replace(" [Loopback]", "").strip()
-                outputs.append({"index": loopback["index"], "name": clean_name})
-
-        except Exception as e:
-            logging.error(f"[/devices] Error: {e}")
-    return {
-        "input": inputs,
-        "output": outputs,
-        "default_input_name": default_input_name,
-        "default_output_name": default_output_name,
-    }
-
-
-@app.post("/start")
-async def start_capture(
-    source_lang: str = "auto",
-    target_lang: str = "en",
-    ai_engine: str = "google",
-    use_mic: bool = False,
-    input_device_index: int = None,
-    output_device_index: int = None,
-    api_key: str = "",
-    google_json_path: str = "",
-    transcription_model: str = "online",
-    translation_model: str = "",        # empty → derive from ai_engine
-    initial_suspension: bool = False,
-):
-    global nim_api, audio_capture, is_running, audio_thread, _meter_task
-    global current_source_lang, current_target_lang, current_ai_engine, current_use_mic
-    global current_input_device_index, current_output_device_index
-    global current_desktop_volume, current_mic_volume, current_api_key, current_google_json_path
-    global current_transcription_model, current_translation_model, current_session_id, current_initial_suspension
-
-    current_source_lang = source_lang
-    current_target_lang = target_lang
-    current_ai_engine = ai_engine
-    current_use_mic = use_mic
-    current_input_device_index = input_device_index
-    current_output_device_index = output_device_index
-    current_transcription_model = transcription_model
-    current_translation_model = translation_model or ai_engine  # fallback to ai_engine
-    # Use the user-supplied key if non-empty
-    current_api_key = api_key or ""
-    current_google_json_path = google_json_path or ""
-    current_initial_suspension = initial_suspension
-
-    # Guard: Riva/Llama translation requires an API key
-    if current_translation_model in ("riva", "llama") and not current_api_key:
-        await manager.broadcast({
-            "type": "error",
-            "text": f"⚠ {current_translation_model.capitalize()} requires an NVIDIA API key. Open Settings → Translation Engine and paste your NVIDIA NIM key.",
-            "is_final": True,
-            "original": "",
-        })
-        return {"status": "error", "message": "NVIDIA API key missing"}
-
-    if current_translation_model == "google_api" and not current_google_json_path:
-        await manager.broadcast({
-            "type": "error",
-            "text": f"⚠ Google Cloud Translation requires a Service Account JSON. Open Settings → Translation Engine and paste your JSON file path.",
-            "is_final": True,
-            "original": "",
-        })
-        return {"status": "error", "message": "Google JSON path missing"}
-
-    # Serialise against /devices so two PyAudio instances never open at the same time
-    async with _pyaudio_lock:
-        try:
-            if is_running:
-                await stop_capture()
-                await asyncio.sleep(0.5)
-
-            current_session_id += 1
-            nim_api = NimApiClient(
-                nvidia_api_key=current_api_key,
-                google_json_path=current_google_json_path,
-            )
-            # Adaptive chunk duration — guarantees account-wide NIM usage stays ≤ 40 RPM.
-            # NIM's 40 RPM limit is account-wide (shared across all model calls).
-            #   2 keyed → 2 API calls per chunk → need ≥ 3.0s  (2 × 20 chunks/min = 40 RPM)
-            #   1 keyed → 1 API call per chunk  → need ≥ 1.5s  (1 × 40 chunks/min = 40 RPM)
-            #   0 keyed → no NIM calls          → 0.75s (free services, no rate limit)
-            _keyed_count = (
-                (1 if transcription_model in {"riva"} else 0) +
-                (1 if translation_model   in {"riva", "llama"} else 0)
-            )
-            _chunk_dur = {0: 0.75, 1: 1.5, 2: 3.0}.get(_keyed_count, 1.5)
-
-            audio_capture = AudioCapture(
-                sample_rate=16000,
-                chunk_duration=_chunk_dur,
-                use_mic=current_use_mic,
-                input_device_index=current_input_device_index,
-                output_device_index=current_output_device_index,
-                desktop_volume=current_desktop_volume,
-                mic_volume=current_mic_volume,
-            )
-            is_running = True
-            audio_capture.start()
-            audio_thread = threading.Thread(target=audio_poll_loop, args=(current_session_id, current_initial_suspension), daemon=True)
-            audio_thread.start()
-
-            # Delay meter start by 2 s so audio_capture's WASAPI loopback stream
-            # has time to fully open before we try to open a second one in the meter.
-            async def _delayed_meter_start():
-                await asyncio.sleep(2.0)
-                if not is_running:
-                    return
-                audio_meter.configure(
-                    input_device_index=current_input_device_index if current_use_mic else None,
-                    output_device_index=current_output_device_index,
-                )
-                audio_meter.start()
-                _meter_task = asyncio.create_task(audio_level_broadcast_loop())
-                asyncio.create_task(status_broadcast_loop()) # Also start status broadcasting
-
-            asyncio.create_task(_delayed_meter_start())
-
-            asyncio.create_task(manager.broadcast_status()) # Broadcast status after successful start
-            return {"status": "started", "source": source_lang, "target": target_lang, "use_mic": current_use_mic}
-
-        except Exception as e:
-            logging.error(f"[start_capture] Error: {e}")
-            is_running = False
-            await manager.broadcast({"type": "error", "text": f"Failed to start capture: {e}", "is_final": True, "original": ""})
-            # Trigger status broadcast (non-blocking)
-            asyncio.create_task(manager.broadcast_status())
-            return {"status": "error", "message": str(e)}
-
-
-@app.post("/stop")
-async def stop_capture():
-    global is_running, nim_api, audio_capture, _meter_task
-    is_running = False
-    if _meter_task:
-        _meter_task.cancel()
-        _meter_task = None
-    audio_meter.stop()
-    if audio_capture:
-        audio_capture.stop()
-    if nim_api:
-        nim_api.stop_stream()
-    return {"status": "stopped"}
-
-
-@app.get("/status")
-async def get_status():
-    return {"running": is_running, "clients": len(manager.active_connections)}
-
-
-# ── WebSocket endpoint ──────────────────────────────────────────────────────
-
 @app.websocket("/captions")
 async def captions_ws(websocket: WebSocket):
-    """Flutter connects here and receives captions as JSON frames."""
-    global current_desktop_volume, current_mic_volume
-    global current_source_lang, current_target_lang, current_ai_engine, current_use_mic
-    global current_api_key, current_google_json_path, current_transcription_model, current_translation_model
     await manager.connect(websocket)
+    # Capabilities Handshake
+    if ctx.orchestrator:
+        caps = ctx.orchestrator.get_capabilities()
+        await websocket.send_text(json.dumps({"type": "capabilities", "capabilities": caps}))
+    
     try:
-        # Keep connection alive; handle control messages from Flutter
         while True:
             data = await websocket.receive_text()
-            msg = json.loads(data)
-            # Flutter can send {"cmd": "start", "source": "auto", "target": "en"}
-            cmd = msg.get("cmd")
-            if cmd == "start":
-                await start_capture(
-                    source_lang=msg.get("source", "auto"),
-                    target_lang=msg.get("target", "en"),
-                    ai_engine=msg.get("ai_engine", "google"),
-                    use_mic=msg.get("use_mic", False),
-                    input_device_index=msg.get("input_device_index"),
-                    output_device_index=msg.get("output_device_index"),
-                    api_key=msg.get("api_key", ""),
-                    google_json_path=msg.get("google_json_path", ""),
-                    transcription_model=msg.get("transcription_model", "online"),
-                    translation_model=msg.get("translation_model", ""),
-                    initial_suspension=False,
-                )
-            elif cmd == "settings_update":
-                # Update settings without forcing a restart if not already running
-                current_source_lang = msg.get("source", current_source_lang)
-                current_target_lang = msg.get("target", current_target_lang)
-                current_ai_engine = msg.get("ai_engine", current_ai_engine)
-                current_use_mic = msg.get("use_mic", current_use_mic)
-                current_api_key = msg.get("api_key", current_api_key)
-                current_google_json_path = msg.get("google_json_path", current_google_json_path)
-                current_transcription_model = msg.get("transcription_model", current_transcription_model)
-                current_translation_model = msg.get("translation_model", current_translation_model)
-                
-                if is_running:
-                    await start_capture(
-                        source_lang=current_source_lang,
-                        target_lang=current_target_lang,
-                        ai_engine=current_ai_engine,
-                        use_mic=current_use_mic,
-                        input_device_index=msg.get("input_device_index"),
-                        output_device_index=msg.get("output_device_index"),
-                        api_key=current_api_key,
-                        google_json_path=current_google_json_path,
-                        transcription_model=current_transcription_model,
-                        translation_model=current_translation_model,
-                        initial_suspension=True,
-                    )
-                else:
-                    logging.info("[WebSocket] Settings updated (idle). Engine will start with new settings on Play.")
-                    # Update nim_api instance if it exists so status reports use new keys immediately
-                    if nim_api:
-                        nim_api.set_api_keys(current_api_key, current_google_json_path)
-                    else:
-                        # Init it if it doesn't exist so we can show "Missing Key" vs "Ready" statuses immediately
-                        nim_api = NimApiClient(current_api_key, current_google_json_path)
-                    # Broadcast status to refresh the UI (GPU indicator, API key statuses etc)
-                    asyncio.create_task(manager.broadcast_status())
-
-            elif msg.get("cmd") == "volume_update":
-                # Lightweight volume change — no restart, just update the running capture
-                current_desktop_volume = float(msg.get("desktop_volume", current_desktop_volume))
-                current_mic_volume = float(msg.get("mic_volume", current_mic_volume))
-                if audio_capture:
-                    audio_capture.desktop_volume = max(0.0, current_desktop_volume)
-                    audio_capture.mic_volume = max(0.0, current_mic_volume)
-            elif msg.get("cmd") == "stop":
-                await stop_capture()
+            await router.handle(websocket, data)
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
-    except Exception as exc:
-        logging.error(f"[WebSocket] Unhandled error: {exc}")
-        await manager.disconnect(websocket)
-
-
-def kill_process_on_port(port: int):
-    """Kill any process listening on the given port using netstat + taskkill (Windows).
-    Works without psutil."""
-    import subprocess
-    try:
-        result = subprocess.run(
-            ["netstat", "-ano"],
-            capture_output=True, text=True, timeout=5
-        )
-        current_pid = str(os.getpid())
-        for line in result.stdout.splitlines():
-            if f":{port}" in line and "LISTENING" in line:
-                parts = line.split()
-                pid = parts[-1]
-                if pid == current_pid:
-                    continue
-                logging.info(f"[Main] Killing process on port {port} (PID: {pid})")
-                subprocess.run(["taskkill", "/F", "/PID", pid],
-                               capture_output=True, timeout=5)
     except Exception as e:
-        logging.error(f"[Main] Port cleanup failed: {e}")
-
-
-def kill_other_instances():
-    """Find and kill other running instances of this server to prevent port conflicts."""
-    # Always free the port first — works without psutil
-    kill_process_on_port(8765)
-
-    if not HAS_PSUTIL:
-        return
-
-    current_pid = os.getpid()
-    target_exe = "omni_bridge_server.exe"
-
-    logging.info(f"[Main] Checking for existing instances (Current PID: {current_pid})...")
-
-    for proc in psutil.process_iter(['pid', 'name']):
-        try:
-            pinfo = proc.info
-            pid = pinfo['pid']
-            name = pinfo['name']
-
-            if pid == current_pid:
-                continue
-
-            # ONLY kill the packaged EXE. User requested not to touch python.exe.
-            if name == target_exe:
-                logging.info(f"[Main] Terminating stale instance: {name} (PID: {pid})")
-                proc.terminate()
-                try:
-                    proc.wait(timeout=3)
-                except psutil.TimeoutExpired:
-                    logging.warning(f"[Main] Force killing PID {pid}")
-                    proc.kill()
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            continue
+        logger.error(f"WebSocket Error: {e}")
+        await manager.disconnect(websocket)
 
 if __name__ == "__main__":
     kill_other_instances()
-    logging.info("Starting Uvicorn server...")
-    
-    log_config = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "default": {
-                "format": "%(asctime)s [%(levelname)s] uvicorn: %(message)s",
-            },
-        },
-        "handlers": {
-            "file": {
-                "formatter": "default",
-                "class": "logging.FileHandler",
-                "filename": log_file,
-                "encoding": "utf-8",
-            },
-            "console": {
-                "formatter": "default",
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stdout",
-            },
-        },
-        "loggers": {
-            "": {"handlers": ["file", "console"], "level": "INFO"},
-            "uvicorn.error": {"handlers": ["file", "console"], "level": "INFO", "propagate": False},
-            "uvicorn.access": {"handlers": ["file", "console"], "level": "INFO", "propagate": False},
-        },
-    }
-    
-    uvicorn.run(app, host="127.0.0.1", port=8765, log_config=log_config)
+    logger.info("Standardizing on port 8765")
+    uvicorn.run(app, host="127.0.0.1", port=8765, log_level="info")
+
+# Note: Old monolithic flutter_server.py logic has been refactored into:
+# - src/network/router.py (Command Dispatch)
+# - src/network/handlers.py (State & Logic)
+# - src/utils/server_utils.py (Infrastructure helpers)

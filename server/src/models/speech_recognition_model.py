@@ -8,7 +8,7 @@ import wave
 import speech_recognition as sr
 
 
-# BCP-47 language codes for recognize_google — must match nim_api's lang_map
+# BCP-47 language codes — must match InferenceOrchestrator's lang_map
 _LANG_MAP = {
     "en": "en-US", "es": "es-ES", "fr": "fr-FR", "de": "de-DE",
     "zh": "zh-CN", "ja": "ja-JP", "ko": "ko-KR", "ru": "ru-RU",
@@ -26,9 +26,9 @@ class SpeechRecognitionModel:
     def __init__(self):
         # Reuse a single Recognizer — avoid overhead of creating one per chunk
         self._recognizer = sr.Recognizer()
-        # Relax energy threshold so silence gaps don't block recognition
-        self._recognizer.dynamic_energy_threshold = False
+        self._recognizer.dynamic_energy_threshold = True
         self._recognizer.energy_threshold = 300
+        self._recognizer.pause_threshold = 0.8
 
     def is_ready(self) -> bool:
         return True

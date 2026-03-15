@@ -154,7 +154,7 @@ class AudioCapture:
         raise RuntimeError("No valid microphone input device found.")
 
     def _record_loop(self):
-        from shared_pyaudio import get_pyaudio
+        from .shared_pyaudio import get_pyaudio
         try:
             p = get_pyaudio()
             out_info = self._get_device_info(p)

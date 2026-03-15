@@ -1,0 +1,3 @@
+[builder]
+bug_log = logs/pyarmor.bug.log
+

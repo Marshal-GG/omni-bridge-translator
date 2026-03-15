@@ -8,9 +8,9 @@ If you use relative paths or VS Code's built-in `${workspaceFolder}` variables l
 
 ```json
 {
-    "python.defaultInterpreterPath": "${workspaceFolder}/server/.venv/Scripts/python.exe",
-    "python.venvFolders": ["server"],
-    "python.analysis.extraPaths": ["${workspaceFolder}/server"]
+    \"python.defaultInterpreterPath\": \"${workspaceFolder}/.venv/Scripts/python.exe\",
+    \"python.venvFolders\": [\"server\", \".venv\"],
+    \"python.analysis.extraPaths\": [\"${workspaceFolder}/server\"]
 }
 ```
 
@@ -18,13 +18,13 @@ Or just relative paths:
 
 ```json
 {
-    "python.defaultInterpreterPath": "server\\.venv\\Scripts\\python.exe"
+    \"python.defaultInterpreterPath\": \".venv\\Scripts\\python.exe\"
 }
 ```
 
 This configuration often works fine inside standard VS Code terminals. However, if you are running the **Antigravity AI Agent** extension, you may encounter this error:
 
-> Default interpreter path 'server\.venv\Scripts\python.exe' could not be resolved: Could not resolve interpreter path 'server\.venv\Scripts\python.exe'
+> Default interpreter path '.venv\Scripts\python.exe' could not be resolved: Could not resolve interpreter path '.venv\Scripts\python.exe'
 
 **Why this happens:** Antigravity sometimes resolves relative paths using a different root directory context than your workspace folder. To guarantee both VS Code and Antigravity point to the same correct Virtual Environment without ambiguity, the paths must be absolute.
 
@@ -38,12 +38,12 @@ Change the paths to exactly match where the project resides on your local machin
 
 ```json
 {
-    "python.defaultInterpreterPath": "c:/Users/marsh/OneDrive/Desktop/New folder/omni_bridge/server/.venv/Scripts/python.exe",
-    "python.venvFolders": [
-        "c:/Users/marsh/OneDrive/Desktop/New folder/omni_bridge/server/.venv"
+    "python.defaultInterpreterPath": "omni_bridge\\.venv\\Scripts\\python.exe",
+    \"python.venvFolders\": [
+        \"omni_bridge/.venv\"
     ],
-    "python.analysis.extraPaths": [
-        "c:/Users/marsh/OneDrive/Desktop/New folder/omni_bridge/server"
+    \"python.analysis.extraPaths\": [
+        \"omni_bridge/server\"
     ]
 }
 ```
