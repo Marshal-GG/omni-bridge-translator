@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../config/server_config.dart';
 
 /// Communicates with the Python server's Whisper model management endpoints.
 class WhisperService {
-  static const _base = 'http://127.0.0.1:8765';
+  static String get _base => ServerConfig.httpUrl;
   static const _timeout = Duration(seconds: 10);
 
   /// Returns current model status for a specific size:
@@ -16,7 +18,9 @@ class WhisperService {
       if (resp.statusCode == 200) {
         return jsonDecode(resp.body) as Map<String, dynamic>;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[WhisperService] getStatus error: $e');
+    }
     return {
       'downloaded': false,
       'size_mb': 0.0,
@@ -38,7 +42,9 @@ class WhisperService {
       if (resp.statusCode == 200) {
         return jsonDecode(resp.body) as Map<String, dynamic>;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[WhisperService] startDownload error: $e');
+    }
     return {'status': 'error'};
   }
 
@@ -51,7 +57,9 @@ class WhisperService {
       if (resp.statusCode == 200) {
         return jsonDecode(resp.body) as Map<String, dynamic>;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[WhisperService] getProgress error: $e');
+    }
     return {'downloaded': false, 'progress': 0.0, 'status': 'idle'};
   }
 
@@ -65,7 +73,9 @@ class WhisperService {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
         return data['status'] == 'deleted';
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[WhisperService] deleteModel error: $e');
+    }
     return false;
   }
 
@@ -95,7 +105,9 @@ class WhisperService {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
         return data['status'] == 'unloaded';
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[WhisperService] unloadModel error: $e');
+    }
     return false;
   }
 }

@@ -32,8 +32,11 @@ RestartApplications=no
 OutputDir=installers
 OutputBaseFilename=OmniBridge_Setup_v{#MyAppVersion}
 Compression=lzma2
+CompressionThreads=auto
 SolidCompression=yes
 WizardStyle=modern
+AppMutex=OmniBridgeMutex
+SetupMutex=OmniBridgeSetupMutex
 ; Minimum Windows 10 (1809 / RS5 — build 17763)
 MinVersion=10.0.17763
 LicenseFile=docs\legal\LICENSE
@@ -46,10 +49,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "startupicon"; Description: "Launch Omni Bridge on Windows startup"; GroupDescription: "Startup:"; Flags: unchecked
 
 [Files]
-; Main Flutter executable
-Source: "build\windows\x64\runner\Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-
-; All Flutter release DLLs and data (plugins, assets, etc.)
+; All Flutter release DLLs, exe, and data (plugins, assets, etc.)
 Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Standalone Python backend server
@@ -65,6 +65,10 @@ Source: "docs\legal\*"; DestDir: "{app}\docs\legal"; Flags: ignoreversion recurs
 
 [InstallDelete]
 ; Wipe the entire app directory before installing so stale files never linger
+Type: filesandordirs; Name: "{app}"
+
+[UninstallDelete]
+; Remove the entire app directory on uninstall (clears runtime files, Whisper models, logs)
 Type: filesandordirs; Name: "{app}"
 
 [Icons]
@@ -105,12 +109,13 @@ begin
     RegDeleteKeyIncludingSubkeys(RootKey, SubKey);
 end;
 
-procedure KillServerProcess();
+procedure KillAppProcesses();
 var
   ResultCode: Integer;
 begin
-  // Kill the Python server process if running
   Exec('taskkill', '/F /IM omni_bridge_server.exe /T', '', SW_HIDE,
+       ewWaitUntilTerminated, ResultCode);
+  Exec('taskkill', '/F /IM {#MyAppExeName} /T', '', SW_HIDE,
        ewWaitUntilTerminated, ResultCode);
 end;
 
@@ -125,7 +130,7 @@ begin
   if CurStep = ssInstall then
   begin
     // 0. Kill stale processes early
-    KillServerProcess();
+    KillAppProcesses();
 
     // 1. Run old uninstaller (HKLM = admin install, HKCU = old user-level install)
     UninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1';
@@ -149,8 +154,7 @@ begin
     DeleteRegKeyIfExists(HKCR, 'com.googleusercontent.apps.883780252017-c3h4v2pha56t4939hld31sdhllg1tcc9');
 
     // 4. Delete any PyInstaller %TEMP%\omni_bridge* extractions from old runs
-    TempDir := ExpandConstant('{tmp}');
-    TempDir := ExtractFilePath(TempDir); // Parent of {tmp} is the actual %TEMP%
+    TempDir := ExpandConstant('{%TEMP}\');
     if FindFirst(TempDir + 'omni_bridge*', FindRec) then
     begin
       repeat
@@ -165,10 +169,10 @@ begin
       FindClose(FindRec);
     end;
 
-    // 4. Remove leftover user-level install dir (from old lowest-privilege installs)
+    // 5. Remove leftover user-level install dir (from old lowest-privilege installs)
     DelTree(ExpandConstant('{localappdata}\Programs\{#MyAppName}'), True, True, True);
 
-    // 5. Wipe Persistent Session/Auth Data (Fixes "still logged in" issue)
+    // 6. Wipe Persistent Session/Auth Data (Fixes "still logged in" issue)
     // - AppData Roaming (com.marshal is the CompanyName from Runner.rc)
     DelTree(ExpandConstant('{userappdata}\com.marshal\{#MyAppName}'), True, True, True);
     // - LocalAppData
@@ -177,5 +181,28 @@ begin
     DelTree(ExpandConstant('{localappdata}\firestore\OmniBridge-Release'), True, True, True);
     DelTree(ExpandConstant('{localappdata}\firebase-heartbeat\OmniBridge-Release'), True, True, True);
     DelTree(ExpandConstant('{localappdata}\google-services-desktop-auth\OmniBridge-Release'), True, True, True);
+  end;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+  begin
+    // Kill processes before files are removed
+    KillAppProcesses();
+
+    // Wipe user AppData and Firebase caches
+    DelTree(ExpandConstant('{userappdata}\com.marshal\{#MyAppName}'), True, True, True);
+    DelTree(ExpandConstant('{localappdata}\com.marshal\{#MyAppName}'), True, True, True);
+    DelTree(ExpandConstant('{localappdata}\firestore\OmniBridge-Release'), True, True, True);
+    DelTree(ExpandConstant('{localappdata}\firebase-heartbeat\OmniBridge-Release'), True, True, True);
+    DelTree(ExpandConstant('{localappdata}\google-services-desktop-auth\OmniBridge-Release'), True, True, True);
+
+    // Wipe Flutter SharedPreferences registry keys
+    DeleteRegKeyIfExists(HKCU, 'Software\omni_bridge');
+    DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\omni_bridge');
+    DeleteRegKeyIfExists(HKCU, 'Software\Marshal\omni_bridge');
+    DeleteRegKeyIfExists(HKCU, 'Software\Marshal\Omni Bridge: Live AI Translator');
+    DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\Omni Bridge');
   end;
 end;

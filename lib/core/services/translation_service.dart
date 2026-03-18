@@ -115,7 +115,9 @@ class TranslationService {
           try {
             final json = jsonDecode(data as String) as Map<String, dynamic>;
             _captionController.add(CaptionMessage.fromJson(json));
-          } catch (_) {}
+          } catch (e, st) {
+            debugPrint('[TranslationService] Failed to parse message: $e\n$st');
+          }
         },
         onDone: () {
           debugPrint('[WS] Connection closed.');

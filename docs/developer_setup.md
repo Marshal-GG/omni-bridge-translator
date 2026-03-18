@@ -146,7 +146,21 @@ flutter build windows
 
 Open `installer_setup.iss` in [Inno Setup Compiler](https://jrsoftware.org/isinfo.php) and click **Compile**.
 
-Output: `installers/OmniBridge_Setup_v1.2.3.exe`
+Output: `installers/OmniBridge_Setup_v{version}.exe` (version is pulled from `#define MyAppVersion` in `installer_setup.iss`)
+
+**What the installer does:**
+
+- Requires Windows 10 1809+ (build 17763), x64 only, admin privileges
+- Uses `AppMutex` / `SetupMutex` to block the app from launching during install and prevent duplicate installer instances
+- **Pre-install cleanup** (runs before files are copied):
+  1. Kills `omni_bridge.exe` and `omni_bridge_server.exe` to release file locks
+  2. Silently runs the existing uninstaller if a previous version is detected
+  3. Wipes Flutter SharedPreferences registry keys (`HKCU\Software\omni_bridge`, etc.)
+  4. Removes the outdated Google Auth registry key
+  5. Deletes stale PyInstaller `%TEMP%\omni_bridge*` extractions
+  6. Removes any leftover user-level install directory
+  7. Wipes AppData and Firebase caches (Roaming, LocalAppData, Firestore, heartbeat, google-services-desktop-auth) — prevents "still logged in after reinstall" issues
+- **On uninstall**: repeats the AppData/Firebase/registry wipe and removes the entire `{app}` directory, including any downloaded Whisper models
 
 ---
 

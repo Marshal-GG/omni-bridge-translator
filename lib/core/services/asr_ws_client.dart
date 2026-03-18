@@ -1,6 +1,7 @@
 import 'dart:convert';
 import '../../models/caption_model.dart';
 import 'package:http/http.dart' as http;
+import '../config/server_config.dart';
 import '../routes/routes_config.dart';
 import 'asr_text_controller.dart';
 import 'firebase/tracking_service.dart';
@@ -27,10 +28,8 @@ class AsrWebSocketClient {
   /// so the connection is ready before the user presses play.
   void _ensureService() {
     if (_service != null) return;
-    const url = '127.0.0.1';
-    const port = 8765;
-    debugPrint('ASR WS pre-connecting to: ws://$url:$port/captions');
-    _service = TranslationService(serverHost: url, serverPort: port);
+    debugPrint('ASR WS pre-connecting to: ${ServerConfig.wsUrl}/captions');
+    _service = TranslationService(serverHost: ServerConfig.host, serverPort: ServerConfig.port);
 
     _service!.captions.listen((msg) {
       // Audio level update — dispatch via callback
@@ -155,7 +154,7 @@ class AsrWebSocketClient {
   Future<Map<String, dynamic>> loadDevices() async {
     try {
       final response = await http
-          .get(Uri.parse('http://127.0.0.1:8765/devices'))
+          .get(Uri.parse('${ServerConfig.httpUrl}/devices'))
           .timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;

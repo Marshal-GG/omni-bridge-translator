@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
+import '../config/server_config.dart';
 
 class PythonServerManager {
   static Process? _serverProcess;
@@ -17,7 +18,7 @@ class PythonServerManager {
       // 1. Check if a server is already running externally (e.g. manually in dev mode)
       try {
         final checkResponse = await http
-            .get(Uri.parse('http://127.0.0.1:8765/status'))
+            .get(Uri.parse('${ServerConfig.httpUrl}/status'))
             .timeout(const Duration(seconds: 1));
         if (checkResponse.statusCode == 200) {
           debugPrint(
@@ -70,7 +71,7 @@ class PythonServerManager {
         for (int i = 0; i < 30; i++) {
           try {
             final response = await http.get(
-              Uri.parse('http://127.0.0.1:8765/status'),
+              Uri.parse('${ServerConfig.httpUrl}/status'),
             );
             if (response.statusCode == 200) {
               isReady = true;

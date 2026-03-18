@@ -40,7 +40,8 @@ class UpdateService {
         if (lv < cv) return false;
       }
       return false;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[UpdateService] Version parse error: $e');
       return false;
     }
   }

@@ -22,7 +22,7 @@ State management: **BLoC pattern** throughout.
 lib/
 ├── core/
 │   ├── blocs/          # Global BLoCs (AuthBloc)
-│   ├── config/         # AppConfig (Google Client ID, secret keys)
+│   ├── config/         # AppConfig (Google Client ID, secret keys), ServerConfig (host/port for Python backend)
 │   ├── constants/      # Languages map, themes, strings
 │   ├── routes/         # Named route configuration
 │   ├── services/       # Orchestration layer
@@ -73,7 +73,7 @@ lib/
 
 | Service | Responsibility |
 |---------|---------------|
-| `AsrWsClient` | WebSocket client to Python server (`ws://127.0.0.1:8765`). Receives JSON caption events and synchronizes remote server errors to `TrackingService`. |
+| `AsrWsClient` | WebSocket client to the Python server (URL sourced from `ServerConfig`). Receives JSON caption events and synchronizes remote server errors to `TrackingService`. |
 | `AsrTextController` | Manages the display buffer — interim vs. final text, rolling captions. Features a high-speed **Typing Catch-up Mode** that increases display velocity if the stream moves faster than the UI. |
 | `TranslationService` | Sends start/stop/settings commands to the WebSocket server |
 | `PythonServerManager` | Manages the lifecycle of the Python WebSocket server. Includes auto-restart resilience with exponential backoff if the server crashes. |
@@ -117,6 +117,15 @@ Stop Translation
 
 - **Always-on-top, frameless, draggable** window using `bitsdojo_window` + `window_manager`
 - **Transparent background** via `flutter_acrylic`
+- **Keyboard Shortcuts** — handled by a `Focus` widget wrapping the overlay:
+
+  | Key | Action |
+  |-----|--------|
+  | `Space` | Toggle translation running/stopped |
+  | `Ctrl+M` | Toggle mini (shrink) mode |
+  | `Ctrl+H` | Open history panel |
+  | `Escape` | Minimize window |
+
 - **Mini Mode** — collapsed single-line caption
 - **Header** — Shows the app logo, `source → target` language badge (clickable to open Settings), an uncluttered daily usage display, and action buttons (Compress, History, Settings) with distinct accent colors to prevent visual conflicts.
 - **Display Customization**:
