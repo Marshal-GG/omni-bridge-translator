@@ -23,7 +23,7 @@ lib/
 ├── core/
 │   ├── blocs/          # Global BLoCs (AuthBloc)
 │   ├── config/         # AppConfig (Google Client ID, secret keys), ServerConfig (host/port for Python backend)
-│   ├── constants/      # Languages map, themes, strings
+│   ├── constants/      # Languages map, themes, strings, model_language_support.dart
 │   ├── routes/         # Named route configuration
 │   ├── services/       # Orchestration layer
 │   │   ├── firebase/   # AuthService, SubscriptionService, TrackingService (Persistent RTDB connections)
@@ -63,7 +63,7 @@ lib/
 | BLoC | Responsibility |
 |------|---------------|
 | `AuthBloc` | Firebase Auth state — Google, Email/Password, Guest |
-| `SettingsBloc` | User preferences (model, language, devices, opacity, font) |
+| `SettingsBloc` | User preferences (model, language, devices, opacity, font). Computes `translationCompatibilityError` on every language/model change and emits it in state. |
 | `TranslationBloc` | Active translation session, overlay visibility, language overrides |
 | `SubscriptionBloc`| Manages real-time subscription state, tier details, and dynamic limits/features from Firestore |
 
@@ -85,6 +85,25 @@ lib/
     - **Robustness**: Wraps all RTDB calls in an exponential backoff retry handler to handle transient `HandshakeException` or network jitter. |
 | `SubscriptionService`| Manages real-time subscription state and aggregate token usage. Polled every 3 seconds from RTDB (daily, weekly, monthly, lifetime). Implements **Triple Rollover Logic** (Calendar Month, Weekly, and Subscription Cycle) for archiving usage data to Firestore. |
 | `AuthService` | Firebase Auth + custom URL schemes for Windows Google Sign-In redirects. |
+
+---
+
+## Language Compatibility Validation
+
+All model language support is centralised in `lib/core/constants/model_language_support.dart` — the single Dart source of truth. No screen or BLoC defines its own language sets.
+
+| Symbol | Purpose |
+|---|---|
+| `rivaTranslationLangs` | Languages supported by Riva NMT (both source and target must be in set) |
+| `llamaLangs` | `null` — Llama is unrestricted |
+| `translationLangsFor(model)` | Returns the supported set for a model, or `null` if unrestricted |
+| `translationCompatibilityError(model, source, target)` | Returns a human-readable error string if the combo is unsupported, otherwise `null` |
+
+`SettingsBloc` calls `translationCompatibilityError()` on every `_onUpdateTempSetting` and `_onSyncTempSettings` event and stores the result in `SettingsState.translationCompatibilityError`.
+
+**UI effects** (in `settings/`):
+- **`languages_tab.dart`**: Displays a red error banner below the translation model dropdown when `translationCompatibilityError != null`.
+- **`settings_footer.dart`**: Save button is disabled (`onPressed: null`) while any compatibility error is present — users cannot save an unsupported language/model combination.
 
 ---
 

@@ -24,10 +24,11 @@ server/
 │   │   ├── router.py           # Command routing (Decouples WS from logic)
 │   │   └── handlers.py         # Specialized command logic (Session, Device, Config, Status)
 │   ├── utils/
-│   │   └── server_utils.py     # structlog setup, process management, JSON detection
+│   │   ├── server_utils.py     # structlog setup, process management, JSON detection
+│   │   └── language_support.py # Single source of truth for all model language support
 │   └── models/
-│       ├── riva_model.py       # NVIDIA NIM (Riva) Wrapper
-│       ├── llama_model.py      # NVIDIA NIM (Llama) Wrapper
+│       ├── riva_model.py       # NVIDIA NIM (Riva) ASR + NMT Wrapper
+│       ├── llama_model.py      # NVIDIA NIM (Llama 3.1 8B) Translation Wrapper
 │       ├── whisper_model.py    # Local Faster-Whisper management
 │       ├── google_model.py     # Google Translate (Free/Scraping)
 │       ├── google_cloud_model.py # Official Google Cloud Translation API
@@ -57,12 +58,26 @@ Incoming JSON commands are dispatched by the `CommandRouter` to specialized hand
 - **Volume Scaling**: Real-time gain application for both Mic and Desktop audio before mixing.
 - **Dual Metering**: `AudioMeter` runs independent threads to provide RMS levels for both microphone and system output, used by the UI volume visualizers.
 
+### Language Support (`utils/language_support.py`)
+Single source of truth for all model language capabilities — imported by both models and the orchestrator. No model defines its own language sets.
+
+| Constant | Purpose |
+|---|---|
+| `LANG_TO_BCP47` | Maps app language codes (`"hi"`) to BCP-47 (`"hi-IN"`) for Riva ASR configs |
+| `RIVA_PARAKEET_ASR_LANGS` | BCP-47 codes routed to the Parakeet model; all others go to Canary |
+| `RIVA_NMT_LANGS` | App-level codes supported by Riva NMT (both source and target must be in this set) |
+| `GOOGLE_FREE_LANGS` / `GOOGLE_CLOUD_LANGS` / `MYMEMORY_LANGS` / `LLAMA_LANGS` | `None` — these models are unrestricted within the app language list |
+
 ### AI Orchestration (`orchestrator.py`)
 Coordinates transcription and translation across multiple concurrent workers.
 - **Background Thread Stability**: Implements a robust "Event Loop Capturing" pattern to ensure background threads can safely schedule callbacks in the main FastAPI loop.
 - **Queue Resilience**: Worker threads gracefully handle `queue.Empty` timeouts, preventing crashes during periods of silence.
 - **Chunk Duration Logic**: Dynamically calculates the optimal audio chunk duration based on how many NVIDIA NIM models are active (1.5s for 0–1 NIM models; 3.0s for 2 NIM models) to stay within API rate limits.
 - **Speech Polishing**: Employs `pysbd` to segment text and a deduplication algorithm.
+- **ASR Hallucination Prevention** (three-layer defence):
+  1. **RMS Gate** — chunks with RMS < 120 are dropped before reaching ASR, preventing silence hallucinations.
+  2. **Confidence Filter** — Riva results with confidence < 0.5 are discarded at the model level.
+  3. **Time-Window Deduplication** — identical transcripts within a 6-second window are suppressed; real speech passes once the window expires.
 
 ---
 
@@ -96,15 +111,17 @@ sequenceDiagram
 The `InferenceOrchestrator` implements a priority-based fallback system:
 
 1. **Transcription**:
-   - `riva` (High Quality/Low Latency)
-     - **Auto-Fallback**: If Riva fails due to an unsupported language code (e.g., in 'auto' mode), the system automatically retries with `en-US` to maintain service.
+   - `riva` (High Quality/Low Latency) — routes to Parakeet or Canary based on `RIVA_PARAKEET_ASR_LANGS`
    - `whisper` (Local Fallback - Small/Medium)
    - `online` (Google Speech Recognition - Universal Fallback)
 
-2. **Translation**:
-   - `google_api` (Paid) → `google` (Free)
-   - `riva` (NVIDIA) → `llama` (NVIDIA) or `google`
-   - `google` (Free) → `llama` (if scraping is blocked)
+2. **Translation** — clean separation of concerns:
+   - Each model (`riva_model`, `llama_model`) only executes its own engine and **raises** on failure.
+   - All routing and fallback logic lives exclusively in `orchestrator._dispatch_translation()`.
+   - `google_api` → `google` (free) on failure
+   - `riva` — pre-checks `RIVA_NMT_LANGS`; if unsupported pair, goes directly to `llama`. If Riva call itself fails, falls back to `llama`. If `llama` also fails, caption is **silently dropped** (never broadcasts original text).
+   - `google` (free) → `llama` on failure
+   - `llama` — raises on any failure; orchestrator drops caption cleanly.
 
 ---
 

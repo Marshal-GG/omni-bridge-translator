@@ -9,5 +9,6 @@
     "python.languageServer": "Default",
     "python.analysis.extraPaths": [
         "${workspaceFolder}/server"
-    ]
+    ],
+    "chatgpt.commentCodeLensEnabled": false
 }

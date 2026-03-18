@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/services/asr_ws_client.dart';
+import '../../../core/constants/model_language_support.dart';
 import 'settings_event.dart';
 import 'settings_state.dart';
 
@@ -25,52 +26,64 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     SyncTempSettingsEvent event,
     Emitter<SettingsState> emit,
   ) {
-    emit(
-      state.copyWith(
-        settings: state.settings.copyWith(
-          targetLang: event.targetLang,
-          sourceLang: event.sourceLang,
-          useMic: event.useMic,
-          fontSize: event.fontSize,
-          isBold: event.isBold,
-          opacity: event.opacity,
-          translationModel: event.translationModel,
-          apiKey: event.apiKey,
-          transcriptionModel: event.transcriptionModel,
-          inputDeviceIndex: event.inputDeviceIndex,
-          outputDeviceIndex: event.outputDeviceIndex,
-          desktopVolume: event.desktopVolume,
-          micVolume: event.micVolume,
-        ),
-      ),
+    final newSettings = state.settings.copyWith(
+      targetLang: event.targetLang,
+      sourceLang: event.sourceLang,
+      useMic: event.useMic,
+      fontSize: event.fontSize,
+      isBold: event.isBold,
+      opacity: event.opacity,
+      translationModel: event.translationModel,
+      apiKey: event.apiKey,
+      transcriptionModel: event.transcriptionModel,
+      inputDeviceIndex: event.inputDeviceIndex,
+      outputDeviceIndex: event.outputDeviceIndex,
+      desktopVolume: event.desktopVolume,
+      micVolume: event.micVolume,
     );
+    final error = translationCompatibilityError(
+      newSettings.translationModel,
+      newSettings.sourceLang,
+      newSettings.targetLang,
+    );
+    emit(state.copyWith(
+      settings: newSettings,
+      translationCompatibilityError: error,
+      clearCompatibilityError: error == null,
+    ));
   }
 
   void _onUpdateTempSetting(
     UpdateTempSettingEvent event,
     Emitter<SettingsState> emit,
   ) {
-    emit(
-      state.copyWith(
-        settings: state.settings.copyWith(
-          targetLang: event.targetLang,
-          sourceLang: event.sourceLang,
-          useMic: event.useMic,
-          fontSize: event.fontSize,
-          isBold: event.isBold,
-          opacity: event.opacity,
-          translationModel: event.translationModel,
-          apiKey: event.apiKey,
-          transcriptionModel: event.transcriptionModel,
-          clearInputDevice: event.clearInputDevice,
-          inputDeviceIndex: event.inputDeviceIndex,
-          clearOutputDevice: event.clearOutputDevice,
-          outputDeviceIndex: event.outputDeviceIndex,
-          desktopVolume: event.desktopVolume,
-          micVolume: event.micVolume,
-        ),
-      ),
+    final newSettings = state.settings.copyWith(
+      targetLang: event.targetLang,
+      sourceLang: event.sourceLang,
+      useMic: event.useMic,
+      fontSize: event.fontSize,
+      isBold: event.isBold,
+      opacity: event.opacity,
+      translationModel: event.translationModel,
+      apiKey: event.apiKey,
+      transcriptionModel: event.transcriptionModel,
+      clearInputDevice: event.clearInputDevice,
+      inputDeviceIndex: event.inputDeviceIndex,
+      clearOutputDevice: event.clearOutputDevice,
+      outputDeviceIndex: event.outputDeviceIndex,
+      desktopVolume: event.desktopVolume,
+      micVolume: event.micVolume,
     );
+    final error = translationCompatibilityError(
+      newSettings.translationModel,
+      newSettings.sourceLang,
+      newSettings.targetLang,
+    );
+    emit(state.copyWith(
+      settings: newSettings,
+      translationCompatibilityError: error,
+      clearCompatibilityError: error == null,
+    ));
   }
 
   Future<void> _onLoadDevices(

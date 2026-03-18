@@ -118,12 +118,17 @@ class SessionHandler(BaseHandler):
             else:
                 # 1 NIM or local models - 1.5s is safe (40 RPM) and very responsive
                 _chunk_dur = 1.5
+            _first_chunk_dur = min(_chunk_dur, 1.0)
             
-            logging.info(f"[Handler] Calculated chunk_duration: {_chunk_dur}s (NIM models: {num_nim})")
+            logging.info(
+                f"[Handler] Calculated chunk_duration: {_chunk_dur}s "
+                f"(first chunk: {_first_chunk_dur}s, NIM models: {num_nim})"
+            )
 
             self.ctx.audio_capture = AudioCapture(
                 sample_rate=16000,
                 chunk_duration=_chunk_dur,
+                first_chunk_duration=_first_chunk_dur,
                 use_mic=self.ctx.config["use_mic"],
                 input_device_index=self.ctx.config["input_device_index"],
                 output_device_index=self.ctx.config["output_device_index"],

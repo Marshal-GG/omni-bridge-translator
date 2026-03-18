@@ -11,6 +11,7 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
   return BlocBuilder<TranslationBloc, TranslationState>(
     builder: (context, translationState) {
       final isSaving = translationState.isSettingsSaving;
+      final isBlocked = state.translationCompatibilityError != null;
 
       return Container(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
@@ -50,7 +51,7 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
               child: SizedBox(
                 height: 42,
                 child: ElevatedButton(
-                  onPressed: isSaving
+                  onPressed: isSaving || isBlocked
                       ? null
                       : () {
                           context.read<SettingsBloc>().add(SaveSettingsEvent());

@@ -1,17 +1,14 @@
 """
-NVIDIA Riva ASR + Translation model.
-Handles speech recognition via Riva and translation via the
-Riva Translate or Llama fallback (both served through NVIDIA NIM).
+NVIDIA Riva ASR + NMT Translation model.
+Handles speech recognition via Riva Parakeet/Canary and translation via
+Riva NMT (gRPC). Fallback logic is handled by the orchestrator.
 """
 
 import re
 import time
 import logging
-import riva.client
-from openai import OpenAI
-
-# Languages natively supported by the Riva Translate model.
-RIVA_SUPPORTED_LANGS = {"en", "de", "es", "fr", "pt", "ru", "zh", "ja", "ko", "ar"}
+import riva.client  # type: ignore[import]
+from src.utils.language_support import RIVA_NMT_LANGS as RIVA_SUPPORTED_LANGS, RIVA_PARAKEET_ASR_LANGS
 
 
 class RivaModel:
@@ -22,7 +19,6 @@ class RivaModel:
         self.asr_parakeet = None
         self.asr_canary = None
         self.nmt_client = None
-        self.translate_client = None
         self._setup()
 
     # ── Setup ────────────────────────────────────────────────────────────────
@@ -38,8 +34,8 @@ class RivaModel:
                 use_ssl=True,
                 uri="grpc.nvcf.nvidia.com:443",
                 metadata_args=[
-                    ("authorization", f"Bearer {self.api_key}"),
-                    ("function-id", "71203149-d3b7-4460-8231-1be2543a1fca"),
+                    ["authorization", f"Bearer {self.api_key}"],
+                    ["function-id", "71203149-d3b7-4460-8231-1be2543a1fca"],
                 ],
             )
             self.asr_parakeet = riva.client.ASRService(auth_parakeet)
@@ -50,8 +46,8 @@ class RivaModel:
                 use_ssl=True,
                 uri="grpc.nvcf.nvidia.com:443",
                 metadata_args=[
-                    ("authorization", f"Bearer {self.api_key}"),
-                    ("function-id", "b0e8b4a5-217c-40b7-9b96-17d84e666317"),
+                    ["authorization", f"Bearer {self.api_key}"],
+                    ["function-id", "b0e8b4a5-217c-40b7-9b96-17d84e666317"],
                 ],
             )
             self.asr_canary = riva.client.ASRService(auth_canary)
@@ -62,16 +58,11 @@ class RivaModel:
                 use_ssl=True,
                 uri="grpc.nvcf.nvidia.com:443",
                 metadata_args=[
-                    ("authorization", f"Bearer {self.api_key}"),
-                    ("function-id", "10f92bba-1512-429a-9e5c-7d3129486c12"),
+                    ["authorization", f"Bearer {self.api_key}"],
+                    ["function-id", "10f92bba-1512-429a-9e5c-7d3129486c12"],
                 ],
             )
-            self.nmt_client = riva.client.NeuralMachineTranslationService(auth_nmt)
-
-            self.translate_client = OpenAI(
-                base_url="https://integrate.api.nvidia.com/v1",
-                api_key=self.api_key,
-            )
+            self.nmt_client = riva.client.NeuralMachineTranslationClient(auth_nmt)
         except Exception as e:
             import logging
             logging.error(f"Riva setup failed: {e}")
@@ -98,6 +89,13 @@ class RivaModel:
             "details": {"has_key": bool(self.api_key)}
         }
 
+    def supports_translation_pair(self, source_lang: str, target_lang: str) -> bool:
+        src = source_lang if source_lang != "auto" else "auto"
+        return (
+            src in RIVA_SUPPORTED_LANGS
+            and target_lang in RIVA_SUPPORTED_LANGS
+        )
+
     # ── ASR ──────────────────────────────────────────────────────────────────
 
     def transcribe(self, audio_bytes: bytes, config) -> tuple[str | None, dict | None]:
@@ -106,15 +104,8 @@ class RivaModel:
         start = time.monotonic()
         
         # Route to the appropriate model function ID
-        parakeet_langs = {
-            "en-US", "en-GB", "es-US", "es-ES", "de-DE", "fr-FR", "fr-CA", "it-IT", 
-            "ar-AR", "ko-KR", "pt-BR", "pt-PT", "ru-RU", "hi-IN", "nl-NL", 
-            "da-DK", "nn-NO", "nb-NO", "cs-CZ", "pl-PL", "sv-SE", "th-TH", "tr-TR", 
-            "he-IL", "bn-IN", "multi"
-        }
-        
         lang = config.language_code
-        if lang in parakeet_langs:
+        if lang in RIVA_PARAKEET_ASR_LANGS:
             service = getattr(self, "asr_parakeet", None)
             model_name = "riva-parakeet"
         else:
@@ -135,15 +126,23 @@ class RivaModel:
         if response and response.results:
             result = response.results[0]
             if result.alternatives:
-                raw_transcript = result.alternatives[0].transcript.strip()
+                alt = result.alternatives[0]
+                raw_transcript = alt.transcript.strip()
                 # Extract detected language if available (usually in result.language_code for multi/canary)
                 detected_lang = getattr(result, "language_code", None)
-                
+
                 # Filter out single-character hallucinations (like "P")
-                if len(raw_transcript) > 1:
-                    transcript = raw_transcript
-                else:
+                if len(raw_transcript) <= 1:
                     return None, None
+
+                # Filter low-confidence results — hallucinations on silence typically
+                # score below 0.5. Real speech almost always scores above 0.7.
+                confidence = getattr(alt, "confidence", None)
+                if confidence is not None and confidence < 0.5:
+                    logging.debug(f"[RivaASR] Low confidence ({confidence:.2f}) filtered: {raw_transcript!r}")
+                    return None, None
+
+                transcript = raw_transcript
                 
         stats = None
         if transcript:
@@ -175,83 +174,28 @@ class RivaModel:
     # ── Translation ──────────────────────────────────────────────────────────
 
     def translate(self, text: str, source_lang: str, target_lang: str) -> tuple[str, dict]:
-        """Translate using Riva gRPC MT, or Llama fallback if unsupported.
-        Returns (translated_text, usage_stats).
+        """Translate using Riva gRPC NMT only. Raises if unsupported or unavailable.
+        Fallback logic is handled by the caller (orchestrator).
         """
-        # 1. Decide on Source Language (handle auto)
         src = source_lang if source_lang != "auto" else "auto"
-        # Riva Translate supports: en, de, es, fr, pt, ru, zh, ja, ko, ar
-        is_riva_supported = (
-            src in RIVA_SUPPORTED_LANGS
-            and target_lang in RIVA_SUPPORTED_LANGS
-        )
+        is_riva_supported = self.supports_translation_pair(src, target_lang)
+
+        if not is_riva_supported or self.nmt_client is None:
+            raise RuntimeError(f"Riva NMT does not support {src}→{target_lang}.")
 
         start = time.monotonic()
-        
-        # 2. Try Riva gRPC (Preferred)
-        if is_riva_supported and getattr(self, "nmt_client", None):
-            try:
-                response = self.nmt_client.translate(
-                    [text],
-                    target_language=target_lang,
-                    source_language=src
-                )
-                result = response.translations[0].text.strip()
-                latency_ms = int((time.monotonic() - start) * 1000)
-                return result, {
-                    "engine": "riva-grpc-mt",
-                    "model": "nvidia/riva-translate-4b",
-                    "latency_ms": latency_ms,
-                    "input_tokens": len(text),
-                    "output_tokens": len(result),
-                }
-            except Exception as e:
-                logging.warning(f"[RivaMT] gRPC translate failed: {e}. Falling back to Llama...")
-
-        # 3. Fallback to Llama (NIM REST)
-        model_name = "meta/llama-3.1-8b-instruct"
-        system_prompt = (
-            f"You are a professional translator. Translate the following text into clear, natural {target_lang}. "
-            "Output ONLY the translated text. Do NOT include any explanations, labels, notes, or original text. "
-            "If you cannot translate it, return the original text as-is."
+        response = self.nmt_client.translate(
+            [text],
+            model="",
+            source_language=src,
+            target_language=target_lang,
         )
-
-        if not self.translate_client:
-            return text, {"error": "Translate client not initialized"}
-            
-        try:
-            completion = self.translate_client.chat.completions.create(
-                model=model_name,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": text},
-                ],
-                temperature=0,
-                max_tokens=512,
-            )
-            latency_ms = int((time.monotonic() - start) * 1000)
-            usage = completion.usage
-            result = completion.choices[0].message.content.strip()
-            
-            # Strip common model preamble artifacts
-            result = re.sub(
-                r'^(translation[:\s]+|translated text[:\s]+|here is.*?:|output[:\s]+|prompt[:\s]+|notes[:\s]+|p[:\s]+|in [a-z]+[:\s]+|sure[!,\s]+)',
-                "",
-                result,
-                flags=re.IGNORECASE,
-            ).strip()
-            if result.startswith('"') and result.endswith('"') and len(result) >= 2:
-                result = str(result[1:-1]).strip()
-
-            return result, {
-                "engine": "llama-fallback",
-                "model": model_name,
-                "latency_ms": latency_ms,
-                "api_prompt_tokens": usage.prompt_tokens if usage else 0,
-                "api_completion_tokens": usage.completion_tokens if usage else 0,
-                "input_tokens": len(text),
-                "output_tokens": len(result),
-            }
-        except Exception as e:
-            logging.error(f"[RivaMT] Llama fallback failed: {e}")
-            return text, {"error": str(e)}
+        result = response.translations[0].text.strip()  # type: ignore[union-attr]
+        latency_ms = int((time.monotonic() - start) * 1000)
+        return result, {
+            "engine": "riva-grpc-mt",
+            "model": "nvidia/riva-translate-4b",
+            "latency_ms": latency_ms,
+            "input_tokens": len(text),
+            "output_tokens": len(result),
+        }

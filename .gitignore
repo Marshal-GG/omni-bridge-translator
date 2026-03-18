@@ -15,6 +15,9 @@ migrate_working_dir/
 # Claude Code
 .claude/
 
+# Debug audio captures
+server/logs/debug_audio/
+
 # IDEs
 *.iml
 *.ipr

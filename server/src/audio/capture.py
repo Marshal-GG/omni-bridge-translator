@@ -39,10 +39,14 @@ def resample_audio(audio_data, orig_sr, target_sr=16000):
 class AudioCapture:
     def __init__(self, sample_rate=16000, chunk_duration=3, use_mic=False,
                  input_device_index=None, output_device_index=None,
-                 desktop_volume=1.0, mic_volume=1.0):
+                 desktop_volume=1.0, mic_volume=1.0,
+                 first_chunk_duration=None):
         self.sample_rate = sample_rate
         self.chunk_duration = chunk_duration
         self.frames_per_chunk = self.sample_rate * self.chunk_duration
+        if first_chunk_duration is None:
+            first_chunk_duration = chunk_duration
+        self.first_chunk_duration = max(0.5, min(float(first_chunk_duration), float(chunk_duration)))
         self.use_mic = use_mic
         self.input_device_index = input_device_index
         self.output_device_index = output_device_index
@@ -247,14 +251,17 @@ class AudioCapture:
         SILENCE_DURATION  = 0.9      # Increased from 0.5s to capture natural pauses
         MIN_SPEECH_DURATION = 1.5    # Increased from 1.0s to provide more ASR context
         MAX_CHUNK_DURATION  = self.chunk_duration
+        FIRST_CHUNK_DURATION = self.first_chunk_duration
 
         silence_frames_needed = int(native_rate * SILENCE_DURATION)
         min_speech_frames     = int(native_rate * MIN_SPEECH_DURATION)
         max_chunk_frames      = int(native_rate * MAX_CHUNK_DURATION)
+        first_chunk_frames    = int(native_rate * FIRST_CHUNK_DURATION)
 
         speech_buffer   = []
         silence_counter = 0
         in_speech       = False
+        first_chunk_pending = True
 
         import time
         while self.is_recording:
@@ -339,9 +346,10 @@ class AudioCapture:
             # Decide whether to flush
             should_flush = False
             buf_len      = len(speech_buffer)
+            current_max_chunk_frames = first_chunk_frames if first_chunk_pending else max_chunk_frames
 
             # 1. Time-based: always flush at max duration (guaranteed captions)
-            if buf_len >= max_chunk_frames:
+            if buf_len >= current_max_chunk_frames:
                 should_flush = True
 
             # 2. VAD-based: flush early when silence follows enough speech
@@ -357,6 +365,12 @@ class AudioCapture:
                     chunk     = np.array(speech_buffer, dtype=np.int16)
                     chunk_16k = resample_audio(chunk, native_rate, self.sample_rate)
                     self.audio_queue.put((chunk_16k, self.sample_rate))
+                    if first_chunk_pending:
+                        logging.info(
+                            "[AudioCapture] First spoken chunk flushed after %.2fs.",
+                            buf_len / native_rate,
+                        )
+                    first_chunk_pending = False
                 
                 # Reset for next chunk regardless of whether we queued or discarded
                 speech_buffer   = []

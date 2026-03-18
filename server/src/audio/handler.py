@@ -80,27 +80,24 @@ def audio_poll_loop(session_id, is_running_func, audio_capture, orchestrator, ge
     """Background thread: polls audio capture queue and feeds to orchestrator."""
     logging.info(f"[audio_poll_loop] Started session {session_id}")
     try:
-        stream_started = False
+        ctx = get_context_func()
+        orchestrator.start_stream(
+            sample_rate=getattr(audio_capture, "sample_rate", 16000),
+            source_lang=ctx["source_lang"],
+            target_lang=ctx["target_lang"],
+            ai_engine=ctx["ai_engine"],
+            transcription_model=ctx["transcription_model"],
+            translation_model=ctx["translation_model"],
+            callback=callback,
+            suspended=ctx["initial_suspension"],
+        )
         while is_running_func() and session_id == get_context_func()["session_id"]:
             if audio_capture is None:
                 time.sleep(0.1)
                 continue
             item = audio_capture.get_audio_chunk()
             if item is not None:
-                chunk, sample_rate = item
-                if not stream_started:
-                    ctx = get_context_func()
-                    orchestrator.start_stream(
-                        sample_rate=sample_rate,
-                        source_lang=ctx["source_lang"],
-                        target_lang=ctx["target_lang"],
-                        ai_engine=ctx["ai_engine"],
-                        transcription_model=ctx["transcription_model"],
-                        translation_model=ctx["translation_model"],
-                        callback=callback,
-                        suspended=ctx["initial_suspension"],
-                    )
-                    stream_started = True
+                chunk, _sample_rate = item
                 orchestrator.append_audio(chunk)
             else:
                 time.sleep(0.01)

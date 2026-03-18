@@ -445,6 +445,35 @@ Widget buildTranslationModelSelector(
           );
         },
       ),
+      if (state.translationCompatibilityError != null) ...[
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.red.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.redAccent, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  state.translationCompatibilityError!,
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+
       if (needsNvidiaKey) ...[
         const SizedBox(height: 16),
         _NvidiaApiKeySection(state: state),

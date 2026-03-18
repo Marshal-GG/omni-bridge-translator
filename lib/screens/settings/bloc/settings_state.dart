@@ -16,6 +16,10 @@ class SettingsState extends Equatable {
   final String defaultInputDeviceName;
   final String defaultOutputDeviceName;
 
+  /// Non-null when the selected translation model does not support the
+  /// chosen source/target language pair. Blocks saving.
+  final String? translationCompatibilityError;
+
   const SettingsState({
     required this.settings,
     required this.currentInputVolume,
@@ -25,6 +29,7 @@ class SettingsState extends Equatable {
     required this.outputDevices,
     required this.defaultInputDeviceName,
     required this.defaultOutputDeviceName,
+    this.translationCompatibilityError,
   });
 
   factory SettingsState.initial() {
@@ -49,6 +54,8 @@ class SettingsState extends Equatable {
     List<Map<String, dynamic>>? outputDevices,
     String? defaultInputDeviceName,
     String? defaultOutputDeviceName,
+    String? translationCompatibilityError,
+    bool clearCompatibilityError = false,
   }) {
     return SettingsState(
       settings: settings ?? this.settings,
@@ -61,6 +68,9 @@ class SettingsState extends Equatable {
           defaultInputDeviceName ?? this.defaultInputDeviceName,
       defaultOutputDeviceName:
           defaultOutputDeviceName ?? this.defaultOutputDeviceName,
+      translationCompatibilityError: clearCompatibilityError
+          ? null
+          : (translationCompatibilityError ?? this.translationCompatibilityError),
     );
   }
 
@@ -74,5 +84,6 @@ class SettingsState extends Equatable {
     outputDevices,
     defaultInputDeviceName,
     defaultOutputDeviceName,
+    translationCompatibilityError,
   ];
 }

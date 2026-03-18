@@ -28,6 +28,7 @@ from src.models.llama_model import LlamaModel
 from src.models.google_model import GoogleModel
 from src.models.google_cloud_model import GoogleCloudModel
 from src.models.mymemory_model import MyMemoryModel
+from src.utils.language_support import LANG_TO_BCP47
 from src.models.speech_recognition_model import SpeechRecognitionModel
 from src.models.whisper_model import WhisperModel, get_gpu_info
 
@@ -35,14 +36,7 @@ from src.models.whisper_model import WhisperModel, get_gpu_info
 _WHISPER_SIZES = {"whisper-tiny", "whisper-base", "whisper-small", "whisper-medium"}
 
 # BCP-47 language codes mapping
-_LANG_MAP = {
-    "en": "en-US", "es": "es-US", "fr": "fr-FR", "de": "de-DE",
-    "zh": "zh-CN", "ja": "ja-JP", "ko": "ko-KR", "ru": "ru-RU",
-    "pt": "pt-BR", "it": "it-IT", "ar": "ar-AR", "hi": "hi-IN",
-    "nl": "nl-NL", "tr": "tr-TR", "vi": "vi-VN", "pl": "pl-PL",
-    "id": "id-ID", "th": "th-TH", "bn": "bn-IN", "he": "he-IL",
-    "da": "da-DK", "cs": "cs-CZ", "sv": "sv-SE",
-}
+_LANG_MAP = LANG_TO_BCP47
 
 # The RPM limit for NVIDIA NIM models (not used, kept for reference if needed but logic removed)
 _debug_chunk_count = 0
@@ -225,14 +219,15 @@ class InferenceOrchestrator:
         # Riva Parakeet offline endpoint does NOT support language_code=multi.
         # Use en-US for auto-detect (Parakeet handles multilingual internally).
         # Other ASR models (Whisper, Google SR) can use "multi"/"auto" freely.
-        if self._transcription_model == "riva":
-            # Riva Parakeet supports 'multi' for auto-detection.
-            asr_lang = "multi" if use_auto else _LANG_MAP.get(self._source_lang, "en-US")
-        else:
-            asr_lang = "multi" if use_auto else _LANG_MAP.get(self._source_lang, "en-US")
+        asr_lang = "multi" if use_auto else _LANG_MAP.get(self._source_lang, "en-US")
         
         config = self.riva.make_asr_config(self._sample_rate, asr_lang) if self._transcription_model == "riva" else None
         _debug_chunk_count = 0
+
+        _last_transcript: Optional[str] = None
+        _last_transcript_time: float = 0.0
+        _DEDUP_WINDOW_S = 6.0   # Suppress identical transcript within this window
+        _ASR_RMS_THRESHOLD = 120  # Drop near-silent chunks to prevent hallucinations
 
         while self.is_running:
             try:
@@ -240,39 +235,51 @@ class InferenceOrchestrator:
                 if chunk is None: break
 
                 start_time = time.monotonic()
-                
+
                 chunk_rms = int(np.sqrt(np.mean(chunk.astype(np.float32) ** 2)))
-                # Removed aggressive silence dropping (RMS < 50) to preserve context.
-                # VAD in capture.py now handles silence detection more gracefully.
-                
+
+                # Drop near-silent chunks — prevents ASR models (especially Riva)
+                # from hallucinating filler text on silence/noise.
+                if chunk_rms < _ASR_RMS_THRESHOLD:
+                    continue
+
                 # DEBUG: save raw chunks in sequence so quality can be verified
                 if _debug_chunk_count < 100:  # Allow more chunks for better debugging
                     import wave
-                    # Save in server/debug_audio as requested
-                    debug_dir = os.path.join(os.path.dirname(__file__), "..", "..", "debug_audio")
+                    debug_dir = os.path.join(os.path.dirname(__file__), "..", "..", "logs", "debug_audio")
                     os.makedirs(debug_dir, exist_ok=True)
-                    
+
                     # Filename with sequence number, RMS, and model
                     wav_name = f"seq{_debug_chunk_count:03d}_rms{chunk_rms}_{self._transcription_model}.wav"
                     wav_path = os.path.join(debug_dir, wav_name)
-                    
+
                     with wave.open(wav_path, "wb") as wf:
                         wf.setnchannels(1)
                         wf.setsampwidth(2)
                         wf.setframerate(self._sample_rate)
                         wf.writeframes(chunk.tobytes())
                     _debug_chunk_count += 1
-                
+
                 transcript, asr_stats = self._perform_asr(chunk, config, asr_lang)
 
-                if not transcript:
-                    pass
-
                 if transcript:
+                    cleaned = self._clean_stutters(transcript)
+                    now = time.monotonic()
+
+                    # Suppress identical transcripts within the cooldown window.
+                    # Hallucination loops repeat the same string every ~3 s indefinitely;
+                    # real speech moves on. Someone genuinely saying the same word twice
+                    # will get through once the 6 s window expires.
+                    if cleaned == _last_transcript and (now - _last_transcript_time) < _DEDUP_WINDOW_S:
+                        logging.debug(f"[ASRWorker] Duplicate within window suppressed: {cleaned!r}")
+                        continue
+                    _last_transcript = cleaned
+                    _last_transcript_time = now
+
                     latency = int((time.monotonic() - start_time) * 1000)
-                    
+
                     self._translation_queue.put({
-                        "text": self._clean_stutters(transcript),
+                        "text": cleaned,
                         "asr_stats": asr_stats,
                         "created_at": time.time()
                     })
@@ -318,11 +325,13 @@ class InferenceOrchestrator:
                     detected_hint = asr_stats.get("detected_lang") if asr_stats else None
                     translated, trans_stats = self._dispatch_translation(text, detected_hint)
                     latency = int((time.monotonic() - start_time) * 1000)
-                    
+
+                    if translated is None:
+                        continue  # Both engines failed — drop silently, don't broadcast
+
                     if trans_stats:
                         trans_stats["queue_dwell_ms"] = dwell_time
 
-                    
                     stats = [s for s in [asr_stats, trans_stats] if s]
                     if self._callback:
                         self._callback(translated, False, is_final=True, original_text=text, usage_stats=stats)
@@ -336,7 +345,7 @@ class InferenceOrchestrator:
                 logging.error(f"[TranslationWorker] Error: {e}")
                 self._emit_error(f"Translation Failure: {e}")
 
-    def _dispatch_translation(self, text: str, source_hint: Optional[str] = None) -> Tuple[str, Dict]:
+    def _dispatch_translation(self, text: str, source_hint: Optional[str] = None) -> Tuple[Optional[str], Optional[Dict]]:
         """Routes translation to the correct engine with built-in fallbacks."""
         source, target = self._source_lang, self._target_lang
         model = self._translation_model
@@ -353,7 +362,7 @@ class InferenceOrchestrator:
         if (self._source_lang == "auto") and not source_hint:
             script_lang = self._detect_lang_from_script(text)
             if script_lang and script_lang != source:
-                source = "auto"
+                source = script_lang
 
         if model == "mymemory":
             res, stats = self.mymemory.translate(text, source, target)
@@ -361,14 +370,22 @@ class InferenceOrchestrator:
             return self._google_fallback(text, source, target, "mymemory")
 
         if model == "llama":
-            return self.llama.translate(text, target)
+            try:
+                return self.llama.translate(text, target)
+            except Exception as e:
+                logging.warning(f"[Dispatch] Llama translate failed ({e}). Dropping caption.")
+                return None, None
 
         if model == "riva":
+            if source != "auto" and not self.riva.supports_translation_pair(source, target):
+                logging.info(
+                    f"[Dispatch] Skipping Riva translate for unsupported pair {source}->{target}; using Llama directly."
+                )
+                return self._llama_fallback(text, "riva")
             try: return self.riva.translate(text, source, target)
-            except Exception:
-                res, stats = self.llama.translate(text, target)
-                stats["fallback_from"] = "riva"
-                return res, stats
+            except Exception as e:
+                logging.warning(f"[Dispatch] Riva translate failed ({e}), falling back to Llama.")
+            return self._llama_fallback(text, "riva")
 
         if model == "google_api":
             res, stats = self.google_api.translate(text, source, target)
@@ -386,6 +403,15 @@ class InferenceOrchestrator:
         res, stats = self.google.translate(text, source, target)
         stats["fallback_from"] = original_engine
         return res or text, stats
+
+    def _llama_fallback(self, text: str, original_engine: str) -> Tuple[Optional[str], Optional[Dict]]:
+        try:
+            res, stats = self.llama.translate(text, self._target_lang)
+            stats["fallback_from"] = original_engine
+            return res, stats
+        except Exception as e:
+            logging.warning(f"[Dispatch] Llama fallback also failed ({e}). Dropping caption.")
+            return None, None
 
     # ── Status & Utilities ───────────────────────────────────────────────────
 
@@ -496,5 +522,3 @@ class InferenceOrchestrator:
         if counts[best_lang] > 0:
             return best_lang
         return None
-
-

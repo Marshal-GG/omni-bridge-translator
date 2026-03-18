@@ -62,6 +62,8 @@ class LlamaModel:
         Translate *text* to *target_lang* using Llama 3.1 8B.
         Returns (translated_text, usage_stats).
         """
+        if not self.client:
+            raise RuntimeError("Llama client not initialized (missing API key).")
         start = time.monotonic()
         try:
             completion = self.client.chat.completions.create(
@@ -70,9 +72,10 @@ class LlamaModel:
                     {
                         "role": "system",
                         "content": (
-                            f"You are a professional translator. Translate the following text into clear, natural {target_lang}. "
-                            "Output ONLY the translated text. Do NOT include any explanations, labels, notes, or original text. "
-                            "If you cannot translate it, return the original text as-is."
+                            f"You are a live speech translator. Translate the following spoken text into {target_lang}. "
+                            "The input may be a partial sentence, mid-thought, or contain mixed scripts — translate it anyway. "
+                            f"NEVER transliterate. NEVER skip. ALWAYS output the {target_lang} translation and nothing else. "
+                            "No explanations, no labels, no original text."
                         ),
                     },
                     {"role": "user", "content": text},
@@ -103,11 +106,4 @@ class LlamaModel:
         except Exception as e:
             import logging
             logging.error(f"Llama translation error: {e}")
-            latency_ms = int((time.monotonic() - start) * 1000)
-            return text, {
-                "engine": "llama-translate",
-                "model": self.MODEL_ID,
-                "latency_ms": latency_ms,
-                "error": str(e),
-                "input_tokens": len(text),
-            }
+            raise
