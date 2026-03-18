@@ -93,8 +93,10 @@ class SpeechRecognitionModel:
             # No speech detected — not an error
             return None, None
         except sr.RequestError as e:
-            print(f"[SpeechRecognition] Google API error: {e}")
+            import logging
+            logging.error(f"[SpeechRecognition] Google API error: {e}")
             return None, None
         except Exception as e:
-            print(f"[SpeechRecognition] Unexpected error: {e}")
+            import logging
+            logging.error(f"[SpeechRecognition] Unexpected error: {e}")
             return None, None

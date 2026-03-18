@@ -64,6 +64,12 @@ class BaseHandler:
 class SessionHandler(BaseHandler):
     async def start(self, websocket, msg: Dict[str, Any]):
         # Update config from message
+        # Map client keys (source, target) to internal config keys (source_lang, target_lang)
+        if "source" in msg:
+            self.ctx.config["source_lang"] = msg["source"]
+        if "target" in msg:
+            self.ctx.config["target_lang"] = msg["target"]
+
         for key in self.ctx.config:
             if key in msg:
                 self.ctx.config[key] = msg[key]
@@ -100,15 +106,20 @@ class SessionHandler(BaseHandler):
             else:
                 self.ctx.orchestrator.set_api_keys(self.ctx.config["api_key"], self.ctx.config["google_json_path"])
 
-            # Determine chunk duration
-            _keyed_count = (
-                (1 if self.ctx.config["transcription_model"] == "riva" else 0) +
-                (1 if self.ctx.config["translation_model"] in ("riva", "llama") else 0)
-            )
+            is_nim_asr = self.ctx.config["transcription_model"] == "riva"
+            is_nim_trans = self.ctx.config["translation_model"] in ("riva", "llama")
+            num_nim = (1 if is_nim_asr else 0) + (1 if is_nim_trans else 0)
+
             if self.ctx.config["transcription_model"] == "online":
                 _chunk_dur = 3.2
+            elif num_nim == 2:
+                # Both ASR and Translation are NIM - use 3.0s to stay under 40 RPM total
+                _chunk_dur = 3.0
             else:
-                _chunk_dur = {0: 1.5, 1: 1.5, 2: 3.0}.get(_keyed_count, 1.5)
+                # 1 NIM or local models - 1.5s is safe (40 RPM) and very responsive
+                _chunk_dur = 1.5
+            
+            logging.info(f"[Handler] Calculated chunk_duration: {_chunk_dur}s (NIM models: {num_nim})")
 
             self.ctx.audio_capture = AudioCapture(
                 sample_rate=16000,
@@ -120,12 +131,16 @@ class SessionHandler(BaseHandler):
                 mic_volume=self.ctx.config["mic_volume"],
             )
 
+
             self.ctx.is_running = True
             self.ctx.audio_capture.start()
 
+            # Capture the running loop to pass to background threads
+            loop = asyncio.get_running_loop()
+
             def wrap_callback(*args, **kwargs):
                 caption_callback(*args, **kwargs, 
-                                 event_loop=asyncio.get_running_loop(), 
+                                 event_loop=loop, 
                                  manager=self.ctx.manager, 
                                  session_id=self.ctx.session_id,
                                  source_lang=self.ctx.config["source_lang"],
@@ -214,7 +229,8 @@ class ConfigHandler(BaseHandler):
             self.ctx.audio_capture.mic_volume = max(0.0, self.ctx.config["mic_volume"])
 
 class DeviceHandler(BaseHandler):
-    async def list_devices(self, websocket, msg: Dict[str, Any]):
+    async def get_device_list(self):
+        """Returns the list of input and output devices."""
         import pyaudiowpatch as pyaudio
         inputs, outputs = [], []
         async with self.ctx.pyaudio_lock:
@@ -228,8 +244,7 @@ class DeviceHandler(BaseHandler):
                         break
 
                 if wasapi_index == -1:
-                    await websocket.send_text(json.dumps({"type": "devices", "error": "WASAPI not found"}))
-                    return
+                    return {"error": "WASAPI not found"}
 
                 for i in range(p.get_device_count()):
                     info = p.get_device_info_by_index(i)
@@ -243,10 +258,48 @@ class DeviceHandler(BaseHandler):
                     if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name: continue
                     outputs.append({"index": loopback["index"], "name": name.replace(" [Loopback]", "").strip()})
 
-                await websocket.send_text(json.dumps({
-                    "type": "devices",
+                return {
                     "input": inputs,
                     "output": outputs
-                }))
+                }
             except Exception as e:
                 logging.error(f"[Handler] Device listing error: {e}")
+                return {"error": str(e)}
+
+    async def list_devices(self, websocket, msg: Dict[str, Any]):
+        devices = await self.get_device_list()
+        await websocket.send_text(json.dumps({
+            "type": "devices",
+            **devices
+        }))
+
+class StatusHandler(BaseHandler):
+    async def get_system_status(self):
+        """Basic health check and session info."""
+        return {
+            "status": "online",
+            "session_id": self.ctx.session_id,
+            "is_running": self.ctx.is_running,
+            "active_clients": len(self.ctx.manager.active_connections)
+        }
+
+    async def get_model_status(self):
+        """Physical model health and capabilities."""
+        # Lazy init orchestrator if needed for health check
+        if not self.ctx.orchestrator:
+            self.ctx.orchestrator = InferenceOrchestrator(
+                nvidia_api_key=self.ctx.config["api_key"],
+                google_json_path=self.ctx.config["google_json_path"]
+            )
+        
+        return {
+            "type": "models_status",
+            "models": self.ctx.orchestrator.get_all_statuses()
+        }
+
+    async def whisper_unload(self):
+        """Unload Whisper model from memory."""
+        if self.ctx.orchestrator:
+            self.ctx.orchestrator.whisper_unload()
+            return {"status": "unloaded"}
+        return {"status": "no_orchestrator"}

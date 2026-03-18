@@ -143,7 +143,8 @@ class AudioMeter:
             stream.close()
 
         except Exception as e:
-            print(f"[AudioMeter] {'input' if is_input else 'output'} error: {e}")
+            import logging
+            logging.error(f"[AudioMeter] {'input' if is_input else 'output'} error: {e}")
         finally:
             if is_input:
                 self._input_level = 0.0
@@ -214,5 +215,6 @@ class AudioMeter:
                     return lb
                 return None
         except Exception as e:
-            print(f"[AudioMeter] resolve_device error: {e}")
+            import logging
+            logging.error(f"[AudioMeter] resolve_device error: {e}")
             return None

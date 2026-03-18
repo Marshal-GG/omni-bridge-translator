@@ -16,6 +16,17 @@ dependencies = [
     "deep-translator>=1.11.0",
     "speechrecognition>=3.10.0",
     "psutil>=5.9.0",
+    "sounddevice",
+    "numpy",
+    "requests",
+    "httpx",
+    "python-multipart",
+    "PyAudio",
+    "nvidia-riva-client",
+    "openai-whisper",
+    "resampy",
+    "pyarmor",
+    "google-cloud-translate",
 ]
 
 [build-system]

@@ -61,6 +61,7 @@ env/
 .pytest_cache/
 *.spec
 !server/omni_bridge_server.spec
+*.egg-info/
 dist/
 dist_obfuscated/
 build/

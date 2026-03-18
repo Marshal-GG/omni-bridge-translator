@@ -61,7 +61,8 @@ class GoogleModel:
             }
             return (result if result else None), stats
         except Exception as e:
-            print(f"Google Translate error: {e}")
+            import logging
+            logging.error(f"Google Translate error: {e}")
             latency_ms = int((time.monotonic() - start) * 1000)
             return None, {
                 "engine": "google-translate",

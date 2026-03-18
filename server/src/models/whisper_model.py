@@ -6,6 +6,7 @@ Each size is downloaded/cached independently to ~/.cache/whisper/
 
 import os
 import threading
+import logging
 from typing import Literal, Any
 
 import numpy as np
@@ -136,7 +137,7 @@ def delete_model(size: str = "base") -> bool:
             _state[size]["progress"] = 0.0
         return True
     except Exception as e:
-        print(f"[WhisperModel] Delete failed ({size}): {e}")
+        logging.error(f"[WhisperModel] Delete failed ({size}): {e}")
         return False
 
 
@@ -166,10 +167,10 @@ def _do_download(size: str):
         with _state_lock:
             _state[size]["status"] = "done"
             _state[size]["progress"] = 100.0
-        print(f"[WhisperModel] Download complete: {size}")
+        logging.info(f"[WhisperModel] Download complete: {size}")
 
     except Exception as e:
-        print(f"[WhisperModel] Download failed ({size}): {e}")
+        logging.error(f"[WhisperModel] Download failed ({size}): {e}")
         if os.path.exists(tmp_path):
             try:
                 os.remove(tmp_path)
@@ -201,8 +202,9 @@ class WhisperModel:
             self._size = size
             # Note: We no longer need to nullify self._model here as we use global cache
 
-    def is_downloaded(self) -> bool:
-        return os.path.exists(_model_file(self._size))
+    def is_downloaded(self, size: str = None) -> bool:
+        target_size = size if size else self._size
+        return os.path.exists(_model_file(target_size))
 
     def _ensure_loaded(self):
         # 1. Quick check without lock
@@ -216,7 +218,6 @@ class WhisperModel:
 
             import whisper
             import torch
-            import logging
             device = "cuda" if torch.cuda.is_available() else "cpu"
             logging.info(f"[WhisperModel] Loading {self._size} model into memory using {device}...")
             self._is_loading = True
@@ -232,7 +233,6 @@ class WhisperModel:
 
     def unload_model(self):
         """Unload the model from the global cache and clear resources."""
-        import logging
         with _GLOBAL_LOAD_LOCK:
             if self._size in _MODEL_CACHE:
                 logging.info(f"[WhisperModel] Unloading {self._size} model from memory...")
@@ -317,7 +317,7 @@ class WhisperModel:
             from typing import Any
             cache_entry = _MODEL_CACHE.get(self._size)
             if cache_entry is None:
-                print(f"[WhisperModel] Model not loaded for {self._size}")
+                logging.warning(f"[WhisperModel] Model not loaded for {self._size}")
                 return None, None
             
             model = cache_entry["model"]
@@ -344,7 +344,5 @@ class WhisperModel:
                 }
             return transcript, stats
         except Exception:
-            import traceback
-            traceback.print_exc()
-            print(f"[WhisperModel] Transcribe error ({self._size})")
+            logging.error(f"[WhisperModel] Transcribe error ({self._size})", exc_info=True)
             return None, None

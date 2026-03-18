@@ -10,12 +10,15 @@ To prevent "Session Bleed" (where logging into one version affects the other), w
 
 ### A. Persistent Storage & Folder Isolation
 **Location**: `windows/runner/Runner.rc`
-**Mechanism**: Windows determines the storage paths for `shared_preferences`, localized databases, and Firebase caches based on the `ProductName` field in the application resources.
+**Mechanism**: Windows determines the storage paths for localized databases and Firebase caches based on the `ProductName` field.
 - **Release Name**: `Omni Bridge: Live AI Translator`
 - **Debug Name**: `Omni Bridge: Live AI Translator (Debug)`
 - **Path Separation**:
   - Release Data: `%LOCALAPPDATA%\Marshal-GG\Omni Bridge_ Live AI Translator`
   - Debug Data: `%LOCALAPPDATA%\Marshal-GG\Omni Bridge_ Live AI Translator (Debug)`
+
+> [!NOTE]
+> **Secure Storage**: Sensitive session identifiers are stored using `flutter_secure_storage`, which uses the Windows DPAPI for encryption at rest. This replaces the legacy insecure `shared_preferences` implementation.
 
 ### B. Windows Application Identity (AUMID)
 **Location**: `windows/runner/main.cpp`
@@ -77,7 +80,7 @@ The core logic performs several "deep cleans" that standard uninstallers might m
     - **Auth Tokens**: Clears `%LOCALAPPDATA%\google-services-desktop-auth`
     - **Firestore Cache**: Clears `%LOCALAPPDATA%\firestore`
     - **Telemetry**: Clears `%LOCALAPPDATA%\firebase-heartbeat`
-4.  **Registry Purge**: Deletes `HKCU\Software\Marshal-GG\omni_bridge` which stores window state and some persistent settings.
+4.  **Legacy Registry Purge**: Deletes the `HKCU\Software\Marshal` and `HKCU\Software\omni_bridge` keys. This ensures that any legacy insecure `shared_preferences` data (like old session IDs or the `has_seen_onboarding` flag) is completely purged from the system.
 
 ### How to Use the Utility
 1.  **Run `scripts/clear_app_data.cmd`**: This is a simple batch wrapper that handles the PowerShell execution policy.

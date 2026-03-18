@@ -58,7 +58,8 @@ class MyMemoryModel:
             }
 
         except Exception as e:
-            print(f"[MyMemory] Translation error: {e}")
+            import logging
+            logging.error(f"[MyMemory] Translation error: {e}")
             latency_ms = int((time.monotonic() - start) * 1000)
             return None, {
                 "engine": "mymemory-translate",

@@ -11,30 +11,46 @@ except ImportError:
 
 import structlog
 
-def setup_logging(log_file: str):
+def setup_logging(log_file: str, level: int = logging.INFO):
     """Configures structured logging with structlog."""
     structlog.configure(
         processors=[
-            structlog.contextvars.merge_contextvars,
-            structlog.processors.add_log_level,
+            structlog.stdlib.filter_by_level,
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.add_logger_name,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S"),
             structlog.processors.StackInfoRenderer(),
-            structlog.dev.set_exc_info,
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.JSONRenderer()
+            structlog.processors.format_exc_info,
+            structlog.dev.ConsoleRenderer()
         ],
-        logger_factory=structlog.PrintLoggerFactory(),
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
         cache_logger_on_first_use=True,
     )
     
-    # Also configure standard logging to pipe into file
+    # Also configure standard logging to pipe into file with logger name included
     logging.basicConfig(
-        level=logging.INFO,
-        format="%(message)s",
+        level=level,
+        format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
         handlers=[
             logging.FileHandler(log_file, encoding="utf-8"),
             logging.StreamHandler(sys.stdout)
         ]
     )
+    
+    # Silence noisy third-party logs
+    silence_list = [
+        "urllib3", "requests", "httpx", "httpcore", "openai", "h2", "h11",
+        "openai._base_client", "anyio"
+    ]
+    for logger_name in silence_list:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
+    
+    logging.getLogger("uvicorn").setLevel(logging.INFO)
+    logging.getLogger("fastapi").setLevel(logging.INFO)
+
     return structlog.get_logger()
 
 def detect_google_json():

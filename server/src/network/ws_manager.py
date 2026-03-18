@@ -1,5 +1,6 @@
 import json
-from typing import Set
+import logging
+from typing import Set, Any
 from fastapi import WebSocket
 
 class ConnectionManager:
@@ -15,15 +16,47 @@ class ConnectionManager:
 
     async def broadcast(self, message: dict):
         """Send a JSON message to all connected Flutter clients."""
+        active_count = len(self.active_connections)
+        
+        # Aggressive debugging to console since logs might be filtered
+        if message.get("type") == "caption":
+            print(f"[WS DEBUG] Attempting broadcast to {active_count} clients: {message.get('text')[:30]}...")
+
         if not self.active_connections:
             return
+
+        # Sanitize message to ensure it's JSON serializable (handles gRPC objects, numpy, etc.)
+        try:
+            json_str = json.dumps(message, default=self._json_default)
+        except Exception as e:
+            print(f"[WS DEBUG] CRITICAL: Serialization failed even with custom encoder: {e}")
+            # Fallback: convert everything to string to at least send something
+            try:
+                json_str = json.dumps(message, default=str)
+            except:
+                return
+
         dead = set()
         for ws in list(self.active_connections):
             try:
-                await ws.send_text(json.dumps(message))
-            except Exception:
+                await ws.send_text(json_str)
+            except Exception as e:
+                # Only print error if it's not a normal disconnection
+                if "1001" not in str(e) and "1006" not in str(e):
+                    print(f"[WS DEBUG] Error sending to clients: {e}")
                 dead.add(ws)
         self.active_connections.difference_update(dead)
+
+    def _json_default(self, obj: Any) -> Any:
+        """Handle non-standard types like gRPC RepeatedScalarContainer or numpy arrays."""
+        if hasattr(obj, "tolist"): # numpy
+            return obj.tolist()
+        if hasattr(obj, "__iter__") and not isinstance(obj, (str, dict)):
+            return list(obj)
+        try:
+            return str(obj)
+        except:
+            return f"<unserializable {type(obj).__name__}>"
 
     async def broadcast_status(self, orchestrator):
         """Broadcast the current status of all models to all connected clients."""

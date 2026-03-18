@@ -28,8 +28,6 @@ class GoogleCloudModel:
         if not self.json_path:
             return
 
-        import traceback
-        logging.info(f"[GoogleCloudModel] Initialization triggered by:\n{''.join(traceback.format_stack()[-5:])}")
 
         try:
             full_path = self.json_path
@@ -121,7 +119,11 @@ class GoogleCloudModel:
             
             result = response.translations[0].translated_text
             latency_ms = int((time.monotonic() - start) * 1000)
-            logging.info(f"[GoogleAPI v3_grpc] Text: '{text[:20]}...' | Total: {latency_ms}ms | Chars: {len(text)}")
+            
+            # Extract detected language if source was auto
+            detected = response.translations[0].detected_language_code if not src else src
+            # Ensure it's a string (convert from gRPC object if needed)
+            detected = str(detected) if detected else ""
 
             return result, {
                 "engine": "google-cloud-v3-grpc",

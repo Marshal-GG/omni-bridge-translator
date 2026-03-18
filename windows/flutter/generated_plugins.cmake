@@ -10,6 +10,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   firebase_auth
   firebase_core
   flutter_acrylic
+  flutter_secure_storage_windows
   protocol_handler_windows
   screen_retriever_windows
   system_tray

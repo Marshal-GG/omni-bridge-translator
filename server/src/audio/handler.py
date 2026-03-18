@@ -22,6 +22,7 @@ def caption_callback(text, is_error, is_final=True, original_text=None, usage_st
         "is_final": is_final,
         "session_id": session_id,
     }
+    logging.info(f"[caption_callback] Text: '{text[:50]}...', session: {session_id}, manager: {manager is not None}")
     if event_loop and not event_loop.is_closed() and manager:
         asyncio.run_coroutine_threadsafe(manager.broadcast(msg), event_loop)
         # Emit usage stats as a separate message so Flutter can log them independently

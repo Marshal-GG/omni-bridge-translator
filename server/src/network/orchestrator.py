@@ -14,11 +14,13 @@ This module coordinates:
 
 import queue
 import os
+import re
 import threading
 import logging
 import time
 import structlog
 import pysbd
+import numpy as np
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from src.models.riva_model import RivaModel
@@ -38,27 +40,14 @@ _LANG_MAP = {
     "zh": "zh-CN", "ja": "ja-JP", "ko": "ko-KR", "ru": "ru-RU",
     "pt": "pt-BR", "it": "it-IT", "ar": "ar-AR", "hi": "hi-IN",
     "nl": "nl-NL", "tr": "tr-TR", "vi": "vi-VN", "pl": "pl-PL",
-    "id": "id-ID", "th": "th-TH", "bn": "bn-IN",
+    "id": "id-ID", "th": "th-TH", "bn": "bn-IN", "he": "he-IL",
+    "da": "da-DK", "cs": "cs-CZ", "sv": "sv-SE",
 }
 
-class RateLimiter:
-    """Manages NVIDIA NIM RPM limits (default 40)."""
-    def __init__(self, rpm: int = 40):
-        self.rpm = rpm
-        self.history = []
-        self.lock = threading.Lock()
+# The RPM limit for NVIDIA NIM models (not used, kept for reference if needed but logic removed)
+_debug_chunk_count = 0
 
-    def wait_if_needed(self):
-        with self.lock:
-            now = time.monotonic()
-            # Cleanup old history
-            self.history = [t for t in self.history if now - t < 60]
-            if len(self.history) >= self.rpm:
-                # Wait for the oldest to expire
-                sleep_time = 60 - (now - self.history[0])
-                if sleep_time > 0:
-                    time.sleep(sleep_time)
-            self.history.append(time.monotonic())
+
 
 class InferenceOrchestrator:
     """
@@ -79,7 +68,6 @@ class InferenceOrchestrator:
         self.google_json_path = google_json_path
         
         self.logger = structlog.get_logger()
-        self.rate_limiter = RateLimiter(rpm=40)
         self.seg = pysbd.Segmenter(language="en", clean=False)
 
         self.is_running = False
@@ -231,11 +219,20 @@ class InferenceOrchestrator:
 
     def _asr_worker(self):
         """Processes audio chunks into text transcripts."""
+        global _debug_chunk_count
         use_auto = self._source_lang == "auto"
-        asr_lang = "multi" if use_auto else _LANG_MAP.get(self._source_lang, "en-US")
-        fell_back = False
+        
+        # Riva Parakeet offline endpoint does NOT support language_code=multi.
+        # Use en-US for auto-detect (Parakeet handles multilingual internally).
+        # Other ASR models (Whisper, Google SR) can use "multi"/"auto" freely.
+        if self._transcription_model == "riva":
+            # Riva Parakeet supports 'multi' for auto-detection.
+            asr_lang = "multi" if use_auto else _LANG_MAP.get(self._source_lang, "en-US")
+        else:
+            asr_lang = "multi" if use_auto else _LANG_MAP.get(self._source_lang, "en-US")
         
         config = self.riva.make_asr_config(self._sample_rate, asr_lang) if self._transcription_model == "riva" else None
+        _debug_chunk_count = 0
 
         while self.is_running:
             try:
@@ -243,23 +240,36 @@ class InferenceOrchestrator:
                 if chunk is None: break
 
                 start_time = time.monotonic()
+                
+                chunk_rms = int(np.sqrt(np.mean(chunk.astype(np.float32) ** 2)))
+                # Removed aggressive silence dropping (RMS < 50) to preserve context.
+                # VAD in capture.py now handles silence detection more gracefully.
+                
+                # DEBUG: save raw chunks in sequence so quality can be verified
+                if _debug_chunk_count < 100:  # Allow more chunks for better debugging
+                    import wave
+                    # Save in server/debug_audio as requested
+                    debug_dir = os.path.join(os.path.dirname(__file__), "..", "..", "debug_audio")
+                    os.makedirs(debug_dir, exist_ok=True)
+                    
+                    # Filename with sequence number, RMS, and model
+                    wav_name = f"seq{_debug_chunk_count:03d}_rms{chunk_rms}_{self._transcription_model}.wav"
+                    wav_path = os.path.join(debug_dir, wav_name)
+                    
+                    with wave.open(wav_path, "wb") as wf:
+                        wf.setnchannels(1)
+                        wf.setsampwidth(2)
+                        wf.setframerate(self._sample_rate)
+                        wf.writeframes(chunk.tobytes())
+                    _debug_chunk_count += 1
+                
                 transcript, asr_stats = self._perform_asr(chunk, config, asr_lang)
 
-                # Fallback for Riva Auto mode
-                if not transcript and self._transcription_model == "riva" and use_auto and not fell_back:
-                    asr_lang = "en-US"
-                    config = self.riva.make_asr_config(self._sample_rate, asr_lang)
-                    fell_back = True
-                    if self._callback: self._callback("__source_lang_override__:en", False, is_final=False)
-                    transcript, asr_stats = self.riva.transcribe(chunk.tobytes(), config)
+                if not transcript:
+                    pass
 
                 if transcript:
-                    # Rate limiting for Riva/Llama
-                    if self._transcription_model == "riva":
-                        self.rate_limiter.wait_if_needed()
-
                     latency = int((time.monotonic() - start_time) * 1000)
-                    self.logger.info("asr_complete", latency_ms=latency, model=self._transcription_model, text=transcript[:50])
                     
                     self._translation_queue.put({
                         "text": self._clean_stutters(transcript),
@@ -267,6 +277,8 @@ class InferenceOrchestrator:
                         "created_at": time.time()
                     })
 
+            except queue.Empty:
+                continue
             except Exception as e:
                 logging.error(f"[ASRWorker] Error: {e}")
                 self._emit_error(f"ASR Failure: {e}")
@@ -286,8 +298,9 @@ class InferenceOrchestrator:
             # Default: Google Online
             return self.speech_recognition.transcribe(chunk.tobytes(), self._sample_rate, self._source_lang)
         except Exception as e:
+            # Log error but don't re-raise, return None to keep thread alive/allow fallback
             self._log_asr_error(e, asr_lang)
-            raise e
+            return None, None
 
     def _translation_worker(self):
         """Processes transcripts into translations."""
@@ -296,31 +309,19 @@ class InferenceOrchestrator:
                 item = self._translation_queue.get(timeout=1.0)
                 if item is None: break
                 
-                # Coalesce: Skip stale items if queue is building up
-                while not self._translation_queue.empty():
-                    next_item = self._translation_queue.get_nowait()
-                    if next_item is None:
-                        self._translation_queue.put(None)
-                        break
-                    item = next_item
-                
                 dwell_time = int((time.time() - item["created_at"]) * 1000)
                 text = item["text"]
                 asr_stats = item["asr_stats"]
 
                 if self._target_lang and self._target_lang != "none":
-                    # Rate limiting for Riva/Llama translation
-                    if self._translation_model in ("riva", "llama"):
-                        self.rate_limiter.wait_if_needed()
-
                     start_time = time.monotonic()
-                    translated, trans_stats = self._dispatch_translation(text)
+                    detected_hint = asr_stats.get("detected_lang") if asr_stats else None
+                    translated, trans_stats = self._dispatch_translation(text, detected_hint)
                     latency = int((time.monotonic() - start_time) * 1000)
                     
                     if trans_stats:
                         trans_stats["queue_dwell_ms"] = dwell_time
 
-                    logging.info(f"[Translation] {latency}ms | Dwell: {dwell_time}ms | {self._translation_model}")
                     
                     stats = [s for s in [asr_stats, trans_stats] if s]
                     if self._callback:
@@ -329,14 +330,30 @@ class InferenceOrchestrator:
                     if self._callback:
                         self._callback(text, False, is_final=True, original_text=text, usage_stats=[asr_stats] if asr_stats else None)
 
+            except queue.Empty:
+                continue
             except Exception as e:
                 logging.error(f"[TranslationWorker] Error: {e}")
                 self._emit_error(f"Translation Failure: {e}")
 
-    def _dispatch_translation(self, text: str) -> Tuple[str, Dict]:
+    def _dispatch_translation(self, text: str, source_hint: Optional[str] = None) -> Tuple[str, Dict]:
         """Routes translation to the correct engine with built-in fallbacks."""
         source, target = self._source_lang, self._target_lang
         model = self._translation_model
+
+        # Only use ASR detected language as a hint if the user has selected "auto".
+        # This prevents accidental language switching when a specific language is set.
+        if (self._source_lang == "auto") and source_hint and source_hint != "multi":
+            actual_hint = source_hint.split("-")[0] if "-" in source_hint else source_hint
+            if actual_hint != source:
+                source = actual_hint
+        # 2. Script-based check (only if auto is enabling or as a safety valve)
+        # However, to avoid the "link" -> "Bengali" issue, we only override if the user 
+        # explicitly wants auto-detection.
+        if (self._source_lang == "auto") and not source_hint:
+            script_lang = self._detect_lang_from_script(text)
+            if script_lang and script_lang != source:
+                source = "auto"
 
         if model == "mymemory":
             res, stats = self.mymemory.translate(text, source, target)
@@ -448,3 +465,36 @@ class InferenceOrchestrator:
                 continue
             cleaned.append(w)
         return " ".join(cleaned)
+
+    def _detect_lang_from_script(self, text: str) -> Optional[str]:
+        """
+        Heuristic to detect language based on Unicode script ranges.
+        Returns ISO code (e.g. 'hi', 'bn', 'ta') if a specific script dominates.
+        """
+        # Devanagari: U+0900 to U+097F (Hindi, Marathi, etc.)
+        # Bengali: U+0980 to U+09FF (Bengali, Assamese)
+        # Tamil: U+0B80 to U+0BFF
+        counts = {"hi": 0, "bn": 0, "ta": 0}
+        total_scripts = 0
+        
+        for char in text:
+            cp = ord(char)
+            if 0x0900 <= cp <= 0x097F:
+                counts["hi"] += 1
+                total_scripts += 1
+            elif 0x0980 <= cp <= 0x09FF:
+                counts["bn"] += 1
+                total_scripts += 1
+            elif 0x0B80 <= cp <= 0x0BFF:
+                counts["ta"] += 1
+                total_scripts += 1
+        
+        if total_scripts == 0:
+            return None
+            
+        best_lang = max(counts, key=counts.get)
+        if counts[best_lang] > 0:
+            return best_lang
+        return None
+
+

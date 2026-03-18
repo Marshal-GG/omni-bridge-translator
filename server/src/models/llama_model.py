@@ -30,7 +30,8 @@ class LlamaModel:
                 api_key=self.api_key,
             )
         except Exception as e:
-            print(f"Llama setup failed: {e}")
+            import logging
+            logging.error(f"Llama setup failed: {e}")
 
     def reload(self, api_key: str):
         self.api_key = api_key
@@ -69,9 +70,9 @@ class LlamaModel:
                     {
                         "role": "system",
                         "content": (
-                            f"Translate to {target_lang}. "
-                            "Output ONLY the translated text. "
-                            "No explanations, no labels, no extra words."
+                            f"You are a professional translator. Translate the following text into clear, natural {target_lang}. "
+                            "Output ONLY the translated text. Do NOT include any explanations, labels, notes, or original text. "
+                            "If you cannot translate it, return the original text as-is."
                         ),
                     },
                     {"role": "user", "content": text},
@@ -100,7 +101,8 @@ class LlamaModel:
             }
             return result, stats
         except Exception as e:
-            print(f"Llama translation error: {e}")
+            import logging
+            logging.error(f"Llama translation error: {e}")
             latency_ms = int((time.monotonic() - start) * 1000)
             return text, {
                 "engine": "llama-translate",

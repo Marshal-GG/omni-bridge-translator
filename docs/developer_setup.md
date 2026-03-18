@@ -30,9 +30,9 @@ python -m venv .venv
 .\.venv\Scripts\activate
 
 # 3. Install core dependencies
-# It is recommended to stay in the root for venv activation, then cd into server
-cd server
-pip install -r requirements.txt
+# It is recommended to stay in the root for venv activation
+# Install the server in editable mode from the root
+pip install -e ./server
 ```
 
 ### 2. Flutter App Configuration
@@ -109,7 +109,7 @@ If you need to clear all local data specifically for this project without affect
 ```
 
 > [!IMPORTANT]
-> **Safety & Isolation**: This script targets isolated session folders (`OmniBridge-Debug` and `OmniBridge-Release`) within the local AppData directory. This ensures that cleaning your development environment for Omni Bridge does not inadvertently sign you out of other Firebase-enabled apps.
+> **Safety & Isolation**: This script targets isolated session folders (`OmniBridge-Debug` and `OmniBridge-Release`) within the local AppData directory, and purges legacy insecure `shared_preferences` keys from the Registry. This ensures that cleaning your development environment for Omni Bridge does not inadvertently sign you out of other Firebase-enabled apps, but does fully reset all legacy session identifiers.
 
 ---
 

@@ -79,7 +79,8 @@ lib/
 | `PythonServerManager` | Manages the lifecycle of the Python WebSocket server. Includes auto-restart resilience with exponential backoff if the server crashes. |
 | `WhisperService` | Manages local Whisper model downloads, status, and deletion |
 | `TrackingService` | Logs session stats, hardware metadata, and engine-agnostic **token usage** to RTDB. It is the **sole source of truth for incrementing usage** counters (daily, weekly, monthly, lifetime) atomically. 
-    - **Sequential Interim Syncing**: For real-time features like live captions, it ensures only one \"current_caption\" write is in flight at a time. This prevents race conditions and ensures chronological consistency in high-frequency data streams.
+    - **Secure Session Storage**: Uses `flutter_secure_storage` (Windows DPAPI) to store and rotate encrypted session identifiers.
+    - **Sequential Interim Syncing**: For real-time features like live captions, it ensures only one \"current_caption\" write is in flight at a time.
     - **Usage Aggregation**: Buffers tokens locally and uses multi-path PATCH to reduce RTDB write volume by ~80%.
     - **Robustness**: Wraps all RTDB calls in an exponential backoff retry handler to handle transient `HandshakeException` or network jitter. |
 | `SubscriptionService`| Manages real-time subscription state and aggregate token usage. Polled every 3 seconds from RTDB (daily, weekly, monthly, lifetime). Implements **Triple Rollover Logic** (Calendar Month, Weekly, and Subscription Cycle) for archiving usage data to Firestore. |
@@ -93,9 +94,8 @@ lib/
 Launch
  └─ AppInitializer: Firebase init, single-instance check, protocol registration
      ├─ Deep links (OAuth redirects) routed to AuthService
-     ├─ New user  → Splash → Onboarding → Login
-     ├─ Logged out → Splash → Login
-     └─ Logged in  → Translation Overlay (direct)
+      ├─ New user (Logged out) → AppInitializer → Splash → Onboarding → Login
+      └─ Return user (Logged in) → AppInitializer → Translation Overlay (Direct)
 
 Settings
  └─ SettingsBloc syncs preferences to Firestore on save
@@ -193,12 +193,12 @@ The `InferenceOrchestrator` (Python) and its client-side orchestration handle mu
 - **Fallback Logic**: If the primary engine (e.g., `google_api`) fails, the system automatically falls back to a free alternative (`google` free) to maintain service continuity.
 - **Access Gating**: Feature access is enforced via `SubscriptionService.tierHasAccess()`, which checks against dynamic requirements from `system/monetization`.
 
-### 3. Remote Session Termination (`forceLogout`)
-Two monitoring streams in `TrackingService` enable remote kicks without Cloud Functions:
-1. **Global Hook**: Listens to `users/{uid}/forceLogout`.
-2. **Session Hook**: Listens to `users/{uid}/sessions/{sessionId}/forceLogout`.
+### 3. Secure Local Storage
+The application uses `flutter_secure_storage` as its primary mechanism for persistent, encrypted local storage. This is used for sensitive data such as:
+- **Session Identifiers**: Stored with environment-specific prefixes (`debug_` or `release_`) to ensure complete session isolation between builds.
 
-When a kick is triggered, the client resets the flag to `false` (permitted by transition-based security rules) and signs out the user locally.
+### Legacy Cleanup
+To maintain a "zero-legacy" codebase, all usage of the insecure `shared_preferences` package has been removed. Testing data and legacy keys (like `has_seen_onboarding`) are no longer managed by the application code. Instead, developers can use the [clear_app_data.ps1](../scripts/clear_app_data.ps1) script to purge this information from the Windows Registry when a fresh state is required.
 
-### 3. Field-Level Protection
+### 4. Field-Level Protection
 Firestore rules block users from modifying their own `tier`, `subscriptionSince`, or `paymentProvider`. This ensures that even if the client is compromised, the user cannot artificially upgrade their account or manipulate billing metadata.

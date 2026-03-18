@@ -9,7 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:network_info_plus/network_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../navigation/global_navigator.dart';
 
 class TrackingService {
@@ -20,6 +20,13 @@ class TrackingService {
   FirebaseApp get _app => Firebase.app(_appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
+  
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+  
+  // Prefix to keep debug and release session IDs separate in secure storage
+  String get _sessionKeyPrefix => kDebugMode ? 'debug_' : 'release_';
 
   String? _currentSessionId;
   DateTime? _sessionStartTime;
@@ -148,8 +155,9 @@ class TrackingService {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final cachedSessionId = prefs.getString('current_session_id_$uid');
+    // Get from Secure Storage
+    final secureKey = '${_sessionKeyPrefix}current_session_id_$uid';
+    String? cachedSessionId = await _secureStorage.read(key: secureKey);
 
     _sessionStartTime = DateTime.now();
     final deviceInfo = await _getDeviceInfo();
@@ -194,7 +202,10 @@ class TrackingService {
           .doc();
 
       _currentSessionId = sessionRef.id;
-      await prefs.setString('current_session_id_$uid', _currentSessionId!);
+      await _secureStorage.write(
+        key: '${_sessionKeyPrefix}current_session_id_$uid',
+        value: _currentSessionId!,
+      );
 
       try {
         await sessionRef.set({
@@ -270,8 +281,7 @@ class TrackingService {
   }
 
   void _handleRemoteLogout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('current_session_id_$uid');
+    await _secureStorage.delete(key: '${_sessionKeyPrefix}current_session_id_$uid');
 
     // Reset forceLogout to false so re-enabling the account doesn't immediately
     // re-trigger another logout on next login. Done client-side since no Cloud Functions.
@@ -310,8 +320,7 @@ class TrackingService {
     }
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('current_session_id_$uid');
+      await _secureStorage.delete(key: '${_sessionKeyPrefix}current_session_id_$uid');
 
       final sessionRef = _firestore
           .collection('users')

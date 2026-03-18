@@ -140,7 +140,8 @@ For NVIDIA Riva ASR / NMT or Llama translation:
 | No captions appearing | Make sure the server is running (tray icon or `start_server.bat`) |
 | Google Sign-In redirect fails | See [Google Auth Troubleshooting](docs/google_auth_troubleshooting.md) |
 | Whisper model not working | Download it in **Settings → Transcription Method → Whisper Offline** |
-| Debug and Release share data | See [Session Isolation & Cleanup](docs/session_isolation_guide.md) |
+| Debug and Release share data | See [Session Isolation & Cleanup](docs/session_isolation_guide.md) or run `scripts/clear_app_data.ps1` |
+| Server status unknown | Check [Server Health Checks](docs/server_health_checks.md) |
 | Audio not captured | Check that your audio device is set as the Windows default playback device |
 
 ---

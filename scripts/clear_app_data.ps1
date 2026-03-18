@@ -97,8 +97,8 @@ if ($ClearRelease) {
 # to ensure other Firebase projects on this system are not affected. 
 # Our isolated sessions (OmniBridge-Debug/Release) were handled above.
 
-# 3. Clear Registry Keys (Flutter SharedPreferences)
-Write-Host "[3/4] Clearing Registry settings..." -ForegroundColor Yellow
+# 3. Clear Registry Keys (Legacy Insecure SharedPreferences)
+Write-Host "[3/4] Clearing Registry settings (including legacy insecure session data)..." -ForegroundColor Yellow
 
 function Remove-RegKey ($Path) {
     if (Test-Path $Path) {
@@ -107,6 +107,8 @@ function Remove-RegKey ($Path) {
     }
 }
 
+# This cleans up the Registry where 'shared_preferences' stores data on Windows.
+# This is where 'flutter.current_session_id_*' and 'flutter.has_seen_onboarding' live.
 if ($ClearDebug) {
     Remove-RegKey "HKCU:\Software\$Company\$DebugName"
     Remove-RegKey "HKCU:\Software\omni_bridge"
@@ -139,6 +141,7 @@ foreach ($Extraction in $PyExtractions) {
     Remove-Item -Path $Extraction.FullName -Recurse -Force
 }
 
-Write-Host "--- Cleanup Complete ---" -ForegroundColor Green
-Write-Host "The selected app version has been reset. You will need to log in again."
+Write-Host "`n--- Cleanup Complete ---" -ForegroundColor Green
+Write-Host "The selected app version has been reset. All legacy insecure session data has been purged."
+Write-Host "You will need to log in again, and secure storage will be initialized."
 pause

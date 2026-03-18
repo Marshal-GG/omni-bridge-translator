@@ -9,20 +9,32 @@ import numpy as np
 import threading
 import queue
 import time
+import logging
 
 def resample_audio(audio_data, orig_sr, target_sr=16000):
     if orig_sr == target_sr:
         return audio_data
-    if orig_sr % target_sr == 0:
-        factor = orig_sr // target_sr
-        return audio_data[::factor]
-    
-    duration = len(audio_data) / orig_sr
-    target_length = int(duration * target_sr)
-    x_old = np.linspace(0, duration, len(audio_data))
-    x_new = np.linspace(0, duration, target_length)
-    audio_new = np.interp(x_new, x_old, audio_data)
-    return audio_new.astype(np.int16)
+    try:
+        from scipy.signal import resample_poly
+        from math import gcd
+        g = gcd(int(orig_sr), int(target_sr))
+        up = int(target_sr) // g
+        down = int(orig_sr) // g
+        resampled = resample_poly(audio_data.astype(np.float32), up, down)
+        return np.clip(resampled, -32768, 32767).astype(np.int16)
+    except ImportError:
+        try:
+            import resampy
+            resampled = resampy.resample(audio_data.astype(np.float32), orig_sr, target_sr, filter='kaiser_fast')
+            return np.clip(resampled, -32768, 32767).astype(np.int16)
+        except ImportError:
+            # Fallback: linear interpolation
+            duration = len(audio_data) / orig_sr
+            target_length = int(duration * target_sr)
+            x_old = np.linspace(0, duration, len(audio_data))
+            x_new = np.linspace(0, duration, target_length)
+            audio_new = np.interp(x_new, x_old, audio_data)
+            return np.round(audio_new).astype(np.int16)
 
 class AudioCapture:
     def __init__(self, sample_rate=16000, chunk_duration=3, use_mic=False,
@@ -91,17 +103,17 @@ class AudioCapture:
                         if loopback["index"] == target["index"] or target["name"] in loopback["name"]:
                             return loopback
             except Exception as e:
-                print(f"[AudioCapture] Error resolving manual output device {self.output_device_index}: {e}")
+                logging.error(f"[AudioCapture] Error resolving manual output device {self.output_device_index}: {e}")
 
         # Default fallback: Search all WASAPI loopback devices
-        print("[AudioCapture] Searching for default WASAPI loopback device...")
+        logging.info("[AudioCapture] Searching for default WASAPI loopback device...")
 
         # Find any WASAPI loopback that isn't a virtual driver
         for loopback in p.get_loopback_device_info_generator():
             name = loopback.get("name", "")
             if "Primary Sound Driver" in name or "Microsoft Sound Mapper" in name:
                 continue
-            print(f"[AudioCapture] Found fallback loopback: {name}")
+            logging.info(f"[AudioCapture] Found fallback loopback: {name}")
             return loopback
 
         raise RuntimeError("No valid WASAPI loopback (desktop audio) device found.")
@@ -166,7 +178,7 @@ class AudioCapture:
                 extra_device_info=mic_info,
             )
         except Exception as e:
-            print(f"[AudioCapture] Error: {e}")
+            logging.error(f"[AudioCapture] Error: {e}")
             self.is_recording = False
 
     def _open_stream_robust(self, p, device_info, is_mic=False):
@@ -193,7 +205,7 @@ class AudioCapture:
             return stream, channels, native_rate
         except Exception as e:
             fallback = 1 if channels >= 2 else 2
-            print(f"[AudioCapture] Warning: failed opening {device_info['name']} with {channels} channels: {e}. Trying {fallback} channels...")
+            logging.warning(f"[AudioCapture] Warning: failed opening {device_info['name']} with {channels} channels: {e}. Trying {fallback} channels...")
             try:
                 stream = p.open(
                     format=pyaudio.paInt16,
@@ -205,7 +217,7 @@ class AudioCapture:
                 )
                 return stream, fallback, native_rate
             except Exception as e2:
-                print(f"[AudioCapture] Error: complete failure opening device {device_info['name']}: {e2}")
+                logging.error(f"[AudioCapture] Error: complete failure opening device {device_info['name']}: {e2}")
                 raise e
 
     def _stream_device(self, p, device_info, extra_device_info=None):
@@ -223,7 +235,7 @@ class AudioCapture:
             try:
                 mic_stream, mic_channels, mic_rate = self._open_stream_robust(p, extra_device_info, is_mic=True)
             except Exception as e:
-                print(f"[AudioCapture] Mic ignored due to error: {e}")
+                logging.info(f"[AudioCapture] Mic ignored due to error: {e}")
                 mic_stream = None
 
         # ── VAD + Time-based chunking ─────────────────────────────────────
@@ -231,10 +243,10 @@ class AudioCapture:
         # Secondary: flush early when silence follows speech (lower latency)
         # Tuning for API Rate Limit (e.g. 40 RPM ~ 1 chunk per 1.5s per service)
         # using max 3.5s chunk ensures ~17 RPM continuous speech.
-        SILENCE_THRESHOLD = 300      # RMS below this = silence  (tune if needed)
-        SILENCE_DURATION  = 0.3      # seconds of silence to trigger early flush
-        MIN_SPEECH_DURATION = 0.4    # don't flush if chunk is shorter than this
-        MAX_CHUNK_DURATION  = self.chunk_duration  # adaptive: set by flutter_server.py
+        SILENCE_THRESHOLD = 250      # Increased from 150 to reduce phantom captions from background noise
+        SILENCE_DURATION  = 0.9      # Increased from 0.5s to capture natural pauses
+        MIN_SPEECH_DURATION = 1.5    # Increased from 1.0s to provide more ASR context
+        MAX_CHUNK_DURATION  = self.chunk_duration
 
         silence_frames_needed = int(native_rate * SILENCE_DURATION)
         min_speech_frames     = int(native_rate * MIN_SPEECH_DURATION)
@@ -255,7 +267,7 @@ class AudioCapture:
                 if mic_stream is not None and mic_stream.get_read_available() >= 1024:
                     read_mic = True
             except Exception as e:
-                print(f"[AudioCapture] Loop error checking streams: {e}")
+                # Removed debug log to keep console clean
                 self.is_recording = False
                 break
 
@@ -281,7 +293,7 @@ class AudioCapture:
                             -32768, 32767,
                         ).astype(np.int16)
                 except Exception as e:
-                    print(f"[AudioCapture] Error reading desktop stream: {e}")
+                    logging.error(f"[AudioCapture] Error reading desktop stream: {e}")
                     self.is_recording = False
                     break
             else:
@@ -305,9 +317,10 @@ class AudioCapture:
                         mic_int16 = resample_audio(mic_int16, mic_rate, native_rate)
 
                     min_len = min(len(audio_data_int16), len(mic_int16))
-                    audio_data_int16 = np.maximum(
-                        audio_data_int16[:min_len].astype(np.float32),
+                    audio_data_int16 = np.clip(
+                        audio_data_int16[:min_len].astype(np.float32) + 
                         mic_int16[:min_len].astype(np.float32),
+                        -32768, 32767
                     ).astype(np.int16)
                 except Exception:
                     pass
@@ -340,9 +353,12 @@ class AudioCapture:
                 should_flush = True
 
             if should_flush:
-                chunk     = np.array(speech_buffer, dtype=np.int16)
-                chunk_16k = resample_audio(chunk, native_rate, self.sample_rate)
-                self.audio_queue.put((chunk_16k, self.sample_rate))
+                if in_speech:
+                    chunk     = np.array(speech_buffer, dtype=np.int16)
+                    chunk_16k = resample_audio(chunk, native_rate, self.sample_rate)
+                    self.audio_queue.put((chunk_16k, self.sample_rate))
+                
+                # Reset for next chunk regardless of whether we queued or discarded
                 speech_buffer   = []
                 silence_counter = 0
                 in_speech       = False
