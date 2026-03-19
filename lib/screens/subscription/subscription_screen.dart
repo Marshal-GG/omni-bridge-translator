@@ -170,6 +170,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                                           plan: plan,
                                                           isCurrent:
                                                               status?.tier == plan.id,
+                                                          trialUsed: state.trialUsed,
                                                           formatter: _formatter,
                                                         ),
                                                       ),

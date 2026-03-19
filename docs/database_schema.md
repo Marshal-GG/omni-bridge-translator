@@ -54,6 +54,7 @@ There are three main root paths in Firestore:
 users/{uid}/
 system/admins
 system/monetization
+system/translation_config
 legal/{documentId}
 ```
 
@@ -82,95 +83,152 @@ A singleton document used to manage administrative access to the platform.
 ---
  
 ### Monetization Configuration — `system/monetization`
- 
-A singleton document used to manage dynamic pricing, tier names, token limits, and feature gates.
- 
+
+A singleton document used to manage dynamic pricing, tier configs, model access control, and feature gates. Seeded via the Admin Panel's **System Config** section.
+
 ```json
 {
-  "names": {
-    "free": "Free",
-    "basic": "Basic",
-    "plus": "Plus",
-    "pro": "Pro"
-  },
-  "prices": {
-    "basic": "₹49",
-    "plus": "₹149",
-    "pro": "₹399"
-  },
-  "descriptions": {
-    "free": "For occasional use",
-    "basic": "For short trips",
-    "plus": "For active learners",
-    "pro": "For power users"
-  },
-  "limits": {
-    "free": 10000,
-    "basic": 50000,
-    "plus": 100000,
-    "pro": -1
-  },
-  "features": {
-    "free": [
-      "10,000 Tokens Daily",
-      "Standard Models",
-      "Basic Live Captions"
-    ],
-    "basic": [
-      "50,000 Tokens Daily",
-      "Same-Session History",
-      "High-Speed Translation",
-      "Standard Live Captions"
-    ],
-    "plus": [
-      "100,000 Tokens Daily",
-      "3-Day History Access",
-      "Advanced Live Captions",
-      "Priority Support",
-      "Offline Model Support"
-    ],
-    "pro": [
-      "Unlimited Daily Tokens",
-      "Intelligent Context Refresh (5s)",
-      "Auto-Correct Live Captions",
-      "Unlimited History Access",
-      "Premium Translation Engines",
-      "24/7 Priority Support"
-    ]
-  },
-  "requirements": {
-    "engines": {
-      "riva": "basic",
-      "llama": "plus"
+  "order": ["free", "pro", "enterprise"],
+  "popular": "pro",
+  "usage_poll_interval_seconds": 30,
+  "tiers": {
+    "free": {
+      "name": "Free",
+      "price": "Free",
+      "description": "Basic translation for casual use",
+      "display_features": ["Google & MyMemory translation", "Desktop audio capture", "5,000 tokens/day", "15 min sessions"],
+      "allowed_transcription_models": ["online"],
+      "allowed_translation_models": ["google", "mymemory"],
+      "features": {
+        "mic_audio": false,
+        "history_enabled": false,
+        "max_session_duration_minutes": 15,
+        "caption_retention_days": 0,
+        "simultaneous_sessions": 1
+      },
+      "quotas": { "daily_tokens": 5000, "monthly_tokens": 50000 },
+      "engine_limits": {},
+      "rate_limits": { "requests_per_minute": 20 }
     },
-    "whisper": {
-      "base": "free",
-      "small": "basic",
-      "medium": "plus",
-      "large-v3": "pro"
+    "pro": {
+      "name": "Pro",
+      "price": "₹799/mo",
+      "description": "All engines with generous limits",
+      "display_features": ["All translation engines", "Whisper transcription (tiny–small)", "Microphone + desktop audio", "Caption history (7 days)", "25,000 tokens/day", "2 hr sessions"],
+      "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small"],
+      "allowed_translation_models": ["google", "mymemory", "google_api", "riva", "llama"],
+      "features": {
+        "mic_audio": true,
+        "history_enabled": true,
+        "max_session_duration_minutes": 120,
+        "caption_retention_days": 7,
+        "simultaneous_sessions": 2
+      },
+      "quotas": { "daily_tokens": 25000, "monthly_tokens": 250000 },
+      "engine_limits": { "google_api": 100000, "riva": 100000, "llama": 150000 },
+      "rate_limits": { "requests_per_minute": 60 }
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "price": "₹2,499/mo",
+      "description": "Maximum capacity for power users",
+      "display_features": ["Everything in Pro", "Whisper medium + Riva transcription", "Caption history (30 days)", "Up to 5 simultaneous sessions", "75,000 tokens/day", "8 hr sessions"],
+      "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small", "whisper-medium", "riva"],
+      "allowed_translation_models": ["google", "mymemory", "google_api", "riva", "llama"],
+      "features": {
+        "mic_audio": true,
+        "history_enabled": true,
+        "max_session_duration_minutes": 480,
+        "caption_retention_days": 30,
+        "simultaneous_sessions": 5
+      },
+      "quotas": { "daily_tokens": 75000, "monthly_tokens": 750000 },
+      "engine_limits": { "google_api": 300000, "riva": 300000, "llama": 500000 },
+      "rate_limits": { "requests_per_minute": 120 }
     }
   },
-  "order": ["free", "basic", "plus", "pro"],
-  "popular": "plus",
-  "payment_links": {
-    "basic": "https://razorpay.me/@omnibridgemonetization",
-    "plus": "https://razorpay.me/@omnibridgeplus",
-    "pro": "https://razorpay.me/@omnibridgepro"
+  "model_overrides": {
+    "online":         { "enabled": true },
+    "google":         { "enabled": true },
+    "mymemory":       { "enabled": true },
+    "google_api":     { "enabled": true },
+    "riva":           { "enabled": true },
+    "llama":          { "enabled": true },
+    "whisper-tiny":   { "enabled": true },
+    "whisper-base":   { "enabled": true },
+    "whisper-small":  { "enabled": true },
+    "whisper-medium": { "enabled": true }
+  },
+  "announcements": {
+    "active": false,
+    "message": "",
+    "type": "info",
+    "dismiss_key": "",
+    "target_tiers": ["free", "pro", "enterprise"]
+  },
+  "upgrade_prompts": {
+    "show_at_usage_percent": 80,
+    "free_trial_days": 7,
+    "promo_code_enabled": false,
+    "promo_message": ""
+  },
+  "app_version": {
+    "min_supported": "1.0.0",
+    "latest": "1.0.0",
+    "update_url": "",
+    "force_update_message": "A new version of Omni Bridge is available. Please update to continue."
   }
 }
 ```
- 
+
 | Field | Type | Notes |
 |---|---|---|
-| `names` | `map` | Display names for each tier |
-| `prices` | `map` | Price strings shown in the UI |
-| `descriptions` | `map` | Short description text for each plan |
-| `limits` | `map` | Daily token limits (0 = unlimited) |
-| `features` | `map` | String arrays of features for each plan |
-| `requirements` | `map` | Minimum tier required for specific engines or features |
-| `order` | `array` | Determines the correct visual order to render plans |
+| `order` | `array` | Tier IDs in rank order (index 0 = free/default) |
 | `popular` | `string` | The ID of the tier to highlight as "Popular" |
-| `payment_links` | `map` | Direct checkout links for each paid tier |
+| `usage_poll_interval_seconds` | `number` | RTDB usage polling interval (default: 30) |
+| `tiers` | `map` | Per-tier config (see below) |
+| `model_overrides` | `map` | Global kill switches per model (`enabled: false` disables for all tiers) |
+| `announcements` | `map` | Banner config: `active`, `message`, `type`, `dismiss_key`, `target_tiers` |
+| `upgrade_prompts` | `map` | Upgrade prompt config: `show_at_usage_percent`, `free_trial_days`, `promo_code_enabled` |
+| `app_version` | `map` | Version control: `min_supported`, `latest`, `update_url`, `force_update_message` |
+| `payment_links` | `map?` | Razorpay payment URLs keyed by tier ID (e.g., `{"pro": "https://razorpay.me/...", "enterprise": "https://..."}`) |
+
+**Per-Tier Fields** (`tiers.{tierId}`):
+
+| Field | Type | Notes |
+|---|---|---|
+| `name` | `string` | Display name |
+| `price` | `string` | Price string shown in UI (e.g., `"₹799/mo"`) |
+| `description` | `string` | Short description |
+| `display_features` | `array` | Feature bullet points for subscription UI |
+| `allowed_transcription_models` | `array` | Model IDs allowed for ASR (e.g., `["online", "whisper-tiny"]`) |
+| `allowed_translation_models` | `array` | Model IDs allowed for translation (e.g., `["google", "mymemory", "google_api"]`) |
+| `features` | `map` | Feature flags: `mic_audio`, `history_enabled`, `max_session_duration_minutes`, `caption_retention_days`, `simultaneous_sessions` |
+| `quotas` | `map` | Token limits: `daily_tokens`, `monthly_tokens` |
+| `engine_limits` | `map` | Per-engine monthly token caps (e.g., `{"google_api": 100000}`). Engines not listed follow overall quotas only. When exceeded, client auto-falls back to `google` (free engine). |
+| `rate_limits` | `map` | Rate limiting: `requests_per_minute` |
+| `is_trial` | `bool?` | `true` if this tier is a one-time trial |
+| `trial_duration_hours` | `number?` | Duration in hours (only relevant when `is_trial` is `true`, default: 24) |
+
+> **Model Access Control**: `SubscriptionService.canUseModel(modelId)` combines two checks: (1) Is the model in the user's tier's `allowed_translation_models` or `allowed_transcription_models`? (2) Is `model_overrides.{modelId}.enabled` set to `true`? Both must pass.
+>
+> **Engine Limit Enforcement**: When a paid engine (e.g., `google_api`) exceeds its per-engine monthly cap, the client falls back to `google` (free) and shows a toast notification. The user keeps translating — just on a cheaper engine. Per-engine usage is tracked in RTDB `daily_usage/{date}/models/{engine}/tokens`.
+
+---
+
+### Translation Credentials — `system/translation_config`
+
+Stores Google Cloud service account credentials for the gRPC Translation API. Access is restricted by Firestore Security Rules — only admins and users whose tier includes `google_api` in `allowed_translation_models` can read this document.
+
+```json
+{
+  "googleCredentialsJson": "{\"type\": \"service_account\", \"project_id\": \"...\", ...}"
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `googleCredentialsJson` | `string` | Full service account JSON (pasted as a string). Read by `TrackingService.getGoogleCredentials()`, cached in `flutter_secure_storage`, sent to Python server via WebSocket. |
 
 ---
 
@@ -212,7 +270,7 @@ Created automatically on first login by `SubscriptionService._initializeUserDoc(
 
 | Field | Type | Written at | Notes |
 |---|---|---|---|
-| `tier` | `string` | Creation | **Admin-Write Only.** Subscription tier: `free` \| `basic` \| `plus` \| `pro` |
+| `tier` | `string` | Creation | **Admin-Write Only.** Subscription tier: `free` \| `pro` \| `enterprise` |
 | `dailyResetAt` | `Timestamp` | Creation | Midnight of the next day (local). Checked on each Firestore snapshot; updated by `_resetDailyQuota()` when crossed. |
 | `monthlyTokensUsed` | `number` | creation | (DEPRECATED) Cold storage only. See RTDB `usage/totals`. |
 | `monthlyResetAt` | `Timestamp` | creation → First upgrade → Monthly reset | Initially the 1st of next calendar month. On first paid upgrade, anchored to `now + 30 days` (billing-cycle). Each subsequent reset advances it by another 30 days. Used as the anchor for Subscription Rollovers. |
@@ -221,16 +279,18 @@ Created automatically on first login by `SubscriptionService._initializeUserDoc(
 | `paymentProvider` | `string?` | First upgrade | **Admin-Write Only.** Payment provider used: `"razorpay"` |
 | `lastQuotaExceededAt` | `Timestamp?` | On quota hit | Server timestamp of the most recent daily cap breach |
 | `forceLogout` | `bool` | Admin write | **Global** logout flag. Admin sets `true` to kick; rules allow user-reset to `false` only after kick. |
+| `trial_used` | `bool?` | Trial activation | Set to `true` when the user activates their one-time trial. Prevents re-activation. |
+| `trialExpiresAt` | `Timestamp?` | Trial activation | Timestamp when the trial auto-expires. Checked by `_checkTrialExpiry()` on every user doc snapshot. |
+| `trialActivatedAt` | `Timestamp?` | Trial activation | Server timestamp of when the trial was activated. |
 | `createdAt` | `Timestamp` | Creation | Server timestamp of first sign-in / document creation |
 
-**Daily token limits by tier (defaults; dynamically overridden by `system/monetization`):**
- 
-| Tier | Firestore `limits` value | Effective limit |
-|---|---|---|
-| `free` | `10000` | 10,000 tokens/day |
-| `basic` | `50000` | 50,000 tokens/day |
-| `plus` | `100000` | 100,000 tokens/day |
-| `pro` | `-1` | Unlimited (`isUnlimited = dailyLimit < 0`) |
+**Token limits by tier (defaults; dynamically overridden by `system/monetization`):**
+
+| Tier | Daily | Monthly | Engine Limits | Session Duration |
+|---|---|---|---|---|
+| `free` | 5,000 | 50,000 | None (free engines only) | 15 min |
+| `pro` | 25,000 | 250,000 | google_api: 100k, riva: 100k, llama: 150k | 2 hours |
+| `enterprise` | 75,000 | 750,000 | google_api: 300k, riva: 300k, llama: 500k | 8 hours |
  
 > Quota limits, pricing, and feature gate requirements are fetched dynamically from `system/monetization`. Payment links are handled via Razorpay (see `SubscriptionService.openCheckout()`). Setting the `tier` field directly in Firestore (or via a backend function) upgrades the user; the Firestore listener in `_listenToUserDoc()` detects the change and fires a `subscription_events` log automatically.
 
@@ -244,7 +304,7 @@ Written by `SubscriptionService._logSubscriptionEvent()` whenever the user's tie
 {
   "event": "upgraded",
   "from": "free",
-  "to": "plus",
+  "to": "pro",
   "timestamp": "2026-02-01T00:00:00Z",
   "via": "razorpay"
 }
@@ -262,32 +322,35 @@ Written by `SubscriptionService._logSubscriptionEvent()` whenever the user's tie
 
 ---
 
-### 0b. Usage History (Archives)
+### 0b. Usage History (Archives) — `users/{uid}/usage_history/{doc_id}`
 
-Historical usage is archived from RTDB to Firestore collections during rollovers performed by `SubscriptionService._checkAndPerformRollovers()`.
+Historical usage is archived from RTDB to a **unified** Firestore subcollection during rollovers performed by `SubscriptionService._checkAndPerformRollovers()`. Document IDs are prefixed by period type, and each document includes a `period_type` field for filtering.
 
-#### Weekly Archives — `users/{uid}/usage_history_weekly/{YYYY_MM_DD}`
-Archived every Monday for all users.
-```json
-{
-  "tokens": 12500,
-  "archivedAt": "2026-03-09T00:00:05Z"
-}
-```
-
-#### Calendar Archives — `users/{uid}/usage_history_calendar/{YYYY_MM}`
+#### Calendar Archives — doc ID: `calendar_YYYY_MM`
 Archived on the 1st of every month for all users.
 ```json
 {
+  "period_type": "calendar",
   "tokens": 45000,
   "archivedAt": "2026-04-01T00:00:05Z"
 }
 ```
 
-#### Subscription Archives — `users/{uid}/usage_history_subscription/{cycle_range}`
+#### Weekly Archives — doc ID: `weekly_YYYY_MM_DD`
+Archived every Monday for all users.
+```json
+{
+  "period_type": "weekly",
+  "tokens": 12500,
+  "archivedAt": "2026-03-09T00:00:05Z"
+}
+```
+
+#### Subscription Archives — doc ID: `subscription_YYYY-MM-DD__YYYY-MM-DD`
 Archived on the subscription reset date for paid members.
 ```json
 {
+  "period_type": "subscription",
   "tokens": 78200,
   "period": "2026-03-01__2026-03-31",
   "archivedAt": "2026-03-31T18:30:00Z"
@@ -386,7 +449,7 @@ Written via RTDB REST multi-path `PATCH` or `POST` requests. Avoids Firestore wr
 
 ### 1. Cumulative Usage (Totals) — `users/{uid}/usage/totals`
 
-The **Single Source of Truth** for current user usage. Polled every 3 seconds by `SubscriptionService`.
+The **Single Source of Truth** for current user usage. Polled at an interval sourced from `system/monetization → usage_poll_interval_seconds` (default 30s) by `SubscriptionService`.
 
 ```json
 {
@@ -517,37 +580,15 @@ One node **per engine**, updated atomically on every translation. Use this to an
 
 ---
 
-### 3. Event Logs — `users/{uid}/logs/{push-id}`
+### 3. Event Logs — `users/{uid}/logs/{push-id}` *(REMOVED)*
 
-General lifecycle events (app open, settings changed, engine switched, etc.).
-
-```json
-{
-  "event": "settings_saved",
-  "data": {
-    "translationModel": "llama",
-    "transcriptionModel": "google",
-    "targetLang": "fr"
-  },
-  "timestamp": 1741238591000,
-  "sessionId": "abc123xyz"
-}
-```
+> **No longer written to RTDB.** All operational logging is now console-only via `debugPrint`. The `logEvent()` method in `TrackingService` writes to the console, not RTDB. Server logs go to `logs/server.log` on disk.
 
 ---
 
-### 4. Error Logs — `users/{uid}/error_logs/{push-id}`
+### 4. Error Logs — `users/{uid}/error_logs/{push-id}` *(REMOVED)*
 
-Exceptions caught at runtime. Filtered — noisy widget lifecycle errors are suppressed.
-
-```json
-{
-  "message": "Failed to connect to Riva ASR server",
-  "error": "SocketException: Connection refused (OS Error: 111)",
-  "timestamp": 1741239524000,
-  "sessionId": "abc123xyz"
-}
-```
+> **No longer written to RTDB.** All error logging is now console-only via `debugPrint`. The `logError()` method in `TrackingService` writes to the console, not RTDB.
 
 ---
 
@@ -622,7 +663,7 @@ Tracks aggregated usage for a specific calendar day. The path key is the date st
 
 | Sub-path | Type | Notes |
 |---|---|---|
-| `tokens` | `number` | **Total `input_tokens + output_tokens`** for all engines today (primary daily quota counter, polled every 3 s by `SubscriptionService`) |
+| `tokens` | `number` | **Total `input_tokens + output_tokens`** for all engines today (primary daily quota counter, polled by `SubscriptionService` at the configured interval) |
 | `last_updated` | `number` | RTDB server timestamp of the last write |
 | `models/{engine}/tokens` | `number` | `input_tokens + output_tokens` for a specific engine today |
 | `models/{engine}/calls` | `number` | Successful translation calls for the engine today |
@@ -659,20 +700,21 @@ Written on session start, ping, and end to provide a lightweight real-time mirro
 ```text
 Firestore:
 users/{uid}                              ← root user doc (tier, billing anchors, metadata)
-    ├── usage_history_calendar/{YYYY_MM} ← monthly cold storage
-    ├── usage_history_subscription/{...} ← subscription cycle cold storage
+    ├── usage_history/{doc_id}           ← unified archive (calendar_, weekly_, subscription_ prefixed)
     ├── subscription_events/{push-id}    ← tier audit log
     ├── sessions/{sessionId}             ← session metadata
-    ├── usage_history_weekly/{YYYY_MM_DD} ← weekly cold storage, archived every Monday
     └── settings/app_preferences         ← single settings doc
+system/admins                            ← admin email whitelist
+system/monetization                      ← tiers, model access, kill switches, announcements
+system/translation_config                ← Google Cloud service account credentials
+legal/{documentId}                       ← terms of service, privacy policy
 
 RTDB:
 users/{uid}/
     ├── usage/totals                     ← live counters (lifetime, calendar, weekly, sub-monthly)
     ├── daily_usage/{YYYY-MM-DD}         ← per-day aggregated tracking
     ├── captions/{push-id}               ← live caption stream
-    ├── logs/{push-id}                   ← general events (incl. quota_exceeded)
-    ├── error_logs/{push-id}             ← runtime exceptions
+    ├── current_caption                  ← ephemeral interim caption (overwritten, deleted on final)
     ├── model_usage/{push-id}            ← translation call logs
     ├── model_stats/{engine}             ← engine totals
     └── sessions/{sessionId}             ← real-time mirror of active session state

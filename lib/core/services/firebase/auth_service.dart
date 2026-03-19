@@ -220,9 +220,7 @@ class AuthService {
         accessToken: result.accessToken,
         idToken: result.idToken,
       );
-      final userCredential = await _auth.signInWithCredential(
-        credential,
-      );
+      final userCredential = await _auth.signInWithCredential(credential);
       if (userCredential.user != null) {
         await _saveUserToFirestore(userCredential.user!);
         await TrackingService.instance.logEvent('Sign In With Google');

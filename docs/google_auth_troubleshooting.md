@@ -23,10 +23,11 @@ The app uses `windows_single_instance` to ensure that when the browser redirects
 If you need to update the Google Client ID:
 1.  **GCP Console:** Go to the [Google Cloud Console](https://console.cloud.google.com/).
 2.  **Create Credential:** Create an **OAuth 2.0 Client ID** with the application type **iOS**.
-3.  **Update .env:** Copy the Client ID into your `.env` file:
-    ```env
-    GOOGLE_CLIENT_ID=your_id_here.apps.googleusercontent.com
+3.  **Update `app_config.dart`:** Copy the Client ID into `lib/core/config/app_config.dart`:
+    ```dart
+    static const googleClientId = 'your_id_here.apps.googleusercontent.com';
     ```
+    This file is gitignored — copy from `app_config.example.dart` if creating for the first time.
 4.  **Update Installer:** Update the `installer_setup.iss` registry section to match the new reversed ID.
 
 ---
@@ -47,7 +48,7 @@ This usually means the `redirect_uri` sent by the app doesn't *exactly* match wh
 
 ### 3. App Opens a Second Window Instead of Logging In
 This happens if `WindowsSingleInstance` fails to communicate.
-- **Solution:** Ensure the "Pipe Name" in `main.dart` (`omni_bridge_translator_instance`) is unique and consistent. Check for hidden background processes of the app and close them.
+- **Solution:** Ensure the "Pipe Name" in `main.dart` is unique and consistent (`omni_bridge_translator_instance` for Release, `omni_bridge_translator_instance_debug` for Debug). Check for hidden background processes of the app and close them.
 
 ### 4. "Pipe create failed" / Logs completely missing after redirect
 If you see `Pipe create failed` in the terminal or if the `[Auth]` logs don't show up at all when the browser redirects:

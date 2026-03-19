@@ -90,6 +90,7 @@ class AsrWebSocketClient {
     int? outputDeviceIndex,
     String translationModel = 'google',
     String apiKey = '',
+    String googleCredentialsJson = '',
     String transcriptionModel = 'online',
   }) {
     // Reuse the existing service + connection if already live.
@@ -104,6 +105,7 @@ class AsrWebSocketClient {
       outputDeviceIndex: outputDeviceIndex,
       translationModel: translationModel,
       apiKey: apiKey,
+      googleCredentialsJson: googleCredentialsJson,
       transcriptionModel: transcriptionModel,
     );
   }
@@ -118,6 +120,7 @@ class AsrWebSocketClient {
     double micVolume = 1.0,
     required String translationModel,
     String apiKey = '',
+    String googleCredentialsJson = '',
     String transcriptionModel = 'online',
   }) {
     _service?.updateSettings(
@@ -130,6 +133,7 @@ class AsrWebSocketClient {
       micVolume: micVolume,
       translationModel: translationModel,
       apiKey: apiKey,
+      googleCredentialsJson: googleCredentialsJson,
       transcriptionModel: transcriptionModel,
     );
     HistoryService.instance.configure(

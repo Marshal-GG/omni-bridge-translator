@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 # Internal imports
-from src.utils.server_utils import kill_other_instances, detect_google_json, setup_logging
+from src.utils.server_utils import kill_other_instances, setup_logging
 from src.network.ws_manager import ConnectionManager
 from src.network.router import CommandRouter
 from src.network.handlers import ServerContext, SessionHandler, ConfigHandler, DeviceHandler, StatusHandler

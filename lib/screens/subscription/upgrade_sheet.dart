@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/services/firebase/subscription_service.dart';
 import 'subscription_screen.dart';
 
 void showUpgradeSheet(BuildContext context) {
@@ -18,6 +19,12 @@ class UpgradeSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final plans = SubscriptionService.instance.availablePlans;
+    final promptConfig = SubscriptionService.instance.upgradePromptConfig;
+    final title = promptConfig?['feature_locked']?['title'] as String? ?? 'Upgrade Your Plan';
+    final message = promptConfig?['feature_locked']?['message'] as String? ??
+        'Get more daily tokens and unlock exclusive features like premium translation engines.';
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -34,7 +41,7 @@ class UpgradeSheet extends StatelessWidget {
               const Icon(Icons.rocket_launch, color: Colors.teal, size: 28),
               const SizedBox(width: 12),
               Text(
-                'Upgrade Your Plan',
+                title,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -48,23 +55,21 @@ class UpgradeSheet extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Get more daily tokens and unlock exclusive features like translation history.',
-            style: TextStyle(color: Colors.white70, fontSize: 16),
+          Text(
+            message,
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
           ),
           const SizedBox(height: 24),
-          _buildFeatureRow(
-            Icons.bolt_rounded,
-            'Basic: High-Speed Engines & 50k Limit',
-          ),
-          _buildFeatureRow(
-            Icons.history_rounded,
-            'Plus: 3-Day History & Offline Models',
-          ),
-          _buildFeatureRow(
-            Icons.auto_awesome_rounded,
-            'Pro: Unlimited Usage & 5s AI Refresh',
-          ),
+          // Show highlights from each paid plan (skip the first/free tier)
+          ...plans.where((p) => p.id != SubscriptionService.instance.defaultTier).map((plan) {
+            final highlight = plan.isUnlimited
+                ? '${plan.name}: Unlimited usage & ${plan.allowedTranslationModels.length} engines'
+                : '${plan.name}: ${plan.features.isNotEmpty ? plan.features.first : plan.description}';
+            return _buildFeatureRow(
+              plan.isPopular ? Icons.auto_awesome_rounded : Icons.bolt_rounded,
+              highlight,
+            );
+          }),
           _buildFeatureRow(Icons.contact_support_rounded, 'Priority Support'),
           const SizedBox(height: 32),
           SizedBox(
@@ -106,7 +111,12 @@ class UpgradeSheet extends StatelessWidget {
         children: [
           Icon(icon, color: Colors.tealAccent, size: 20),
           const SizedBox(width: 12),
-          Text(text, style: const TextStyle(color: Colors.white, fontSize: 14)),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ),
         ],
       ),
     );

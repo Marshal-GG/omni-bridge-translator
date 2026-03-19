@@ -27,6 +27,9 @@ class SubscriptionService {
   Map<String, dynamic>? _monetizationConfig;
   StreamSubscription? _monetizationSub;
 
+  /// Notifies listeners whenever the monetization config changes (plans become available).
+  final configNotifier = ValueNotifier<int>(0);
+
   final http.Client _httpClient = http.Client();
 
   final _statusController = StreamController<SubscriptionStatus>.broadcast();
@@ -39,13 +42,14 @@ class SubscriptionService {
   String? _lastKnownTier;
 
   StreamSubscription? _userSub;
-  StreamSubscription? _rtdbUsageSub;
+  Timer? _usagePollTimer;
+  int? _currentPollInterval;
 
   void init() {
     _listenToMonetizationConfig();
     _auth.authStateChanges().listen((user) {
       _userSub?.cancel();
-      _rtdbUsageSub?.cancel();
+      _usagePollTimer?.cancel();
       _lastKnownTier = null;
       if (user != null) {
         _listenToUserDoc(user.uid);
@@ -66,22 +70,135 @@ class SubscriptionService {
         .listen((doc) {
           if (doc.exists) {
             _monetizationConfig = doc.data();
-            debugPrint(
-              '[Subscription] Monetization config updated from Firestore',
-            );
-
-            // Refresh current status if we have one to apply new limits
+            debugPrint('[Subscription] Monetization config updated – '
+                '${availablePlans.length} plans available');
+            // Always emit status so bloc/UI refreshes with the latest plans
             if (_currentStatus != null) {
               _updateCurrentStatus();
+            } else {
+              _statusController.add(_getDefaultStatus());
             }
+            // Notify any ValueListenableBuilder widgets (e.g. admin panel)
+            configNotifier.value++;
+            _maybeRestartPolling();
+          } else {
+            debugPrint('[Subscription] system/monetization document does NOT exist');
           }
         });
   }
 
+  /// Returns the usage polling interval from Firestore config, defaulting to 30s.
+  int get _pollIntervalSeconds =>
+      (_monetizationConfig?['usage_poll_interval_seconds'] as num?)?.toInt() ?? 30;
+
+  /// Returns caption retention days for the current tier from tiers config.
+  int get captionRetentionDays {
+    final tier = _currentStatus?.tier ?? defaultTier;
+    final config = _tierConfig(tier);
+    return (config?['features']?['caption_retention_days'] as num?)?.toInt() ?? 30;
+  }
+
+  // ── Tier Config Helpers ─────────────────────────────────────────────────
+
+  /// Returns the full config map for a given tier from the `tiers` field.
+  Map<String, dynamic>? _tierConfig(String tier) {
+    final tiers = _monetizationConfig?['tiers'] as Map<String, dynamic>?;
+    return tiers?[tier] as Map<String, dynamic>?;
+  }
+
+  /// Returns the allowed translation models for the current (or given) tier.
+  List<String> allowedTranslationModels([String? tier]) {
+    final t = tier ?? _currentStatus?.tier ?? defaultTier;
+    final config = _tierConfig(t);
+    final models = config?['allowed_translation_models'] as List<dynamic>?;
+    return models?.cast<String>() ?? ['google', 'mymemory'];
+  }
+
+  /// Returns the allowed transcription models for the current (or given) tier.
+  List<String> allowedTranscriptionModels([String? tier]) {
+    final t = tier ?? _currentStatus?.tier ?? defaultTier;
+    final config = _tierConfig(t);
+    final models = config?['allowed_transcription_models'] as List<dynamic>?;
+    return models?.cast<String>() ?? ['online'];
+  }
+
+  /// Whether a specific model is allowed for the current tier.
+  bool isModelAllowed(String modelId) {
+    return allowedTranslationModels().contains(modelId) ||
+           allowedTranscriptionModels().contains(modelId);
+  }
+
+  /// Whether a model is globally enabled (kill switch).
+  bool isModelEnabled(String modelId) {
+    final overrides = _monetizationConfig?['model_overrides'] as Map<String, dynamic>?;
+    if (overrides == null) return true;
+    final model = overrides[modelId] as Map<String, dynamic>?;
+    return model?['enabled'] as bool? ?? true;
+  }
+
+  /// Whether a model can be used: globally enabled AND allowed for current tier.
+  bool canUseModel(String modelId) {
+    return isModelEnabled(modelId) && isModelAllowed(modelId);
+  }
+
+  /// Returns per-engine monthly limits for the current (or given) tier.
+  /// Engines not in this map have no per-engine cap (follow overall quotas only).
+  Map<String, int> engineLimits([String? tier]) {
+    final t = tier ?? _currentStatus?.tier ?? defaultTier;
+    final config = _tierConfig(t);
+    final raw = config?['engine_limits'] as Map<String, dynamic>? ?? {};
+    return raw.map((k, v) => MapEntry(k, (v as num).toInt()));
+  }
+
+  /// Returns the monthly limit for a specific engine, or -1 if no per-engine cap.
+  int engineMonthlyLimit(String engineId, [String? tier]) {
+    final limits = engineLimits(tier);
+    return limits[engineId] ?? -1;
+  }
+
+  /// Returns the fallback engine for when a paid engine's limit is exceeded.
+  /// Defaults to 'google' (free tier engine).
+  String get fallbackEngine => 'google';
+
+  /// Returns the features map for the current tier.
+  Map<String, dynamic> get tierFeatures {
+    final tier = _currentStatus?.tier ?? defaultTier;
+    final config = _tierConfig(tier);
+    return (config?['features'] as Map<String, dynamic>?) ?? {};
+  }
+
+  /// Returns the current announcement config (if active).
+  Map<String, dynamic>? get activeAnnouncement {
+    final ann = _monetizationConfig?['announcements'] as Map<String, dynamic>?;
+    if (ann == null || ann['active'] != true) return null;
+    final targetTiers = ann['target_tiers'] as List<dynamic>?;
+    final currentTier = _currentStatus?.tier ?? defaultTier;
+    if (targetTiers != null && !targetTiers.contains(currentTier)) return null;
+    return ann;
+  }
+
+  /// Returns the app version control config.
+  Map<String, dynamic>? get appVersionConfig {
+    return _monetizationConfig?['app_version'] as Map<String, dynamic>?;
+  }
+
+  /// Returns the upgrade prompt config.
+  Map<String, dynamic>? get upgradePromptConfig {
+    return _monetizationConfig?['upgrade_prompts'] as Map<String, dynamic>?;
+  }
+
+  /// Restarts the polling timer if the configured interval has changed.
+  void _maybeRestartPolling() {
+    final newInterval = _pollIntervalSeconds;
+    if (_currentPollInterval == newInterval) return;
+    final user = _auth.currentUser;
+    if (user == null) return;
+    debugPrint('[Subscription] Poll interval changed to ${newInterval}s, restarting.');
+    _startUsagePolling(user.uid);
+  }
+
   void _listenToRTDBUsage(String uid) async {
-    // 1. Initial Rollover Check
     await _checkAndPerformRollovers(uid);
-    // 2. Start Polling
     _startUsagePolling(uid);
   }
 
@@ -91,7 +208,6 @@ class SubscriptionService {
       if (user == null) return;
       final idToken = await user.getIdToken();
 
-      // Fetch current aggregates and status
       final url = Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken');
       final resp = await _httpClient.get(url);
       if (resp.statusCode != 200) return;
@@ -105,17 +221,17 @@ class SubscriptionService {
 
       if (currentMonthStr != lastCalendarMonth) {
         final calendarUsed = (totals['calendar_monthly'] as num?)?.toInt() ?? 0;
-        // Archive to Firestore
         await _firestore
             .collection('users')
             .doc(uid)
-            .collection('usage_history_calendar')
-            .doc(lastCalendarMonth)
+            .collection('usage_history')
+            .doc('calendar_$lastCalendarMonth')
             .set({
           'tokens': calendarUsed,
+          'period_type': 'calendar',
+          'period': lastCalendarMonth,
           'archivedAt': FieldValue.serverTimestamp(),
         });
-        // Reset in RTDB
         await _httpClient.patch(
           Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken'),
           body: jsonEncode({
@@ -127,24 +243,24 @@ class SubscriptionService {
       }
 
       // --- 1.5 Weekly Rollover ---
-      // Determine the Monday of the current week
       final currentMonday = now.subtract(Duration(days: now.weekday - 1));
-      final currentWeekStr = '${currentMonday.year}_${currentMonday.month.toString().padLeft(2, '0')}_${currentMonday.day.toString().padLeft(2, '0')}';
+      final currentWeekStr =
+          '${currentMonday.year}_${currentMonday.month.toString().padLeft(2, '0')}_${currentMonday.day.toString().padLeft(2, '0')}';
       final lastWeekStr = totals['last_week'] as String? ?? currentWeekStr;
 
       if (currentWeekStr != lastWeekStr) {
         final weeklyUsed = (totals['weekly'] as num?)?.toInt() ?? 0;
-        // Archive to Firestore
         await _firestore
             .collection('users')
             .doc(uid)
-            .collection('usage_history_weekly')
-            .doc(lastWeekStr)
+            .collection('usage_history')
+            .doc('weekly_$lastWeekStr')
             .set({
           'tokens': weeklyUsed,
+          'period_type': 'weekly',
+          'period': lastWeekStr,
           'archivedAt': FieldValue.serverTimestamp(),
         });
-        // Reset in RTDB
         await _httpClient.patch(
           Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken'),
           body: jsonEncode({
@@ -162,36 +278,35 @@ class SubscriptionService {
       final tier = userData['tier'] as String? ?? defaultTier;
 
       if (tier != defaultTier) {
-        DateTime monthlyResetAt = (userData['monthlyResetAt'] as Timestamp?)?.toDate() ?? now.add(const Duration(days: 30));
-        
+        DateTime monthlyResetAt =
+            (userData['monthlyResetAt'] as Timestamp?)?.toDate() ??
+            now.add(const Duration(days: 30));
+
         if (now.isAfter(monthlyResetAt)) {
           final subUsed = (totals['subscription_monthly'] as num?)?.toInt() ?? 0;
-          final cycleLabel = '${monthlyResetAt.subtract(const Duration(days: 30)).toIso8601String().split('T')[0]}__${monthlyResetAt.toIso8601String().split('T')[0]}';
-          
-          // Archive to Firestore
+          final cycleLabel =
+              '${monthlyResetAt.subtract(const Duration(days: 30)).toIso8601String().split('T')[0]}__${monthlyResetAt.toIso8601String().split('T')[0]}';
+
           await _firestore
               .collection('users')
               .doc(uid)
-              .collection('usage_history_subscription')
-              .doc(cycleLabel)
+              .collection('usage_history')
+              .doc('subscription_$cycleLabel')
               .set({
             'tokens': subUsed,
+            'period_type': 'subscription',
             'period': cycleLabel,
             'archivedAt': FieldValue.serverTimestamp(),
           });
 
-          // "Catch up" reset dates if multiple months were missed
           while (now.isAfter(monthlyResetAt)) {
             monthlyResetAt = monthlyResetAt.add(const Duration(days: 30));
           }
 
-          // Reset in RTDB and update Reset Date
           await Future.wait([
             _httpClient.patch(
               Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken'),
-              body: jsonEncode({
-                'subscription_monthly': 0,
-              }),
+              body: jsonEncode({'subscription_monthly': 0}),
             ),
             _firestore.collection('users').doc(uid).update({
               'monthlyResetAt': Timestamp.fromDate(monthlyResetAt),
@@ -205,13 +320,11 @@ class SubscriptionService {
     }
   }
 
-  // Polling mechanism since RTDB REST is used.
-  Timer? _usagePollTimer;
-
   void _startUsagePolling(String uid) {
     _usagePollTimer?.cancel();
+    _currentPollInterval = _pollIntervalSeconds;
     _fetchDailyUsage(uid); // initial fetch
-    _usagePollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _usagePollTimer = Timer.periodic(Duration(seconds: _currentPollInterval!), (_) {
       _fetchDailyUsage(uid);
     });
   }
@@ -225,26 +338,25 @@ class SubscriptionService {
       final todayStr =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
-      // 1. Fetch Daily Usage
       final dailyUrl = Uri.parse(
         '$_rtdbBaseUrl/users/$uid/daily_usage/$todayStr/tokens.json?auth=$idToken',
       );
-      final dailyResponse = await _httpClient
-          .get(dailyUrl)
-          .timeout(const Duration(seconds: 5));
-
-      // 2. Fetch Aggregates (Monthly, Lifetime, etc.)
       final aggregatesUrl = Uri.parse(
         '$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken',
       );
-      final aggregatesResponse = await _httpClient
-          .get(aggregatesUrl)
-          .timeout(const Duration(seconds: 5));
 
-      if (dailyResponse.statusCode == 200 &&
-          aggregatesResponse.statusCode == 200) {
+      final results = await Future.wait([
+        _httpClient.get(dailyUrl).timeout(const Duration(seconds: 5)),
+        _httpClient.get(aggregatesUrl).timeout(const Duration(seconds: 5)),
+      ]);
+
+      final dailyResponse = results[0];
+      final aggregatesResponse = results[1];
+
+      if (dailyResponse.statusCode == 200 && aggregatesResponse.statusCode == 200) {
         final dailyData = jsonDecode(dailyResponse.body);
-        final aggregatesData = jsonDecode(aggregatesResponse.body) as Map<String, dynamic>? ?? {};
+        final aggregatesData =
+            jsonDecode(aggregatesResponse.body) as Map<String, dynamic>? ?? {};
 
         final dailyUsed = (dailyData as num?)?.toInt() ?? 0;
         final lifetimeUsed = (aggregatesData['lifetime'] as num?)?.toInt() ?? 0;
@@ -255,7 +367,7 @@ class SubscriptionService {
         _updateCurrentStatus(
           dailyTokensUsed: dailyUsed,
           weeklyTokensUsed: weeklyUsed,
-          monthlyTokensUsed: subUsed > 0 ? subUsed : calendarUsed, // Preference for sub cycle if paid
+          monthlyTokensUsed: subUsed > 0 ? subUsed : calendarUsed,
           lifetimeTokensUsed: lifetimeUsed,
         );
       }
@@ -326,20 +438,15 @@ class SubscriptionService {
             final data = doc.data()!;
             final tierStr = data['tier'] as String? ?? defaultTier;
             final tier = tierStr;
-            // Notice we don't pull dailyTokensUsed from Firestore anymore.
             final resetAt =
                 (data['dailyResetAt'] as Timestamp?)?.toDate() ??
                 _getNextDailyReset();
 
-            // Check if we need to reset daily quota (it's a new day)
             if (DateTime.now().isAfter(resetAt)) {
-              // We don't reset RTDB daily quota here because it's path-based (new day = new path).
-              // But we might want to update the DB's `dailyResetAt` to the next day so this doesn't trigger continually.
               _resetDailyQuota(uid);
               return;
             }
 
-            // Check if we need to reset monthly quota
             final monthlyResetAt =
                 (data['monthlyResetAt'] as Timestamp?)?.toDate();
             if (monthlyResetAt != null &&
@@ -348,7 +455,11 @@ class SubscriptionService {
               return;
             }
 
-            // Detect tier change and log a subscription event
+            // Auto-expire trial
+            if (tier == 'trial') {
+              _checkTrialExpiry(uid, data);
+            }
+
             if (_lastKnownTier != null && _lastKnownTier != tier) {
               _logSubscriptionEvent(
                 uid: uid,
@@ -381,8 +492,6 @@ class SubscriptionService {
     });
   }
 
-  /// Resets the monthly token counter and advances monthlyResetAt by 30 days
-  /// (rolling billing-cycle reset, not calendar-month reset).
   Future<void> _resetMonthlyQuota(String uid) async {
     await _firestore.collection('users').doc(uid).update({
       'monthlyTokensUsed': 0,
@@ -393,7 +502,6 @@ class SubscriptionService {
     debugPrint('[Subscription] Monthly quota reset for $uid');
   }
 
-  /// Logs a tier change event to the `subscription_events` sub-collection.
   Future<void> _logSubscriptionEvent({
     required String uid,
     required String fromTier,
@@ -415,8 +523,6 @@ class SubscriptionService {
             'via': 'razorpay',
           });
 
-      // On first upgrade from free, record subscriptionSince + paymentProvider
-      // and anchor the billing-cycle monthly reset to 30 days from now.
       if (fromTier == defaultTier && isUpgrade) {
         await _firestore.collection('users').doc(uid).update({
           'subscriptionSince': FieldValue.serverTimestamp(),
@@ -434,39 +540,12 @@ class SubscriptionService {
     }
   }
 
-  /// Increments token usage counters in RTDB for lifetime, monthly, and daily usage.
-
-  /// Logs a quota_exceeded event to RTDB and updates `lastQuotaExceededAt`.
   Future<void> _logQuotaExceeded(String uid) async {
     try {
-      // Update Firestore timestamp
       await _firestore.collection('users').doc(uid).update({
         'lastQuotaExceededAt': FieldValue.serverTimestamp(),
       });
-
-      // Log to RTDB so it appears in the event stream alongside other app events
-      final user = _auth.currentUser;
-      if (user == null) return;
-      final idToken = await user.getIdToken();
-      final url = Uri.parse('$_rtdbBaseUrl/users/$uid/logs.json?auth=$idToken');
-      await _httpClient
-          .post(
-            url,
-            body: jsonEncode({
-              'event': 'quota_exceeded',
-              'data': {
-                'tier': _currentStatus?.tier ?? defaultTier,
-
-                'dailyLimit': _currentStatus?.dailyLimit ?? 0,
-                'dailyTokensUsed': _currentStatus?.dailyTokensUsed ?? 0,
-              },
-              'timestamp': {'.sv': 'timestamp'},
-            }),
-          )
-          .timeout(const Duration(seconds: 5));
       debugPrint('[Subscription] Quota exceeded event logged.');
-    } on TimeoutException {
-      debugPrint('[Subscription] Quota exceeded log timed out.');
     } catch (e) {
       debugPrint('[Subscription] Failed to log quota exceeded: $e');
     }
@@ -475,7 +554,6 @@ class SubscriptionService {
   Future<void> openCheckout(String tierId) async {
     final config =
         _monetizationConfig?['payment_links'] as Map<String, dynamic>?;
-
     final String? url = config?[tierId] as String?;
 
     if (url != null && await canLaunchUrl(Uri.parse(url))) {
@@ -485,18 +563,62 @@ class SubscriptionService {
     }
   }
 
-  /// Manually updates the user tier in Firestore (Debug only).
+  /// Checks whether the current user has already used their one-time trial.
+  Future<bool> hasUsedTrial() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return true; // no user = can't trial
+    final doc = await _firestore.collection('users').doc(uid).get();
+    return doc.data()?['trial_used'] as bool? ?? false;
+  }
+
+  /// Activates the trial for the current user. Returns an error message on
+  /// failure, or null on success. The trial auto-expires after
+  /// [trialDurationHours] by setting `trialExpiresAt` on the user doc.
+  Future<String?> activateTrial() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return 'Not signed in';
+
+    final doc = await _firestore.collection('users').doc(uid).get();
+    if (doc.data()?['trial_used'] == true) {
+      return 'Trial already used on this account';
+    }
+
+    // Get trial duration from config
+    final trialConfig = _tierConfig('trial');
+    final hours = (trialConfig?['trial_duration_hours'] as num?)?.toInt() ?? 24;
+    final expiresAt = DateTime.now().add(Duration(hours: hours));
+
+    await _firestore.collection('users').doc(uid).update({
+      'tier': 'trial',
+      'trial_used': true,
+      'trialExpiresAt': Timestamp.fromDate(expiresAt),
+      'trialActivatedAt': FieldValue.serverTimestamp(),
+    });
+
+    debugPrint('[Subscription] Trial activated for $uid, expires at $expiresAt');
+    return null; // success
+  }
+
+  /// Checks if the current trial has expired and downgrades to free tier.
+  /// Called from [_listenToUserDoc] when tier is 'trial'.
+  Future<void> _checkTrialExpiry(String uid, Map<String, dynamic> data) async {
+    final expiresAt = (data['trialExpiresAt'] as Timestamp?)?.toDate();
+    if (expiresAt == null || DateTime.now().isAfter(expiresAt)) {
+      await _firestore.collection('users').doc(uid).update({
+        'tier': defaultTier.isEmpty ? 'free' : defaultTier,
+      });
+      debugPrint('[Subscription] Trial expired for $uid, downgraded to free');
+    }
+  }
+
   Future<void> setTierDebug(String tier) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
     await setTierForOtherUser(uid, tier);
   }
 
-  /// Updates the tier for any user (Admin only).
   Future<void> setTierForOtherUser(String uid, String tier) async {
-    await _firestore.collection('users').doc(uid).update({
-      'tier': tier,
-    });
+    await _firestore.collection('users').doc(uid).update({'tier': tier});
     debugPrint('[Subscription] Tier for $uid set to $tier');
   }
 
@@ -512,20 +634,17 @@ class SubscriptionService {
     return DateTime(now.year, now.month + 1, 1);
   }
 
-  /// Returns the dynamically determined default (fallback) tier
   String get defaultTier {
     final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];
     return order.isNotEmpty ? order.first.toString() : '';
   }
 
-  /// Returns true if the tier is the highest available tier
   bool isHighestTier(String tier) {
     final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];
     if (order.isEmpty) return false;
     return order.last.toString() == tier;
   }
 
-  /// Returns the tier mapped to the given index order
   String getTierAt(int index) {
     final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];
     if (order.isEmpty) return '';
@@ -534,7 +653,6 @@ class SubscriptionService {
     return order[index].toString();
   }
 
-  /// Returns the display name for a tier at a given rank index.
   String getNameForRank(int rank) {
     return getNameForTier(getTierAt(rank));
   }
@@ -542,10 +660,8 @@ class SubscriptionService {
   int getTierRank(String tier) {
     if (tier == defaultTier) return 0;
     final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];
-    if (order.contains(tier)) {
-      return order.indexOf(tier);
-    }
-    return 0;
+    final idx = order.indexOf(tier);
+    return idx >= 0 ? idx : 0;
   }
 
   bool tierHasAccess(String currentTier, String requiredTier) {
@@ -553,58 +669,106 @@ class SubscriptionService {
   }
 
   int _getLimitForTier(String tier) {
-    // Before monetization config loads, return safe defaults:
-    // default tier gets 10,000 tokens, any paid tier gets -1 (unlimited flag)
-    // so Pro users don't briefly flash as quota-exceeded on cold start.
-    if (_monetizationConfig == null) {
-      return tier == defaultTier ? 10000 : -1;
+    final config = _tierConfig(tier);
+    if (config != null) {
+      return (config['quotas']?['daily_tokens'] as num?)?.toInt() ?? 10000;
     }
-
+    // Fallback: legacy flat structure or hardcoded defaults
     final limits = _monetizationConfig?['limits'] as Map<String, dynamic>?;
-    return (limits?[tier] as num?)?.toInt() ?? 0;
+    if (limits != null) return (limits[tier] as num?)?.toInt() ?? 0;
+    return tier == defaultTier ? 10000 : -1;
   }
 
-  /// Gets the price string for a tier from Firestore.
   String getPriceForTier(String tier) {
+    final config = _tierConfig(tier);
+    if (config != null) return config['price'] as String? ?? '';
     final prices = _monetizationConfig?['prices'] as Map<String, dynamic>?;
     return prices?[tier] ?? '';
   }
 
-  /// Gets the tier requirement for an engine or whisper size.
-  String getRequirement(
-    String category,
-    String key,
-    String fallback,
-  ) {
+  String getRequirement(String category, String key, String fallback) {
     final requirements =
         _monetizationConfig?['requirements'] as Map<String, dynamic>?;
     if (requirements == null || !requirements.containsKey(category)) {
       return fallback;
     }
-
     final categoryMap = requirements[category] as Map<String, dynamic>;
     if (!categoryMap.containsKey(key)) return fallback;
-
     return categoryMap[key] as String;
   }
 
-  /// Gets the display name for a tier from Firestore.
   String getNameForTier(String tier) {
     if (tier == defaultTier && defaultTier.isEmpty) return 'Free';
+    final config = _tierConfig(tier);
+    if (config != null) return config['name'] as String? ?? tier.toUpperCase();
+    // Fallback: legacy flat structure
     final names = _monetizationConfig?['names'] as Map<String, dynamic>?;
     return names?[tier] ?? tier.toUpperCase();
   }
 
-  /// List of plans dynamically evaluated from _monetizationConfig
   List<SubscriptionPlan> get availablePlans {
-    final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];
-    if (order.isEmpty) return [];
+    if (_monetizationConfig == null) {
+      debugPrint('[Subscription] availablePlans: _monetizationConfig is NULL');
+      return [];
+    }
 
+    final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];
+    if (order.isEmpty) {
+      debugPrint('[Subscription] availablePlans: order is EMPTY. '
+          'Config keys: ${_monetizationConfig?.keys.toList()}');
+      return [];
+    }
+
+    final tiers = _monetizationConfig?['tiers'] as Map<String, dynamic>?;
+    final popular = _monetizationConfig?['popular'] as String? ?? '';
+
+    debugPrint('[Subscription] availablePlans: order=$order, '
+        'tiers=${tiers != null ? "present (${tiers.keys.toList()})" : "NULL"}, '
+        'popular=$popular');
+
+    // Prefer tiers structure if available
+    if (tiers != null) {
+      return order.map((key) {
+        final id = key.toString();
+        final config = tiers[id] as Map<String, dynamic>? ?? {};
+        final quotas = config['quotas'] as Map<String, dynamic>? ?? {};
+        final rateLimits = config['rate_limits'] as Map<String, dynamic>? ?? {};
+        final engineLimitsRaw = config['engine_limits'] as Map<String, dynamic>? ?? {};
+        return SubscriptionPlan(
+          id: id,
+          name: config['name']?.toString() ?? id.toUpperCase(),
+          price: config['price']?.toString() ?? '',
+          description: config['description']?.toString() ?? '',
+          features: (config['display_features'] as List<dynamic>?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [],
+          isPopular: id == popular,
+          isTrial: config['is_trial'] as bool? ?? false,
+          trialDurationHours: (config['trial_duration_hours'] as num?)?.toInt() ?? 24,
+          dailyTokens: (quotas['daily_tokens'] as num?)?.toInt() ?? 0,
+          monthlyTokens: (quotas['monthly_tokens'] as num?)?.toInt() ?? 0,
+          allowedTranslationModels: (config['allowed_translation_models'] as List<dynamic>?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [],
+          allowedTranscriptionModels: (config['allowed_transcription_models'] as List<dynamic>?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [],
+          requestsPerMinute: (rateLimits['requests_per_minute'] as num?)?.toInt() ?? 0,
+          concurrentSessions: (rateLimits['concurrent_sessions'] as num?)?.toInt() ?? 1,
+          engineLimits: engineLimitsRaw
+              .map((k, v) => MapEntry(k, (v as num).toInt())),
+        );
+      }).toList();
+    }
+
+    // Fallback: legacy flat structure
     final names = _monetizationConfig?['names'] as Map<String, dynamic>? ?? {};
     final prices = _monetizationConfig?['prices'] as Map<String, dynamic>? ?? {};
     final descriptions = _monetizationConfig?['descriptions'] as Map<String, dynamic>? ?? {};
     final featuresMap = _monetizationConfig?['features'] as Map<String, dynamic>? ?? {};
-    final popular = _monetizationConfig?['popular'] as String? ?? '';
 
     return order.map((key) {
       final id = key.toString();
@@ -638,9 +802,9 @@ class SubscriptionService {
   void dispose() {
     _monetizationSub?.cancel();
     _userSub?.cancel();
-    _rtdbUsageSub?.cancel();
     _usagePollTimer?.cancel();
     _httpClient.close();
     _statusController.close();
+    configNotifier.dispose();
   }
 }

@@ -1,5 +1,4 @@
 import os
-import json
 import logging
 import sys
 
@@ -52,26 +51,6 @@ def setup_logging(log_file: str, level: int = logging.INFO):
     logging.getLogger("fastapi").setLevel(logging.INFO)
 
     return structlog.get_logger()
-
-def detect_google_json():
-    """Look for a Google Service Account JSON in server/json/ directory."""
-    try:
-        json_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "json")
-        if os.path.exists(json_dir):
-            files = [f for f in os.listdir(json_dir) if f.endswith(".json")]
-            for f in files:
-                path = os.path.join(json_dir, f)
-                try:
-                    with open(path, 'r', encoding="utf-8") as jf:
-                        data = json.load(jf)
-                        if "project_id" in data and "private_key" in data:
-                            logging.info(f"[Auto-Detect] Found Google Service Account: {f}")
-                            return path
-                except Exception:
-                    continue
-    except Exception as e:
-        logging.warning(f"[Auto-Detect] Error searching for JSON: {e}")
-    return ""
 
 def kill_process_on_port(port: int):
     """Kill any process listening on the given port using netstat + taskkill (Windows)."""

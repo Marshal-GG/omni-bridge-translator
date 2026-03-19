@@ -56,7 +56,6 @@ RIVA_PARAKEET_ASR_LANGS: set[str] = {
     "tr-TR",
     "he-IL",
     "bn-IN",
-    "multi",
 }
 
 # ── Riva NMT Translation ───────────────────────────────────────────────────────

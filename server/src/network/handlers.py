@@ -9,7 +9,6 @@ from typing import Dict, Any, Optional
 from src.network.orchestrator import InferenceOrchestrator
 from src.audio.capture import AudioCapture
 from src.audio.meter import AudioMeter
-from src.utils.server_utils import detect_google_json
 from src.audio.handler import (
     audio_poll_loop, 
     audio_level_broadcast_loop, 
@@ -37,7 +36,7 @@ class ServerContext:
             "transcription_model": "online",
             "translation_model": "google",
             "api_key": "",
-            "google_json_path": "",
+            "google_credentials_json": "",
             "use_mic": False,
             "input_device_index": None,
             "output_device_index": None,
@@ -78,9 +77,6 @@ class SessionHandler(BaseHandler):
         if not msg.get("translation_model"):
             self.ctx.config["translation_model"] = msg.get("ai_engine", self.ctx.config["ai_engine"])
         
-        if self.ctx.config["translation_model"] == "google_api":
-             self.ctx.config["google_json_path"] = msg.get("google_json_path") or detect_google_json()
-
         # Validations
         tl_model = str(self.ctx.config.get("translation_model") or "unknown")
         if self.ctx.config.get("translation_model") in ("riva", "llama") and not self.ctx.config.get("api_key"):
@@ -101,10 +97,10 @@ class SessionHandler(BaseHandler):
             if self.ctx.orchestrator is None:
                 self.ctx.orchestrator = InferenceOrchestrator(
                     nvidia_api_key=self.ctx.config["api_key"],
-                    google_json_path=self.ctx.config["google_json_path"]
+                    google_credentials_json=self.ctx.config["google_credentials_json"]
                 )
             else:
-                self.ctx.orchestrator.set_api_keys(self.ctx.config["api_key"], self.ctx.config["google_json_path"])
+                self.ctx.orchestrator.set_api_keys(self.ctx.config["api_key"], self.ctx.config["google_credentials_json"])
 
             is_nim_asr = self.ctx.config["transcription_model"] == "riva"
             is_nim_trans = self.ctx.config["translation_model"] in ("riva", "llama")
@@ -194,7 +190,7 @@ class ConfigHandler(BaseHandler):
         new_key = msg.get("api_key", self.ctx.config["api_key"])
         new_trans = msg.get("transcription_model", self.ctx.config["transcription_model"])
         new_tl = msg.get("translation_model", self.ctx.config["translation_model"])
-        new_json = msg.get("google_json_path", self.ctx.config["google_json_path"])
+        new_google_creds = msg.get("google_credentials_json", self.ctx.config["google_credentials_json"])
 
         has_changed = (
             self.ctx.config["source_lang"] != new_source or
@@ -204,7 +200,7 @@ class ConfigHandler(BaseHandler):
             self.ctx.config["api_key"] != new_key or
             self.ctx.config["transcription_model"] != new_trans or
             self.ctx.config["translation_model"] != new_tl or
-            self.ctx.config["google_json_path"] != new_json
+            self.ctx.config["google_credentials_json"] != new_google_creds
         )
 
         self.ctx.config.update({
@@ -215,7 +211,7 @@ class ConfigHandler(BaseHandler):
             "api_key": new_key,
             "transcription_model": new_trans,
             "translation_model": new_tl,
-            "google_json_path": new_json or (detect_google_json() if new_tl == "google_api" else "")
+            "google_credentials_json": new_google_creds,
         })
 
         if self.ctx.is_running and has_changed:
@@ -223,7 +219,7 @@ class ConfigHandler(BaseHandler):
             await SessionHandler(self.ctx).start(websocket, self.ctx.config)
         elif not self.ctx.is_running:
             if self.ctx.orchestrator:
-                self.ctx.orchestrator.set_api_keys(new_key, self.ctx.config["google_json_path"])
+                self.ctx.orchestrator.set_api_keys(new_key, self.ctx.config["google_credentials_json"])
                 await self.ctx.manager.broadcast_status(self.ctx.orchestrator)
 
     async def update_volume(self, websocket, msg: Dict[str, Any]):
@@ -294,7 +290,7 @@ class StatusHandler(BaseHandler):
         if not self.ctx.orchestrator:
             self.ctx.orchestrator = InferenceOrchestrator(
                 nvidia_api_key=self.ctx.config["api_key"],
-                google_json_path=self.ctx.config["google_json_path"]
+                google_credentials_json=self.ctx.config["google_credentials_json"]
             )
         
         return {

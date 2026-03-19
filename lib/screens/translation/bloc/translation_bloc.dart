@@ -172,10 +172,10 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     emit(state.copyWith(modelStatuses: newStatuses));
   }
 
-  void _onToggleRunning(
+  Future<void> _onToggleRunning(
     ToggleRunningEvent event,
     Emitter<TranslationState> emit,
-  ) {
+  ) async {
     if (state.isRunning) {
       asrClient.stop();
       emit(state.copyWith(isRunning: false));
@@ -193,6 +193,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         // Just acknowledging the user's "whether key provided or not"
         // But for now, we just start if quota is ok.
       }
+      final googleCredentialsJson = state.activeTranslationModel == 'google_api'
+          ? await TrackingService.instance.getGoogleCredentials()
+          : '';
       asrClient.start(
         sourceLang: state.activeSourceLang,
         targetLang: state.activeTargetLang,
@@ -201,6 +204,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         outputDeviceIndex: state.activeOutputDeviceIndex,
         translationModel: state.activeTranslationModel,
         apiKey: state.activeApiKey,
+        googleCredentialsJson: googleCredentialsJson,
         transcriptionModel: state.activeTranscriptionModel,
       );
       emit(state.copyWith(isRunning: true));
@@ -283,6 +287,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         );
 
         // Tell underlying ASR engine we changed things on init load
+        final googleCredentialsJsonOnLoad = translationModel == 'google_api'
+            ? await TrackingService.instance.getGoogleCredentials()
+            : '';
         asrClient.updateSettings(
           targetLang: targetLang,
           sourceLang: sourceLang,
@@ -293,6 +300,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           micVolume: state.activeMicVolume,
           translationModel: translationModel,
           apiKey: apiKey,
+          googleCredentialsJson: googleCredentialsJsonOnLoad,
           transcriptionModel: transcriptionModel,
         );
       }
@@ -408,6 +416,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     }
 
     try {
+      final googleCredentialsJsonOnApply = event.translationModel == 'google_api'
+          ? await TrackingService.instance.getGoogleCredentials()
+          : '';
       asrClient.updateSettings(
         targetLang: event.targetLang,
         sourceLang: event.sourceLang,
@@ -418,6 +429,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         micVolume: event.micVolume,
         translationModel: event.translationModel,
         apiKey: event.apiKey,
+        googleCredentialsJson: googleCredentialsJsonOnApply,
         transcriptionModel: event.transcriptionModel,
       );
 

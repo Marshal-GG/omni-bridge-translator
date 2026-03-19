@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/services/firebase/auth_service.dart';
 import '../../core/services/firebase/subscription_service.dart';
@@ -25,6 +26,7 @@ class _AccountScreenState extends State<AccountScreen> {
   String? _message;
   bool _messageIsError = false;
   String _version = '1.0.0';
+  final _formatter = NumberFormat('#,###');
 
   @override
   void initState() {
@@ -309,7 +311,7 @@ class _AccountScreenState extends State<AccountScreen> {
                                                     Text(
                                                       isUnlimited
                                                           ? 'Unlimited token translation'
-                                                          : '${status.dailyTokensUsed} / ${status.dailyLimit} tokens used today',
+                                                          : '${_formatter.format(status.dailyTokensUsed)} / ${_formatter.format(status.dailyLimit)} tokens used today',
                                                       style: const TextStyle(
                                                         color: Colors.white54,
                                                         fontSize: 11,
@@ -320,17 +322,17 @@ class _AccountScreenState extends State<AccountScreen> {
                                                       children: [
                                                           _UsageBadge(
                                                             label: 'WEEKLY',
-                                                            value: status.weeklyTokensUsed.toString(),
+                                                            value: _formatter.format(status.weeklyTokensUsed),
                                                           ),
                                                           const SizedBox(width: 8),
                                                           _UsageBadge(
                                                             label: 'MONTHLY',
-                                                            value: status.monthlyTokensUsed.toString(),
+                                                            value: _formatter.format(status.monthlyTokensUsed),
                                                           ),
                                                           const SizedBox(width: 8),
                                                           _UsageBadge(
                                                             label: 'LIFETIME',
-                                                            value: status.lifetimeTokensUsed.toString(),
+                                                            value: _formatter.format(status.lifetimeTokensUsed),
                                                           ),
                                                         ],
                                                       ),

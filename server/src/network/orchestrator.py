@@ -57,9 +57,9 @@ class InferenceOrchestrator:
     speech_recognition: SpeechRecognitionModel
     whisper: WhisperModel
 
-    def __init__(self, nvidia_api_key: str = "", google_json_path: str = ""):
+    def __init__(self, nvidia_api_key: str = "", google_credentials_json: str = ""):
         self.nvidia_api_key = nvidia_api_key
-        self.google_json_path = google_json_path
+        self.google_credentials_json = google_credentials_json
         
         self.logger = structlog.get_logger()
         self.seg = pysbd.Segmenter(language="en", clean=False)
@@ -87,31 +87,20 @@ class InferenceOrchestrator:
         self.riva = RivaModel(self.nvidia_api_key)
         self.llama = LlamaModel(self.nvidia_api_key)
         self.google = GoogleModel()
-        self.google_api = GoogleCloudModel(self.google_json_path)
+        self.google_api = GoogleCloudModel(self.google_credentials_json)
         self.mymemory = MyMemoryModel()
         self.speech_recognition = SpeechRecognitionModel()
         self.whisper = WhisperModel("base")
 
     # ── Configuration ────────────────────────────────────────────────────────
 
-    def set_api_keys(self, nvidia_key: str, google_json_path: str):
+    def set_api_keys(self, nvidia_key: str, google_credentials_json: str):
         """Update API keys across all relevant engines."""
         self.nvidia_api_key = nvidia_key
-        
-        if not google_json_path:
-            # Point to server/json/ (we are in server/src/network/orchestrator.py)
-            json_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "json")
-                
-            if os.path.exists(json_dir):
-                files = [f for f in os.listdir(json_dir) if f.endswith(".json")]
-                if files:
-                    google_json_path = os.path.join(json_dir, files[0])
-                    logging.info(f"[Orchestrator] Auto-detected Google JSON: {google_json_path}")
-
-        self.google_json_path = google_json_path
+        self.google_credentials_json = google_credentials_json
         self.riva.reload(nvidia_key)
         self.llama.reload(nvidia_key)
-        self.google_api.reload(google_json_path)
+        self.google_api.reload(google_credentials_json)
 
     # ── Stream Control ────────────────────────────────────────────────────────
 
@@ -195,7 +184,7 @@ class InferenceOrchestrator:
             self.whisper.unload_model() # Save VRAM if not using whisper
 
         # Translation Checks
-        if self._translation_model == "google_api" and not self.google_json_path:
+        if self._translation_model == "google_api" and not self.google_credentials_json:
             self._emit_error("Google Cloud JSON missing. Check Translation settings.")
             return False
 

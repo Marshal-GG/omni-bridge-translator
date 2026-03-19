@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../models/subscription_models.dart';
 import '../../../core/services/firebase/subscription_service.dart';
@@ -22,25 +23,36 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     _statusSubscription = _service.statusStream.listen(
       (status) => add(SubscriptionStatusUpdated(status)),
     );
+
+    // Also listen for config changes (plans becoming available)
+    _service.configNotifier.addListener(_onConfigChanged);
   }
 
-  void _onLoaded(SubscriptionLoaded event, Emitter<SubscriptionState> emit) {
-    // We already have plans statically accessible in the getter
+  void _onConfigChanged() {
+    // Re-fetch plans when monetization config loads/changes
+    add(SubscriptionLoaded());
+  }
+
+  Future<void> _onLoaded(SubscriptionLoaded event, Emitter<SubscriptionState> emit) async {
     final plans = _service.availablePlans;
     final status = _service.currentStatus;
-
-    emit(state.copyWith(isLoading: false, status: status, plans: plans));
+    final trialUsed = await _service.hasUsedTrial();
+    debugPrint('[SubscriptionBloc] _onLoaded: ${plans.length} plans, '
+        'status=${status?.tier ?? "null"}, trialUsed=$trialUsed');
+    emit(state.copyWith(isLoading: false, status: status, plans: plans, trialUsed: trialUsed));
   }
 
   void _onStatusUpdated(
     SubscriptionStatusUpdated event,
     Emitter<SubscriptionState> emit,
   ) {
+    final plans = _service.availablePlans;
+    debugPrint('[SubscriptionBloc] _onStatusUpdated: tier=${event.status.tier}, '
+        '${plans.length} plans');
     emit(
       state.copyWith(
         status: event.status,
-        // refresh plans automatically in case there's an active monetization refetch in the background
-        plans: _service.availablePlans,
+        plans: plans,
       ),
     );
   }
@@ -48,6 +60,7 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
   @override
   Future<void> close() {
     _statusSubscription?.cancel();
+    _service.configNotifier.removeListener(_onConfigChanged);
     return super.close();
   }
 }

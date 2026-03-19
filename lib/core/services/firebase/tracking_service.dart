@@ -11,6 +11,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../navigation/global_navigator.dart';
+import 'subscription_service.dart';
 
 class TrackingService {
   TrackingService._();
@@ -20,13 +21,13 @@ class TrackingService {
   FirebaseApp get _app => Firebase.app(_appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
-  
+
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
-  
-  // Prefix to keep debug and release session IDs separate in secure storage
+
   String get _sessionKeyPrefix => kDebugMode ? 'debug_' : 'release_';
+  String get _googleCredentialsStorageKey => '${_sessionKeyPrefix}google_translation_credentials_json';
 
   String? _currentSessionId;
   DateTime? _sessionStartTime;
@@ -46,7 +47,7 @@ class TrackingService {
   Map<String, dynamic>? _pendingInterim;
   int _lastCaptionTimestamp = 0;
 
-  final String _rtdbBaseUrl =
+  static const String _rtdbBaseUrl =
       'https://omni-bridge-ai-translator-default-rtdb.firebaseio.com';
 
   /// Check if a session is currently active
@@ -55,17 +56,14 @@ class TrackingService {
   /// Get current user ID
   String? get uid => _auth.currentUser?.uid;
 
-  /// Helper to get authenticated RTDB URL
   Future<Uri?> _getRTDBUrl(String path) async {
     final user = _auth.currentUser;
     if (user == null || uid == null) return null;
-
     final idToken = await user.getIdToken();
     return Uri.parse('$_rtdbBaseUrl/users/$uid/$path.json?auth=$idToken');
   }
 
-  /// Wraps an RTDB HTTP request with retry logic for transient network errors.
-  Future<http.Response?> _wrapRTDBRequest(
+  Future<http.Response?> _rtdbRequest(
     Future<http.Response> Function() request, {
     int maxRetries = 3,
     String? context,
@@ -76,31 +74,20 @@ class TrackingService {
         final response = await request().timeout(const Duration(seconds: 5));
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return response;
-        } else {
-          debugPrint(
-            '[Tracking] RTDB Request ($context) failed with status: ${response.statusCode}',
-          );
-          return response; // Return even on 4xx/5xx to handle specifically if needed
         }
+        return response;
       } catch (e) {
         attempts++;
-        final isLastAttempt = attempts >= maxRetries;
         final isTransient = e is HandshakeException ||
             e is SocketException ||
             e is http.ClientException ||
             e is TimeoutException;
-
-        if (isTransient && !isLastAttempt) {
-          final delay = Duration(milliseconds: 500 * attempts);
-          debugPrint(
-            '[Tracking] RTDB Request ($context) transient error: $e. Retrying in ${delay.inMilliseconds}ms... (Attempt $attempts)',
-          );
-          await Future.delayed(delay);
+        if (isTransient && attempts < maxRetries) {
+          await Future.delayed(Duration(milliseconds: 500 * attempts));
           continue;
         }
-
-        debugPrint('[Tracking] RTDB Request ($context) fatal error: $e');
-        if (isLastAttempt) return null;
+        debugPrint('[Tracking] RTDB ($context) error: $e');
+        return null;
       }
     }
     return null;
@@ -127,8 +114,7 @@ class TrackingService {
       final net = NetworkInfo();
       info['wifi_ip'] = await net.getWifiIP() ?? 'N/A';
       info['wifi_name'] = await net.getWifiName() ?? 'N/A';
-      info['wifi_bssid'] =
-          await net.getWifiBSSID() ?? 'N/A'; // MAC of access point
+      info['wifi_bssid'] = await net.getWifiBSSID() ?? 'N/A';
       info['wifi_ipv6'] = await net.getWifiIPv6() ?? 'N/A';
       info['wifi_gateway'] = await net.getWifiGatewayIP() ?? 'N/A';
       info['wifi_submask'] = await net.getWifiSubmask() ?? 'N/A';
@@ -142,20 +128,15 @@ class TrackingService {
   /// Start an app session
   Future<void> startSession() async {
     if (uid == null) {
-      debugPrint(
-        '[Tracking] Cannot start session: UID is null. User not signed in.',
-      );
+      debugPrint('[Tracking] Cannot start session: UID is null.');
       return;
     }
 
     if (_currentSessionId != null) {
-      debugPrint(
-        '[Tracking] Session $_currentSessionId already running. Ignoring startSession call.',
-      );
+      debugPrint('[Tracking] Session $_currentSessionId already running.');
       return;
     }
 
-    // Get from Secure Storage
     final secureKey = '${_sessionKeyPrefix}current_session_id_$uid';
     String? cachedSessionId = await _secureStorage.read(key: secureKey);
 
@@ -179,14 +160,10 @@ class TrackingService {
           if (data['isEnded'] != true && data['forceLogout'] != true) {
             isNewSession = false;
             _currentSessionId = cachedSessionId;
-
             await sessionRef.set({
               'appReopenedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
-
-            debugPrint(
-              '[Tracking] Resumed existing session $_currentSessionId',
-            );
+            debugPrint('[Tracking] Resumed existing session $_currentSessionId');
           }
         }
       } catch (e) {
@@ -200,13 +177,11 @@ class TrackingService {
           .doc(uid)
           .collection('sessions')
           .doc();
-
       _currentSessionId = sessionRef.id;
       await _secureStorage.write(
         key: '${_sessionKeyPrefix}current_session_id_$uid',
         value: _currentSessionId!,
       );
-
       try {
         await sessionRef.set({
           'sessionId': _currentSessionId,
@@ -222,7 +197,7 @@ class TrackingService {
     }
 
     _heartbeatTimer?.cancel();
-    _heartbeatTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+    _heartbeatTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       _pingSession();
     });
 
@@ -232,45 +207,33 @@ class TrackingService {
         if (snapshot.exists) {
           final data = snapshot.data();
           if (data is Map<String, dynamic> && data['forceLogout'] == true) {
-            debugPrint(
-              '[Tracking] Remote forceLogout detected for session $_currentSessionId',
-            );
+            debugPrint('[Tracking] Remote forceLogout for session $_currentSessionId');
             _handleRemoteLogout();
           }
         }
       });
     });
 
-    // Listen to User document for global forceLogout
     _userSub?.cancel();
-    _userSub = _firestore
-        .collection('users')
-        .doc(uid)
-        .snapshots()
-        .listen((snapshot) {
-          SchedulerBinding.instance.addPostFrameCallback((_) {
-            if (snapshot.exists) {
-              final data = snapshot.data();
-              if (data is Map<String, dynamic> && data['forceLogout'] == true) {
-                debugPrint(
-                  '[Tracking] Remote forceLogout detected for user $uid',
-                );
-                _handleRemoteLogout();
-              }
-            }
-          });
-        });
+    _userSub = _firestore.collection('users').doc(uid).snapshots().listen((snapshot) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (snapshot.exists) {
+          final data = snapshot.data();
+          if (data is Map<String, dynamic> && data['forceLogout'] == true) {
+            debugPrint('[Tracking] Remote forceLogout for user $uid');
+            _handleRemoteLogout();
+          }
+        }
+      });
+    });
 
-    // 2. Sync Initial App Settings to RTDB
     try {
-      final settingsUrl = await _getRTDBUrl('sessions/$_currentSessionId');
-      if (settingsUrl != null) {
-        await _wrapRTDBRequest(
+      final url = await _getRTDBUrl('sessions/$_currentSessionId');
+      if (url != null) {
+        await _rtdbRequest(
           () => _httpClient.patch(
-            settingsUrl,
-            body: jsonEncode({
-              'started_at': {'.sv': 'timestamp'},
-            }),
+            url,
+            body: jsonEncode({'started_at': {'.sv': 'timestamp'}}),
           ),
           context: 'startSession',
         );
@@ -278,20 +241,17 @@ class TrackingService {
     } catch (e) {
       debugPrint('[Tracking] Failed to sync session start to RTDB: $e');
     }
+
+    unawaited(_cleanupOldCaptions());
+    unawaited(_cleanupOldDailyUsage());
+    unawaited(_cleanupOldSessions());
   }
 
   void _handleRemoteLogout() async {
     await _secureStorage.delete(key: '${_sessionKeyPrefix}current_session_id_$uid');
-
-    // Reset forceLogout to false so re-enabling the account doesn't immediately
-    // re-trigger another logout on next login. Done client-side since no Cloud Functions.
     try {
       if (uid != null) {
-        // Reset global flag
-        await _firestore.collection('users').doc(uid).update({
-          'forceLogout': false,
-        });
-        // Reset per-session flag if we know the session ID
+        await _firestore.collection('users').doc(uid).update({'forceLogout': false});
         if (_currentSessionId != null) {
           await _firestore
               .collection('users')
@@ -304,11 +264,7 @@ class TrackingService {
     } catch (e) {
       debugPrint('[Tracking] Failed to reset forceLogout: $e');
     }
-
-    // Auth state listener handles the rest
     await _auth.signOut();
-
-    // Force redirection to Splash Screen (which handles Onboarding/Login logic)
     await GlobalNavigator.pushNamedAndRemoveUntil('/splash', (route) => false);
   }
 
@@ -339,11 +295,11 @@ class TrackingService {
       }, SetOptions(merge: true));
 
       try {
-        final settingsUrl = await _getRTDBUrl('sessions/$_currentSessionId');
-        if (settingsUrl != null) {
-          await _wrapRTDBRequest(
+        final url = await _getRTDBUrl('sessions/$_currentSessionId');
+        if (url != null) {
+          await _rtdbRequest(
             () => _httpClient.patch(
-              settingsUrl,
+              url,
               body: jsonEncode({
                 'ended_at': {'.sv': 'timestamp'},
                 'duration_seconds': duration,
@@ -368,37 +324,28 @@ class TrackingService {
       _sessionSub = null;
       _userSub?.cancel();
       _userSub = null;
-      _usageFlushTimer?.cancel(); // Cancel any pending flush
-      _usageBuffer.clear(); // Clear any buffered data
+      _usageFlushTimer?.cancel();
+      _usageBuffer.clear();
     }
   }
 
-  /// Sends a periodic lightweight ping to the active session document
   Future<void> _pingSession() async {
     if (uid == null || _currentSessionId == null) return;
-
     try {
       final duration = DateTime.now().difference(_sessionStartTime!).inSeconds;
-
-      // RTDB-only ping for active session detection
-      try {
-        final settingsUrl = await _getRTDBUrl('sessions/$_currentSessionId');
-        if (settingsUrl != null) {
-          await _wrapRTDBRequest(
-            () => _httpClient.patch(
-              settingsUrl,
-              body: jsonEncode({
-                'last_ping_at': {'.sv': 'timestamp'},
-                'duration_seconds': duration,
-              }),
-            ),
-            context: 'pingSession',
-          );
-        }
-      } catch (e) {
-        debugPrint('[Tracking] Failed to ping RTDB session: $e');
+      final url = await _getRTDBUrl('sessions/$_currentSessionId');
+      if (url != null) {
+        await _rtdbRequest(
+          () => _httpClient.patch(
+            url,
+            body: jsonEncode({
+              'last_ping_at': {'.sv': 'timestamp'},
+              'duration_seconds': duration,
+            }),
+          ),
+          context: 'pingSession',
+        );
       }
-
       debugPrint('[Tracking] Heartbeat ping sent.');
     } catch (e) {
       debugPrint('[Tracking] Failed to send heartbeat ping: $e');
@@ -408,10 +355,9 @@ class TrackingService {
   /// Sync current Translation Settings to Firestore
   Future<void> syncSettings(Map<String, dynamic> settingsData) async {
     if (uid == null) {
-      debugPrint('[Tracking] Cannot sync settings: UID is null. User may be signed out.');
+      debugPrint('[Tracking] Cannot sync settings: UID is null.');
       return;
     }
-
     try {
       debugPrint('[Tracking] Attempting to sync settings for UID: $uid');
       await _firestore
@@ -430,13 +376,38 @@ class TrackingService {
     }
   }
 
+  /// Fetches the Google Cloud service account credentials JSON string.
+  /// Checks flutter_secure_storage first, then falls back to Firestore
+  /// system/translation_config → googleCredentialsJson field.
+  /// Pass [forceRefresh: true] to bypass the cache (e.g. after credential rotation).
+  Future<String> getGoogleCredentials({bool forceRefresh = false}) async {
+    try {
+      if (!forceRefresh) {
+        final cached = await _secureStorage.read(key: _googleCredentialsStorageKey);
+        if (cached != null && cached.isNotEmpty) return cached;
+      }
+
+      final doc = await _firestore
+          .collection('system')
+          .doc('translation_config')
+          .get();
+      final credentialsJson = doc.data()?['googleCredentialsJson'] as String? ?? '';
+      if (credentialsJson.isEmpty) return '';
+
+      await _secureStorage.write(key: _googleCredentialsStorageKey, value: credentialsJson);
+      return credentialsJson;
+    } catch (e) {
+      debugPrint('[Tracking] Failed to fetch Google credentials: $e');
+      return '';
+    }
+  }
+
   /// Get current Translation Settings from Firestore
   Future<Map<String, dynamic>?> getSettings() async {
     if (uid == null) {
-      debugPrint('[Tracking] Cannot fetch settings: UID is null. User may be signed out.');
+      debugPrint('[Tracking] Cannot fetch settings: UID is null.');
       return null;
     }
-
     try {
       debugPrint('[Tracking] Fetching settings for UID: $uid');
       final doc = await _firestore
@@ -445,7 +416,6 @@ class TrackingService {
           .collection('settings')
           .doc('app_preferences')
           .get();
-
       if (doc.exists) {
         debugPrint('[Tracking] Successfully fetched user settings from Firestore.');
         return doc.data();
@@ -459,65 +429,23 @@ class TrackingService {
     return null;
   }
 
-  /// Write general app logs to RTDB via REST API
+  /// Log a general app event (console only — RTDB logs path removed).
   Future<void> logEvent(String eventName, [Map<String, dynamic>? data]) async {
-    if (uid == null) return;
-
-    try {
-      final url = await _getRTDBUrl('logs');
-      if (url == null) return;
-
-      await _wrapRTDBRequest(
-        () => _httpClient.post(
-          url,
-          body: jsonEncode({
-            'event': eventName,
-            'data': data ?? {},
-            'timestamp': {'.sv': 'timestamp'},
-            'sessionId': _currentSessionId,
-          }),
-        ),
-        context: 'logEvent: $eventName',
-      );
-      debugPrint('[Tracking] Logged event to RTDB: $eventName');
-    } catch (e) {
-      debugPrint('[Tracking] Error logging event to RTDB: $e');
-    }
+    debugPrint('[Tracking] Event: $eventName${data != null ? ' $data' : ''}');
   }
 
-  /// Log an error to RTDB via REST API
+  /// Log an error (console only — RTDB error_logs path removed).
   Future<void> logError(String message, [Object? error]) async {
-    if (uid == null) return;
-
     final errorStr = error?.toString() ?? '';
     if (message.contains('setState() called after dispose()') ||
         errorStr.contains('setState() called after dispose()')) {
       return;
     }
-
-    try {
-      final url = await _getRTDBUrl('error_logs');
-      if (url == null) return;
-
-      await _wrapRTDBRequest(
-        () => _httpClient.post(
-          url,
-          body: jsonEncode({
-            'message': message,
-            'error': errorStr,
-            'timestamp': {'.sv': 'timestamp'},
-            'sessionId': _currentSessionId,
-          }),
-        ),
-        context: 'logError',
-      );
-      debugPrint('[Tracking] Logged error to RTDB: $message');
-    } catch (e) {
-      debugPrint('[Tracking] Failed to log error to RTDB: $e');
-    }
+    debugPrint(
+        '[Tracking] Error: $message${errorStr.isNotEmpty ? ' — $errorStr' : ''}');
   }
 
-  /// Push high-frequency Live Caption data to RTDB via REST API
+  /// Push high-frequency Live Caption data to RTDB
   Future<void> syncLiveCaption(
     String originalText,
     String translatedText,
@@ -535,7 +463,7 @@ class TrackingService {
         // 1. Permanent Log (Append)
         final url = await _getRTDBUrl('captions');
         if (url != null) {
-          await _wrapRTDBRequest(
+          await _rtdbRequest(
             () => _httpClient.post(
               url,
               body: jsonEncode({
@@ -560,14 +488,11 @@ class TrackingService {
         // 3. Flush buffered usage stats on final segment
         await _flushUsage();
 
-        // Reset interim sync state on final
         _lastCaptionTimestamp = now;
         _pendingInterim = null;
       } else {
-        // Drop if this is older than what we've already handled (unlikely with 1 worker but safe)
         if (now < _lastCaptionTimestamp) return;
 
-        // Prepare the data
         final data = {
           'originalText': originalText,
           'translatedText': translatedText,
@@ -580,7 +505,6 @@ class TrackingService {
         };
 
         if (_isSyncingInterim) {
-          // just update the pending buffer; the in-flight request will pick up the latest on completion
           _pendingInterim = data;
           return;
         }
@@ -592,7 +516,6 @@ class TrackingService {
     }
   }
 
-  /// Ensures only one 'current_caption' write is in flight at a time.
   Future<void> _syncInterimSequentially(Map<String, dynamic> data) async {
     _isSyncingInterim = true;
     _pendingInterim = null;
@@ -600,18 +523,14 @@ class TrackingService {
     try {
       final url = await _getRTDBUrl('current_caption');
       if (url != null) {
-        await _wrapRTDBRequest(
-          () => _httpClient.put(
-            url, // Use PUT for the whole node to be cleaner
-            body: jsonEncode(data),
-          ),
+        await _rtdbRequest(
+          () => _httpClient.put(url, body: jsonEncode(data)),
           context: 'syncLiveCaption:Interim',
-          maxRetries: 0,
+          maxRetries: 1,
         );
       }
     } finally {
       _isSyncingInterim = false;
-      // If a new update arrived while we were writing, sync it now
       if (_pendingInterim != null) {
         final nextData = _pendingInterim!;
         _pendingInterim = null;
@@ -620,7 +539,7 @@ class TrackingService {
     }
   }
 
-  /// Buffers usage stats and aggregates them to reduce HTTP calls.
+  /// Buffers usage stats and aggregates them to reduce RTDB writes.
   void logModelUsage(Map<String, dynamic> stats) {
     try {
       final engine = stats['engine'] as String? ?? 'unknown';
@@ -628,7 +547,6 @@ class TrackingService {
       final outputTokens = (stats['output_tokens'] as num?)?.toInt() ?? 0;
       final latencyMs = (stats['latency_ms'] as num?)?.toInt() ?? 0;
 
-      // Accumulate in buffer
       _usageBuffer[engine] ??= {
         'total_tokens': 0,
         'input_tokens': 0,
@@ -648,13 +566,10 @@ class TrackingService {
       b['last_model'] = stats['model'];
       if (stats['error'] != null) b['last_error'] = stats['error'];
 
-      // Periodic flush or wait for isFinal
       _usageFlushTimer?.cancel();
       _usageFlushTimer = Timer(const Duration(seconds: 3), () => _flushUsage());
 
-      debugPrint(
-        '[Tracking] Buffered model usage: $engine (+$inputTokens/+$outputTokens tokens)',
-      );
+      debugPrint('[Tracking] Buffered model usage: $engine (+$inputTokens/+$outputTokens tokens)');
     } catch (e) {
       debugPrint('[Tracking] Error buffering model usage: $e');
     }
@@ -686,84 +601,184 @@ class TrackingService {
         final engine = entry.key;
         final data = entry.value;
 
-        // 1. Stats update (Increment)
-        updates['model_stats/$engine/total_calls'] = {
-          '.sv': {'increment': data['calls']},
-        };
-        updates['model_stats/$engine/total_tokens'] = {
-          '.sv': {'increment': data['total_tokens']},
-        };
-        updates['model_stats/$engine/total_input_tokens'] = {
-          '.sv': {'increment': data['input_tokens']},
-        };
-        updates['model_stats/$engine/total_output_tokens'] = {
-          '.sv': {'increment': data['output_tokens']},
-        };
-        updates['model_stats/$engine/total_latency_ms'] = {
-          '.sv': {'increment': data['latency_ms']},
-        };
+        updates['model_stats/$engine/total_calls'] = {'.sv': {'increment': data['calls']}};
+        updates['model_stats/$engine/total_tokens'] = {'.sv': {'increment': data['total_tokens']}};
+        updates['model_stats/$engine/total_input_tokens'] = {'.sv': {'increment': data['input_tokens']}};
+        updates['model_stats/$engine/total_output_tokens'] = {'.sv': {'increment': data['output_tokens']}};
+        updates['model_stats/$engine/total_latency_ms'] = {'.sv': {'increment': data['latency_ms']}};
         updates['model_stats/$engine/last_used'] = {'.sv': 'timestamp'};
         updates['model_stats/$engine/engine'] = engine;
 
-        // 2. Daily total update
         if (data['total_tokens'] > 0) {
-          updates['daily_usage/$todayStr/tokens'] = {
-            '.sv': {'increment': data['total_tokens']},
-          };
+          updates['daily_usage/$todayStr/tokens'] = {'.sv': {'increment': data['total_tokens']}};
           updates['daily_usage/$todayStr/last_updated'] = {'.sv': 'timestamp'};
-
-          updates['daily_usage/$todayStr/models/$engine/tokens'] = {
-            '.sv': {'increment': data['total_tokens']},
-          };
-          updates['daily_usage/$todayStr/models/$engine/calls'] = {
-            '.sv': {'increment': data['calls']},
-          };
-          updates['daily_usage/$todayStr/models/$engine/last_updated'] = {
-            '.sv': 'timestamp',
-          };
+          updates['daily_usage/$todayStr/models/$engine/tokens'] = {'.sv': {'increment': data['total_tokens']}};
+          updates['daily_usage/$todayStr/models/$engine/calls'] = {'.sv': {'increment': data['calls']}};
+          updates['daily_usage/$todayStr/models/$engine/last_updated'] = {'.sv': 'timestamp'};
           totalDailyTokens += data['total_tokens'] as int;
         }
 
-        // 3. Error tracking
         if (data['last_error'] != null) {
-          updates['daily_usage/$todayStr/errors/$engine/failed_calls'] = {
-            '.sv': {'increment': data['calls']},
-          };
-          updates['daily_usage/$todayStr/errors/$engine/last_error'] =
-              data['last_error'];
-          updates['daily_usage/$todayStr/errors/$engine/last_error_time'] = {
-            '.sv': 'timestamp',
-          };
+          updates['daily_usage/$todayStr/errors/$engine/failed_calls'] = {'.sv': {'increment': data['calls']}};
+          updates['daily_usage/$todayStr/errors/$engine/last_error'] = data['last_error'];
+          updates['daily_usage/$todayStr/errors/$engine/last_error_time'] = {'.sv': 'timestamp'};
         }
       }
 
-      // 4. Update aggregates (Lifetime & Monthly) - Consolidated here for atomicity
       if (totalDailyTokens > 0) {
-        updates['usage/totals/lifetime'] = {
-          '.sv': {'increment': totalDailyTokens}
-        };
-        updates['usage/totals/calendar_monthly'] = {
-          '.sv': {'increment': totalDailyTokens}
-        };
-        updates['usage/totals/subscription_monthly'] = {
-          '.sv': {'increment': totalDailyTokens}
-        };
-        updates['usage/totals/weekly'] = {
-          '.sv': {'increment': totalDailyTokens}
-        };
+        updates['usage/totals/lifetime'] = {'.sv': {'increment': totalDailyTokens}};
+        updates['usage/totals/calendar_monthly'] = {'.sv': {'increment': totalDailyTokens}};
+        updates['usage/totals/subscription_monthly'] = {'.sv': {'increment': totalDailyTokens}};
+        updates['usage/totals/weekly'] = {'.sv': {'increment': totalDailyTokens}};
       }
 
       if (updates.isNotEmpty) {
-        await _wrapRTDBRequest(
+        await _rtdbRequest(
           () => _httpClient.patch(url, body: jsonEncode(updates)),
-          context: 'flushUsage (Multi-Path)',
+          context: 'flushUsage',
         );
-        debugPrint(
-          '[Tracking] Flushed aggregated usage stats to RTDB (+$totalDailyTokens tokens).',
-        );
+        debugPrint('[Tracking] Flushed usage stats to RTDB (+$totalDailyTokens tokens).');
       }
     } catch (e) {
-      debugPrint('[Tracking] Failed to log model usage to RTDB: $e');
+      debugPrint('[Tracking] Failed to flush usage to RTDB: $e');
+    }
+  }
+
+  /// Deletes RTDB captions older than the tier's retention window.
+  /// Called fire-and-forget on session start. Reads retention config from
+  /// SubscriptionService (sourced from system/monetization in Firestore).
+  Future<void> _cleanupOldCaptions() async {
+    final userUid = uid;
+    if (userUid == null) return;
+
+    try {
+      final retentionDays = SubscriptionService.instance.captionRetentionDays;
+      if (retentionDays <= 0) return; // free tier — nothing stored to clean
+
+      final cutoffMs = DateTime.now()
+          .subtract(Duration(days: retentionDays))
+          .millisecondsSinceEpoch;
+
+      final url = await _getRTDBUrl('captions');
+      if (url == null) return;
+
+      final response = await _rtdbRequest(
+        () => _httpClient.get(url),
+        context: 'cleanupOldCaptions:fetch',
+        maxRetries: 1,
+      );
+      if (response == null || response.statusCode != 200) return;
+
+      final raw = jsonDecode(response.body);
+      if (raw == null || raw is! Map) return;
+      final data = raw as Map<String, dynamic>;
+
+      final Map<String, dynamic> deletions = {};
+      for (final entry in data.entries) {
+        final ts = (entry.value as Map<String, dynamic>?)?['timestamp'];
+        if (ts is num && ts < cutoffMs) {
+          deletions[entry.key] = null; // null = delete in RTDB
+        }
+      }
+
+      if (deletions.isEmpty) return;
+
+      final user = _auth.currentUser;
+      if (user == null) return;
+      final idToken = await user.getIdToken();
+      final deleteUrl =
+          Uri.parse('$_rtdbBaseUrl/users/$userUid/captions.json?auth=$idToken');
+
+      await _rtdbRequest(
+        () => _httpClient.patch(deleteUrl, body: jsonEncode(deletions)),
+        context: 'cleanupOldCaptions:delete',
+        maxRetries: 1,
+      );
+      debugPrint(
+          '[Tracking] Cleaned up ${deletions.length} old captions (>${retentionDays}d).');
+    } catch (e) {
+      debugPrint('[Tracking] Caption cleanup failed: $e');
+    }
+  }
+
+  /// Deletes RTDB daily_usage entries older than 90 days on session start.
+  /// Uses shallow=true to fetch only keys, avoiding downloading all usage data.
+  Future<void> _cleanupOldDailyUsage() async {
+    final userUid = uid;
+    if (userUid == null) return;
+
+    try {
+      final cutoffDate = DateTime.now().subtract(const Duration(days: 90));
+      final user = _auth.currentUser;
+      if (user == null) return;
+      final idToken = await user.getIdToken();
+
+      final url = Uri.parse(
+          '$_rtdbBaseUrl/users/$userUid/daily_usage.json?shallow=true&auth=$idToken');
+      final response = await _rtdbRequest(
+        () => _httpClient.get(url),
+        context: 'cleanupOldDailyUsage:fetch',
+        maxRetries: 1,
+      );
+      if (response == null || response.statusCode != 200) return;
+
+      final raw = jsonDecode(response.body);
+      if (raw == null || raw is! Map) return;
+
+      final Map<String, dynamic> deletions = {};
+      for (final key in raw.keys) {
+        try {
+          final date = DateTime.parse(key.toString());
+          if (date.isBefore(cutoffDate)) {
+            deletions[key.toString()] = null;
+          }
+        } catch (_) {
+          // skip malformed keys
+        }
+      }
+
+      if (deletions.isEmpty) return;
+
+      final deleteUrl = Uri.parse(
+          '$_rtdbBaseUrl/users/$userUid/daily_usage.json?auth=$idToken');
+      await _rtdbRequest(
+        () => _httpClient.patch(deleteUrl, body: jsonEncode(deletions)),
+        context: 'cleanupOldDailyUsage:delete',
+        maxRetries: 1,
+      );
+      debugPrint(
+          '[Tracking] Cleaned up ${deletions.length} old daily_usage entries (>90d).');
+    } catch (e) {
+      debugPrint('[Tracking] daily_usage cleanup failed: $e');
+    }
+  }
+
+  /// Deletes Firestore session docs older than 30 days on session start.
+  Future<void> _cleanupOldSessions() async {
+    final userUid = uid;
+    if (userUid == null) return;
+
+    try {
+      final cutoff = Timestamp.fromDate(
+          DateTime.now().subtract(const Duration(days: 30)));
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(userUid)
+          .collection('sessions')
+          .where('startTime', isLessThan: cutoff)
+          .get();
+
+      if (snapshot.docs.isEmpty) return;
+
+      final batch = _firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      debugPrint(
+          '[Tracking] Cleaned up ${snapshot.docs.length} old sessions (>30d).');
+    } catch (e) {
+      debugPrint('[Tracking] Session cleanup failed: $e');
     }
   }
 

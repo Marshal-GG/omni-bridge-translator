@@ -231,4 +231,7 @@ While copyright is automatic upon creation, formalizing your protection is highl
 - [Monetization Plan](monetization_plan.md)
 - [Admin Features Overview](admin_features_overview.md)
 - [Google Auth Troubleshooting](google_auth_troubleshooting.md)
+- [Session Isolation & Cleanup](session_isolation_guide.md)
+- [Server Health Checks](server_health_checks.md)
+- [Firebase Terminal Management](firebase_terminal_management.md)
 - [Publishing a New Release](github_releases_guide.md)

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../../models/subscription_models.dart';
+import '../../../core/services/firebase/subscription_service.dart';
 import 'package:intl/intl.dart';
 
 Widget buildCurrentUsageDisplay({
   required SubscriptionStatus status,
   required NumberFormat formatter,
 }) {
+  final tierName = SubscriptionService.instance.getNameForTier(status.tier).toUpperCase();
+
   if (status.isUnlimited) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -20,7 +23,7 @@ Widget buildCurrentUsageDisplay({
           const Icon(Icons.check_circle_rounded, color: Colors.tealAccent, size: 16),
           const SizedBox(width: 8),
           Text(
-            '${status.tier.toUpperCase()} UNLIMITED ACCESS ACTIVE',
+            '$tierName UNLIMITED ACCESS ACTIVE',
             style: const TextStyle(
               color: Colors.tealAccent,
               fontSize: 12,

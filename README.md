@@ -79,16 +79,21 @@ Auto-detect source language, or manually select from: English, Spanish, French, 
 
 ### 💳 Subscription Tiers
 
-| Tier | Price | Daily Quota (Tokens) |
-|------|-------|--------------------------|
-| **Free** | ₹0 | 10,000 tokens/day |
-| **Basic** | ₹49/week | 50,000 tokens/day |
-| **Plus** | ₹149/month | 100,000 tokens/day |
-| **Pro** | ₹399/month | Unlimited |
+| Feature | **Free** | **Pro** (₹799/mo) | **Enterprise** (₹2,499/mo) |
+|---------|----------|-------------------|---------------------------|
+| **Daily Quota** | 5,000 tokens | 25,000 tokens | 75,000 tokens |
+| **Monthly Quota** | 50,000 tokens | 250,000 tokens | 750,000 tokens |
+| **Translation Engines** | Google, MyMemory | All (+ Google Cloud, Riva, Llama) | All |
+| **Transcription** | Google Online | + Whisper (tiny–small) | + Whisper medium, Riva |
+| **Microphone Audio** | — | Yes | Yes |
+| **Caption History** | — | 7-day retention | 30-day retention |
+| **Session Duration** | 15 min | 2 hours | 8 hours |
+| **Concurrent Sessions** | 1 | 2 | 5 |
+| **Per-Engine Limits** | — | google_api: 100k, riva: 100k, llama: 150k | google_api: 300k, riva: 300k, llama: 500k |
 
-> Usage is calculated as the sum of input (source) and output (translated) tokens across all engines.
+> Usage is calculated as the sum of input (source) and output (translated) tokens across all engines. A one-time **Trial** tier is also available for new users to test Pro-level features before committing.
 
-Pro unlocks **Intelligent Context Refresh** (5-second retroactive correction), unlimited history access, and priority support. Clear visual indicators (teal highlights) and real-time usage tracking in the Account screen help you manage your plan. Upgrade from within the app via Razorpay.
+Pro unlocks caption history, microphone audio, and all AI engines. Clear visual indicators (teal highlights) and real-time usage tracking in the Account screen help you manage your plan. Upgrade from within the app via Razorpay.
 
 > Users with their own NVIDIA API Key bypass the daily quota for NVIDIA-backed engines.
 

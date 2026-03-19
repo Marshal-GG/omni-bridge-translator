@@ -230,9 +230,6 @@ Widget buildTranslationModelSelector(
   BuildContext context,
   SettingsState state,
 ) {
-  final currentTier =
-      SubscriptionService.instance.currentStatus?.tier ?? SubscriptionService.instance.defaultTier;
-
   const translationModels = {
     'google': 'Google Translate (Free)',
     'google_api': 'Google Cloud (Official API)',
@@ -242,13 +239,7 @@ Widget buildTranslationModelSelector(
   };
 
   bool hasAccess(String engineKey) {
-    if (engineKey == 'google' || engineKey == 'google_api' || engineKey == 'mymemory') return true;
-    final required = SubscriptionService.instance.getRequirement(
-      'engines',
-      engineKey,
-      SubscriptionService.instance.getTierAt(1),
-    );
-    return SubscriptionService.instance.tierHasAccess(currentTier, required);
+    return SubscriptionService.instance.canUseModel(engineKey);
   }
 
   final needsNvidiaKey =
@@ -527,6 +518,7 @@ Widget _buildTranscriptionModelSection(
                     label: 'NVIDIA Riva',
                     status: transState.modelStatuses['riva'],
                     isRecommended: true,
+                    locked: !SubscriptionService.instance.canUseModel('riva'),
                     icon: Icons.bolt_rounded,
                     onChanged: (v) {
                       // Explicitly unload current model from memory upon selection change
@@ -546,6 +538,7 @@ Widget _buildTranscriptionModelSection(
                     groupValue: state.settings.transcriptionModel,
                     label: 'Whisper Offline',
                     status: transState.modelStatuses[state.settings.transcriptionModel.startsWith('whisper') ? state.settings.transcriptionModel : 'whisper-base'],
+                    locked: !SubscriptionService.instance.canUseModel('whisper-base'),
                     icon: Icons.offline_bolt_outlined,
                     onChanged: (v) {
                       // Explicitly unload current model from memory upon selection change
@@ -590,6 +583,7 @@ class _TranscriptionOption extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool isRecommended;
+  final bool locked;
   final dynamic status;
   final ValueChanged<String> onChanged;
 
@@ -599,6 +593,7 @@ class _TranscriptionOption extends StatelessWidget {
     required this.label,
     required this.icon,
     this.isRecommended = false,
+    this.locked = false,
     this.status,
     required this.onChanged,
   });
@@ -610,8 +605,10 @@ class _TranscriptionOption extends StatelessWidget {
         (value.startsWith('whisper') && groupValue.startsWith('whisper'));
     return InkWell(
       borderRadius: BorderRadius.circular(8),
-      onTap: () => onChanged(value),
-      child: Container(
+      onTap: locked ? null : () => onChanged(value),
+      child: Opacity(
+        opacity: locked ? 0.4 : 1.0,
+        child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
@@ -626,11 +623,13 @@ class _TranscriptionOption extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isSelected ? Colors.tealAccent : Colors.white38,
-            ),
+            locked
+                ? const Icon(Icons.lock_outline, size: 18, color: Colors.white24)
+                : Icon(
+                    icon,
+                    size: 18,
+                    color: isSelected ? Colors.tealAccent : Colors.white38,
+                  ),
             if (status != null) ...[
               const SizedBox(height: 4),
               ModelStatusIndicator(status: status, compact: true),
@@ -651,6 +650,7 @@ class _TranscriptionOption extends StatelessWidget {
             ],
           ],
         ),
+      ),
       ),
     );
   }

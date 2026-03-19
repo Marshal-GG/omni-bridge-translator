@@ -32,6 +32,7 @@ class TranslationService {
   int? _outputDeviceIndex;
   String _translationModel = 'google';
   String _apiKey = '';
+  String _googleCredentialsJson = '';
   String _transcriptionModel = 'online';
 
   String get _wsUrl => 'ws://$serverHost:$serverPort/captions';
@@ -60,6 +61,7 @@ class TranslationService {
     int? outputDeviceIndex,
     String translationModel = 'google',
     String apiKey = '',
+    String googleCredentialsJson = '',
     String transcriptionModel = 'online',
   }) async {
     _intentionallyStopped = false;
@@ -70,6 +72,7 @@ class TranslationService {
     _outputDeviceIndex = outputDeviceIndex;
     _translationModel = translationModel;
     _apiKey = apiKey;
+    _googleCredentialsJson = googleCredentialsJson;
     _transcriptionModel = transcriptionModel;
     _reconnectAttempt = 0;
 
@@ -188,6 +191,7 @@ class TranslationService {
       'translation_model': _translationModel,
       'transcription_model': _transcriptionModel,
       'api_key': _apiKey,
+      'google_credentials_json': _googleCredentialsJson,
     };
     if (_inputDeviceIndex != null) {
       payload['input_device_index'] = _inputDeviceIndex;
@@ -209,6 +213,7 @@ class TranslationService {
     double micVolume = 1.0,
     required String translationModel,
     String apiKey = '',
+    String googleCredentialsJson = '',
     String transcriptionModel = 'online',
   }) {
     _sourceLang = sourceLang;
@@ -218,6 +223,7 @@ class TranslationService {
     _outputDeviceIndex = outputDeviceIndex;
     _translationModel = translationModel;
     _apiKey = apiKey;
+    _googleCredentialsJson = googleCredentialsJson;
     _transcriptionModel = transcriptionModel;
 
     if (_channel != null) {
@@ -231,6 +237,7 @@ class TranslationService {
         'translation_model': translationModel,
         'transcription_model': transcriptionModel,
         'api_key': apiKey,
+        'google_credentials_json': googleCredentialsJson,
       };
       if (inputDeviceIndex != null) {
         payload['input_device_index'] = inputDeviceIndex;

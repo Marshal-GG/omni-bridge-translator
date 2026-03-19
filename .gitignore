@@ -102,8 +102,8 @@ firestore.rules
 # Additional ignores
 task.md
 update_docs.py
-server/json/*.json
 server/dist_obfuscated/
 server/build/
 server/dist/
-!server/json/.gitkeep
+# Credentials must never be stored in server/json/ — use GOOGLE_APPLICATION_CREDENTIALS env var instead
+server/json/

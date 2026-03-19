@@ -253,38 +253,50 @@ class _AdminPanelState extends State<AdminPanel> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: SubscriptionService.instance.availablePlans.map((plan) {
-                      final tier = plan.id;
-                      return SizedBox(
-                        height: 32,
-                        child: ActionChip(
-                          label: Text(
-                            SubscriptionService.instance.getNameForTier(tier).toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          backgroundColor: Colors.white.withValues(alpha: 0.05),
-                          onPressed: () {
-                            SubscriptionService.instance.setTierForOtherUser(
-                              _selectedUserUid!,
-                              tier,
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Plan updated for $_selectedUserName',
+                  ValueListenableBuilder<int>(
+                    valueListenable: SubscriptionService.instance.configNotifier,
+                    builder: (context, _, _) {
+                      final plans = SubscriptionService.instance.availablePlans;
+                      if (plans.isEmpty) {
+                        return const Text(
+                          'No plans loaded – seed config first',
+                          style: TextStyle(color: Colors.white38, fontSize: 11),
+                        );
+                      }
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: plans.map((plan) {
+                          final tier = plan.id;
+                          return SizedBox(
+                            height: 32,
+                            child: ActionChip(
+                              label: Text(
+                                SubscriptionService.instance.getNameForTier(tier).toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            );
-                          },
-                        ),
+                              backgroundColor: Colors.white.withValues(alpha: 0.05),
+                              onPressed: () {
+                                SubscriptionService.instance.setTierForOtherUser(
+                                  _selectedUserUid!,
+                                  tier,
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Plan updated for $_selectedUserName',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        }).toList(),
                       );
-                    }).toList(),
+                    },
                   ),
                 ],
               ],
@@ -292,7 +304,338 @@ class _AdminPanelState extends State<AdminPanel> {
           ),
         ),
         const SizedBox(height: 12),
+
+        // ── ADMIN: System Config Seeder ────────────────────────────
+        const _SystemConfigSection(),
+        const SizedBox(height: 12),
       ],
+    );
+  }
+}
+
+// ── System Config Section ───────────────────────────────────────────────────
+// Seeds the system/monetization document with tier definitions,
+// model overrides, announcements, upgrade prompts, and app version control.
+
+class _SystemConfigSection extends StatefulWidget {
+  const _SystemConfigSection();
+
+  @override
+  State<_SystemConfigSection> createState() => _SystemConfigSectionState();
+}
+
+class _SystemConfigSectionState extends State<_SystemConfigSection> {
+  bool _seeding = false;
+  String? _lastResult;
+
+  static const Map<String, dynamic> _seedData = {
+    // ── Tier Order (first = default/free tier) ────────────────────────
+    'order': ['free', 'trial', 'pro', 'enterprise'],
+    'popular': 'pro',
+
+    // ── Tier Definitions ──────────────────────────────────────────────
+    'tiers': {
+      'free': {
+        'name': 'Free',
+        'price': '₹0',
+        'description': 'Basic translation for casual use',
+        'display_features': [
+          'Google & MyMemory translation',
+          'Desktop audio capture',
+          '5,000 tokens/day',
+          '15 min sessions',
+        ],
+        'allowed_transcription_models': ['online'],
+        'allowed_translation_models': ['google', 'mymemory'],
+        'features': {
+          'mic_audio': false,
+          'history_enabled': false,
+          'max_session_duration_minutes': 15,
+          'caption_retention_days': 0,
+          'simultaneous_sessions': 1,
+        },
+        'quotas': {
+          'daily_tokens': 5000,
+          'monthly_tokens': 50000,
+        },
+        'engine_limits': {},
+        'rate_limits': {
+          'requests_per_minute': 20,
+        },
+      },
+      'trial': {
+        'name': 'Trial',
+        'price': '₹0',
+        'description': 'Full access for 24 hours — once per account',
+        'is_trial': true,
+        'trial_duration_hours': 24,
+        'display_features': [
+          'All translation engines',
+          'All transcription models',
+          'Microphone + desktop audio',
+          '50,000 tokens/day',
+          '24 hour access — one time only',
+        ],
+        'allowed_transcription_models': [
+          'online', 'whisper-tiny', 'whisper-base',
+          'whisper-small', 'whisper-medium', 'riva',
+        ],
+        'allowed_translation_models': [
+          'google', 'mymemory', 'google_api', 'riva', 'llama',
+        ],
+        'features': {
+          'mic_audio': true,
+          'history_enabled': true,
+          'max_session_duration_minutes': 480,
+          'caption_retention_days': 1,
+          'simultaneous_sessions': 3,
+        },
+        'quotas': {
+          'daily_tokens': 50000,
+          'monthly_tokens': 50000,
+        },
+        'engine_limits': {
+          'google_api': 50000,
+          'riva': 50000,
+          'llama': 50000,
+        },
+        'rate_limits': {
+          'requests_per_minute': 60,
+        },
+      },
+      'pro': {
+        'name': 'Pro',
+        'price': '\u20B9799/mo',
+        'description': 'All engines with generous limits',
+        'display_features': [
+          'All translation engines',
+          'Whisper transcription (tiny–small)',
+          'Microphone + desktop audio',
+          'Caption history (7 days)',
+          '25,000 tokens/day',
+          '2 hr sessions',
+        ],
+        'allowed_transcription_models': [
+          'online', 'whisper-tiny', 'whisper-base',
+          'whisper-small',
+        ],
+        'allowed_translation_models': [
+          'google', 'mymemory', 'google_api', 'riva', 'llama',
+        ],
+        'features': {
+          'mic_audio': true,
+          'history_enabled': true,
+          'max_session_duration_minutes': 120,
+          'caption_retention_days': 7,
+          'simultaneous_sessions': 2,
+        },
+        'quotas': {
+          'daily_tokens': 25000,
+          'monthly_tokens': 250000,
+        },
+        'engine_limits': {
+          'google_api': 100000,
+          'riva': 100000,
+          'llama': 150000,
+        },
+        'rate_limits': {
+          'requests_per_minute': 60,
+        },
+      },
+      'enterprise': {
+        'name': 'Enterprise',
+        'price': '\u20B92,499/mo',
+        'description': 'Maximum capacity for power users',
+        'display_features': [
+          'Everything in Pro',
+          'Whisper medium + Riva transcription',
+          'Caption history (30 days)',
+          'Up to 5 simultaneous sessions',
+          '75,000 tokens/day',
+          '8 hr sessions',
+        ],
+        'allowed_transcription_models': [
+          'online', 'whisper-tiny', 'whisper-base',
+          'whisper-small', 'whisper-medium', 'riva',
+        ],
+        'allowed_translation_models': [
+          'google', 'mymemory', 'google_api', 'riva', 'llama',
+        ],
+        'features': {
+          'mic_audio': true,
+          'history_enabled': true,
+          'max_session_duration_minutes': 480,
+          'caption_retention_days': 30,
+          'simultaneous_sessions': 5,
+        },
+        'quotas': {
+          'daily_tokens': 75000,
+          'monthly_tokens': 750000,
+        },
+        'engine_limits': {
+          'google_api': 300000,
+          'riva': 300000,
+          'llama': 500000,
+        },
+        'rate_limits': {
+          'requests_per_minute': 120,
+        },
+      },
+    },
+
+    // ── Payment Links (replace with real Razorpay URLs) ────────────────
+    'payment_links': {
+      'pro': '',
+      'enterprise': '',
+    },
+
+    // ── Global Settings ───────────────────────────────────────────────
+    'usage_poll_interval_seconds': 30,
+
+    // ── Model Kill Switches ───────────────────────────────────────────
+    'model_overrides': {
+      'online':          {'enabled': true},
+      'google':          {'enabled': true},
+      'mymemory':        {'enabled': true},
+      'google_api':      {'enabled': true},
+      'riva':            {'enabled': true},
+      'llama':           {'enabled': true},
+      'whisper-tiny':    {'enabled': true},
+      'whisper-base':    {'enabled': true},
+      'whisper-small':   {'enabled': true},
+      'whisper-medium':  {'enabled': true},
+    },
+
+    // ── In-App Announcements ──────────────────────────────────────────
+    'announcements': {
+      'active': false,
+      'message': '',
+      'type': 'info',
+      'dismiss_key': '',
+      'target_tiers': ['free', 'trial', 'pro', 'enterprise'],
+    },
+
+    // ── Upgrade Prompts ───────────────────────────────────────────────
+    'upgrade_prompts': {
+      'show_at_usage_percent': 80,
+      'free_trial_days': 7,
+      'promo_code_enabled': false,
+      'promo_message': '',
+    },
+
+    // ── App Version Control ───────────────────────────────────────────
+    'app_version': {
+      'min_supported': '1.0.0',
+      'latest': '1.0.0',
+      'update_url': '',
+      'force_update_message':
+          'A new version of Omni Bridge is available. Please update to continue.',
+    },
+  };
+
+  Future<void> _seedMonetization() async {
+    setState(() {
+      _seeding = true;
+      _lastResult = null;
+    });
+    try {
+      await AuthService.instance.firestore
+          .collection('system')
+          .doc('monetization')
+          .set({
+        ..._seedData,
+        'last_seeded_at': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        setState(() {
+          _seeding = false;
+          _lastResult = 'success';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Monetization config seeded successfully.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _seeding = false;
+          _lastResult = 'error';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Seed failed: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.settings_suggest_rounded, size: 16, color: Colors.orangeAccent),
+                SizedBox(width: 8),
+                Text(
+                  'SYSTEM CONFIG',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orangeAccent,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Seed or reset the monetization document with default tier configs, '
+              'model overrides, announcements, and version control.',
+              style: TextStyle(fontSize: 11, color: Colors.white38),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _seeding ? null : _seedMonetization,
+                  icon: _seeding
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          _lastResult == 'success'
+                              ? Icons.check_circle_outline
+                              : Icons.cloud_upload_outlined,
+                          size: 16,
+                        ),
+                  label: Text(
+                    _seeding ? 'Seeding...' : 'Seed Monetization Config',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orangeAccent.withValues(alpha: 0.15),
+                    foregroundColor: Colors.orangeAccent,
+                  ),
+                ),
+                if (_lastResult == 'success') ...[
+                  const SizedBox(width: 8),
+                  const Icon(Icons.check, size: 14, color: Colors.greenAccent),
+                ],
+                if (_lastResult == 'error') ...[
+                  const SizedBox(width: 8),
+                  const Icon(Icons.error_outline, size: 14, color: Colors.redAccent),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
