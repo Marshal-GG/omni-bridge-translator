@@ -22,7 +22,15 @@ def caption_callback(text, is_error, is_final=True, original_text=None, usage_st
         "is_final": is_final,
         "session_id": session_id,
     }
-    logging.info(f"[caption_callback] Text: '{text[:50]}...', session: {session_id}, manager: {manager is not None}")
+    stats_list = (usage_stats if isinstance(usage_stats, list) else [usage_stats]) if usage_stats else []
+    asr_stat   = stats_list[0] if len(stats_list) > 0 else None
+    trans_stat = stats_list[1] if len(stats_list) > 1 else None
+
+    def _engine_name(s): return s.get("engine") or s.get("model") or "?"
+    asr_src = original_text or text
+    logging.info(f"[ASR]   '{asr_src[:70]}' | {_engine_name(asr_stat)} | {asr_stat.get('latency_ms', '?')}ms" if asr_stat else f"[ASR]   '{asr_src[:70]}'")
+    if trans_stat:
+        logging.info(f"[Trans] '{text[:70]}' | {_engine_name(trans_stat)} | {trans_stat.get('latency_ms', '?')}ms")
     if event_loop and not event_loop.is_closed() and manager:
         asyncio.run_coroutine_threadsafe(manager.broadcast(msg), event_loop)
         # Emit usage stats as a separate message so Flutter can log them independently

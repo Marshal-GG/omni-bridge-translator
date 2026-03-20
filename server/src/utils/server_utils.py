@@ -42,7 +42,7 @@ def setup_logging(log_file: str, level: int = logging.INFO):
     # Silence noisy third-party logs
     silence_list = [
         "urllib3", "requests", "httpx", "httpcore", "openai", "h2", "h11",
-        "openai._base_client", "anyio"
+        "openai._base_client", "anyio", "numba", "numba.core",
     ]
     for logger_name in silence_list:
         logging.getLogger(logger_name).setLevel(logging.WARNING)

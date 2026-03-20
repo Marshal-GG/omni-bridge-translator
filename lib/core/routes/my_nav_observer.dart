@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../window_manager.dart';
-import 'routes_config.dart';
+import 'package:omni_bridge/core/platform/window_manager.dart';
+import 'package:omni_bridge/core/routes/routes_config.dart';
 
 /// A comprehensive navigator observer for tracking app routing and access control.
 /// It also handles window resizing and positioning based on the current screen.

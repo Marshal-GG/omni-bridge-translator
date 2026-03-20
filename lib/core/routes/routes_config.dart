@@ -1,18 +1,18 @@
 // screens
-export '../../screens/startup/splash_screen.dart';
-export '../../screens/startup/onboarding_screen.dart';
-export '../../screens/translation/translation_screen.dart';
-export '../../screens/settings/settings_screen.dart';
-export '../../screens/login/login_screen.dart';
-export '../../screens/history/history_panel.dart';
-export '../../screens/account/account_screen.dart';
-export '../../screens/about/about_screen.dart';
-export '../../screens/subscription/subscription_screen.dart';
+export 'package:omni_bridge/presentation/screens/startup/splash_screen.dart';
+export 'package:omni_bridge/presentation/screens/startup/onboarding_screen.dart';
+export 'package:omni_bridge/presentation/screens/translation/translation_screen.dart';
+export 'package:omni_bridge/presentation/screens/settings/settings_screen.dart';
+export 'package:omni_bridge/presentation/screens/login/login_screen.dart';
+export 'package:omni_bridge/presentation/screens/history/history_panel.dart';
+export 'package:omni_bridge/presentation/screens/account/account_screen.dart';
+export 'package:omni_bridge/presentation/screens/about/about_screen.dart';
+export 'package:omni_bridge/presentation/screens/subscription/subscription_screen.dart';
 
 // services & models
-export '../services/firebase/auth_service.dart';
-export '../services/history_service.dart';
-export '../../models/history_entry.dart';
+export 'package:omni_bridge/data/services/firebase/auth_service.dart';
+export 'package:omni_bridge/data/services/system/history_service.dart';
+export 'package:omni_bridge/data/models/history_entry.dart';
 
 // packages
 export 'package:flutter/material.dart';

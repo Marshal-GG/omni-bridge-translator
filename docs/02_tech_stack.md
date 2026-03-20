@@ -1,0 +1,76 @@
+# 02 — Tech Stack
+
+## Flutter Client
+
+| Category | Technology | Version | Purpose |
+|----------|-----------|---------|---------|
+| **Framework** | Flutter | SDK ^3.10.7 | Desktop UI (Windows) |
+| **State Management** | flutter_bloc + bloc | ^9.1.1 | BLoC pattern |
+| **DI** | get_it | (planned) | Service locator / dependency injection |
+| **Navigation** | go_router | (via core/router) | Declarative routing |
+| **Firebase** | firebase_core, firebase_auth, cloud_firestore, firebase_database | latest | Auth, settings sync, usage tracking |
+| **Auth** | google_sign_in_all_platforms, desktop_webview_auth | latest | Google OAuth on Windows |
+| **WebSocket** | web_socket_channel | ^3.0.3 | Communication with local Python server |
+| **Networking** | http | latest | REST calls (update check, etc.) |
+| **Storage** | flutter_secure_storage, shared_preferences | latest | Secure token storage, app prefs |
+| **Windowing** | bitsdojo_window, window_manager, flutter_acrylic | latest | Custom title bar, acrylic transparency |
+| **System Tray** | tray_manager, system_tray | latest | Background tray icon |
+| **UI / UX** | google_fonts, flutter_markdown | latest | Typography, markdown rendering |
+| **Device Info** | device_info_plus, network_info_plus, package_info_plus | latest | Hardware/network fingerprinting |
+| **Payments** | razorpay_flutter (via protocol_handler, app_links) | latest | In-app subscription upgrade |
+| **Utilities** | intl, path, equatable | latest | i18n, path ops, value equality |
+
+---
+
+## Python Server
+
+| Category | Technology | Version | Purpose |
+|----------|-----------|---------|---------|
+| **Framework** | FastAPI + Uvicorn | latest | HTTP + WebSocket server |
+| **Audio Capture** | PyAudio + WASAPI | latest | System and mic audio (Windows) |
+| **ASR — Online** | Google Speech Recognition (SpeechRecognition lib) | latest | Free online ASR |
+| **ASR — Offline** | Whisper (OpenAI via torch) | tiny/base/small/medium | Local offline transcription |
+| **ASR — Premium** | NVIDIA Riva ASR via gRPC | latest | High-accuracy multilingual |
+| **Translation — Free** | Google Translate (unofficial) | latest | Default engine |
+| **Translation — Cloud** | Google Cloud Translation v3 (gRPC) | latest | Professional grade |
+| **Translation — Free Alt** | MyMemory API | latest | No-key alternative |
+| **Translation — AI** | NVIDIA Llama 3.1 8B via NIM | latest | Context-aware neural translation |
+| **Translation — Premium** | NVIDIA Riva NMT via gRPC | latest | High-quality neural translation |
+| **NLP** | pysbd | latest | Sentence boundary detection (stutter removal) |
+| **Logging** | structlog | latest | Structured logging |
+| **Numerics** | numpy | latest | Audio RMS calculation |
+| **Packaging** | PyInstaller + InnoSetup | latest | Windows installer (.exe) build |
+
+---
+
+## Firebase Services Used
+
+| Service | Used For |
+|---------|----------|
+| **Firebase Auth** | User authentication (Google, Email/Pass, Anonymous) |
+| **Cloud Firestore** | User profiles, settings, session tokens, audit logs |
+| **Firebase Realtime Database** | Live usage counters (token tracking) |
+
+---
+
+## Dev Tools
+
+| Tool | Purpose |
+|------|---------|
+| PyArmor | Server obfuscation for release builds |
+| InnoSetup (`installer_setup.iss`) | Windows installer generator |
+| flutter_launcher_icons | App icon generation |
+| bloc_test + mocktail | (planned) BLoC unit testing |
+| GitHub Actions (`.github/`) | CI pipeline |
+
+---
+
+## Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Local Python server | WASAPI requires native Windows API; Python ecosystem best for AI model integration |
+| WebSocket for Flutter↔Python | Low-latency, bidirectional, works without HTTP overhead |
+| BLoC over Provider | Explicit event/state contracts; better for testability and debugging |
+| flutter_secure_storage | Prevents debug/release session cross-contamination (see `08_session_isolation_guide.md`) |
+| Firebase on desktop | Handles auth + cloud sync without a custom backend |

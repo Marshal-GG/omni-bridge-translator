@@ -18,9 +18,6 @@ class ConnectionManager:
         """Send a JSON message to all connected Flutter clients."""
         active_count = len(self.active_connections)
         
-        # Aggressive debugging to console since logs might be filtered
-        if message.get("type") == "caption":
-            print(f"[WS DEBUG] Attempting broadcast to {active_count} clients: {message.get('text')[:30]}...")
 
         if not self.active_connections:
             return
@@ -29,7 +26,7 @@ class ConnectionManager:
         try:
             json_str = json.dumps(message, default=self._json_default)
         except Exception as e:
-            print(f"[WS DEBUG] CRITICAL: Serialization failed even with custom encoder: {e}")
+            logging.error(f"[WS] Serialization failed: {e}")
             # Fallback: convert everything to string to at least send something
             try:
                 json_str = json.dumps(message, default=str)
@@ -43,7 +40,7 @@ class ConnectionManager:
             except Exception as e:
                 # Only print error if it's not a normal disconnection
                 if "1001" not in str(e) and "1006" not in str(e):
-                    print(f"[WS DEBUG] Error sending to clients: {e}")
+                    logging.warning(f"[WS] Error sending to client: {e}")
                 dead.add(ws)
         self.active_connections.difference_update(dead)
 

@@ -1,4 +1,4 @@
-import 'routes_config.dart';
+import 'package:omni_bridge/core/routes/routes_config.dart';
 
 Route<dynamic> generateRoute(RouteSettings settings) {
   final Map<String, WidgetBuilder> routes = {

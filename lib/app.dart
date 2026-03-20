@@ -7,14 +7,14 @@
  */
 
 import 'package:flutter/material.dart';
-import 'core/routes/my_nav_observer.dart';
-import 'core/routes/router.dart';
+import 'package:omni_bridge/core/routes/my_nav_observer.dart';
+import 'package:omni_bridge/core/routes/router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'core/theme/app_theme.dart';
-import 'screens/translation/bloc/translation_bloc.dart';
-import 'screens/settings/bloc/settings_bloc.dart';
-import 'core/services/asr_ws_client.dart';
-import 'core/navigation/global_navigator.dart';
+import 'package:omni_bridge/core/theme/app_theme.dart';
+import 'package:omni_bridge/presentation/screens/translation/bloc/translation_bloc.dart';
+import 'package:omni_bridge/presentation/screens/settings/bloc/settings_bloc.dart';
+import 'package:omni_bridge/data/services/server/asr_ws_client.dart';
+import 'package:omni_bridge/core/navigation/global_navigator.dart';
 
 class MyApp extends StatelessWidget {
   final String initialRoute;
