@@ -111,6 +111,15 @@ If you need to clear all local data specifically for this project without affect
 > [!IMPORTANT]
 > **Safety & Isolation**: This script targets isolated session folders (`OmniBridge-Debug` and `OmniBridge-Release`) within the local AppData directory, and purges legacy insecure `shared_preferences` keys from the Registry. This ensures that cleaning your development environment for Omni Bridge does not inadvertently sign you out of other Firebase-enabled apps, but does fully reset all legacy session identifiers.
 
+### Dev Scripts
+
+The `scripts/` directory contains utility scripts for common developer tasks:
+
+| Script | Purpose |
+| :--- | :--- |
+| `clear_app_data.ps1` | Purges local app data, secure storage, and registry keys for a clean start. |
+| `clear_app_data.cmd` | Command-line wrapper for the PowerShell cleanup script. |
+
 ---
 
 ## 4. Building for Production
@@ -225,13 +234,14 @@ While copyright is automatic upon creation, formalizing your protection is highl
 
 ## 7. Additional Developer Documentation
 
-- [Flutter Architecture](flutter_architecture.md)
-- [Python Server Architecture](python_architecture.md)
-- [Database Schema](database_schema.md)
-- [Monetization Plan](monetization_plan.md)
-- [Admin Features Overview](admin_features_overview.md)
-- [Google Auth Troubleshooting](google_auth_troubleshooting.md)
-- [Session Isolation & Cleanup](session_isolation_guide.md)
-- [Server Health Checks](server_health_checks.md)
-- [Firebase Terminal Management](firebase_terminal_management.md)
-- [Publishing a New Release](github_releases_guide.md)
+- [Flutter Architecture](04_flutter_architecture.md)
+- [Python Server Architecture](05_python_architecture.md)
+- [Database Schema](06_database_schema.md)
+- [Monetization Plan](13_monetization_plan.md)
+- [Admin Features Overview](09_admin_features.md)
+- [Google Auth Troubleshooting](14_google_auth_troubleshooting.md)
+- [Session Isolation & Cleanup](08_session_isolation_guide.md)
+- [Server Health Checks](10_server_health_checks.md)
+- [Firebase Terminal Management](11_firebase_terminal_management.md)
+- [Publishing a New Release](12_github_releases_guide.md)
+- [Python Restructure Plan](16_restructure_plan.md)

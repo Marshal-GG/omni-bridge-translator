@@ -6,7 +6,7 @@
 |----------|-----------|---------|---------|
 | **Framework** | Flutter | SDK ^3.10.7 | Desktop UI (Windows) |
 | **State Management** | flutter_bloc + bloc | ^9.1.1 | BLoC pattern |
-| **DI** | get_it | (planned) | Service locator / dependency injection |
+| **DI** | get_it | ^7.7.0 | Service locator / dependency injection |
 | **Navigation** | go_router | (via core/router) | Declarative routing |
 | **Firebase** | firebase_core, firebase_auth, cloud_firestore, firebase_database | latest | Auth, settings sync, usage tracking |
 | **Auth** | google_sign_in_all_platforms, desktop_webview_auth | latest | Google OAuth on Windows |
@@ -60,7 +60,7 @@
 | PyArmor | Server obfuscation for release builds |
 | InnoSetup (`installer_setup.iss`) | Windows installer generator |
 | flutter_launcher_icons | App icon generation |
-| bloc_test + mocktail | (planned) BLoC unit testing |
+| bloc_test + mocktail | BLoC unit testing |
 | GitHub Actions (`.github/`) | CI pipeline |
 
 ---

@@ -50,8 +50,16 @@ omni_bridge/
 │       ├── audio/                   # Audio capture layer
 │       ├── models/                  # ⚠️ Mixed ASR + Translation models
 │       ├── network/                 # WebSocket management
-│       ├── orchestrator.py          # ⚠️ 514-line God class (Phase 2 Target)
-│       └── ...
+│       ├── base_handler.py          # ServerContext + BaseHandler
+│       ├── session_handler.py       # Start/Stop orchestration
+│       ├── config_handler.py        # Settings updates
+│       ├── device_handler.py        # Device enumeration
+│       ├── status_handler.py        # Health & model status
+│       ├── router.py                # Command routing
+│       ├── ws_manager.py            # Connection tracking
+│       └── utils/
+│           ├── language_support.py
+│           └── server_utils.py
 ```
 
 ---
@@ -61,9 +69,10 @@ omni_bridge/
 | Phase | Goal | Status |
 |-------|------|--------|
 | **Phase 1** | Flutter 3-Layer Restructure | ✅ **COMPLETE** |
-| **Phase 2** | Python Server Model Decomposition | ⏳ PLANNED |
-| **Phase 3** | Python Orchestrator Refactor | ⏳ PLANNED |
-| **Phase 4** | Clean Data Layer (Repositories) | ⏳ PLANNED |
+| **Phase 2** | Flutter Data Layer (Repositories & DI) | ✅ **COMPLETE** |
+| **Phase 3** | Flutter Presentation Layer (BLoCs) | ✅ **COMPLETE** |
+| **Phase 4** | Python Server Modularization (Handlers) | ✅ **COMPLETE** |
+| **Phase 5** | Python Orchestrator Decomposition | ⏳ PLANNED |
 
 ---
 

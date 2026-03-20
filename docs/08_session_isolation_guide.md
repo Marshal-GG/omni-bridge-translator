@@ -36,14 +36,14 @@ To prevent "Session Bleed" (where logging into one version affects the other), w
 - **Result**: You can run both the Debug version and the Installed version simultaneously without one "swallowing" the other's launch request.
 
 ### D. Deep Link & OAuth Isolation
-**Location**: `lib/core/services/firebase/auth_service.dart` and `app_initializer.dart`
+**Location**: `lib/data/services/firebase/auth_service.dart` and `lib/core/platform/app_initializer.dart`
 **Mechanism**: Google Sign-In relies on a "Custom URI Scheme" redirect.
 - **Debug Protocol**: `omni-bridge-debug://auth`
 - **Release Protocol**: `omni-bridge://auth`
 - **Isolation Fix**: When you click "Sign in with Google" in the Debug app, the browser now knows specifically to look for `omni-bridge-debug://`. This prevents the "Production" app from accidentally hijacking the login credentials if it was already open.
 
 ### E. Named Firebase App Isolation (Session Separation)
-**Location**: `app_initializer.dart` and Firebase Services
+**Location**: `lib/core/platform/app_initializer.dart` and Firebase Services
 **Mechanism**: We use Named Firebase Apps (`OmniBridge-Debug` and `OmniBridge-Release`) instead of the default singleton.
 - **Why it matters**: Firebase's default app uses a shared persistent data store for authentication and Firestore caching. By using a named app, Firebase creates completely isolated storage for each build mode.
 - **Implementation**:

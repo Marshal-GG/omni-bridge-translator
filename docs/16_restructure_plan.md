@@ -278,8 +278,8 @@ This is a **non-breaking, incremental** migration. Each phase can be committed i
 - `SettingsBloc` (Refactored to use Repositories)
 - Extract common widgets into `presentation/widgets/common/`
 
-### Phase 4 — Python: Split handlers.py
-- Move each handler class to `src/network/handlers/` as its own file
+### Phase 4 — Python: Split handlers.py — ✅ COMPLETE
+- Move each handler class to `src/network/handlers.py` as its own file
 - No logic change, pure file split
 
 ### Phase 5 — Python: Split orchestrator (biggest change)
