@@ -44,19 +44,20 @@ omni_bridge/
 │       │   └── startup/             # Splash + onboarding
 │       └── widgets/                 # Common reusable widgets
 │
-├── server/                          # Python backend (Restructure In Progress)
+├── server/                          # Python backend
 │   ├── flutter_server.py            # FastAPI entrypoint
 │   └── src/
+│       ├── asr/                     # ASR dispatcher & logic
+│       ├── translation/             # Translation dispatcher & logic
 │       ├── audio/                   # Audio capture layer
-│       ├── models/                  # ⚠️ Mixed ASR + Translation models
-│       ├── network/                 # WebSocket management
-│       ├── base_handler.py          # ServerContext + BaseHandler
-│       ├── session_handler.py       # Start/Stop orchestration
-│       ├── config_handler.py        # Settings updates
-│       ├── device_handler.py        # Device enumeration
-│       ├── status_handler.py        # Health & model status
-│       ├── router.py                # Command routing
-│       ├── ws_manager.py            # Connection tracking
+│       ├── models/                  # AI Model Implementations
+│       │   ├── asr/                 # ASR models (Riva, Whisper, Local)
+│       │   └── translation/         # Translation models (Riva NMT, Llama, Google, MyMemory)
+│       ├── network/                 # Handlers & Routing
+│       │   ├── handlers/            # Modular per-concern handlers
+│       │   ├── base_handler.py      # Shared context
+│       │   ├── router.py            # Command routing
+│       │   └── ws_manager.py        # Connection tracking
 │       └── utils/
 │           ├── language_support.py
 │           └── server_utils.py
@@ -72,7 +73,8 @@ omni_bridge/
 | **Phase 2** | Flutter Data Layer (Repositories & DI) | ✅ **COMPLETE** |
 | **Phase 3** | Flutter Presentation Layer (BLoCs) | ✅ **COMPLETE** |
 | **Phase 4** | Python Server Modularization (Handlers) | ✅ **COMPLETE** |
-| **Phase 5** | Python Orchestrator Decomposition | ⏳ PLANNED |
+| **Phase 5** | Python Orchestrator Decomposition | ✅ **COMPLETE** |
+| **Phase 6** | Python Model Reorganization | ✅ **COMPLETE** |
 
 ---
 

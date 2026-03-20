@@ -5,16 +5,12 @@
 # See the LICENSE file in the project root for full license terms.
 
 """
-orchestrator.py — Central orchestrator for AI transcription and translation.
-
-This module coordinates:
-  1. Transcription (ASR): Riva, Whisper (local), or Google (online).
-  2. Translation: Google, MyMemory, Riva, or Llama.
+orchestrator.py — Simplified coordinator for AI transcription and translation.
+Now delegates engine-specific logic to ASRDispatcher and TranslationDispatcher.
 """
 
 import queue
 import os
-import re
 import threading
 import logging
 import time
@@ -23,14 +19,19 @@ import pysbd
 import numpy as np
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from src.models.riva_model import RivaModel
-from src.models.llama_model import LlamaModel
-from src.models.google_model import GoogleModel
-from src.models.google_cloud_model import GoogleCloudModel
-from src.models.mymemory_model import MyMemoryModel
+from src.models.asr.riva_asr import RivaASRModel
+from src.models.asr.whisper_asr import WhisperModel, get_gpu_info
+from src.models.asr.local_asr import SpeechRecognitionModel
+
+from src.models.translation.riva_nmt import RivaNMTModel
+from src.models.translation.llama_translation import LlamaModel
+from src.models.translation.google_translation import GoogleModel
+from src.models.translation.mymemory_translation import MyMemoryModel
+from src.models.translation.google_api_translation import GoogleCloudTranslationModel
+
+from src.asr.asr_dispatcher import ASRDispatcher
+from src.translation.translation_dispatcher import TranslationDispatcher
 from src.utils.language_support import LANG_TO_BCP47
-from src.models.speech_recognition_model import SpeechRecognitionModel
-from src.models.whisper_model import WhisperModel, get_gpu_info
 
 # Valid transcription model IDs
 _WHISPER_SIZES = {"whisper-tiny", "whisper-base", "whisper-small", "whisper-medium"}
@@ -38,58 +39,54 @@ _WHISPER_SIZES = {"whisper-tiny", "whisper-base", "whisper-small", "whisper-medi
 # BCP-47 language codes mapping
 _LANG_MAP = LANG_TO_BCP47
 
-# The RPM limit for NVIDIA NIM models (not used, kept for reference if needed but logic removed)
-_debug_chunk_count = 0
-
-
 
 class InferenceOrchestrator:
     """
-    Orchestrates speech recognition and translation across multiple AI engines.
-    Handles thread management, resource lifecycle, and error fallbacks.
+    Coordinates speech recognition and translation by delegating to specialized dispatchers.
+    Handles thread management, resource lifecycle, and overall session flow.
     """
-
-    riva: RivaModel
-    llama: LlamaModel
-    google: GoogleModel
-    google_api: GoogleCloudModel
-    mymemory: MyMemoryModel
-    speech_recognition: SpeechRecognitionModel
-    whisper: WhisperModel
 
     def __init__(self, nvidia_api_key: str = "", google_credentials_json: str = ""):
         self.nvidia_api_key = nvidia_api_key
         self.google_credentials_json = google_credentials_json
         
         self.logger = structlog.get_logger()
-        self.seg = pysbd.Segmenter(language="en", clean=False)
 
         self.is_running = False
         self.audio_queue: queue.Queue = queue.Queue()
         self._translation_queue: queue.Queue = queue.Queue()
         
-        self._whisper_suspended = False
-        self._is_first_chunk = True
-
-        # Initialize Models
+        # Models
         self._init_models()
 
-        # Session state
-        self._transcription_model: str = "online"
-        self._translation_model: str = "google"
-        self._source_lang: str = "auto"
-        self._target_lang: Optional[str] = None
-        self._sample_rate: int = 16000
+        # Dispatchers
+        self.asr_dispatcher = ASRDispatcher(
+            riva=self.riva_asr,
+            whisper=self.whisper,
+            google_free=self.local_asr,
+            sample_rate=16000
+        )
+        self.translation_dispatcher = TranslationDispatcher(
+            riva_nmt=self.riva_nmt,
+            llama=self.llama,
+            google_free=self.google_free,
+            mymemory=self.mymemory,
+            google_api=self.google_api
+        )
+
+        # Session properties
         self._callback: Optional[Callable] = None
+        self._sample_rate: int = 16000
 
     def _init_models(self):
         """Pre-instantiate model wrappers."""
-        self.riva = RivaModel(self.nvidia_api_key)
+        self.riva_asr = RivaASRModel(self.nvidia_api_key)
+        self.riva_nmt = RivaNMTModel(self.nvidia_api_key)
         self.llama = LlamaModel(self.nvidia_api_key)
-        self.google = GoogleModel()
-        self.google_api = GoogleCloudModel(self.google_credentials_json)
+        self.google_free = GoogleModel()
+        self.google_api = GoogleCloudTranslationModel(self.google_credentials_json)
         self.mymemory = MyMemoryModel()
-        self.speech_recognition = SpeechRecognitionModel()
+        self.local_asr = SpeechRecognitionModel()
         self.whisper = WhisperModel("base")
 
     # ── Configuration ────────────────────────────────────────────────────────
@@ -98,7 +95,10 @@ class InferenceOrchestrator:
         """Update API keys across all relevant engines."""
         self.nvidia_api_key = nvidia_key
         self.google_credentials_json = google_credentials_json
-        self.riva.reload(nvidia_key)
+        
+        # Reload models
+        self.riva_asr.reload(nvidia_key)
+        self.riva_nmt.reload(nvidia_key)
         self.llama.reload(nvidia_key)
         self.google_api.reload(google_credentials_json)
 
@@ -115,7 +115,7 @@ class InferenceOrchestrator:
         callback: Optional[Callable] = None,
         suspended: bool = False,
     ):
-        """Initialize and start background worker threads for ASR and Translation."""
+        """Initialize and start background worker threads."""
         if self.is_running:
             return
 
@@ -127,14 +127,18 @@ class InferenceOrchestrator:
                 "riva":   "riva",
             }.get(ai_engine, "google")
 
-        self._transcription_model = transcription_model.lower().strip()
-        self._translation_model = translation_model.lower().strip()
-        self._source_lang = source_lang
-        self._target_lang = target_lang
+        # Sync Dispatcher Config
+        self.asr_dispatcher.transcription_model = transcription_model.lower().strip()
+        self.asr_dispatcher.source_lang = source_lang
+        self.asr_dispatcher.whisper_suspended = suspended
+        self.asr_dispatcher.sample_rate = sample_rate
+        
+        self.translation_dispatcher.source_lang = source_lang
+        self.translation_dispatcher.target_lang = target_lang
+        self.translation_dispatcher.translation_model = translation_model.lower().strip()
+
         self._sample_rate = sample_rate
         self._callback = callback
-        self._whisper_suspended = suspended
-        self._is_first_chunk = True
 
         if not self._validate_preflight():
             return
@@ -146,7 +150,7 @@ class InferenceOrchestrator:
         threading.Thread(target=self._asr_worker, name="ASRWorker", daemon=True).start()
         threading.Thread(target=self._translation_worker, name="TranslationWorker", daemon=True).start()
 
-        logging.info(f"[Orchestrator] Stream started: Trans={self._transcription_model}, Translat={self._translation_model}")
+        logging.info(f"[Orchestrator] Stream started: ASR={self.asr_dispatcher.transcription_model}, Translat={self.translation_dispatcher.translation_model}")
 
     def stop_stream(self):
         """Signal workers to stop and clear queues."""
@@ -168,28 +172,31 @@ class InferenceOrchestrator:
 
     def _validate_preflight(self) -> bool:
         """Check requirements for the selected models before starting."""
+        asr_model = self.asr_dispatcher.transcription_model
+        translation_model = self.translation_dispatcher.translation_model
+        
         # Riva ASR Check
-        if self._transcription_model == "riva" and not self.riva.is_ready():
+        if asr_model == "riva" and not self.riva_asr.is_ready():
             self._emit_error("API Key missing for Riva ASR")
             return False
 
         # Whisper Check
-        if self._transcription_model in _WHISPER_SIZES:
-            whisper_size = self._transcription_model.split("-", 1)[1]
+        if asr_model in _WHISPER_SIZES:
+            whisper_size = asr_model.split("-", 1)[1]
             self.whisper.model_size = whisper_size
             if not self.whisper.is_downloaded():
                 self._emit_error(f"Whisper {whisper_size} model not downloaded. Open Settings to fix.")
                 return False
         else:
-            self.whisper.unload_model() # Save VRAM if not using whisper
+            self.whisper.unload_model()
 
         # Translation Checks
-        if self._translation_model == "google_api" and not self.google_credentials_json:
+        if translation_model == "google_api" and not self.google_credentials_json:
             self._emit_error("Google Cloud JSON missing. Check Translation settings.")
             return False
 
-        if self._translation_model in ("riva", "llama") and not self.nvidia_api_key:
-            self._emit_error(f"NVIDIA API Key missing for {self._translation_model}.")
+        if translation_model in ("riva", "llama") and not self.nvidia_api_key:
+            self._emit_error(f"NVIDIA API Key missing for {translation_model}.")
             return False
 
         return True
@@ -201,77 +208,23 @@ class InferenceOrchestrator:
     # ── Workers ──────────────────────────────────────────────────────────────
 
     def _asr_worker(self):
-        """Processes audio chunks into text transcripts."""
-        global _debug_chunk_count
-        use_auto = self._source_lang == "auto"
+        """Processes audio chunks into text transcripts via ASRDispatcher."""
+        use_auto = self.asr_dispatcher.source_lang == "auto"
+        asr_lang = "multi" if use_auto else _LANG_MAP.get(self.asr_dispatcher.source_lang, "en-US")
         
-        # Riva Parakeet offline endpoint does NOT support language_code=multi.
-        # Use en-US for auto-detect (Parakeet handles multilingual internally).
-        # Other ASR models (Whisper, Google SR) can use "multi"/"auto" freely.
-        asr_lang = "multi" if use_auto else _LANG_MAP.get(self._source_lang, "en-US")
-        
-        config = self.riva.make_asr_config(self._sample_rate, asr_lang) if self._transcription_model == "riva" else None
-        _debug_chunk_count = 0
-
-        _last_transcript: Optional[str] = None
-        _last_transcript_time: float = 0.0
-        _DEDUP_WINDOW_S = 6.0   # Suppress identical transcript within this window
-        _ASR_RMS_THRESHOLD = 120  # Drop near-silent chunks to prevent hallucinations
+        # Prepare model-specific config (like Riva gRPC config)
+        config = self.riva_asr.make_config(self._sample_rate, asr_lang) if self.asr_dispatcher.transcription_model == "riva" else None
 
         while self.is_running:
             try:
                 chunk = self.audio_queue.get(timeout=1.0)
                 if chunk is None: break
 
-                start_time = time.monotonic()
-
-                chunk_rms = int(np.sqrt(np.mean(chunk.astype(np.float32) ** 2)))
-
-                # Drop near-silent chunks — prevents ASR models (especially Riva)
-                # from hallucinating filler text on silence/noise.
-                if chunk_rms < _ASR_RMS_THRESHOLD:
-                    continue
-
-                # DEBUG: save raw chunks in sequence so quality can be verified
-                if _debug_chunk_count < 100:  # Allow more chunks for better debugging
-                    import wave
-                    debug_dir = os.path.join(os.path.dirname(__file__), "..", "..", "logs", "debug_audio")
-                    os.makedirs(debug_dir, exist_ok=True)
-
-                    # Filename with sequence number, RMS, and model
-                    wav_name = f"seq{_debug_chunk_count:03d}_rms{chunk_rms}_{self._transcription_model}.wav"
-                    wav_path = os.path.join(debug_dir, wav_name)
-
-                    with wave.open(wav_path, "wb") as wf:
-                        wf.setnchannels(1)
-                        wf.setsampwidth(2)
-                        wf.setframerate(self._sample_rate)
-                        wf.writeframes(chunk.tobytes())
-                    _debug_chunk_count += 1
-
-                transcript, asr_stats = self._perform_asr(chunk, config, asr_lang)
-
-                if transcript:
-                    cleaned = self._clean_stutters(transcript)
-                    now = time.monotonic()
-
-                    # Suppress identical transcripts within the cooldown window.
-                    # Hallucination loops repeat the same string every ~3 s indefinitely;
-                    # real speech moves on. Someone genuinely saying the same word twice
-                    # will get through once the 6 s window expires.
-                    if cleaned == _last_transcript and (now - _last_transcript_time) < _DEDUP_WINDOW_S:
-                        logging.debug(f"[ASRWorker] Duplicate within window suppressed: {cleaned!r}")
-                        continue
-                    _last_transcript = cleaned
-                    _last_transcript_time = now
-
-                    latency = int((time.monotonic() - start_time) * 1000)
-
-                    self._translation_queue.put({
-                        "text": cleaned,
-                        "asr_stats": asr_stats,
-                        "created_at": time.time()
-                    })
+                # ASRDispatcher now handles byte/ndarray conversion
+                asr_result = self.asr_dispatcher.process_chunk(chunk, config)
+                
+                if asr_result:
+                    self._translation_queue.put(asr_result)
 
             except queue.Empty:
                 continue
@@ -279,27 +232,8 @@ class InferenceOrchestrator:
                 logging.error(f"[ASRWorker] Error: {e}")
                 self._emit_error(f"ASR Failure: {e}")
 
-    def _perform_asr(self, chunk: Any, config: Any, asr_lang: str) -> Tuple[Optional[str], Optional[Dict]]:
-        """Dispatcher for different ASR models."""
-        model = self._transcription_model
-        try:
-            if model == "riva":
-                return self.riva.transcribe(chunk.tobytes(), config)
-            
-            if model in _WHISPER_SIZES:
-                if self._whisper_suspended:
-                    return None, None
-                return self.whisper.transcribe(chunk.tobytes(), self._sample_rate, self._source_lang)
-
-            # Default: Google Online
-            return self.speech_recognition.transcribe(chunk.tobytes(), self._sample_rate, self._source_lang)
-        except Exception as e:
-            # Log error but don't re-raise, return None to keep thread alive/allow fallback
-            self._log_asr_error(e, asr_lang)
-            return None, None
-
     def _translation_worker(self):
-        """Processes transcripts into translations."""
+        """Processes transcripts into translations via TranslationDispatcher."""
         while self.is_running:
             try:
                 item = self._translation_queue.get(timeout=1.0)
@@ -309,14 +243,12 @@ class InferenceOrchestrator:
                 text = item["text"]
                 asr_stats = item["asr_stats"]
 
-                if self._target_lang and self._target_lang != "none":
-                    start_time = time.monotonic()
+                if self.translation_dispatcher.target_lang and self.translation_dispatcher.target_lang != "none":
                     detected_hint = asr_stats.get("detected_lang") if asr_stats else None
-                    translated, trans_stats = self._dispatch_translation(text, detected_hint)
-                    latency = int((time.monotonic() - start_time) * 1000)
+                    translated, trans_stats = self.translation_dispatcher.translate(text, detected_hint)
 
                     if translated is None:
-                        continue  # Both engines failed — drop silently, don't broadcast
+                        continue
 
                     if trans_stats:
                         trans_stats["queue_dwell_ms"] = dwell_time
@@ -334,74 +266,6 @@ class InferenceOrchestrator:
                 logging.error(f"[TranslationWorker] Error: {e}")
                 self._emit_error(f"Translation Failure: {e}")
 
-    def _dispatch_translation(self, text: str, source_hint: Optional[str] = None) -> Tuple[Optional[str], Optional[Dict]]:
-        """Routes translation to the correct engine with built-in fallbacks."""
-        source, target = self._source_lang, self._target_lang
-        model = self._translation_model
-
-        # Only use ASR detected language as a hint if the user has selected "auto".
-        # This prevents accidental language switching when a specific language is set.
-        if (self._source_lang == "auto") and source_hint and source_hint != "multi":
-            actual_hint = source_hint.split("-")[0] if "-" in source_hint else source_hint
-            if actual_hint != source:
-                source = actual_hint
-        # 2. Script-based check (only if auto is enabling or as a safety valve)
-        # However, to avoid the "link" -> "Bengali" issue, we only override if the user 
-        # explicitly wants auto-detection.
-        if (self._source_lang == "auto") and not source_hint:
-            script_lang = self._detect_lang_from_script(text)
-            if script_lang and script_lang != source:
-                source = script_lang
-
-        if model == "mymemory":
-            res, stats = self.mymemory.translate(text, source, target)
-            if res: return res, stats
-            return self._google_fallback(text, source, target, "mymemory")
-
-        if model == "llama":
-            try:
-                return self.llama.translate(text, target)
-            except Exception as e:
-                logging.warning(f"[Dispatch] Llama translate failed ({e}). Dropping caption.")
-                return None, None
-
-        if model == "riva":
-            if source != "auto" and not self.riva.supports_translation_pair(source, target):
-                logging.info(
-                    f"[Dispatch] Skipping Riva translate for unsupported pair {source}->{target}; using Llama directly."
-                )
-                return self._llama_fallback(text, "riva")
-            try: return self.riva.translate(text, source, target)
-            except Exception as e:
-                logging.warning(f"[Dispatch] Riva translate failed ({e}), falling back to Llama.")
-            return self._llama_fallback(text, "riva")
-
-        if model == "google_api":
-            res, stats = self.google_api.translate(text, source, target)
-            if res: return res, stats
-            return self._google_fallback(text, source, target, "google_api")
-
-        # Default: Google Free
-        res, stats = self.google.translate(text, source, target)
-        if res: return res, stats
-        res, stats = self.llama.translate(text, target)
-        stats["fallback_from"] = "google"
-        return res, stats
-
-    def _google_fallback(self, text, source, target, original_engine) -> Tuple[str, Dict]:
-        res, stats = self.google.translate(text, source, target)
-        stats["fallback_from"] = original_engine
-        return res or text, stats
-
-    def _llama_fallback(self, text: str, original_engine: str) -> Tuple[Optional[str], Optional[Dict]]:
-        try:
-            res, stats = self.llama.translate(text, self._target_lang)
-            stats["fallback_from"] = original_engine
-            return res, stats
-        except Exception as e:
-            logging.warning(f"[Dispatch] Llama fallback also failed ({e}). Dropping caption.")
-            return None, None
-
     # ── Status & Utilities ───────────────────────────────────────────────────
 
     def whisper_unload(self):
@@ -409,7 +273,7 @@ class InferenceOrchestrator:
         self.whisper.unload_model()
 
     def get_all_statuses(self) -> List[Dict]:
-        """Collect statuses from all internal models for UI display."""
+        """Collect statuses from all internal models."""
         statuses = []
         statuses.extend(self.whisper.get_all_statuses())
         
@@ -426,88 +290,39 @@ class InferenceOrchestrator:
             "details": gpu
         })
             
-        # Others
-        statuses.append(self.riva.get_status())
-        statuses.append(self.speech_recognition.get_status())
+        # Combine Riva ASR and NMT status
+        asr_status = self.riva_asr.get_status()
+        nmt_status = self.riva_nmt.get_status()
+        
+        combined_riva = {
+            "name": "riva",
+            "status": "ready" if (asr_status["ready"] and nmt_status["ready"]) else "error",
+            "ready": asr_status["ready"] and nmt_status["ready"],
+            "message": f"ASR: {asr_status['message']} | NMT: {nmt_status['message']}",
+            "progress": (asr_status["progress"] + nmt_status["progress"]) / 2,
+            "details": {"asr": asr_status, "nmt": nmt_status}
+        }
+        statuses.append(combined_riva)
+        
+        statuses.append(self.local_asr.get_status())
         statuses.append(self.llama.get_status())
-        statuses.append(self.google.get_status())
+        statuses.append(self.google_free.get_status())
         statuses.append(self.google_api.get_status())
         statuses.append(self.mymemory.get_status())
         return statuses
 
+
     def get_capabilities(self) -> Dict[str, Any]:
-        """Returns a map of what the server is capable of based on current hardware/auth."""
+        """Returns a map of server capabilities."""
         gpu = get_gpu_info()
         return {
             "has_gpu": gpu["available"],
             "gpu_name": gpu["name"],
             "vram_gb": (gpu.get("vram_total", 0) / 1024) if gpu.get("vram_total") else 0,
             "has_google_auth": bool(self.google_api.is_ready()),
-            "has_nvidia_auth": bool(self.riva.is_ready()),
+            "has_nvidia_auth": bool(self.riva_asr.is_ready()),
             "whisper_models": {
                 size.split("-")[1]: self.whisper.is_downloaded(size.split("-")[1])
                 for size in _WHISPER_SIZES
             }
         }
-
-    def _log_asr_error(self, err: Exception, lang: str):
-        try:
-            log_dir = "logs"
-            os.makedirs(log_dir, exist_ok=True)
-            with open(os.path.join(log_dir, "asr_error.log"), "a") as f:
-                ts = time.strftime("%Y-%m-%d %H:%M:%S")
-                f.write(f"[{ts}] [ASR ERROR] model={self._transcription_model} lang={lang} err={err}\n")
-        except: pass
-
-    def _clean_stutters(self, text: str) -> str:
-        """Removes word-level or sentence-level repetitions using pysbd."""
-        if not text: return ""
-        
-        # Segment and deduplicate sentences
-        sentences = self.seg.segment(text)
-        deduped_sentences = []
-        for s in sentences:
-            if not deduped_sentences or s != deduped_sentences[-1]:
-                deduped_sentences.append(s)
-        
-        text = " ".join(deduped_sentences)
-        
-        # Simple word deduplication (triples)
-        words = text.split()
-        cleaned = []
-        for w in words:
-            if len(cleaned) >= 2 and cleaned[-1] == w and cleaned[-2] == w:
-                continue
-            cleaned.append(w)
-        return " ".join(cleaned)
-
-    def _detect_lang_from_script(self, text: str) -> Optional[str]:
-        """
-        Heuristic to detect language based on Unicode script ranges.
-        Returns ISO code (e.g. 'hi', 'bn', 'ta') if a specific script dominates.
-        """
-        # Devanagari: U+0900 to U+097F (Hindi, Marathi, etc.)
-        # Bengali: U+0980 to U+09FF (Bengali, Assamese)
-        # Tamil: U+0B80 to U+0BFF
-        counts = {"hi": 0, "bn": 0, "ta": 0}
-        total_scripts = 0
-        
-        for char in text:
-            cp = ord(char)
-            if 0x0900 <= cp <= 0x097F:
-                counts["hi"] += 1
-                total_scripts += 1
-            elif 0x0980 <= cp <= 0x09FF:
-                counts["bn"] += 1
-                total_scripts += 1
-            elif 0x0B80 <= cp <= 0x0BFF:
-                counts["ta"] += 1
-                total_scripts += 1
-        
-        if total_scripts == 0:
-            return None
-            
-        best_lang = max(counts, key=counts.get)
-        if counts[best_lang] > 0:
-            return best_lang
-        return None

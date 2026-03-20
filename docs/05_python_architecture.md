@@ -13,13 +13,17 @@ The server uses an **Asynchronous Modular Architecture** built on **FastAPI** an
 ```
 server/
 ├── src/
+│   ├── asr/
+│   │   └── asr_dispatcher.py   # ASR model selection & audio chunk processing
+│   ├── translation/
+│   │   └── translation_dispatcher.py # Language detection & translation fallback logic
 │   ├── audio/
 │   │   ├── capture.py          # WASAPI loopback + mic capture (pyaudiowpatch) with VAD
 │   │   ├── handler.py          # caption_callback, audio_poll_loop, level/status broadcast coroutines
 │   │   ├── meter.py            # Real-time independent RMS metering for Mic & Output (dB-normalized 0.0–1.0)
 │   │   └── shared_pyaudio.py   # Thread-safe global PyAudio singleton
 │   ├── network/
-│   │   ├── orchestrator.py     # Core AI pipeline & Speech Polishing
+│   │   ├── orchestrator.py     # Coordination layer delegating to dispatchers
 │   │   ├── ws_manager.py       # WebSocket connection & heartbeat management
 │   │   ├── router.py           # Command routing (Decouples WS from logic)
 │   │   ├── base_handler.py     # Shared BaseHandler and ServerContext
@@ -31,13 +35,16 @@ server/
 │   │   ├── server_utils.py     # structlog setup, process management
 │   │   └── language_support.py # Single source of truth for all model language support
 │   └── models/
-│       ├── riva_model.py              # NVIDIA NIM (Riva) ASR + NMT Wrapper
-│       ├── llama_model.py             # NVIDIA NIM (Llama 3.1 8B) Translation Wrapper
-│       ├── whisper_model.py           # Local Faster-Whisper management + GPU info
-│       ├── google_model.py            # Google Translate (Free, via deep-translator)
-│       ├── google_cloud_model.py      # Google Cloud Translation gRPC v3 (service account credentials)
-│       ├── mymemory_model.py          # MyMemory public REST API translation
-│       └── speech_recognition_model.py # Google Speech Recognition (online fallback ASR)
+│       ├── asr/
+│       │   ├── local_asr.py           # Google Speech Recognition (online fallback)
+│       │   ├── riva_asr.py            # NVIDIA Riva ASR implementation
+│       │   └── whisper_asr.py         # Local Faster-Whisper ASR implementation
+│       └── translation/
+│           ├── google_api_translation.py # Google Cloud Translation gRPC v3
+│           ├── google_free_translation.py# Google Translate (Free, via deep-translator)
+│           ├── llama_translation.py      # NVIDIA NIM (Llama 3.1 8B) 
+│           ├── mymemory_translation.py   # MyMemory public REST API
+│           └── riva_nmt.py               # NVIDIA Riva NMT implementation
 ├── flutter_server.py           # FastAPI Entry point & Handshake
 └── pyproject.toml              # Modern dependency management
 ```
@@ -74,20 +81,16 @@ Single source of truth for all model language capabilities — imported by both 
 | `GOOGLE_FREE_LANGS` / `GOOGLE_CLOUD_LANGS` / `MYMEMORY_LANGS` / `LLAMA_LANGS` | `None` — these models are unrestricted within the app language list |
 
 ### AI Orchestration (`orchestrator.py`)
-Coordinates transcription and translation across multiple concurrent workers.
+Acts as a thin coordinator delegating tasks to specialized dispatchers.
+- **ASR Dispatching** (`ASRDispatcher`): Handles selection of ASR models (Riva, Whisper, Google Free), audio preprocessing, and result aggregation.
+- **Translation Dispatching** (`TranslationDispatcher`): Manages language detection scripts, model fallback trees, and translation execution (Riva, Llama, Google, MyMemory).
 - **Background Thread Stability**: Implements a robust "Event Loop Capturing" pattern to ensure background threads can safely schedule callbacks in the main FastAPI loop.
 - **Queue Resilience**: Worker threads gracefully handle `queue.Empty` timeouts, preventing crashes during periods of silence.
-- **Chunk Duration Logic**: Dynamically calculates the optimal audio chunk duration based on the transcription model and how many NVIDIA NIM models are active:
-  - `online` (Google Speech Recognition): 3.2s (API rate limit sensitive)
-  - 2 NIM models (e.g., Riva ASR + Riva NMT): 3.0s (stay under ~40 RPM total)
-  - 1 NIM or local-only: 1.5s (most responsive)
-  - **First Chunk**: Capped at `min(chunk_duration, 1.0s)` for instant feedback on session start.
-- **Speech Polishing**: Employs `pysbd` to segment text and a deduplication algorithm (`_clean_stutters`), which removes sentence-level and word-level (triple) repetitions.
-- **Script-Based Language Detection**: `_detect_lang_from_script()` uses Unicode script ranges (Devanagari, Bengali, Tamil) as a fallback when ASR doesn't provide a language hint and the user has selected `auto` source language.
+- **Speech Polishing**: Employs `pysbd` to segment text and a deduplication algorithm (`_clean_stutters`), which removes repetitions.
 - **ASR Hallucination Prevention** (three-layer defence):
-  1. **RMS Gate** — chunks with RMS < 120 are dropped before reaching ASR, preventing silence hallucinations.
-  2. **Confidence Filter** — Riva results with confidence < 0.5 are discarded at the model level.
-  3. **Time-Window Deduplication** — identical transcripts within a 6-second window are suppressed; real speech passes once the window expires.
+  1. **RMS Gate** — chunks with RMS < 120 are dropped before reaching ASR.
+  2. **Confidence Filter** — Riva results with confidence < 0.5 are discarded.
+  3. **Time-Window Deduplication** — identical transcripts within a short window are suppressed.
 
 ### Audio Handler (`handler.py`)
 Bridges the async FastAPI event loop with background worker threads:

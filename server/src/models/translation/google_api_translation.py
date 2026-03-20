@@ -11,7 +11,7 @@ import time
 import logging
 
 
-class GoogleCloudModel:
+class GoogleCloudTranslationModel:
     """
     Wraps Google Cloud Translation API v3 (gRPC).
     Authenticated via service account JSON content passed from the client.
@@ -44,12 +44,12 @@ class GoogleCloudModel:
                 scopes=["https://www.googleapis.com/auth/cloud-translation"],
             )
             self._client = translate.TranslationServiceClient(credentials=credentials)
-            logging.info("[GoogleCloudModel] gRPC client initialized successfully.")
+            logging.info("[GoogleCloudTranslationModel] gRPC client initialized successfully.")
         except json.JSONDecodeError:
-            logging.error("[GoogleCloudModel] Failed to parse credentials JSON — check Firestore field.")
+            logging.error("[GoogleCloudTranslationModel] Failed to parse credentials JSON — check Firestore field.")
             self._client = None
         except Exception as e:
-            logging.error(f"[GoogleCloudModel] Failed to init gRPC client: {type(e).__name__}")
+            logging.error(f"[GoogleCloudTranslationModel] Failed to init gRPC client: {type(e).__name__}")
             self._client = None
 
     def is_ready(self) -> bool:

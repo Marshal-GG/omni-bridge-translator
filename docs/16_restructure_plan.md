@@ -282,17 +282,16 @@ This is a **non-breaking, incremental** migration. Each phase can be committed i
 - Move each handler class to `src/network/handlers.py` as its own file
 - No logic change, pure file split
 
-### Phase 5 — Python: Split orchestrator (biggest change)
+### Phase 5 — Python: Split orchestrator (biggest change) — ✅ COMPLETE
 - Extract `_asr_worker` + `_perform_asr` → `src/asr/asr_dispatcher.py`
 - Extract `_translation_worker` + `_dispatch_translation` + fallbacks → `src/translation/translation_dispatcher.py`
-- Extract `_detect_lang_from_script` → `src/translation/lang_detector.py`
-- Extract `_clean_stutters` → `src/asr/asr_config.py` or `src/utils/`
-- Slim `InferenceOrchestrator` down to ~100 lines (queue setup + thread lifecycle only)
+- Extract `_detect_lang_from_script` → Integrated into `TranslationDispatcher`
+- Slim `InferenceOrchestrator` down to a thin coordinator delegating to dispatchers.
 
-### Phase 6 — Python: Split models/
+### Phase 6 — Python: Split models/ — ✅ COMPLETE
 - Move ASR models → `src/models/asr/`
 - Move translation models → `src/models/translation/`
-- Split `riva_model.py` into `riva_asr_model.py` and `riva_nmt_model.py`
+- Split `riva_model.py` into `src/models/asr/riva_asr.py` and `src/models/translation/riva_nmt.py`
 
 ### Phase 7 — Python: Move debug tooling
 - Move inline `wave` debug saving from `_asr_worker` → `src/utils/debug_audio.py`
