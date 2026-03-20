@@ -293,9 +293,13 @@ This is a **non-breaking, incremental** migration. Each phase can be committed i
 - Move translation models → `src/models/translation/`
 - Split `riva_model.py` into `src/models/asr/riva_asr.py` and `src/models/translation/riva_nmt.py`
 
-### Phase 7 — Python: Move debug tooling
-- Move inline `wave` debug saving from `_asr_worker` → `src/utils/debug_audio.py`
-- Gate behind an env flag (`OMNI_BRIDGE_DEBUG`)
+### Phase 7 — Python: Move debug tooling — ❌ SKIPPED
+- (Logic removed/skipped per user request to avoid non-essential storage)
+
+### Phase 8 — Python: Unit Tests — ✅ COMPLETE
+- Created `tests/` folder for server unit testing.
+- Implemented 9 comprehensive tests for `ASRDispatcher`, `TranslationDispatcher`, and `InferenceOrchestrator`.
+- Verified 100% pass rate with mocks for all AI engines.
 
 ---
 

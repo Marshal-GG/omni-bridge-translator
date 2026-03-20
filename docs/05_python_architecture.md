@@ -14,17 +14,17 @@ The server uses an **Asynchronous Modular Architecture** built on **FastAPI** an
 server/
 ├── src/
 │   ├── asr/
-│   │   └── asr_dispatcher.py   # ASR model selection & audio chunk processing
+│   │   └── asr_dispatcher.py   # selection of ASR models & silence gating
 │   ├── translation/
-│   │   └── translation_dispatcher.py # Language detection & translation fallback logic
+│   │   └── translation_dispatcher.py # Language detection & comprehensive fallback trees
 │   ├── audio/
 │   │   ├── capture.py          # WASAPI loopback + mic capture (pyaudiowpatch) with VAD
-│   │   ├── handler.py          # caption_callback, audio_poll_loop, level/status broadcast coroutines
-│   │   ├── meter.py            # Real-time independent RMS metering for Mic & Output (dB-normalized 0.0–1.0)
+│   │   ├── handler.py          # caption_callback, audio_poll_loop, levels
+│   │   ├── meter.py            # RMS metering (dB-normalized 0.0–1.0)
 │   │   └── shared_pyaudio.py   # Thread-safe global PyAudio singleton
 │   ├── network/
-│   │   ├── orchestrator.py     # Coordination layer delegating to dispatchers
-│   │   ├── ws_manager.py       # WebSocket connection & heartbeat management
+│   │   ├── orchestrator.py     # Coordination layer delegating to specialized dispatchers
+│   │   ├── ws_manager.py       # WebSocket connection management
 │   │   ├── router.py           # Command routing (Decouples WS from logic)
 │   │   ├── base_handler.py     # Shared BaseHandler and ServerContext
 │   │   ├── session_handler.py  # Session lifecycle (start/stop)
@@ -33,20 +33,17 @@ server/
 │   │   └── status_handler.py   # Health and model status reporting
 │   ├── utils/
 │   │   ├── server_utils.py     # structlog setup, process management
-│   │   └── language_support.py # Single source of truth for all model language support
-│   └── models/
-│       ├── asr/
-│       │   ├── local_asr.py           # Google Speech Recognition (online fallback)
-│       │   ├── riva_asr.py            # NVIDIA Riva ASR implementation
-│       │   └── whisper_asr.py         # Local Faster-Whisper ASR implementation
-│       └── translation/
-│           ├── google_api_translation.py # Google Cloud Translation gRPC v3
-│           ├── google_free_translation.py# Google Translate (Free, via deep-translator)
-│           ├── llama_translation.py      # NVIDIA NIM (Llama 3.1 8B) 
-│           ├── mymemory_translation.py   # MyMemory public REST API
-│           └── riva_nmt.py               # NVIDIA Riva NMT implementation
-├── flutter_server.py           # FastAPI Entry point & Handshake
-└── pyproject.toml              # Modern dependency management
+│   │   └── language_support.py # Single source of truth for language capabilities
+│   └── models/                 # Low-level model implementation wrappers
+│       ├── asr/ ...
+│       └── translation/ ...
+├── tests/                      # Pytest unit testing suite
+│   ├── conftest.py             # Shared fixtures and AI model mocks
+│   ├── test_asr_dispatcher.py
+│   ├── test_translation_dispatcher.py
+│   └── test_orchestrator.py
+├── flutter_server.py           # FastAPI Entry point
+└── pyproject.toml              # Dependency management (includes pytest)
 ```
 
 ---
@@ -81,17 +78,18 @@ Single source of truth for all model language capabilities — imported by both 
 | `GOOGLE_FREE_LANGS` / `GOOGLE_CLOUD_LANGS` / `MYMEMORY_LANGS` / `LLAMA_LANGS` | `None` — these models are unrestricted within the app language list |
 
 ### AI Orchestration (`orchestrator.py`)
-Acts as a thin coordinator delegating tasks to specialized dispatchers.
-- **ASR Dispatching** (`ASRDispatcher`): Handles selection of ASR models (Riva, Whisper, Google Free), audio preprocessing, and result aggregation.
-- **Translation Dispatching** (`TranslationDispatcher`): Manages language detection scripts, model fallback trees, and translation execution (Riva, Llama, Google, MyMemory).
-- **Background Thread Stability**: Implements a robust "Event Loop Capturing" pattern to ensure background threads can safely schedule callbacks in the main FastAPI loop.
-- **Queue Resilience**: Worker threads gracefully handle `queue.Empty` timeouts, preventing crashes during periods of silence.
-- **Speech Polishing**: Employs `pysbd` to segment text and a deduplication algorithm (`_clean_stutters`), which removes repetitions.
-- **ASR Hallucination Prevention** (three-layer defence):
-  1. **RMS Gate** — chunks with RMS < 120 are dropped before reaching ASR.
-  2. **Confidence Filter** — Riva results with confidence < 0.5 are discarded.
-  3. **Time-Window Deduplication** — identical transcripts within a short window are suppressed.
+Acts as a high-level coordinator that delegates specialized tasks to dedicated dispatchers. It transforms raw audio chunks from the frontend into polished, translated captions while managing the complex lifecycle of AI models.
 
+- **`ASRDispatcher`** (`src/asr/asr_dispatcher.py`):
+  - **Model Selection**: Routes audio to Riva, Faster-Whisper, or Google based on configuration and availability.
+  - **Silence Gating**: Calculates RMS and drops chunks < 120 RMS to prevent "hallucinations" during silence.
+  - **Confidence Filtering**: Discards Riva results with confidence < 0.5.
+- **`TranslationDispatcher`** (`src/src/translation/translation_dispatcher.py`):
+  - **Fallback Trees**: Implements the multi-stage fallback logic (e.g., Riva -> Llama -> Google Free).
+  - **Language Detection**: Orchestrates detection using specialized scripts or model-native capabilities.
+- **Background Thread Stability**: Implements a "Thread-Safe Queue" pattern ensuring background worker threads (ASR/Translation) can safely communicate results back to the FastAPI event loop.
+- **Speech Polishing**: Employs `pysbd` for sentence segmentation and a custom deduplication algorithm to remove stutters and repetitive phrases.
+- **Queue Resilience**: Worker threads use non-blocking queue polling with timeouts to prevent deadlock or high CPU usage during idle periods.
 ### Audio Handler (`handler.py`)
 Bridges the async FastAPI event loop with background worker threads:
 - **`caption_callback()`** — Called by orchestrator for each transcript/translation. Broadcasts caption JSON to all WebSocket clients and calculates total tokens from engine-specific metrics.
@@ -165,19 +163,33 @@ The `google_cloud_model.py` module uses the **Google Cloud Translation gRPC v3**
 The `InferenceOrchestrator` implements a priority-based fallback system:
 
 1. **Transcription**:
-   - `riva` (High Quality/Low Latency) — routes to Parakeet or Canary based on `RIVA_PARAKEET_ASR_LANGS`
-   - `whisper` (Local Fallback - Small/Medium)
-   - `online` (Google Speech Recognition - Universal Fallback)
+   - `riva` (High Quality/Low Latency) — routes to Parakeet or Canary based on `RIVA_PARAKEET_ASR_LANGS`.
+   - `whisper` (Local Fallback - Small/Medium).
+   - `google` (Online Fallback - Universal).
 
-2. **Translation** — clean separation of concerns:
-   - Each model (`riva_model`, `llama_model`) only executes its own engine and **raises** on failure.
-   - All routing and fallback logic lives exclusively in `orchestrator._dispatch_translation()`.
-   - `google_api` → `google` (free) on failure
-   - `riva` — pre-checks `RIVA_NMT_LANGS`; if unsupported pair, goes directly to `llama`. If Riva call itself fails, falls back to `llama`. If `llama` also fails, caption is **silently dropped** (never broadcasts original text).
-   - `mymemory` → `google` (free) on failure
-   - `google` (free) → `llama` on failure
-   - `llama` — raises on any failure; orchestrator drops caption cleanly.
+2. **Translation**:
+   - **Riva**: First choice for supported pairs (`RIVA_NMT_LANGS`). Falls back to Llama on failure or unsupported language.
+   - **Llama (NVIDIA NIM)**: Universal high-quality translator. Falls back to MyMemory or Google Free.
+   - **Google Cloud (v3 gRPC)**: Enterprise-grade translation. Falls back to Google Free on quota/auth issues.
+   - **MyMemory / Google Free**: Public REST API fallbacks used when API keys are missing or premium quotas are exhausted.
+   - **Silent Drop**: If all models in the chain fail, the caption is discarded rather than broadcasting broken/untranslated text.
 
+---
+
+## Testing Infrastructure
+
+The server includes a robust unit test suite located in `server/tests/` using **pytest**.
+
+### Key Features:
+- **Mocked AI Models**: Riva, Llama, and Google models are fully mocked to allow "offline" testing.
+- **Shared Fixtures**: `conftest.py` provides standardized orchestrator and dispatcher instances.
+- **Component Isolation**: Each dispatcher is tested independently before testing their integration in the `InferenceOrchestrator`.
+
+### Running Tests:
+```bash
+cd server
+pytest
+```
 ---
 
 ## Observability

@@ -57,14 +57,16 @@ server/.env
 local.env
 
 # Python Server related
-__pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 server_env/
 venv/
 .venv/
 env/
-.pytest_cache/
+**/.pytest_cache/
+.coverage
+htmlcov/
 *.spec
 !server/omni_bridge_server.spec
 *.egg-info/

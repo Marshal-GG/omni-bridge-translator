@@ -89,6 +89,19 @@ Or from the project root, double-click **`start_server.bat`**.
 
 The server starts at `ws://127.0.0.1:8765`.
 
+### Running Unit Tests
+
+The server uses `pytest` for unit testing. Mocks are used for all AI engines, so no API keys or NVIDIA GPUs are required to run the tests.
+
+```powershell
+# From the server/ directory with venv active:
+pytest
+```
+
+To see detailed output, use:
+```powershell
+pytest -v
+```
 ---
 
 ## 3. Flutter App

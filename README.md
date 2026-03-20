@@ -153,9 +153,10 @@ OmniBridge follows **Clean Architecture** principles across both its components:
 
 ### 🐍 Python Server
 - **Orchestration Layer**: Thin coordinator managing session lifecycle and queues.
-- **Dispatcher Layer**: Modular ASR and Translation dispatchers handling model selection and fallbacks.
+- **Dispatcher Layer**: Modular ASR and Translation dispatchers handling model selection, silence gating, and comprehensive fallbacks.
 - **Model Layer**: Abstracted AI model implementations (Riva, Whisper, Llama, Google).
-- **Network Layer**: Specialized handlers for protocol concerns (Config, Status, Session).
+- **Network Layer**: Specialized handlers for protocol concerns (Config, Status, Session, Device).
+- **Testing Suite**: Robust `pytest` suite for core server logic with full AI engine mocking.
 
 ---
 
