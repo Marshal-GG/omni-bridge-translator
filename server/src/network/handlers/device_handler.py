@@ -2,7 +2,7 @@
 
 import logging
 from typing import Dict, Any
-from src.network.base_handler import BaseHandler
+from .base_handler import BaseHandler
 
 class DeviceHandler(BaseHandler):
     async def get_device_list(self):

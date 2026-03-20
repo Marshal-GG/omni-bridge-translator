@@ -13,24 +13,26 @@ The server uses an **Asynchronous Modular Architecture** built on **FastAPI** an
 ```
 server/
 ├── src/
-│   ├── asr/
-│   │   └── asr_dispatcher.py   # selection of ASR models & silence gating
-│   ├── translation/
-│   │   └── translation_dispatcher.py # Language detection & comprehensive fallback trees
-│   ├── audio/
-│   │   ├── capture.py          # WASAPI loopback + mic capture (pyaudiowpatch) with VAD
-│   │   ├── handler.py          # caption_callback, audio_poll_loop, levels
-│   │   ├── meter.py            # RMS metering (dB-normalized 0.0–1.0)
-│   │   └── shared_pyaudio.py   # Thread-safe global PyAudio singleton
-│   ├── network/
-│   │   ├── orchestrator.py     # Coordination layer delegating to specialized dispatchers
-│   │   ├── ws_manager.py       # WebSocket connection management
-│   │   ├── router.py           # Command routing (Decouples WS from logic)
+│   ├── pipeline/
+│   └── orchestrator.py     # Coordination layer delegating to specialized dispatchers
+├── asr/
+│   └── asr_dispatcher.py   # selection of ASR models & silence gating
+├── translation/
+│   └── translation_dispatcher.py # Language detection & comprehensive fallback trees
+├── audio/
+│   ├── capture.py          # WASAPI loopback + mic capture (pyaudiowpatch) with VAD
+│   ├── handler.py          # caption_callback, audio_poll_loop, levels
+│   ├── meter.py            # RMS metering (dB-normalized 0.0–1.0)
+│   └── shared_pyaudio.py   # Thread-safe global PyAudio singleton
+├── network/
+│   ├── handlers/           # Modular command handlers
 │   │   ├── base_handler.py     # Shared BaseHandler and ServerContext
 │   │   ├── session_handler.py  # Session lifecycle (start/stop)
 │   │   ├── config_handler.py   # Settings and Volume management
 │   │   ├── device_handler.py   # Audio device enumeration
 │   │   └── status_handler.py   # Health and model status reporting
+│   ├── ws_manager.py       # WebSocket connection management
+│   └── router.py           # Command routing (Decouples WS from logic)
 │   ├── utils/
 │   │   ├── server_utils.py     # structlog setup, process management
 │   │   └── language_support.py # Single source of truth for language capabilities
@@ -56,7 +58,7 @@ The server uses a **Dependency Injection**-like pattern via `ServerContext`.
 - **Capabilities Handshake**: Upon WebSocket connection, the server immediately emits a `capabilities` message detailing GPU availability, VRAM, and authenticated AI engines.
 
 ### Command Routing (`router.py` & Modular Handlers)
-Incoming JSON commands are dispatched by the `CommandRouter` to specialized modular handlers in `src/network/`:
+Incoming JSON commands are dispatched by the `CommandRouter` to specialized modular handlers in `src/network/handlers/`:
 - **SessionHandler** (`session_handler.py`): Manages the lifecycle of an audio session (`start`/`stop`). It calculates the optimal audio chunk duration based on the selected AI engines to balance latency vs. API rate limits.
 - **ConfigHandler** (`config_handler.py`): Updates settings (languages, keys, devices) in real-time. If settings change during an active session, it triggers a seamless restart.
 - **DeviceHandler** (`device_handler.py`): Enumerates WASAPI input and loopback devices for the Flutter UI.

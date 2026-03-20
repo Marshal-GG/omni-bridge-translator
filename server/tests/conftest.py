@@ -41,21 +41,21 @@ def mock_riva_nmt(mock_riva_auth):
 
 @pytest.fixture
 def mock_llama():
-    with patch("src.models.translation.llama_translation.LlamaModel") as mock:
+    with patch("src.models.translation.LlamaModel") as mock:
         instance = mock.return_value
         instance.translate.return_value = ("Llama translation", {"engine": "llama"})
         yield instance
 
 @pytest.fixture
 def mock_whisper():
-    with patch("src.models.asr.whisper_asr.WhisperASRModel") as mock:
+    with patch("src.models.asr.WhisperModel") as mock:
         instance = mock.return_value
         instance.transcribe.return_value = ("Whisper transcript", {"engine": "whisper"})
         yield instance
 
 @pytest.fixture
 def mock_google_free():
-    with patch("src.models.translation.google_translation.GoogleModel") as mock:
+    with patch("src.models.translation.GoogleModel") as mock:
         instance = mock.return_value
         instance.translate.return_value = ("Google translation", {"engine": "google"})
         yield instance

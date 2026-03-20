@@ -5,8 +5,8 @@ import logging
 import threading
 from typing import Dict, Any
 
-from src.network.base_handler import BaseHandler
-from src.network.orchestrator import InferenceOrchestrator
+from .base_handler import BaseHandler
+from src.pipeline import InferenceOrchestrator
 from src.audio.capture import AudioCapture
 from src.audio.handler import (
     audio_poll_loop, 

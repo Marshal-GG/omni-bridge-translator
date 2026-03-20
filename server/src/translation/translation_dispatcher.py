@@ -2,11 +2,13 @@ import logging
 import time
 from typing import Any, Dict, Optional, Tuple
 
-from src.models.translation.riva_nmt import RivaNMTModel
-from src.models.translation.llama_translation import LlamaModel
-from src.models.translation.google_translation import GoogleModel
-from src.models.translation.mymemory_translation import MyMemoryModel
-from src.models.translation.google_api_translation import GoogleCloudTranslationModel
+from src.models.translation import (
+    RivaNMTModel,
+    LlamaModel,
+    GoogleModel,
+    MyMemoryModel,
+    GoogleCloudTranslationModel
+)
 
 class TranslationDispatcher:
     """

@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from src.asr.asr_dispatcher import ASRDispatcher
+from src.asr import ASRDispatcher
 
 def test_asr_dispatcher_silence_filtering():
     # Mock models

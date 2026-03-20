@@ -19,19 +19,13 @@ import pysbd
 import numpy as np
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from src.models.asr.riva_asr import RivaASRModel
-from src.models.asr.whisper_asr import WhisperModel, get_gpu_info
-from src.models.asr.local_asr import SpeechRecognitionModel
+from src.models.asr import RivaASRModel, WhisperModel, get_gpu_info, SpeechRecognitionModel
 
-from src.models.translation.riva_nmt import RivaNMTModel
-from src.models.translation.llama_translation import LlamaModel
-from src.models.translation.google_translation import GoogleModel
-from src.models.translation.mymemory_translation import MyMemoryModel
-from src.models.translation.google_api_translation import GoogleCloudTranslationModel
+from src.models.translation import RivaNMTModel, LlamaModel, GoogleModel, MyMemoryModel, GoogleCloudTranslationModel
 
-from src.asr.asr_dispatcher import ASRDispatcher
-from src.translation.translation_dispatcher import TranslationDispatcher
-from src.utils.language_support import LANG_TO_BCP47
+from src.asr import ASRDispatcher
+from src.translation import TranslationDispatcher
+from src.utils import LANG_TO_BCP47
 
 # Valid transcription model IDs
 _WHISPER_SIZES = {"whisper-tiny", "whisper-base", "whisper-small", "whisper-medium"}

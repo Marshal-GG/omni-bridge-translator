@@ -14,11 +14,7 @@ from contextlib import asynccontextmanager
 from src.utils.server_utils import kill_other_instances, setup_logging
 from src.network.ws_manager import ConnectionManager
 from src.network.router import CommandRouter
-from src.network.base_handler import ServerContext
-from src.network.session_handler import SessionHandler
-from src.network.config_handler import ConfigHandler
-from src.network.device_handler import DeviceHandler
-from src.network.status_handler import StatusHandler
+from src.network.handlers import ServerContext, SessionHandler, ConfigHandler, DeviceHandler, StatusHandler
 
 # --- Setup Logging ---
 def get_log_dir():

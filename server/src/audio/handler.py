@@ -6,10 +6,10 @@ import time
 from typing import Any, Callable, Dict, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.audio.capture import AudioCapture
-    from src.network.orchestrator import InferenceOrchestrator
+    from .capture import AudioCapture
+    from src.pipeline import InferenceOrchestrator
     from src.network.ws_manager import ConnectionManager
-    from src.audio.meter import AudioMeter
+    from .meter import AudioMeter
 
 def caption_callback(text, is_error, is_final=True, original_text=None, usage_stats=None, 
                     event_loop=None, manager=None, session_id=0, source_lang="auto", target_lang="en"):

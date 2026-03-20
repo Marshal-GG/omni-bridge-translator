@@ -2,7 +2,7 @@
 
 import asyncio
 from typing import Dict, Any, Optional
-from src.network.orchestrator import InferenceOrchestrator
+from src.pipeline import InferenceOrchestrator
 from src.audio.capture import AudioCapture
 from src.audio.meter import AudioMeter
 

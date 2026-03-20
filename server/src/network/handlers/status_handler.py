@@ -1,8 +1,8 @@
 # Copyright (c) 2026 Omni Bridge. All rights reserved.
 
 from typing import Dict, Any
-from src.network.base_handler import BaseHandler
-from src.network.orchestrator import InferenceOrchestrator
+from .base_handler import BaseHandler
+from src.pipeline import InferenceOrchestrator
 
 class StatusHandler(BaseHandler):
     async def get_system_status(self):

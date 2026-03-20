@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from src.translation.translation_dispatcher import TranslationDispatcher
+from src.translation import TranslationDispatcher
 
 @pytest.fixture
 def dispatcher():

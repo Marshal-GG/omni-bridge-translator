@@ -2,7 +2,7 @@
 
 import logging
 from typing import Dict, Any
-from src.network.base_handler import BaseHandler
+from .base_handler import BaseHandler
 
 class ConfigHandler(BaseHandler):
     async def update_settings(self, websocket, msg: Dict[str, Any]):
@@ -39,7 +39,7 @@ class ConfigHandler(BaseHandler):
 
         if self.ctx.is_running and has_changed:
             logging.info("[Handler] Settings changed while running. Restarting...")
-            from src.network.session_handler import SessionHandler
+            from .session_handler import SessionHandler
             await SessionHandler(self.ctx).start(websocket, self.ctx.config)
         elif not self.ctx.is_running:
             if self.ctx.orchestrator:
