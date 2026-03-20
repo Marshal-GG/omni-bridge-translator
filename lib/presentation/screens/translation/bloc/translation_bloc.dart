@@ -1,34 +1,38 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:omni_bridge/domain/repositories/auth_repository.dart';
+import 'package:omni_bridge/domain/repositories/settings_repository.dart';
+import 'package:omni_bridge/domain/repositories/translation_repository.dart';
 import 'package:omni_bridge/data/models/subscription_models.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:omni_bridge/presentation/screens/translation/bloc/translation_event.dart';
 import 'package:omni_bridge/presentation/screens/translation/bloc/translation_state.dart';
-import 'package:omni_bridge/data/services/server/asr_ws_client.dart';
-import 'package:omni_bridge/data/services/firebase/tracking_service.dart';
 import 'package:omni_bridge/data/services/system/asr_text_controller.dart';
-import 'package:omni_bridge/data/services/firebase/auth_service.dart';
-import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
 import 'package:omni_bridge/data/services/translation/whisper_service.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
-  final AsrWebSocketClient asrClient;
+  final ITranslationRepository translationRepo;
+  final IAuthRepository authRepo;
+  final ISettingsRepository settingsRepo;
+
   StreamSubscription? _captionSub;
   StreamSubscription? _statusSub;
-  StreamSubscription? _authSub;
   int _lastLineCount = 0;
   final WhisperService _whisperService = WhisperService();
 
-  TranslationBloc({required this.asrClient})
-    : super(
-        TranslationState.initial().copyWith(
-          quotaStatus: SubscriptionService.instance.currentStatus,
-          isQuotaExceeded:
-              SubscriptionService.instance.currentStatus?.isExceeded ?? false,
-        ),
-      ) {
+  TranslationBloc({
+    required this.translationRepo,
+    required this.authRepo,
+    required this.settingsRepo,
+  }) : super(
+          TranslationState.initial().copyWith(
+            quotaStatus: translationRepo.currentQuotaStatus,
+            isQuotaExceeded:
+                translationRepo.currentQuotaStatus?.isExceeded ?? false,
+          ),
+        ) {
     on<UpdateQuotaEvent>(_onUpdateQuota);
     on<QuotaExceededEvent>(_onQuotaExceeded);
     on<ToggleShrinkEvent>(_onToggleShrink);
@@ -59,39 +63,37 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
   void _initAuthListener() {
     // Re-load settings whenever the user signs in
-    AuthService.instance.currentUser.addListener(_onAuthChanged);
+    authRepo.currentUser.addListener(_onAuthChanged);
   }
 
   void _onAuthChanged() {
-    if (AuthService.instance.currentUser.value != null && !isClosed) {
+    if (authRepo.currentUser.value != null && !isClosed) {
       debugPrint('[TranslationBloc] Auth detected, reloading settings...');
       add(LoadSettingsEvent());
     }
   }
 
   void _initQuotaListener() {
-    // If we already have a status, fetch it immediately to avoid missing the broadcast
-    final initialStatus = SubscriptionService.instance.currentStatus;
+    final initialStatus = translationRepo.currentQuotaStatus;
     if (initialStatus != null) {
       add(UpdateQuotaEvent(initialStatus));
     } else {
-      // If we are logged out or initializing, default to an initial safe status instead of null
       add(
         UpdateQuotaEvent(
           SubscriptionStatus(
-            tier: SubscriptionService.instance.defaultTier,
+            tier: translationRepo.defaultTier,
             dailyTokensUsed: 0,
             weeklyTokensUsed: 0,
             monthlyTokensUsed: 0,
             lifetimeTokensUsed: 0,
             dailyLimit: 10000,
-            dailyResetAt: DateTime.now(), // Ignored here
+            dailyResetAt: DateTime.now(),
           ),
         ),
       );
     }
 
-    _statusSub = SubscriptionService.instance.statusStream.listen((status) {
+    _statusSub = translationRepo.quotaStatusStream.listen((status) {
       add(UpdateQuotaEvent(status));
     });
   }
@@ -99,12 +101,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   void _initAsr() {
     add(LoadSettingsEvent());
 
-    // Note: AsrWebSocketClient pre-connects the WebSocket on construction.
-    // Actual audio capture only starts when the user toggles on (ToggleRunningEvent).
-
-    _captionSub = asrClient.captions?.listen((msg) {
-      // Usage stats are now handled exclusively by TrackingService._flushUsage via logModelUsage
-
+    _captionSub = translationRepo.captions?.listen((msg) {
       final override = msg.sourceLangOverride;
       if (override != null && !isClosed) {
         add(SourceLangOverrideEvent(override));
@@ -113,42 +110,21 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       if (msg.modelStatuses != null) {
         add(ModelStatusChangedEvent(msg.modelStatuses!));
       }
+      
       if (msg.usageStats != null) {
-        // This part of the instruction seems to be a copy-paste error from the _initQuotaListener.
-        // Assuming the intent was to process usageStats if they come from the ASR client.
-        // However, the original code states "Usage stats are now handled exclusively by TrackingService._flushUsage via logModelUsage".
-        // I will add the `if (msg.usageStats != null)` block as requested, but without a clear action for `usageStats` here,
-        // I'll leave it empty or add a debugPrint. Given the context, `UpdateQuotaEvent` is for `SubscriptionStatus`, not raw `usageStats`.
-        // I will assume the user meant to update quota if usageStats are received, but `UpdateQuotaEvent` takes `SubscriptionStatus`.
-        // For now, I'll just acknowledge the presence of `msg.usageStats` as per the instruction's structure.
-        // If `msg.usageStats` is meant to be converted to a `SubscriptionStatus`, that logic would be needed.
-        // For now, I'll just add the `if (msg.usageStats != null)` block as is, without an action.
-        // Re-reading the instruction: "if (msg.usageStats != null) { add(UpdateQuotaEvent(initialStatus)); }".
-        // This is definitely a copy-paste error from `_initQuotaListener`.
-        // I will add the `if (msg.usageStats != null)` block, but leave its content empty as `initialStatus` is not available here.
-        // Or, if the user intended to update quota based on `msg.usageStats`, the `UpdateQuotaEvent` would need a `SubscriptionStatus` derived from `msg.usageStats`.
-        // Given the instruction, I will add the `if (msg.usageStats != null)` block, but will not add `add(UpdateQuotaEvent(initialStatus));` as it's incorrect here.
-        // I will add a placeholder comment.
-        // If the user meant to update quota, the `msg.usageStats` would need to be processed into a `SubscriptionStatus`.
-        // For now, I'll just add the `if (msg.usageStats != null)` block as requested, but without an action.
-        // Let's re-evaluate the instruction:
-        // `if (msg.usageStats != null) { add(UpdateQuotaEvent(initialStatus)); }`
-        // This is clearly a mistake in the instruction, as `initialStatus` is not in scope here.
-        // I will add the `if (msg.usageStats != null)` block, but leave it empty or with a debugPrint, as the instruction's content is invalid for this context.
-        // I will add a debugPrint to acknowledge it.
         debugPrint('Received usageStats from ASR client: ${msg.usageStats}');
       }
 
       final text = msg.text;
       if (text.trim().isNotEmpty) {
-        TrackingService.instance.syncLiveCaption(
-          msg.original,
-          text,
-          override ?? state.activeSourceLang,
-          state.activeTargetLang,
-          msg.isFinal,
-          state.activeTranslationModel,
-        );
+        settingsRepo.logEvent('live_caption', parameters: {
+          'original': msg.original,
+          'text': text,
+          'source_lang': override ?? state.activeSourceLang,
+          'target_lang': state.activeTargetLang,
+          'is_final': msg.isFinal,
+          'model': state.activeTranslationModel,
+        });
       }
     });
   }
@@ -162,7 +138,6 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
   void _onModelStatusChanged(
       ModelStatusChangedEvent event, Emitter<TranslationState> emit) {
-    // Convert List<dynamic> from server to Map<String, dynamic> indexed by model name
     final newStatuses = Map<String, dynamic>.from(state.modelStatuses);
     for (final status in event.statuses) {
       if (status is Map<String, dynamic> && status.containsKey('name')) {
@@ -177,7 +152,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     Emitter<TranslationState> emit,
   ) async {
     if (state.isRunning) {
-      asrClient.stop();
+      translationRepo.stop();
       emit(state.copyWith(isRunning: false));
     } else {
       if (state.isQuotaExceeded) {
@@ -189,14 +164,13 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         add(QuotaExceededEvent());
         return;
       }
-      if (state.activeApiKey.trim().isEmpty) {
-        // Just acknowledging the user's "whether key provided or not"
-        // But for now, we just start if quota is ok.
-      }
+      
+      final result = await settingsRepo.getGoogleCredentials();
       final googleCredentialsJson = state.activeTranslationModel == 'google_api'
-          ? await TrackingService.instance.getGoogleCredentials()
+          ? result.getOrElse(() => '')
           : '';
-      asrClient.start(
+
+      translationRepo.start(
         sourceLang: state.activeSourceLang,
         targetLang: state.activeTargetLang,
         useMic: state.activeUseMic,
@@ -216,7 +190,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     emit(state.copyWith(quotaStatus: event.status, isQuotaExceeded: exceeded));
 
     if (exceeded && state.isRunning) {
-      asrClient.stop();
+      translationRepo.stop();
       emit(
         state.copyWith(
           isRunning: false,
@@ -245,68 +219,44 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   ) async {
     emit(state.copyWith(isSettingsLoading: true));
     try {
-      final settings = await TrackingService.instance.getSettings();
-      if (settings != null) {
-        final targetLang =
-            settings['targetLang'] as String? ?? state.activeTargetLang;
-        final sourceLang =
-            settings['sourceLang'] as String? ?? state.activeSourceLang;
-        final useMic = settings['useMic'] as bool? ?? state.activeUseMic;
-        final fontSize =
-            (settings['fontSize'] as num?)?.toDouble() ?? state.activeFontSize;
-        final isBold = settings['isBold'] as bool? ?? state.activeIsBold;
-        final opacity =
-            (settings['opacity'] as num?)?.toDouble() ?? state.activeOpacity;
-        final translationModel =
-            settings['translationModel'] as String? ??
-            settings['aiEngine'] as String? ??
-            state.activeTranslationModel;
-        final apiKey = settings['apiKey'] as String? ?? '';
-        var transcriptionModel =
-            settings['transcriptionModel'] as String? ??
-            settings['transcriptionEngine'] as String? ??
-            'online';
-
-        if (transcriptionModel == 'whisper') {
-          transcriptionModel = 'whisper-base';
-        }
-
-        // Update BLoC state natively
-        emit(
-          state.copyWith(
-            activeTargetLang: targetLang,
-            activeSourceLang: sourceLang,
-            activeUseMic: useMic,
-            activeFontSize: fontSize,
-            activeIsBold: isBold,
-            activeOpacity: opacity,
-            activeTranslationModel: translationModel,
-            activeApiKey: apiKey,
-            activeTranscriptionModel: transcriptionModel,
-          ),
-        );
-
-        // Tell underlying ASR engine we changed things on init load
-        final googleCredentialsJsonOnLoad = translationModel == 'google_api'
-            ? await TrackingService.instance.getGoogleCredentials()
-            : '';
-        asrClient.updateSettings(
-          targetLang: targetLang,
-          sourceLang: sourceLang,
-          useMic: useMic,
-          inputDeviceIndex: state.activeInputDeviceIndex,
-          outputDeviceIndex: state.activeOutputDeviceIndex,
-          desktopVolume: state.activeDesktopVolume,
-          micVolume: state.activeMicVolume,
-          translationModel: translationModel,
-          apiKey: apiKey,
-          googleCredentialsJson: googleCredentialsJsonOnLoad,
-          transcriptionModel: transcriptionModel,
-        );
-      }
+      final result = await settingsRepo.getSettings();
+      result.fold(
+        (failure) => debugPrint('Error loading settings: ${failure.message}'),
+        (settings) {
+          if (settings != null) {
+            emit(state.copyWith(
+              activeTargetLang: settings.targetLang,
+              activeSourceLang: settings.sourceLang,
+              activeUseMic: settings.useMic,
+              activeFontSize: settings.fontSize,
+              activeIsBold: settings.isBold,
+              activeOpacity: settings.opacity,
+              activeInputDeviceIndex: settings.inputDeviceIndex,
+              activeOutputDeviceIndex: settings.outputDeviceIndex,
+              activeDesktopVolume: settings.desktopVolume,
+              activeMicVolume: settings.micVolume,
+              activeTranslationModel: settings.translationModel,
+              activeApiKey: settings.apiKey,
+              activeTranscriptionModel: settings.transcriptionModel,
+            ));
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('Error loading settings: $e');
     } finally {
       emit(state.copyWith(isSettingsLoading: false));
     }
+  }
+
+  void liveVolumeUpdate({
+    required double desktopVolume,
+    required double micVolume,
+  }) {
+    translationRepo.liveVolumeUpdate(
+      desktopVolume: desktopVolume,
+      micVolume: micVolume,
+    );
   }
 
   Future<void> _onCaptionTextChanged(
@@ -333,7 +283,6 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     final metrics = painter.computeLineMetrics();
     final lineCount = metrics.length;
 
-    // 1. Handle window resizing for SHRUNK mode
     if (state.isShrunk) {
       final displayLineCount = lineCount.clamp(1, 2);
       if (displayLineCount != _lastLineCount) {
@@ -344,14 +293,11 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       }
     }
 
-    // 2. Handle line shifting/trimming if total lines > 2
     if (lineCount > 2) {
-      // Find the end index of the first line to trim it
       final firstLineEnd = painter
           .getLineBoundary(const TextPosition(offset: 0))
           .end;
       if (firstLineEnd > 0) {
-        // We trim by adding 1 to account for the space separator in the controller
         asrTextController.trimBy(firstLineEnd + 1);
       }
     }
@@ -368,17 +314,12 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       double shrinkHeight = state.activeFontSize * 3 + 30;
       if (shrinkHeight < 70) shrinkHeight = 70;
 
-      // bitsdojo_window alignment
-      // Removed forced alignment to keep window where it was
       await windowManager.setAlwaysOnTop(true);
       appWindow.minSize = const Size(100, 20);
       await windowManager.setMinimumSize(const Size(100, 20));
       await windowManager.setSize(Size(730, shrinkHeight));
     } else {
-      appWindow.minSize = const Size(
-        300,
-        150,
-      ); // Increased width, consistent height
+      appWindow.minSize = const Size(300, 150);
       await windowManager.setMinimumSize(const Size(400, 150));
       await windowManager.setSize(const Size(730, 150));
     }
@@ -388,7 +329,6 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     ApplySettingsEvent event,
     Emitter<TranslationState> emit,
   ) async {
-    // 1. Flush temp into active
     emit(
       state.copyWith(
         activeTargetLang: event.targetLang,
@@ -408,7 +348,6 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       ),
     );
 
-    // 2. If already shrunk, resize to match the new font size
     if (state.isShrunk) {
       double shrinkHeight = event.fontSize * 3 + 30;
       if (shrinkHeight < 70) shrinkHeight = 70;
@@ -416,10 +355,12 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     }
 
     try {
+      final result = await settingsRepo.getGoogleCredentials();
       final googleCredentialsJsonOnApply = event.translationModel == 'google_api'
-          ? await TrackingService.instance.getGoogleCredentials()
+          ? result.getOrElse(() => '')
           : '';
-      asrClient.updateSettings(
+
+      translationRepo.updateSettings(
         targetLang: event.targetLang,
         sourceLang: event.sourceLang,
         useMic: event.useMic,
@@ -433,8 +374,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         transcriptionModel: event.transcriptionModel,
       );
 
-      // Sync settings to Firestore
-      await TrackingService.instance.syncSettings({
+      await settingsRepo.syncSettings({
         'targetLang': event.targetLang,
         'sourceLang': event.sourceLang,
         'useMic': event.useMic,
@@ -452,11 +392,10 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
   @override
   Future<void> close() {
-    AuthService.instance.currentUser.removeListener(_onAuthChanged);
+    authRepo.currentUser.removeListener(_onAuthChanged);
     _captionSub?.cancel();
     _statusSub?.cancel();
-    _authSub?.cancel();
-    asrClient.dispose(); // hard-stop: closes WebSocket fully
+    translationRepo.stop();
     return super.close();
   }
 }

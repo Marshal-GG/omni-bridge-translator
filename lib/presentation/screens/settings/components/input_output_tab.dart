@@ -80,7 +80,6 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                         ),
                         onLiveChange: (v) => context
                             .read<TranslationBloc>()
-                            .asrClient
                             .liveVolumeUpdate(
                               desktopVolume: state.settings.desktopVolume,
                               micVolume: v,
@@ -155,7 +154,6 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                       ),
                       onLiveChange: (v) => context
                           .read<TranslationBloc>()
-                          .asrClient
                           .liveVolumeUpdate(
                             desktopVolume: v,
                             micVolume: state.settings.micVolume,

@@ -12,8 +12,8 @@ import 'package:omni_bridge/core/routes/router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/core/theme/app_theme.dart';
 import 'package:omni_bridge/presentation/screens/translation/bloc/translation_bloc.dart';
+import 'package:omni_bridge/core/di/injection.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_bloc.dart';
-import 'package:omni_bridge/data/services/server/asr_ws_client.dart';
 import 'package:omni_bridge/core/navigation/global_navigator.dart';
 
 class MyApp extends StatelessWidget {
@@ -27,13 +27,11 @@ class MyApp extends StatelessWidget {
 
     return MultiBlocProvider(
       providers: [
-        BlocProvider(
-          create: (_) => TranslationBloc(asrClient: AsrWebSocketClient()),
+        BlocProvider<TranslationBloc>(
+          create: (_) => sl<TranslationBloc>(),
         ),
-        BlocProvider(
-          create: (context) => SettingsBloc(
-            asrClient: context.read<TranslationBloc>().asrClient,
-          ),
+        BlocProvider<SettingsBloc>(
+          create: (_) => sl<SettingsBloc>(),
         ),
       ],
       child: MaterialApp(

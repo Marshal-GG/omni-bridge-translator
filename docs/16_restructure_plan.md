@@ -267,15 +267,15 @@ This is a **non-breaking, incremental** migration. Each phase can be committed i
 - Move `lib/core/blocs/` → `lib/presentation/blocs/`
 - Update all import paths (no behaviour change)
 
-### Phase 2 — Flutter: Add repositories + DI container
+### Phase 2 — Flutter: Add repositories + DI container — ✅ COMPLETE
 - Create `injection_container.dart` with GetIt (mirrors `kirasathi/lib/injection_container.dart`)
 - Create `lib/data/repositories/` wrappers that return `Either<Failure, T>`
 - Wire repositories and BLoCs through GetIt
 
-### Phase 3 — Flutter: Add missing BLoCs
-- `SessionBloc` (start/stop translation, replaces direct service calls in screens)
-- `CaptionBloc` (caption display state + history)
-- `SettingsBloc` (load/save settings)
+### Phase 3 — Flutter: Add missing BLoCs — ✅ COMPLETE
+- `SessionBloc` (Integrated into `TranslationBloc`)
+- `CaptionBloc` (Integrated into `TranslationBloc`)
+- `SettingsBloc` (Refactored to use Repositories)
 - Extract common widgets into `presentation/widgets/common/`
 
 ### Phase 4 — Python: Split handlers.py

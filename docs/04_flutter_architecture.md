@@ -13,6 +13,7 @@
 The Omni Bridge client is a Flutter desktop app (Windows-first) that serves as the UI and orchestration layer. It connects to a local Python WebSocket server for audio capture, ASR, and translation.
 
 State management: **BLoC pattern** throughout.
+Architecture: **Clean Architecture (Layered)** with **Repository Pattern** and **Dependency Injection** using `get_it`.
 
 ---
 
@@ -25,15 +26,21 @@ lib/
 ├── core/                        # Shared Framework & Infrastructure
 │   ├── config/                  # AppConfig, ServerConfig
 │   ├── constants/               # Strings, Colors, Model Language Support
+│   ├── di/                      # Dependency Injection (injection.dart)
+│   ├── error/                   # Failure classes
 │   ├── navigation/              # GlobalNavigator
 │   ├── platform/                # Platform-specific logic (Window, Tray, AppInitializer)
 │   ├── routes/                  # Router + RoutesConfig (Barrel exports)
 │   ├── theme/                   # AppTheme (Dark Material 3)
 │   └── utils/                   # Shared helpers & Extensions
 │
-├── data/                        # Data Layer (Services & Repositories)
+├── domain/                      # Domain Layer (Business Logic & Entities)
+│   ├── entities/                # [Future] Domain entities
+│   └── repositories/            # Repository Interfaces (ITranslationRepository, etc.)
+│
+├── data/                        # Data Layer (Implementation)
 │   ├── models/                  # AppSettings, CaptionModel, etc.
-│   ├── repositories/            # [Planned] Abstract data access
+│   ├── repositories/            # Concrete Repository Implementations
 │   └── services/                # Specialized domain services
 │       ├── firebase/            # AuthService, TrackingService, SubscriptionService
 │       ├── server/              # AsrWsClient, PythonServerManager, UpdateService
@@ -64,10 +71,19 @@ lib/
 
 ---
 
-## Key Services
+### Dependency Injection (DI)
 
-| Service | Responsibility |
-|---------|---------------|
+The application uses `get_it` for dependency injection, configured in `lib/core/di/injection.dart`. This ensures that BLoCs and repositories are instantiated with their required dependencies and maintains singleton lifecycles for core services like `AsrWebSocketClient`.
+
+### Key Repositories (Domain Layer)
+
+| Repository | Responsibility |
+|------------|----------------|
+| `IAuthRepository` | Abstraction for authentication operations. |
+| `ISettingsRepository`| Abstraction for persisting and retrieving application settings. |
+| `ITranslationRepository`| Abstraction for the live translation session and audio devices. |
+
+### Key Services (Data Layer)
 | `AsrWsClient` | High-level wrapper around `TranslationService`. Pre-connects on construction, dispatches caption events to `AsrTextController`, routes usage stats to `TrackingService.logModelUsage()`, and feeds final captions to `HistoryService`. Soft-stop keeps the WebSocket open for fast toggle; hard-stop (dispose) tears down the connection on app shutdown. |
 | `AsrTextController` | Manages the display buffer — interim vs. final text, rolling captions. Features a high-speed **Typing Catch-up Mode** that increases display velocity if the stream moves faster than the UI. |
 | `TranslationService` | Low-level WebSocket client to `ws://{host}:{port}/captions`. Handles connection lifecycle, exponential backoff reconnection (2s–15s), and sends start/stop/settings/volume commands as JSON payloads. Exposes a `captions` stream of `CaptionMessage` objects. |

@@ -1,13 +1,18 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:omni_bridge/data/services/server/asr_ws_client.dart';
+import 'package:omni_bridge/domain/repositories/settings_repository.dart';
+import 'package:omni_bridge/domain/repositories/translation_repository.dart';
 import 'package:omni_bridge/core/constants/model_language_support.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_event.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_state.dart';
 
 class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
-  final AsrWebSocketClient asrClient;
+  final ISettingsRepository settingsRepo;
+  final ITranslationRepository translationRepo;
 
-  SettingsBloc({required this.asrClient}) : super(SettingsState.initial()) {
+  SettingsBloc({
+    required this.settingsRepo,
+    required this.translationRepo,
+  }) : super(SettingsState.initial()) {
     on<UpdateTempSettingEvent>(_onUpdateTempSetting);
     on<SyncTempSettingsEvent>(_onSyncTempSettings);
     on<LoadDevicesEvent>(_onLoadDevices);
@@ -15,12 +20,13 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<ResetIODefaultsEvent>(_onResetIODefaults);
     on<SaveSettingsEvent>(_onSaveSettings);
 
-    asrClient.onAudioLevel = (inputLevel, outputLevel) {
+    translationRepo.onAudioLevel = (inputLevel, outputLevel) {
       if (!isClosed) {
         add(UpdateAudioLevelsEvent(inputLevel, outputLevel));
       }
     };
   }
+
 
   void _onSyncTempSettings(
     SyncTempSettingsEvent event,
@@ -91,7 +97,8 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     emit(state.copyWith(devicesLoading: true));
-    final result = await asrClient.loadDevices();
+    final result = await translationRepo.loadDevices();
+
     emit(
       state.copyWith(
         inputDevices:

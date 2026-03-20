@@ -22,7 +22,11 @@ server/
 │   │   ├── orchestrator.py     # Core AI pipeline & Speech Polishing
 │   │   ├── ws_manager.py       # WebSocket connection & heartbeat management
 │   │   ├── router.py           # Command routing (Decouples WS from logic)
-│   │   └── handlers.py         # Specialized command logic (Session, Device, Config, Status)
+│   │   ├── base_handler.py     # Shared BaseHandler and ServerContext
+│   │   ├── session_handler.py  # Session lifecycle (start/stop)
+│   │   ├── config_handler.py   # Settings and Volume management
+│   │   ├── device_handler.py   # Audio device enumeration
+│   │   └── status_handler.py   # Health and model status reporting
 │   ├── utils/
 │   │   ├── server_utils.py     # structlog setup, process management
 │   │   └── language_support.py # Single source of truth for all model language support
@@ -47,12 +51,12 @@ The server uses a **Dependency Injection**-like pattern via `ServerContext`.
 - **ServerContext**: Encapsulates all global state (orchestrator, audio capture, metering, active config). This prevents "global variable hell" and ensures thread safety.
 - **Capabilities Handshake**: Upon WebSocket connection, the server immediately emits a `capabilities` message detailing GPU availability, VRAM, and authenticated AI engines.
 
-### Command Routing (`router.py` & `handlers.py`)
-Incoming JSON commands are dispatched by the `CommandRouter` to specialized handlers:
-- **SessionHandler**: Manages the lifecycle of an audio session (`start`/`stop`). It calculates the optimal audio chunk duration based on the selected AI engines to balance latency vs. API rate limits.
-- **ConfigHandler**: Updates settings (languages, keys, devices) in real-time. If settings change during an active session, it triggers a seamless restart.
-- **DeviceHandler**: Enumerates WASAPI input and loopback devices for the Flutter UI.
-- **StatusHandler**: Manages real-time health reporting. It provides standardized status payloads for both background broadcasting and on-demand HTTP polling.
+### Command Routing (`router.py` & Modular Handlers)
+Incoming JSON commands are dispatched by the `CommandRouter` to specialized modular handlers in `src/network/`:
+- **SessionHandler** (`session_handler.py`): Manages the lifecycle of an audio session (`start`/`stop`). It calculates the optimal audio chunk duration based on the selected AI engines to balance latency vs. API rate limits.
+- **ConfigHandler** (`config_handler.py`): Updates settings (languages, keys, devices) in real-time. If settings change during an active session, it triggers a seamless restart.
+- **DeviceHandler** (`device_handler.py`): Enumerates WASAPI input and loopback devices for the Flutter UI.
+- **StatusHandler** (`status_handler.py`): Manages real-time health reporting. It provides standardized status payloads for both background broadcasting and on-demand HTTP polling.
 
 ### Audio Pipeline (`capture.py` & `meter.py`)
 - **Adaptive Chunking**: `AudioCapture` uses a combination of **Voice Activity Detection (VAD)** and time-based flushing. It flushes early when silence follows speech (lowering latency) but guarantees a flush at `MAX_CHUNK_DURATION` to ensure constant feedback.
