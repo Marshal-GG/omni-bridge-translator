@@ -55,7 +55,11 @@ class RivaNMTModel:
             raise RuntimeError(f"Riva NMT does not support {src}→{target_lang} or client not ready.")
 
         start = time.monotonic()
-        response = self.nmt_client.translate(
+        client = self.nmt_client
+        if client is None:
+             raise RuntimeError("Riva NMT client not ready.")
+
+        response = client.translate(
             [text],
             model="",
             source_language=src,
@@ -70,4 +74,16 @@ class RivaNMTModel:
             "latency_ms": latency_ms,
             "input_tokens": len(text),
             "output_tokens": len(result),
+        }
+
+    def get_status(self) -> dict:
+        """Return readiness status for Riva NMT."""
+        ready = self.is_ready()
+        return {
+            "name": "riva-nmt",
+            "status": "ready" if ready else "error",
+            "ready": ready,
+            "message": "Riva NMT is ready" if ready else "Riva NMT is not initialized",
+            "progress": 1.0 if ready else 0.0,
+            "details": {}
         }

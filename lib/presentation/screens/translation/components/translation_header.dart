@@ -18,9 +18,12 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
         const SizedBox(width: 10),
         Image.asset('assets/icon.png', width: 14, height: 14),
         const SizedBox(width: 8),
-        const Text(
-          'Omni Bridge: Live AI Translator',
-          style: TextStyle(color: Colors.white70, fontSize: 12),
+        const Flexible(
+          child: Text(
+            'Omni Bridge: Live AI Translator',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         const SizedBox(width: 8),
         _QuotaUsageText(status: state.quotaStatus),

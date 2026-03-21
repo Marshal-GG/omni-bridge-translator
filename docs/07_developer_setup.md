@@ -113,6 +113,9 @@ flutter pub get
 flutter run -d windows
 ```
 
+> [!NOTE]
+> **Windows Build Fix**: A known issue where `firebase_core` fails to find specific CMake files on Windows has been resolved in the project's root `windows/CMakeLists.txt`. No manual intervention is required.
+
 ### Resetting Environment
 
 If you need to clear all local data specifically for this project without affecting other Firebase apps on your system, run:

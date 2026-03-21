@@ -14,7 +14,7 @@ import 'package:omni_bridge/presentation/screens/translation/bloc/translation_bl
 
 final sl = GetIt.instance;
 
-Future<void> init() async {
+Future<void> setupInjection() async {
   // BLoCs
   sl.registerFactory(() => TranslationBloc(
         translationRepo: sl<ITranslationRepository>(),

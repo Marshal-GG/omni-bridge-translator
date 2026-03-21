@@ -3,5 +3,6 @@
   "venv": ".venv",
   "pythonVersion": "3.10",
   "reportMissingModuleSource": "none",
-  "reportMissingImports": "warning"
+  "reportMissingImports": "warning",
+  "extraPaths": ["server/src"]
 }

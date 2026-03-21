@@ -15,6 +15,9 @@ The Omni Bridge client is a Flutter desktop app (Windows-first) that serves as t
 State management: **BLoC pattern** throughout.
 Architecture: **Clean Architecture (Layered)** with **Repository Pattern** and **Dependency Injection** using `get_it`.
 
+> [!NOTE]
+> The application is currently transitioning from a **Horizontal Layered** architecture to a **Feature-Driven (Vertical Slice)** architecture. For the new roadmap and component boundaries, refer to **`docs/17_deep_restructure_plan.md`**.
+
 ---
 
 ## Directory Structure (3-Layer Architecture)

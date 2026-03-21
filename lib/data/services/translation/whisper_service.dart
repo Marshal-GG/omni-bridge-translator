@@ -86,7 +86,8 @@ class WhisperService {
           .get(Uri.parse('$_base/models/status'))
           .timeout(_timeout);
       if (resp.statusCode == 200) {
-        return jsonDecode(resp.body) as List<dynamic>;
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        return data['models'] as List<dynamic>;
       }
     } catch (e) {
       // ignore: avoid_print

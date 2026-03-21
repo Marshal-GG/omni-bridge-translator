@@ -37,8 +37,8 @@ server/
 │   │   ├── server_utils.py     # structlog setup, process management
 │   │   └── language_support.py # Single source of truth for language capabilities
 │   └── models/                 # Low-level model implementation wrappers
-│       ├── asr/ ...
-│       └── translation/ ...
+│       ├── asr/                # Riva ASR, Whisper, Google ASR
+│       └── translation/        # Riva NMT, Llama, Google, MyMemory
 ├── tests/                      # Pytest unit testing suite
 │   ├── conftest.py             # Shared fixtures and AI model mocks
 │   ├── test_asr_dispatcher.py
@@ -111,7 +111,7 @@ Bridges the async FastAPI event loop with background worker threads:
 | `caption` | Transcript/translation result | `text`, `original`, `is_final`, `session_id` |
 | `usage_stats` | Per-call engine metrics | `engine`, `model`, `latency_ms`, `input_tokens`, `output_tokens`, `total_tokens` |
 | `audio_levels` | Real-time RMS levels | `input_level` (0.0–1.0), `output_level` (0.0–1.0) |
-| `model_status` | Model health broadcast | `models[]` with `name`, `status`, `ready`, `progress` |
+| `model_status` | Model health broadcast | `models[]` with `name`, `status`, `ready`, `progress`. Polled via model-specific `get_status()` methods. |
 | `error` | Error message | `text`, `is_final`, `original` |
 
 ### Commands Received from Clients
@@ -213,3 +213,13 @@ The server provides **RESTful HTTP endpoints** alongside its primary WebSocket c
 - **`GET /models/status`**: Returns a detailed health manifest of all AI engines (NVIDIA NIM, Faster-Whisper, Google Cloud), including GPU/VRAM utilization and model readiness.
 - **`GET /devices`**: Returns available WASAPI audio input and loopback devices (mirrors the WebSocket `get_devices` command).
 - **`POST /whisper/unload`**: Unloads the Faster-Whisper model from GPU/RAM to reclaim memory when not in use.
+
+---
+
+## Modular Package Design & API Contracts
+
+To maintain a clean architecture and prevent circular dependencies, the server enforces explicit API contracts in each package's `__init__.py`:
+
+1.  **Explicit Exports**: Every package (e.g., `src/audio/`, `src/network/handlers/`) must explicitly export its public classes and functions in its `__init__.py`.
+2.  **Circular Dependency Prevention**: Logic is kept in dedicated modules (e.g., `src/network/handlers/session_handler.py`), and `__init__.py` only serves as a re-export layer. This ensures that internal modules can import each other without triggering circular paths through the package root.
+3.  **Discovery**: Developers should always import from the package level (e.g., `from src.audio import AudioCapture`) rather than reaching into sub-modules directly, preserving the internal encapsulation.

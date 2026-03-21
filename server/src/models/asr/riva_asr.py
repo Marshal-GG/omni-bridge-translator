@@ -110,6 +110,21 @@ class RivaASRModel:
             }
         return transcript, stats
 
+    def get_status(self) -> dict:
+        """Return readiness status for Riva ASR."""
+        ready = self.is_ready()
+        return {
+            "name": "riva-asr",
+            "status": "ready" if ready else "error",
+            "ready": ready,
+            "message": "Riva ASR is ready" if ready else "Riva ASR is not initialized",
+            "progress": 1.0 if ready else 0.0,
+            "details": {
+                "parakeet": self.asr_parakeet is not None,
+                "canary": self.asr_canary is not None
+            }
+        }
+
     def make_config(self, sample_rate: int, lang: str):
         return riva.client.RecognitionConfig(
             encoding=riva.client.AudioEncoding.LINEAR_PCM,

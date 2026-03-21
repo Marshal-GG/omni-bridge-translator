@@ -149,8 +149,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                           color: const Color(0xFF1A1A1A),
                           height: 38,
                           child: Center(
-                            child: SizedBox(
-                              width: 500,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 500),
                               child: TabBar(
                                 controller: _tabController,
                                 indicatorColor: Colors.tealAccent,
@@ -180,8 +180,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                                 padding:
                                     const EdgeInsets.fromLTRB(20, 20, 20, 20),
                                 child: Center(
-                                  child: SizedBox(
-                                    width: 500,
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 500),
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
@@ -207,8 +208,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                                 padding:
                                     const EdgeInsets.fromLTRB(20, 20, 20, 20),
                                 child: Center(
-                                  child: SizedBox(
-                                    width: 500,
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 500),
                                     child: Column(
                                       children: [
                                         buildDisplayTab(context, state),
@@ -223,8 +225,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                                 padding:
                                     const EdgeInsets.fromLTRB(20, 20, 20, 20),
                                 child: Center(
-                                  child: SizedBox(
-                                    width: 500,
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 500),
                                     child: Column(
                                       children: [
                                         buildInputOutputTab(context, state),

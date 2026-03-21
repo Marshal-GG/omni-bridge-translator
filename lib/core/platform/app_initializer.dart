@@ -13,10 +13,13 @@ import 'package:protocol_handler/protocol_handler.dart';
 import 'package:app_links/app_links.dart';
 import 'package:windows_single_instance/windows_single_instance.dart';
 import 'dart:io' show Platform;
+import 'package:omni_bridge/core/di/injection.dart';
+
 
 class AppInitializer {
   /// Initializes all required services and returns the calculated initial route
   static Future<String> init(List<String> args) async {
+    await setupInjection();
     if (Platform.isWindows) {
       await WindowsSingleInstance.ensureSingleInstance(
         args,

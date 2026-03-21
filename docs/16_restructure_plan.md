@@ -1,5 +1,9 @@
 # OmniBridge — Restructure Plan
 
+> [!IMPORTANT]
+> This legacy plan (Phase 1-8) has been successfully completed.
+> For the next evolution of the project, see **`17_deep_restructure_plan.md`** (Feature-Driven Clean Architecture).
+
 > **Reference Model:** KiraSathi uses a strict 3-layer architecture (`core/` → `data/` → `presentation/`) with each layer owning its own concerns and zero cross-layer leakage. This plan brings OmniBridge to the same standard across both the Flutter client and the Python server.
 
 ---
