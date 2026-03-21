@@ -1,5 +1,5 @@
 import 'package:omni_bridge/core/routes/routes_config.dart';
-import 'package:omni_bridge/data/services/server/python_server_manager.dart';
+import 'package:omni_bridge/core/infrastructure/python_server_manager.dart';
 import 'package:omni_bridge/data/services/firebase/tracking_service.dart';
 
 Future<void> initializeWindow() async {

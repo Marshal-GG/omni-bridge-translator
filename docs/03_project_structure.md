@@ -16,8 +16,10 @@ omni_bridge/
 │   ├── core/                        # Framework-level logic (Shared)
 │   │   ├── config/                  # AppConfig, ServerConfig
 │   │   ├── constants/               # Strings, Colors, Dimensions
+│   │   ├── device/                  # Device & System services integration
+│   │   ├── infrastructure/          # Native/Desktop process integrations
 │   │   ├── navigation/              # GlobalNavigator
-│   │   ├── platform/                # NEW: Tray, Window, Initializer
+│   │   ├── platform/                # Tray, Window, Initializer
 │   │   ├── routes/                  # Router + RoutesConfig
 │   │   ├── theme/                   # AppTheme
 │   │   └── utils/                   # Shared utilities
@@ -27,7 +29,7 @@ omni_bridge/
 │   │   ├── repositories/            # Future: Abstract data access
 │   │   └── services/                # Grouped by domain
 │   │       ├── firebase/            # AuthService, TrackingService, SubscriptionService
-│   │       ├── server/              # AsrWsClient, PythonServerManager, UpdateService
+│   │       ├── server/              # AsrWsClient, UpdateService
 │   │       ├── system/              # HistoryService, AppLifecycle
 │   │       └── translation/         # TranslationService, WhisperService
 │   │
@@ -80,7 +82,8 @@ omni_bridge/
 | **Phase 6** | Python Model Reorganization | ✅ **COMPLETE** |
 | **Phase 7** | Python Integration Tests (Warp Speed) | ⏭️ **SKIPPED** |
 | **Phase 8** | Python Unit Tests (Pytest) | ✅ **COMPLETE** |
-| **Phase 9** | Deep Restructure (Feature-Driven) | 🚧 **PLANNING** |
+| **Phase 9** | Deep Restructure Phase 1: Core/Infra | ✅ **COMPLETE** |
+| **Phase 10**| Deep Restructure Phase 2: Features | 🚧 **PLANNING** |
 ---
 
 ## Naming Conventions
