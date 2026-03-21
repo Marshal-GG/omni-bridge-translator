@@ -82,7 +82,7 @@ const String customAuthSuccessHtml = '''
 
     <script>
         // Check for a redirect parameter in the URL or a global variable replacement
-        // This is a template that AuthService can optionally inject a URL into
+        // This is a template that AuthRemoteDataSource can optionally inject a URL into
         const REDIRECT_URL = '{{REDIRECT_URL}}';
         
         if (REDIRECT_URL && !REDIRECT_URL.startsWith('{{')) {
@@ -95,3 +95,4 @@ const String customAuthSuccessHtml = '''
 </body>
 </html>
 ''';
+

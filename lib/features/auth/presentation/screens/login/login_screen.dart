@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:omni_bridge/data/services/firebase/auth_service.dart';
+import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 
-import 'package:omni_bridge/presentation/screens/login/components/login_header.dart';
-import 'package:omni_bridge/presentation/screens/login/components/login_branding.dart';
-import 'package:omni_bridge/presentation/screens/login/components/login_inputs.dart';
-import 'package:omni_bridge/presentation/screens/login/components/login_button.dart';
+import 'package:omni_bridge/features/auth/presentation/screens/login/components/login_header.dart';
+import 'package:omni_bridge/features/auth/presentation/screens/login/components/login_branding.dart';
+import 'package:omni_bridge/features/auth/presentation/screens/login/components/login_inputs.dart';
+import 'package:omni_bridge/features/auth/presentation/screens/login/components/login_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -25,12 +25,12 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    AuthService.instance.currentUser.addListener(_onAuthChanged);
+    AuthRemoteDataSource.instance.currentUser.addListener(_onAuthChanged);
   }
 
   @override
   void dispose() {
-    AuthService.instance.currentUser.removeListener(_onAuthChanged);
+    AuthRemoteDataSource.instance.currentUser.removeListener(_onAuthChanged);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -38,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _onAuthChanged() {
     if (!mounted) return;
-    if (AuthService.instance.currentUser.value != null) {
+    if (AuthRemoteDataSource.instance.currentUser.value != null) {
       Navigator.pushReplacementNamed(context, '/translation-overlay');
       Navigator.pushNamed(context, '/settings-overlay');
     }
@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
       _error = null;
     });
-    final user = await AuthService.instance.signInWithGoogle();
+    final user = await AuthRemoteDataSource.instance.signInWithGoogle();
     if (!mounted) return;
     if (user != null) {
       Navigator.pushReplacementNamed(context, '/translation-overlay');
@@ -78,9 +78,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       if (_isLoginMode) {
-        await AuthService.instance.signInWithEmailAndPassword(email, password);
+        await AuthRemoteDataSource.instance.signInWithEmailAndPassword(email, password);
       } else {
-        await AuthService.instance.registerWithEmailAndPassword(
+        await AuthRemoteDataSource.instance.registerWithEmailAndPassword(
           email,
           password,
         );
@@ -110,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     try {
-      await AuthService.instance.sendPasswordReset(email);
+      await AuthRemoteDataSource.instance.sendPasswordReset(email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -346,3 +346,6 @@ class _GoogleSignInButtonState extends State<_GoogleSignInButton> {
     );
   }
 }
+
+
+

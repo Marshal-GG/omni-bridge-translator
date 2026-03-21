@@ -24,11 +24,14 @@ omni_bridge/
 │   │   ├── theme/                   # AppTheme
 │   │   └── utils/                   # Shared utilities
 │   │
+│   ├── features/                    # Feature Modules
+│   │   └── auth/                    # Authentication feature (Domain, Data, Presentation)
+│   │
 │   ├── data/                        # Data Layer (Domain-grouped)
 │   │   ├── models/                  # AppSettings, CaptionModel, etc.
 │   │   ├── repositories/            # Future: Abstract data access
 │   │   └── services/                # Grouped by domain
-│   │       ├── firebase/            # AuthService, TrackingService, SubscriptionService
+│   │       ├── firebase/            # TrackingService, SubscriptionService
 │   │       ├── server/              # AsrWsClient, UpdateService
 │   │       ├── system/              # HistoryService, AppLifecycle
 │   │       └── translation/         # TranslationService, WhisperService
@@ -38,10 +41,8 @@ omni_bridge/
 │       ├── screens/                 # Decomposed into domain folders
 │       │   ├── translation/         # Overlay, history panel, header
 │       │   ├── settings/            # Tabs (General, Language, Hotkeys)
-│       │   ├── login/               # Auth UX
 │       │   ├── history/             # Dedicated history view
 │       │   ├── about/               # About + links
-│       │   ├── account/             # User profile + logic
 │       │   ├── subscription/        # Upgrade flows
 │       │   └── startup/             # Splash + onboarding
 │       └── widgets/                 # Common reusable widgets
@@ -83,7 +84,7 @@ omni_bridge/
 | **Phase 7** | Python Integration Tests (Warp Speed) | ⏭️ **SKIPPED** |
 | **Phase 8** | Python Unit Tests (Pytest) | ✅ **COMPLETE** |
 | **Phase 9** | Deep Restructure Phase 1: Core/Infra | ✅ **COMPLETE** |
-| **Phase 10**| Deep Restructure Phase 2: Features | 🚧 **PLANNING** |
+| **Phase 10**| Deep Restructure Phase 2: Features | 🔄 **IN PROGRESS** (Auth extracted) |
 ---
 
 ## Naming Conventions

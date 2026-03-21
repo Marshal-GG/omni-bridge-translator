@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:omni_bridge/data/services/firebase/auth_service.dart';
+import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
 import 'package:omni_bridge/data/models/subscription_models.dart';
 
-import 'package:omni_bridge/presentation/screens/account/components/account_header.dart';
-import 'package:omni_bridge/presentation/screens/account/components/account_avatar.dart';
-import 'package:omni_bridge/presentation/screens/account/components/account_name_editor.dart';
-import 'package:omni_bridge/presentation/screens/account/components/account_email_info.dart';
-import 'package:omni_bridge/presentation/screens/account/components/account_button.dart';
-import 'package:omni_bridge/presentation/screens/account/components/admin_panel.dart';
+import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_header.dart';
+import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_avatar.dart';
+import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_name_editor.dart';
+import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_email_info.dart';
+import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_button.dart';
+import 'package:omni_bridge/features/auth/presentation/screens/account/components/admin_panel.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -31,7 +31,7 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   void initState() {
     super.initState();
-    final user = AuthService.instance.currentUser.value;
+    final user = AuthRemoteDataSource.instance.currentUser.value;
     _nameController.text = user?.displayName ?? '';
 
     PackageInfo.fromPlatform().then((info) {
@@ -53,7 +53,7 @@ class _AccountScreenState extends State<AccountScreen> {
       _message = null;
     });
     try {
-      await AuthService.instance.updateDisplayName(newName);
+      await AuthRemoteDataSource.instance.updateDisplayName(newName);
       if (!mounted) return;
       setState(() {
         _isSaving = false;
@@ -100,7 +100,7 @@ class _AccountScreenState extends State<AccountScreen> {
       ),
     );
     if (confirm == true && mounted) {
-      await AuthService.instance.signOut();
+      await AuthRemoteDataSource.instance.signOut();
     }
   }
 
@@ -152,7 +152,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = AuthService.instance.currentUser.value;
+    final user = AuthRemoteDataSource.instance.currentUser.value;
     final isAnon = user?.isAnonymous ?? false;
 
     return Scaffold(
@@ -548,3 +548,6 @@ class _UsageBadge extends StatelessWidget {
     );
   }
 }
+
+
+

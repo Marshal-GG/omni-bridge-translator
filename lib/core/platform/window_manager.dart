@@ -30,8 +30,8 @@ Future<void> initializeWindow() async {
 void configureMainWindow() async {
   appWindow.title = "Omni Bridge: Live AI Translator";
 
-  // Use FirebaseAuth through AuthService for named instance isolation
-  if (AuthService.instance.auth.currentUser != null) {
+  // Use FirebaseAuth through AuthRemoteDataSource for named instance isolation
+  if (AuthRemoteDataSource.instance.auth.currentUser != null) {
     await windowManager.setResizable(true);
     await windowManager.setMinimumSize(const Size(300, 150));
     await windowManager.setSize(const Size(730, 150));
@@ -145,3 +145,4 @@ class _AppWindowListener extends WindowListener {
     }
   }
 }
+

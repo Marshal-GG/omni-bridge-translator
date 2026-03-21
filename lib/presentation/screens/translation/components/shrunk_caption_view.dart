@@ -5,7 +5,7 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:omni_bridge/presentation/screens/translation/bloc/translation_bloc.dart';
 import 'package:omni_bridge/presentation/screens/translation/bloc/translation_event.dart';
 import 'package:omni_bridge/presentation/screens/translation/bloc/translation_state.dart';
-import 'package:omni_bridge/data/services/system/asr_text_controller.dart';
+import 'package:omni_bridge/core/device/asr_text_controller.dart';
 
 Widget buildShrunkCaptionView(
   BuildContext context,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:omni_bridge/data/services/firebase/auth_service.dart';
+import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
 
 class AdminPanel extends StatefulWidget {
@@ -23,13 +23,13 @@ class _AdminPanelState extends State<AdminPanel> {
   }
 
   Future<void> _checkAdminAccess() async {
-    final user = AuthService.instance.auth.currentUser;
+    final user = AuthRemoteDataSource.instance.auth.currentUser;
     if (user == null || user.email == null) {
       if (mounted) setState(() => _isAdmin = false);
       return;
     }
     try {
-      final doc = await AuthService.instance.firestore
+      final doc = await AuthRemoteDataSource.instance.firestore
           .collection('system')
           .doc('admins')
           .get();
@@ -94,7 +94,7 @@ class _AdminPanelState extends State<AdminPanel> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: FutureBuilder(
-                    future: AuthService.instance.firestore
+                    future: AuthRemoteDataSource.instance.firestore
                         .collection('users')
                         .get(),
                     builder: (context, snapshot) {
@@ -544,7 +544,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
       _lastResult = null;
     });
     try {
-      await AuthService.instance.firestore
+      await AuthRemoteDataSource.instance.firestore
           .collection('system')
           .doc('monetization')
           .set({
@@ -682,7 +682,7 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
       _error = null;
     });
     try {
-      final doc = await AuthService.instance.firestore
+      final doc = await AuthRemoteDataSource.instance.firestore
           .collection('system')
           .doc('admins')
           .get();
@@ -706,7 +706,7 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
   Future<void> _saveEmails(List<String> emails) async {
     setState(() => _saving = true);
     try {
-      await AuthService.instance.firestore.collection('system').doc('admins').set({
+      await AuthRemoteDataSource.instance.firestore.collection('system').doc('admins').set({
         'emails': emails,
       }, SetOptions(merge: true));
       if (mounted) {
@@ -854,3 +854,5 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
     );
   }
 }
+
+

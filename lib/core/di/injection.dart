@@ -1,12 +1,12 @@
 import 'package:get_it/get_it.dart';
-import 'package:omni_bridge/data/repositories/auth_repository_impl.dart';
+import 'package:omni_bridge/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:omni_bridge/data/repositories/settings_repository_impl.dart';
 import 'package:omni_bridge/data/repositories/translation_repository_impl.dart';
-import 'package:omni_bridge/data/services/firebase/auth_service.dart';
+import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
 import 'package:omni_bridge/data/services/firebase/tracking_service.dart';
 import 'package:omni_bridge/data/services/server/asr_ws_client.dart';
-import 'package:omni_bridge/domain/repositories/auth_repository.dart';
+import 'package:omni_bridge/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:omni_bridge/domain/repositories/settings_repository.dart';
 import 'package:omni_bridge/domain/repositories/translation_repository.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_bloc.dart';
@@ -35,8 +35,12 @@ Future<void> setupInjection() async {
       () => TranslationRepositoryImpl(sl(), sl()));
 
   // Services
-  sl.registerLazySingleton(() => AuthService.instance);
+  sl.registerLazySingleton(() => AuthRemoteDataSource.instance);
   sl.registerLazySingleton(() => TrackingService.instance);
   sl.registerLazySingleton(() => AsrWebSocketClient());
   sl.registerLazySingleton(() => SubscriptionService.instance);
 }
+
+
+
+

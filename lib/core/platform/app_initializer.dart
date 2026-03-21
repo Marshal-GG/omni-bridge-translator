@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:omni_bridge/firebase_options.dart';
 import 'package:omni_bridge/core/config/app_config.dart';
-import 'package:omni_bridge/data/services/firebase/auth_service.dart';
+import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/data/services/firebase/tracking_service.dart';
 import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
 import 'package:omni_bridge/core/platform/tray_manager.dart';
@@ -45,7 +45,7 @@ class AppInitializer {
                   debugPrint(
                     '[SingleInstance] Found matching redirect URI in args: $potentialUri',
                   );
-                  AuthService.instance.handleAuthRedirect(potentialUri);
+                  AuthRemoteDataSource.instance.handleAuthRedirect(potentialUri);
                   break; // Found it
                 }
               }
@@ -89,7 +89,7 @@ class AppInitializer {
     }
 
     // Initialize Auth (Mock for Windows compatibility)
-    AuthService.instance.init();
+    AuthRemoteDataSource.instance.init();
 
     // Initialize Subscription/Quota Service
     SubscriptionService.instance.init();
@@ -126,8 +126,8 @@ class AppInitializer {
       final isAppRedirect = uri.scheme == appProtocol;
 
       if (isGoogleRedirect || isAppRedirect) {
-        debugPrint('[DeepLink] Passing stream URI to AuthService');
-        AuthService.instance.handleAuthRedirect(uri);
+        debugPrint('[DeepLink] Passing stream URI to AuthRemoteDataSource');
+        AuthRemoteDataSource.instance.handleAuthRedirect(uri);
       }
     });
 
@@ -142,8 +142,8 @@ class AppInitializer {
         final isAppRedirect = initialUri.scheme == appProtocol;
 
         if (isGoogleRedirect || isAppRedirect) {
-          debugPrint('[DeepLink] Passing initial URI to AuthService');
-          AuthService.instance.handleAuthRedirect(initialUri);
+          debugPrint('[DeepLink] Passing initial URI to AuthRemoteDataSource');
+          AuthRemoteDataSource.instance.handleAuthRedirect(initialUri);
         }
       }
     } catch (e) {
@@ -168,7 +168,7 @@ class AppInitializer {
       // Timeout, proceed with current state
     }
 
-    // Use FirebaseAuth directly since AuthService might not have initialized its ValueNotifier yet
+    // Use FirebaseAuth directly since AuthRemoteDataSource might not have initialized its ValueNotifier yet
     final isLoggedIn = auth.currentUser != null;
 
     String initialRoute = '/splash';
@@ -179,3 +179,5 @@ class AppInitializer {
     return initialRoute;
   }
 }
+
+

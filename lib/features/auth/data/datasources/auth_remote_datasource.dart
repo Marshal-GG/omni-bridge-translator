@@ -14,9 +14,9 @@ import 'package:flutter/scheduler.dart';
 import 'package:omni_bridge/data/services/firebase/tracking_service.dart';
 import 'package:omni_bridge/core/navigation/global_navigator.dart';
 
-class AuthService {
-  AuthService._();
-  static final AuthService instance = AuthService._();
+class AuthRemoteDataSource {
+  AuthRemoteDataSource._();
+  static final AuthRemoteDataSource instance = AuthRemoteDataSource._();
 
   static final String _appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
   FirebaseApp get _app => Firebase.app(_appName);
@@ -320,3 +320,4 @@ class AuthService {
     }
   }
 }
+

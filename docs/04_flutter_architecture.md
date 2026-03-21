@@ -37,6 +37,9 @@ lib/
 │   ├── theme/                   # AppTheme (Dark Material 3)
 │   └── utils/                   # Shared helpers & Extensions
 │
+├── features/                    # Modularized Features Domain
+│   └── auth/                    # Authentication (Domain, Data, Presentation)
+│
 ├── domain/                      # Domain Layer (Business Logic & Entities)
 │   ├── entities/                # [Future] Domain entities
 │   └── repositories/            # Repository Interfaces (ITranslationRepository, etc.)
@@ -45,7 +48,7 @@ lib/
 │   ├── models/                  # AppSettings, CaptionModel, etc.
 │   ├── repositories/            # Concrete Repository Implementations
 │   └── services/                # Specialized domain services
-│       ├── firebase/            # AuthService, TrackingService, SubscriptionService
+│       ├── firebase/            # TrackingService, SubscriptionService
 │       ├── server/              # AsrWsClient, PythonServerManager, UpdateService
 │       ├── system/              # HistoryService, AppLifecycle
 │       └── translation/         # TranslationService, WhisperService
@@ -55,7 +58,6 @@ lib/
     ├── screens/                 # Feature-decomposed UI
     │   ├── translation/         # Live overlay, header
     │   ├── settings/            # Preference tabs
-    │   ├── login/               # Authentication UI
     │   ├── history/             # Session history
     │   └── ...
     └── widgets/                 # Common reusable UI components
@@ -103,7 +105,7 @@ The application uses `get_it` for dependency injection, configured in `lib/core/
 | `SubscriptionService`| Manages real-time subscription state, aggregate token usage, and **tier-based model access control**. Polls RTDB every **N seconds** (configurable via `system/monetization → usage_poll_interval_seconds`, default 30s) — an initial fetch runs immediately on sign-in. If the poll interval changes in Firestore, the timer restarts automatically. Implements **Triple Rollover Logic** (Calendar Month, Weekly, and Subscription Cycle) — all three archive to the unified `users/{uid}/usage_history` subcollection. Reads tier configs from the `tiers` map in `system/monetization` and exposes `canUseModel()`, `allowedTranslationModels()`, `allowedTranscriptionModels()`, `isModelEnabled()`, `engineLimits()`, `engineMonthlyLimit()`, `tierFeatures`, `activeAnnouncement`, `appVersionConfig`, and `upgradePromptConfig` getters. Supports a **one-time Trial tier** via `activateTrial()`, `hasUsedTrial()`, and `_checkTrialExpiry()` — the trial auto-expires after a configurable duration. |
 | `HistoryService` | Stores caption history entries (transcription + translation) for the in-app history panel. Configured per session with source/target languages. Entries are added by `AsrWsClient` on every final caption. |
 | `UpdateService` | Checks for new app versions via the GitHub Releases API. Compares the remote `tag_name` against the local version from `package_info_plus`. Surfaces `UpdateStatus.available` to show an update badge in the overlay header. |
-| `AuthService` | Firebase Auth + custom URL schemes for Windows Google Sign-In redirects. Exposes `currentUser` ValueNotifier and public `auth`/`firestore` getters used by UI components like `AdminPanel`. |
+| `AuthRemoteDataSource` | Firebase Auth + custom URL schemes for Windows Google Sign-In redirects. Exposes `currentUser` ValueNotifier and public `auth`/`firestore` getters used by UI components like `AdminPanel` (Located in `features/auth/data`). |
 
 ---
 

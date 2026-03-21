@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
-import 'package:omni_bridge/data/services/firebase/auth_service.dart';
+import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 
 import 'package:omni_bridge/presentation/screens/startup/components/startup_header.dart';
 
@@ -51,7 +51,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    if (AuthService.instance.isLoggedIn) {
+    if (AuthRemoteDataSource.instance.isLoggedIn) {
       Navigator.of(context).pushReplacementNamed('/translation-overlay');
     } else {
       // Always show tutorial/onboarding if not logged in
@@ -150,3 +150,5 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
+
+

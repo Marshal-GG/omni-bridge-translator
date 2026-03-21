@@ -4,7 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:omni_bridge/data/services/firebase/auth_service.dart';
+import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/data/services/server/update_service.dart';
 
 class AboutScreen extends StatefulWidget {
@@ -884,7 +884,7 @@ class _LegalDialog extends StatelessWidget {
 
   Widget _buildBody() {
     return FutureBuilder<DocumentSnapshot>(
-      future: AuthService.instance.firestore
+      future: AuthRemoteDataSource.instance.firestore
           .collection('legal')
           .doc(documentId)
           .get(),
@@ -1028,3 +1028,5 @@ class _LegalDialog extends StatelessWidget {
     );
   }
 }
+
+

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:omni_bridge/domain/repositories/auth_repository.dart';
+import 'package:omni_bridge/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:omni_bridge/domain/repositories/settings_repository.dart';
 import 'package:omni_bridge/domain/repositories/translation_repository.dart';
 import 'package:omni_bridge/data/models/subscription_models.dart';
@@ -9,7 +9,7 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:omni_bridge/presentation/screens/translation/bloc/translation_event.dart';
 import 'package:omni_bridge/presentation/screens/translation/bloc/translation_state.dart';
-import 'package:omni_bridge/data/services/system/asr_text_controller.dart';
+import 'package:omni_bridge/core/device/asr_text_controller.dart';
 import 'package:omni_bridge/data/services/translation/whisper_service.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
@@ -399,3 +399,4 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     return super.close();
   }
 }
+
