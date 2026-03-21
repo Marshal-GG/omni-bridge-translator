@@ -1,14 +1,16 @@
-import 'package:omni_bridge/data/models/caption_model.dart';
+import '../../domain/entities/caption_message.dart';
 import 'package:omni_bridge/data/models/subscription_models.dart';
 import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
-import 'package:omni_bridge/data/services/server/asr_ws_client.dart';
-import 'package:omni_bridge/domain/repositories/translation_repository.dart';
+import '../datasources/asr_websocket_datasource.dart';
+import '../datasources/translation_rest_datasource.dart';
+import '../../domain/repositories/i_translation_repository.dart';
 
 class TranslationRepositoryImpl implements ITranslationRepository {
   final AsrWebSocketClient _asrClient;
+  final TranslationRestDatasource _restDatasource;
   final SubscriptionService _subscriptionService;
 
-  TranslationRepositoryImpl(this._asrClient, this._subscriptionService);
+  TranslationRepositoryImpl(this._asrClient, this._restDatasource, this._subscriptionService);
 
   @override
   Stream<CaptionMessage>? get captions => _asrClient.captions;
@@ -94,6 +96,9 @@ class TranslationRepositoryImpl implements ITranslationRepository {
 
   @override
   Future<Map<String, dynamic>> loadDevices() => _asrClient.loadDevices();
+
+  @override
+  Future<List<dynamic>> getModelStatuses() => _restDatasource.getModelStatuses();
 
   @override
   void stop() => _asrClient.stop();

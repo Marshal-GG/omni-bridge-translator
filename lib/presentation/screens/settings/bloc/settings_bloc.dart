@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/domain/repositories/settings_repository.dart';
-import 'package:omni_bridge/domain/repositories/translation_repository.dart';
+import 'package:omni_bridge/features/translation/domain/repositories/i_translation_repository.dart';
 import 'package:omni_bridge/core/constants/model_language_support.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_event.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_state.dart';

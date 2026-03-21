@@ -2,30 +2,40 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:omni_bridge/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:omni_bridge/domain/repositories/settings_repository.dart';
-import 'package:omni_bridge/domain/repositories/translation_repository.dart';
+import 'package:omni_bridge/features/translation/domain/repositories/i_translation_repository.dart';
 import 'package:omni_bridge/data/models/subscription_models.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:omni_bridge/presentation/screens/translation/bloc/translation_event.dart';
-import 'package:omni_bridge/presentation/screens/translation/bloc/translation_state.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_event.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
 import 'package:omni_bridge/core/device/asr_text_controller.dart';
-import 'package:omni_bridge/data/services/translation/whisper_service.dart';
+import 'package:omni_bridge/features/translation/domain/usecases/get_model_status_usecase.dart';
+import 'package:omni_bridge/features/translation/domain/usecases/start_translation_usecase.dart';
+import 'package:omni_bridge/features/translation/domain/usecases/stop_translation_usecase.dart';
+import 'package:omni_bridge/features/translation/domain/usecases/update_volume_usecase.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final ITranslationRepository translationRepo;
   final IAuthRepository authRepo;
   final ISettingsRepository settingsRepo;
+  final StartTranslationUseCase startTranslationUseCase;
+  final StopTranslationUseCase stopTranslationUseCase;
+  final UpdateVolumeUseCase updateVolumeUseCase;
+  final GetModelStatusUseCase getModelStatusUseCase;
 
   StreamSubscription? _captionSub;
   StreamSubscription? _statusSub;
   int _lastLineCount = 0;
-  final WhisperService _whisperService = WhisperService();
 
   TranslationBloc({
     required this.translationRepo,
     required this.authRepo,
     required this.settingsRepo,
+    required this.startTranslationUseCase,
+    required this.stopTranslationUseCase,
+    required this.updateVolumeUseCase,
+    required this.getModelStatusUseCase,
   }) : super(
           TranslationState.initial().copyWith(
             quotaStatus: translationRepo.currentQuotaStatus,
@@ -54,7 +64,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
   Future<void> _fetchInitialModelStatuses() async {
     try {
-      final statuses = await _whisperService.getModelStatuses();
+      final statuses = await getModelStatusUseCase();
       add(ModelStatusChangedEvent(statuses));
     } catch (e) {
       debugPrint('Error fetching initial model statuses: $e');
@@ -152,7 +162,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     Emitter<TranslationState> emit,
   ) async {
     if (state.isRunning) {
-      translationRepo.stop();
+      stopTranslationUseCase();
       emit(state.copyWith(isRunning: false));
     } else {
       if (state.isQuotaExceeded) {
@@ -170,7 +180,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           ? result.getOrElse(() => '')
           : '';
 
-      translationRepo.start(
+      startTranslationUseCase(
         sourceLang: state.activeSourceLang,
         targetLang: state.activeTargetLang,
         useMic: state.activeUseMic,
@@ -190,7 +200,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     emit(state.copyWith(quotaStatus: event.status, isQuotaExceeded: exceeded));
 
     if (exceeded && state.isRunning) {
-      translationRepo.stop();
+      stopTranslationUseCase();
       emit(
         state.copyWith(
           isRunning: false,
@@ -253,7 +263,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     required double desktopVolume,
     required double micVolume,
   }) {
-    translationRepo.liveVolumeUpdate(
+    updateVolumeUseCase(
       desktopVolume: desktopVolume,
       micVolume: micVolume,
     );
@@ -395,7 +405,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     authRepo.currentUser.removeListener(_onAuthChanged);
     _captionSub?.cancel();
     _statusSub?.cancel();
-    translationRepo.stop();
+    stopTranslationUseCase();
     return super.close();
   }
 }

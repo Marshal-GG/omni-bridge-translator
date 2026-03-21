@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:omni_bridge/presentation/screens/translation/bloc/translation_state.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
 
 /// Shows a snack bar when the auto-detect language warning fires.
 void showAutoDetectWarning(BuildContext context, TranslationState state) {

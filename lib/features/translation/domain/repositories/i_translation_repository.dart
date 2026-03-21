@@ -1,4 +1,4 @@
-import 'package:omni_bridge/data/models/caption_model.dart';
+import '../entities/caption_message.dart';
 import 'package:omni_bridge/data/models/subscription_models.dart';
 
 abstract class ITranslationRepository {
@@ -42,6 +42,7 @@ abstract class ITranslationRepository {
   });
 
   Future<Map<String, dynamic>> loadDevices();
+  Future<List<dynamic>> getModelStatuses();
   void stop();
   Future<void> dispose();
 }

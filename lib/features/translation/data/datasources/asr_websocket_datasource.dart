@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:omni_bridge/data/models/caption_model.dart';
+import '../../domain/entities/caption_message.dart';
 import 'package:http/http.dart' as http;
 import 'package:omni_bridge/core/config/server_config.dart';
 import 'package:omni_bridge/core/routes/routes_config.dart';

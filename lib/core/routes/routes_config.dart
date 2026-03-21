@@ -1,7 +1,7 @@
 // screens
 export 'package:omni_bridge/presentation/screens/startup/splash_screen.dart';
 export 'package:omni_bridge/presentation/screens/startup/onboarding_screen.dart';
-export 'package:omni_bridge/presentation/screens/translation/translation_screen.dart';
+export 'package:omni_bridge/features/translation/presentation/screens/translation_screen.dart';
 export 'package:omni_bridge/presentation/screens/settings/settings_screen.dart';
 export 'package:omni_bridge/features/auth/presentation/screens/login/login_screen.dart';
 export 'package:omni_bridge/presentation/screens/history/history_panel.dart';

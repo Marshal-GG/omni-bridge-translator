@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:omni_bridge/presentation/screens/translation/bloc/translation_bloc.dart';
-import 'package:omni_bridge/presentation/screens/translation/bloc/translation_event.dart';
-import 'package:omni_bridge/presentation/screens/translation/components/overlay_content.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_event.dart';
+import 'package:omni_bridge/features/translation/presentation/screens/components/overlay_content.dart';
 
 class TranslationScreen extends StatefulWidget {
   const TranslationScreen({super.key});

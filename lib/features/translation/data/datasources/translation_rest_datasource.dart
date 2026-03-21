@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:omni_bridge/core/config/server_config.dart';
 
-/// Communicates with the Python server's Whisper model management endpoints.
-class WhisperService {
+/// Communicates with the Python server's translation/model management endpoints.
+class TranslationRestDatasource {
   static String get _base => ServerConfig.httpUrl;
   static const _timeout = Duration(seconds: 10);
 
@@ -19,7 +19,7 @@ class WhisperService {
         return jsonDecode(resp.body) as Map<String, dynamic>;
       }
     } catch (e) {
-      debugPrint('[WhisperService] getStatus error: $e');
+      debugPrint('[TranslationRestDatasource] getStatus error: $e');
     }
     return {
       'downloaded': false,
@@ -43,7 +43,7 @@ class WhisperService {
         return jsonDecode(resp.body) as Map<String, dynamic>;
       }
     } catch (e) {
-      debugPrint('[WhisperService] startDownload error: $e');
+      debugPrint('[TranslationRestDatasource] startDownload error: $e');
     }
     return {'status': 'error'};
   }
@@ -58,7 +58,7 @@ class WhisperService {
         return jsonDecode(resp.body) as Map<String, dynamic>;
       }
     } catch (e) {
-      debugPrint('[WhisperService] getProgress error: $e');
+      debugPrint('[TranslationRestDatasource] getProgress error: $e');
     }
     return {'downloaded': false, 'progress': 0.0, 'status': 'idle'};
   }
@@ -74,7 +74,7 @@ class WhisperService {
         return data['status'] == 'deleted';
       }
     } catch (e) {
-      debugPrint('[WhisperService] deleteModel error: $e');
+      debugPrint('[TranslationRestDatasource] deleteModel error: $e');
     }
     return false;
   }
@@ -91,7 +91,7 @@ class WhisperService {
       }
     } catch (e) {
       // ignore: avoid_print
-      print('WhisperService.getModelStatuses error: $e');
+      print('TranslationRestDatasource.getModelStatuses error: $e');
     }
     return [];
   }
@@ -107,7 +107,7 @@ class WhisperService {
         return data['status'] == 'unloaded';
       }
     } catch (e) {
-      debugPrint('[WhisperService] unloadModel error: $e');
+      debugPrint('[TranslationRestDatasource] unloadModel error: $e');
     }
     return false;
   }

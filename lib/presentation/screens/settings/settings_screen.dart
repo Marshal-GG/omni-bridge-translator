@@ -4,8 +4,8 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_bloc.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_event.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_state.dart';
-import 'package:omni_bridge/presentation/screens/translation/bloc/translation_bloc.dart';
-import 'package:omni_bridge/presentation/screens/translation/bloc/translation_state.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
 
 
 import 'package:omni_bridge/presentation/screens/settings/components/settings_footer.dart';

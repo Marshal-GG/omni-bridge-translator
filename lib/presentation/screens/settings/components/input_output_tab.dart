@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dropdown_search/dropdown_search.dart';
-import 'package:omni_bridge/presentation/screens/translation/bloc/translation_bloc.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_bloc.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_event.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_state.dart';

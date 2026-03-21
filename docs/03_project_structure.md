@@ -25,7 +25,8 @@ omni_bridge/
 │   │   └── utils/                   # Shared utilities
 │   │
 │   ├── features/                    # Feature Modules
-│   │   └── auth/                    # Authentication feature (Domain, Data, Presentation)
+│   │   ├── auth/                    # Authentication feature (Domain, Data, Presentation)
+│   │   └── translation/             # Translation feature (Domain, Data, Presentation)
 │   │
 │   ├── data/                        # Data Layer (Domain-grouped)
 │   │   ├── models/                  # AppSettings, CaptionModel, etc.
@@ -39,7 +40,6 @@ omni_bridge/
 │   └── presentation/                # UI Layer
 │       ├── blocs/                   # Feature BLoCs (Firebase MBs)
 │       ├── screens/                 # Decomposed into domain folders
-│       │   ├── translation/         # Overlay, history panel, header
 │       │   ├── settings/            # Tabs (General, Language, Hotkeys)
 │       │   ├── history/             # Dedicated history view
 │       │   ├── about/               # About + links
@@ -84,7 +84,7 @@ omni_bridge/
 | **Phase 7** | Python Integration Tests (Warp Speed) | ⏭️ **SKIPPED** |
 | **Phase 8** | Python Unit Tests (Pytest) | ✅ **COMPLETE** |
 | **Phase 9** | Deep Restructure Phase 1: Core/Infra | ✅ **COMPLETE** |
-| **Phase 10**| Deep Restructure Phase 2: Features | 🔄 **IN PROGRESS** (Auth extracted) |
+| **Phase 10**| Deep Restructure Phase 2: Features | 🔄 **IN PROGRESS** (Auth & Translation extracted) |
 ---
 
 ## Naming Conventions

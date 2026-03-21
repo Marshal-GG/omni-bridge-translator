@@ -8,7 +8,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-import 'package:omni_bridge/data/models/caption_model.dart';
+import 'package:omni_bridge/features/translation/domain/entities/caption_message.dart';
+import 'package:omni_bridge/features/translation/data/models/caption_dto.dart';
 
 class TranslationService {
   final String serverHost;
@@ -116,8 +117,8 @@ class TranslationService {
       _sub = _channel!.stream.listen(
         (data) {
           try {
-            final json = jsonDecode(data as String) as Map<String, dynamic>;
-            _captionController.add(CaptionMessage.fromJson(json));
+            final jsonMap = jsonDecode(data as String) as Map<String, dynamic>;
+            _captionController.add(CaptionDto.fromJson(jsonMap));
           } catch (e, st) {
             debugPrint('[TranslationService] Failed to parse message: $e\n$st');
           }

@@ -8,10 +8,10 @@ import 'package:omni_bridge/presentation/screens/settings/bloc/settings_bloc.dar
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_event.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_state.dart';
 import 'package:omni_bridge/core/constants/languages.dart';
-import 'package:omni_bridge/data/services/translation/whisper_service.dart';
+import 'package:omni_bridge/features/translation/data/datasources/translation_rest_datasource.dart';
 import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
-import 'package:omni_bridge/presentation/screens/translation/bloc/translation_bloc.dart';
-import 'package:omni_bridge/presentation/screens/translation/bloc/translation_state.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
 import 'package:omni_bridge/presentation/screens/settings/components/settings_helpers.dart';
 
 Widget buildLanguagesTab(BuildContext context, SettingsState state) {
@@ -282,7 +282,7 @@ Widget buildTranslationModelSelector(
               onChanged: (entry) {
                 if (entry != null && hasAccess(entry.key)) {
                   // Explicitly unload current model from memory upon selection change
-                  WhisperService().unloadModel();
+                  TranslationRestDatasource().unloadModel();
                   Future.delayed(const Duration(milliseconds: 100), () {
                     if (context.mounted) {
                       context.read<SettingsBloc>().add(
@@ -355,7 +355,7 @@ Widget buildTranslationModelSelector(
                       if (itemHasAccess) {
                         Navigator.pop(context);
                         // Explicitly unload current model from memory upon selection change
-                        WhisperService().unloadModel();
+                        TranslationRestDatasource().unloadModel();
                         context.read<SettingsBloc>().add(
                           UpdateTempSettingEvent(translationModel: item.key),
                         );
@@ -503,7 +503,7 @@ Widget _buildTranscriptionModelSection(
                     status: transState.modelStatuses['google_asr'],
                     onChanged: (v) {
                       // Explicitly unload current model from memory upon selection change
-                      WhisperService().unloadModel();
+                      TranslationRestDatasource().unloadModel();
                       context.read<SettingsBloc>().add(
                         UpdateTempSettingEvent(transcriptionModel: v),
                       );
@@ -522,7 +522,7 @@ Widget _buildTranscriptionModelSection(
                     icon: Icons.bolt_rounded,
                     onChanged: (v) {
                       // Explicitly unload current model from memory upon selection change
-                      WhisperService().unloadModel();
+                      TranslationRestDatasource().unloadModel();
                       context.read<SettingsBloc>().add(
                         UpdateTempSettingEvent(transcriptionModel: v),
                       );
@@ -542,7 +542,7 @@ Widget _buildTranscriptionModelSection(
                     icon: Icons.offline_bolt_outlined,
                     onChanged: (v) {
                       // Explicitly unload current model from memory upon selection change
-                      WhisperService().unloadModel();
+                      TranslationRestDatasource().unloadModel();
                       context.read<SettingsBloc>().add(
                         UpdateTempSettingEvent(transcriptionModel: v),
                       );
@@ -560,7 +560,7 @@ Widget _buildTranscriptionModelSection(
                 modelStatuses: transState.modelStatuses,
                 onModelChanged: (newModel) {
                   // Explicitly unload current model from memory upon selection change
-                  WhisperService().unloadModel();
+                  TranslationRestDatasource().unloadModel();
                   context.read<SettingsBloc>().add(
                         UpdateTempSettingEvent(transcriptionModel: newModel),
                       );
@@ -674,7 +674,7 @@ class _WhisperModelCard extends StatefulWidget {
 }
 
 class _WhisperModelCardState extends State<_WhisperModelCard> {
-  final WhisperService _svc = WhisperService();
+  final TranslationRestDatasource _svc = TranslationRestDatasource();
   Map<String, dynamic> _status = {
     'downloaded': false,
     'progress': 0.0,

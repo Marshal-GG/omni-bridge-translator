@@ -38,7 +38,8 @@ lib/
 │   └── utils/                   # Shared helpers & Extensions
 │
 ├── features/                    # Modularized Features Domain
-│   └── auth/                    # Authentication (Domain, Data, Presentation)
+│   ├── auth/                    # Authentication (Domain, Data, Presentation)
+│   └── translation/             # Translation & ASR (Domain, Data, Presentation)
 │
 ├── domain/                      # Domain Layer (Business Logic & Entities)
 │   ├── entities/                # [Future] Domain entities
@@ -56,7 +57,6 @@ lib/
 └── presentation/                # UI Layer (Screens & Blocs)
     ├── blocs/                   # Feature BLoCs (Auth, Settings, Translation, etc.)
     ├── screens/                 # Feature-decomposed UI
-    │   ├── translation/         # Live overlay, header
     │   ├── settings/            # Preference tabs
     │   ├── history/             # Session history
     │   └── ...

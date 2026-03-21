@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 
-import 'package:omni_bridge/presentation/screens/translation/bloc/translation_bloc.dart';
-import 'package:omni_bridge/presentation/screens/translation/bloc/translation_state.dart';
-import 'package:omni_bridge/presentation/screens/translation/components/translation_header.dart';
-import 'package:omni_bridge/presentation/screens/translation/components/translation_content.dart';
-import 'package:omni_bridge/presentation/screens/translation/components/shrunk_caption_view.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
+import 'package:omni_bridge/features/translation/presentation/screens/components/translation_header.dart';
+import 'package:omni_bridge/features/translation/presentation/screens/components/translation_content.dart';
+import 'package:omni_bridge/features/translation/presentation/screens/components/shrunk_caption_view.dart';
 
 Widget buildOverlayContent(BuildContext context) {
   return BlocListener<TranslationBloc, TranslationState>(

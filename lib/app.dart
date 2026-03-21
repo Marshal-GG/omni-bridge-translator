@@ -11,7 +11,7 @@ import 'package:omni_bridge/core/routes/my_nav_observer.dart';
 import 'package:omni_bridge/core/routes/router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/core/theme/app_theme.dart';
-import 'package:omni_bridge/presentation/screens/translation/bloc/translation_bloc.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/core/di/injection.dart';
 import 'package:omni_bridge/presentation/screens/settings/bloc/settings_bloc.dart';
 import 'package:omni_bridge/core/navigation/global_navigator.dart';
