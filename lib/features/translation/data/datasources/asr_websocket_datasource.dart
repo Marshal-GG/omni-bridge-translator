@@ -6,6 +6,8 @@ import 'package:omni_bridge/core/routes/routes_config.dart';
 import 'package:omni_bridge/core/device/asr_text_controller.dart';
 import 'package:omni_bridge/data/services/firebase/tracking_service.dart';
 import 'package:omni_bridge/data/services/translation/translation_service.dart';
+import 'package:omni_bridge/features/history/domain/usecases/add_history_entry_usecase.dart';
+import 'package:omni_bridge/features/history/domain/usecases/configure_history_usecase.dart';
 
 /// Connects to the Python flutter_server.py via WebSocket,
 /// sends the start command, and feeds translated captions to [asrTextController].
@@ -20,7 +22,13 @@ class AsrWebSocketClient {
 
   void Function(double inputLevel, double outputLevel)? onAudioLevel;
 
-  AsrWebSocketClient() {
+  final AddHistoryEntryUseCase addHistoryEntry;
+  final ConfigureHistoryUseCase configureHistory;
+
+  AsrWebSocketClient({
+    required this.addHistoryEntry,
+    required this.configureHistory,
+  }) {
     _ensureService();
   }
 
@@ -71,7 +79,7 @@ class AsrWebSocketClient {
         final transcription = msg.original.trim().isNotEmpty
             ? msg.original.trim()
             : text;
-        HistoryService.instance.addEntry(transcription, text);
+        addHistoryEntry(transcription, text);
       } else {
         asrTextController.updateInterim(text);
       }
@@ -136,7 +144,7 @@ class AsrWebSocketClient {
       googleCredentialsJson: googleCredentialsJson,
       transcriptionModel: transcriptionModel,
     );
-    HistoryService.instance.configure(
+    configureHistory(
       sourceLang: sourceLang,
       targetLang: targetLang,
       translateFn: (text, src, tgt) async => text,

@@ -7,7 +7,7 @@ import 'package:omni_bridge/features/translation/presentation/blocs/translation_
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
 import 'package:omni_bridge/data/services/server/update_service.dart';
 import 'package:omni_bridge/data/models/subscription_models.dart';
-import 'package:omni_bridge/presentation/screens/settings/components/settings_helpers.dart';
+import 'package:omni_bridge/features/settings/presentation/widgets/settings_helpers.dart';
 
 Widget buildTranslationHeader(BuildContext context, TranslationState state) {
   final bloc = context.read<TranslationBloc>();

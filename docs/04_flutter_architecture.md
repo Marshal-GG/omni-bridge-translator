@@ -39,6 +39,8 @@ lib/
 │
 ├── features/                    # Modularized Features Domain
 │   ├── auth/                    # Authentication (Domain, Data, Presentation)
+│   ├── history/                 # Session history (Domain, Data, Presentation)
+│   ├── settings/                # User preferences (Domain, Data, Presentation)
 │   └── translation/             # Translation & ASR (Domain, Data, Presentation)
 │
 ├── domain/                      # Domain Layer (Business Logic & Entities)
@@ -51,14 +53,13 @@ lib/
 │   └── services/                # Specialized domain services
 │       ├── firebase/            # TrackingService, SubscriptionService
 │       ├── server/              # AsrWsClient, PythonServerManager, UpdateService
-│       ├── system/              # HistoryService, AppLifecycle
+│       ├── system/              # AppLifecycle
 │       └── translation/         # TranslationService, WhisperService
 │
-└── presentation/                # UI Layer (Screens & Blocs)
-    ├── blocs/                   # Feature BLoCs (Auth, Settings, Translation, etc.)
-    ├── screens/                 # Feature-decomposed UI
-    │   ├── settings/            # Preference tabs
-    │   ├── history/             # Session history
+└── presentation/                # UI Layer (Global Screens & Widgets)
+    ├── blocs/                   # Global BLoCs (Theme, etc.)
+    ├── screens/                 # Global UI (About, Startup)
+    │   ├── about/               # About + links
     │   └── ...
     └── widgets/                 # Common reusable UI components
 ```
@@ -103,7 +104,7 @@ The application uses `get_it` for dependency injection, configured in `lib/core/
     - **Automatic Data Cleanup** (fire-and-forget on every session start): (1) RTDB `captions` older than the tier's retention window (sourced from `tiers.{tier}.features.caption_retention_days` in `system/monetization`). (2) RTDB `daily_usage` date entries older than **90 days** (fetched via `shallow=true`, deleted via multi-path PATCH). (3) Firestore `sessions` documents older than **30 days** (batch delete).
     - **Robustness**: Wraps all RTDB calls in an exponential backoff retry handler to handle transient `HandshakeException` or network jitter. |
 | `SubscriptionService`| Manages real-time subscription state, aggregate token usage, and **tier-based model access control**. Polls RTDB every **N seconds** (configurable via `system/monetization → usage_poll_interval_seconds`, default 30s) — an initial fetch runs immediately on sign-in. If the poll interval changes in Firestore, the timer restarts automatically. Implements **Triple Rollover Logic** (Calendar Month, Weekly, and Subscription Cycle) — all three archive to the unified `users/{uid}/usage_history` subcollection. Reads tier configs from the `tiers` map in `system/monetization` and exposes `canUseModel()`, `allowedTranslationModels()`, `allowedTranscriptionModels()`, `isModelEnabled()`, `engineLimits()`, `engineMonthlyLimit()`, `tierFeatures`, `activeAnnouncement`, `appVersionConfig`, and `upgradePromptConfig` getters. Supports a **one-time Trial tier** via `activateTrial()`, `hasUsedTrial()`, and `_checkTrialExpiry()` — the trial auto-expires after a configurable duration. |
-| `HistoryService` | Stores caption history entries (transcription + translation) for the in-app history panel. Configured per session with source/target languages. Entries are added by `AsrWsClient` on every final caption. |
+| `HistoryLocalDataSource` | Stores caption history entries (transcription + translation) for the in-app history panel. Configured per session with source/target languages. Operated via Domain UseCases (`AddHistoryEntryUseCase`, `GetLiveHistoryUseCase`, etc.). |
 | `UpdateService` | Checks for new app versions via the GitHub Releases API. Compares the remote `tag_name` against the local version from `package_info_plus`. Surfaces `UpdateStatus.available` to show an update badge in the overlay header. |
 | `AuthRemoteDataSource` | Firebase Auth + custom URL schemes for Windows Google Sign-In redirects. Exposes `currentUser` ValueNotifier and public `auth`/`firestore` getters used by UI components like `AdminPanel` (Located in `features/auth/data`). |
 

@@ -25,8 +25,10 @@ omni_bridge/
 │   │   └── utils/                   # Shared utilities
 │   │
 │   ├── features/                    # Feature Modules
-│   │   ├── auth/                    # Authentication feature (Domain, Data, Presentation)
-│   │   └── translation/             # Translation feature (Domain, Data, Presentation)
+│   │   ├── auth/                    # Authentication feature
+│   │   ├── history/                 # History feature
+│   │   ├── settings/                # Settings feature (NEWLY EXTRACTED)
+│   │   └── translation/             # Translation feature
 │   │
 │   ├── data/                        # Data Layer (Domain-grouped)
 │   │   ├── models/                  # AppSettings, CaptionModel, etc.
@@ -34,15 +36,13 @@ omni_bridge/
 │   │   └── services/                # Grouped by domain
 │   │       ├── firebase/            # TrackingService, SubscriptionService
 │   │       ├── server/              # AsrWsClient, UpdateService
-│   │       ├── system/              # HistoryService, AppLifecycle
+│   │       ├── system/              # AppLifecycle
 │   │       └── translation/         # TranslationService, WhisperService
 │   │
 │   └── presentation/                # UI Layer
 │       ├── blocs/                   # Feature BLoCs (Firebase MBs)
 │       ├── screens/                 # Decomposed into domain folders
-│       │   ├── settings/            # Tabs (General, Language, Hotkeys)
-│       │   ├── history/             # Dedicated history view
-│       │   ├── about/               # About + links
+│   │   ├── about/               # About + links
 │       │   ├── subscription/        # Upgrade flows
 │       │   └── startup/             # Splash + onboarding
 │       └── widgets/                 # Common reusable widgets
@@ -84,7 +84,7 @@ omni_bridge/
 | **Phase 7** | Python Integration Tests (Warp Speed) | ⏭️ **SKIPPED** |
 | **Phase 8** | Python Unit Tests (Pytest) | ✅ **COMPLETE** |
 | **Phase 9** | Deep Restructure Phase 1: Core/Infra | ✅ **COMPLETE** |
-| **Phase 10**| Deep Restructure Phase 2: Features | 🔄 **IN PROGRESS** (Auth & Translation extracted) |
+| **Phase 10**| Deep Restructure Phase 2: Features | ✅ **COMPLETE** (Auth, Translation, History & Settings extracted) |
 ---
 
 ## Naming Conventions

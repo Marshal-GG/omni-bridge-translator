@@ -146,11 +146,11 @@ For NVIDIA Riva ASR / NMT or Llama translation:
 OmniBridge follows **Clean Architecture** principles across both its components:
 
 ### 📱 Flutter Client
-- **Core Layer**: Infrastructure, device integrations, and global navigation.
-- **Domain Layer**: Defines abstractions (Repositories) and business logic.
-- **Data Layer**: Implements repositories and manages external services (Firebase, WebSocket).
-- **Presentation Layer**: Uses the **BLoC pattern** for state management and decomposition.
-- **Dependency Injection**: Centrally managed via `get_it` in `injection.dart`.
+- **Feature-Driven Structure**: Organized by vertical slices (Auth, Translation, Settings, History, Subscription).
+- **Domain Layer**: Pure business logic with Entities, abstract Repositories, and UseCases.
+- **Data Layer**: Repository implementations, DataSources (Firebase, WebSocket, REST), and DTOs.
+- **Presentation Layer**: UI screens and widgets using the **BLoC pattern** for state management.
+- **Dependency Injection**: Decoupled initialization via `get_it` in `injection.dart`.
 
 ### 🐍 Python Server
 - **Orchestration Layer**: Thin coordinator managing session lifecycle and queues.

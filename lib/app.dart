@@ -13,7 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/core/theme/app_theme.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/core/di/injection.dart';
-import 'package:omni_bridge/presentation/screens/settings/bloc/settings_bloc.dart';
+import 'package:omni_bridge/features/settings/presentation/blocs/settings_bloc.dart';
 import 'package:omni_bridge/core/navigation/global_navigator.dart';
 
 class MyApp extends StatelessWidget {

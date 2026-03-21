@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:omni_bridge/features/auth/domain/repositories/i_auth_repository.dart';
-import 'package:omni_bridge/domain/repositories/settings_repository.dart';
+import 'package:omni_bridge/features/settings/domain/repositories/i_settings_repository.dart';
 import 'package:omni_bridge/features/translation/domain/repositories/i_translation_repository.dart';
 import 'package:omni_bridge/data/models/subscription_models.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
