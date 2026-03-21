@@ -118,7 +118,7 @@ We will create the `lib/features/` directory and migrate existing code feature b
 
 ---
 
-## 4. Phase 3: Dependency Injection (DI) Cleanup
+## 4. Phase 3: Dependency Injection (DI) Cleanup ✅ **COMPLETE**
 
 Currently, DI is handled in `lib/core/di/injection.dart` likely mapping blocs directly to repositories.
 
@@ -150,7 +150,7 @@ sl.registerFactory(() => AuthBloc(loginWithGoogleUseCase: sl()));
 
 ---
 
-## 5. Phase 5: Application Bootstrapping & Routing
+## 5. Phase 5: Application Bootstrapping & Routing ✅ **COMPLETE**
 
 Currently, all BLoCs (`TranslationBloc`, `SettingsBloc`) are instantiated globally in `lib/app.dart` inside a `MultiBlocProvider`. In a proper feature-driven architecture, we only keep **Global** states at the top level.
 

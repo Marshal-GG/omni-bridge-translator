@@ -31,63 +31,62 @@ lib/
 │   ├── constants/               # Strings, Colors, Model Language Support
 │   ├── di/                      # Dependency Injection (injection.dart)
 │   ├── error/                   # Failure classes
-│   ├── navigation/              # GlobalNavigator
+│   ├── navigation/              # AppRouter (Centralized) & GlobalNavigator
 │   ├── platform/                # Platform-specific logic (Window, Tray, AppInitializer)
-│   ├── routes/                  # Router + RoutesConfig (Barrel exports)
 │   ├── theme/                   # AppTheme (Dark Material 3)
 │   └── utils/                   # Shared helpers & Extensions
 │
-├── features/                    # Modularized Features Domain
-│   ├── auth/                    # Authentication (Domain, Data, Presentation)
-│   ├── history/                 # Session history (Domain, Data, Presentation)
-│   ├── settings/                # User preferences (Domain, Data, Presentation)
-│   └── translation/             # Translation & ASR (Domain, Data, Presentation)
+├── features/                    # Feature Modules (Vertical Slice)
+│   ├── auth/                    # Auth logic: Login, Logout, User state
+│   │   ├── domain/              # UseCases (LoginWithGoogle, Logout, etc.)
+│   │   ├── data/                # RemoteDatasource, Repository impl
+│   │   └── presentation/        # AuthBloc, LoginScreen
+│   ├── translation/             # Transcription & Translation logic
+│   │   ├── domain/              # UseCases (ObserveCaptions, ObserveQuota, etc.)
+│   │   ├── data/                # WebSocket client, Translation repository impl
+│   │   └── presentation/        # TranslationBloc, Overlay, Tabs
+│   ├── settings/                # User preferences
+│   │   ├── domain/              # UseCases (SyncSettings, LoadDevices, etc.)
+│   │   ├── data/                # Local storage repo impl
+│   │   └── presentation/        # SettingsBloc, Tabs, Widgets
+│   └── history/                 # Session history
 │
-├── domain/                      # Domain Layer (Business Logic & Entities)
-│   ├── entities/                # [Future] Domain entities
-│   └── repositories/            # Repository Interfaces (ITranslationRepository, etc.)
-│
-├── data/                        # Data Layer (Implementation)
-│   ├── models/                  # AppSettings, CaptionModel, etc.
-│   ├── repositories/            # Concrete Repository Implementations
-│   └── services/                # Specialized domain services
-│       ├── firebase/            # TrackingService, SubscriptionService
-│       ├── server/              # AsrWsClient, PythonServerManager, UpdateService
-│       ├── system/              # AppLifecycle
-│       └── translation/         # TranslationService, WhisperService
-│
-└── presentation/                # UI Layer (Global Screens & Widgets)
-    ├── blocs/                   # Global BLoCs (Theme, etc.)
-    ├── screens/                 # Global UI (About, Startup)
-    │   ├── about/               # About + links
-    │   └── ...
-    └── widgets/                 # Common reusable UI components
+├── core/                        # Shared Framework & Infrastructure
+│   ├── di/                      # Dependency Injection (standardized injection.dart)
+│   ├── navigation/              # AppRouter & Routing logic
+│   └── ...                      # See 03_project_structure.md for full list
 ```
 
 ---
 
 ## Key BLoCs
 
-| BLoC | Responsibility |
-|------|---------------|
-| `AuthBloc` | Firebase Auth state — Google, Email/Password, Guest |
-| `SettingsBloc` | User preferences (model, language, devices, opacity, font). Computes `translationCompatibilityError` on every language/model change and emits it in state. |
-| `TranslationBloc` | Active translation session, overlay visibility, language overrides |
-| `SubscriptionBloc`| Manages real-time subscription state, tier details, and dynamic limits/features from Firestore |
+| BLoC | Responsibility | Depends On |
+|------|----------------|------------|
+| `AuthBloc` | Firebase Auth state management | `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, etc. |
+| `SettingsBloc` | User preferences, device selection, and audio monitoring | `SyncSettingsUseCase`, `LoadDevicesUseCase`, `ObserveAudioLevelsUseCase` |
+| `TranslationBloc` | Live translation session control, caption streaming, and quota tracking | `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `ToggleTranslationUseCase` |
 
 ---
 
+### UseCase Layer (Domain Feature)
+
+UseCases are the brain of the feature. They encapsulate a single business logic piece and are independent of both UI and Data implementation.
+
+| Feature | Key UseCases |
+|---------|--------------|
+| **Auth** | `LoginWithGoogle`, `Logout`, `GetCurrentUser`, `ObserveAuthChanges` |
+| **Settings** | `LoadDevices`, `ObserveAudioLevels`, `SyncSettings`, `LogEvent` |
+| **Translation** | `ObserveCaptions`, `ObserveQuotaStatus`, `UpdateTranslationSettings`, `UpdateVolume` |
+
 ### Dependency Injection (DI)
 
-The application uses `get_it` for dependency injection, configured in `lib/core/di/injection.dart`. This ensures that BLoCs and repositories are instantiated with their required dependencies and maintains singleton lifecycles for core services like `AsrWebSocketClient`.
+The application uses `get_it` for dependency injection. All UseCases are registered as **LazySingletons**, and BLoCs are factory-injected with these UseCases. 
 
-### Key Repositories (Domain Layer)
+> [!IMPORTANT]
+> **BLoC Scoping**: Feature-specific BLoCs are not registered as singletons. They are provided at the **Route Level** within `AppRouter.generateRoute` using `BlocProvider`. This ensures BLoCs are only instantiated when the user navigates to the feature and are correctly disposed of when the route is popped.
 
-| Repository | Responsibility |
-|------------|----------------|
-| `IAuthRepository` | Abstraction for authentication operations. |
-| `ISettingsRepository`| Abstraction for persisting and retrieving application settings. |
-| `ITranslationRepository`| Abstraction for the live translation session and audio devices. |
+See `lib/core/di/injection.dart` and `lib/core/navigation/app_router.dart`.
 
 ### Key Services (Data Layer)
 | `AsrWsClient` | High-level wrapper around `TranslationService`. Pre-connects on construction, dispatches caption events to `AsrTextController`, routes usage stats to `TrackingService.logModelUsage()`, and feeds final captions to `HistoryService`. Soft-stop keeps the WebSocket open for fast toggle; hard-stop (dispose) tears down the connection on app shutdown. |
@@ -137,7 +136,8 @@ Settings
 
 Start Translation
  └─ TranslationBloc sends `start` command via AsrWsClient
-     └─ Overlay window opens (bitsdojo_window)
-         └─ AsrTextController buffers caption events
-             └─ UI reacts via BlocBuilder
+     └─ AppRouter injects TranslationBloc into Overlay Route
+         └─ Overlay window opens (bitsdojo_window)
+             └─ AsrTextController buffers caption events
+                 └─ UI reacts via BlocBuilder
 ```

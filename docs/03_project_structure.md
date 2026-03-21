@@ -18,17 +18,16 @@ omni_bridge/
 │   │   ├── constants/               # Strings, Colors, Dimensions
 │   │   ├── device/                  # Device & System services integration
 │   │   ├── infrastructure/          # Native/Desktop process integrations
-│   │   ├── navigation/              # GlobalNavigator
+│   │   ├── navigation/              # AppRouter & GlobalNavigator
 │   │   ├── platform/                # Tray, Window, Initializer
-│   │   ├── routes/                  # Router + RoutesConfig
 │   │   ├── theme/                   # AppTheme
 │   │   └── utils/                   # Shared utilities
 │   │
-│   ├── features/                    # Feature Modules
-│   │   ├── auth/                    # Authentication feature
-│   │   ├── history/                 # History feature
-│   │   ├── settings/                # Settings feature (NEWLY EXTRACTED)
-│   │   └── translation/             # Translation feature
+│   ├── features/                    # Feature Modules (Clean Architecture)
+│   │   ├── auth/                    # Auth: Domain (UseCases), Data, Presentation
+│   │   ├── history/                 # History: Domain, Data, Presentation
+│   │   ├── settings/                # Settings: Domain (UseCases), Data, Presentation
+│   │   └── translation/             # Translation: Domain (UseCases), Data, Presentation
 │   │
 │   ├── data/                        # Data Layer (Domain-grouped)
 │   │   ├── models/                  # AppSettings, CaptionModel, etc.
@@ -85,6 +84,8 @@ omni_bridge/
 | **Phase 8** | Python Unit Tests (Pytest) | ✅ **COMPLETE** |
 | **Phase 9** | Deep Restructure Phase 1: Core/Infra | ✅ **COMPLETE** |
 | **Phase 10**| Deep Restructure Phase 2: Features | ✅ **COMPLETE** (Auth, Translation, History & Settings extracted) |
+| **Phase 11**| Deep Restructure Phase 3: UseCases & DI | ✅ **COMPLETE** (14 UseCases created, BLoCs refactored) |
+| **Phase 12**| Deep Restructure Phase 4: Routing & BLoC Scoping | ✅ **COMPLETE** (AppRouter created, Route-scoped Blocs) |
 ---
 
 ## Naming Conventions

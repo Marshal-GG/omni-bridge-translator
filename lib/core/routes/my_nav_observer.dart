@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:omni_bridge/core/platform/window_manager.dart';
-import 'package:omni_bridge/core/routes/routes_config.dart';
+import 'package:omni_bridge/core/navigation/app_router.dart';
 
 /// A comprehensive navigator observer for tracking app routing and access control.
 /// It also handles window resizing and positioning based on the current screen.
@@ -29,18 +29,16 @@ class MyNavigatorObserver extends NavigatorObserver {
     super.didPop(route, previousRoute);
 
     // Only adjust window size if we are returning from an official main app route.
-    // This prevents standard dialog dismissals (like DropdownSearch popups)
-    // from triggering a window reset unexpectedly.
     final name = route.settings.name;
-    if (name == '/login' ||
-        name == '/translation-overlay' ||
-        name == '/history-panel' ||
-        name == '/subscription' ||
-        name == '/about' ||
-        name == '/account' ||
-        name == '/settings-overlay' ||
-        name == '/onboarding' ||
-        name == '/splash') {
+    if (name == AppRouter.login ||
+        name == AppRouter.translationOverlay ||
+        name == AppRouter.historyPanel ||
+        name == AppRouter.subscription ||
+        name == AppRouter.about ||
+        name == AppRouter.account ||
+        name == AppRouter.settingsOverlay ||
+        name == AppRouter.onboarding ||
+        name == AppRouter.splash) {
       if (previousRoute != null) {
         _handleWindowState(previousRoute);
       }
@@ -53,21 +51,21 @@ class MyNavigatorObserver extends NavigatorObserver {
 
     debugPrint('[NavObserver] Routing to: $name');
 
-    if (name == '/login') {
+    if (name == AppRouter.login) {
       setToLoginPosition();
-    } else if (name == '/translation-overlay') {
+    } else if (name == AppRouter.translationOverlay) {
       setToTranslationPosition();
-    } else if (name == '/history-panel') {
+    } else if (name == AppRouter.historyPanel) {
       setToHistoryPosition();
-    } else if (name == '/account') {
+    } else if (name == AppRouter.account) {
       setToAccountPosition();
-    } else if (name == '/subscription') {
+    } else if (name == AppRouter.subscription) {
       setToSubscriptionPosition();
-    } else if (name == '/about') {
+    } else if (name == AppRouter.about) {
       setToAboutPosition();
-    } else if (name == '/settings-overlay') {
+    } else if (name == AppRouter.settingsOverlay) {
       setToSettingsPosition();
-    } else if (name == '/onboarding' || name == '/splash') {
+    } else if (name == AppRouter.onboarding || name == AppRouter.splash) {
       setToStartupPosition();
     }
   }

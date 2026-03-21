@@ -1,4 +1,7 @@
-import 'package:omni_bridge/core/routes/routes_config.dart';
+import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:tray_manager/tray_manager.dart';
 
 class AppLifecycle {
   static Future<void> initialize() async {

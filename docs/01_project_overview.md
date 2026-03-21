@@ -26,7 +26,7 @@ No extra hardware. No complex setup for the default configuration. Just launch a
 │               Flutter Desktop App (UI)           │
 │  Overlay · Settings · History · Account · Auth   │
 │                                                  │
-│  State: BLoC  ·  DI: GetIt  ·  Nav: GoRouter    │
+│  State: BLoC  ·  DI: GetIt  ·  Nav: AppRouter  │
 └───────────────────────┬─────────────────────────┘
                         │ WebSocket (ws://127.0.0.1:8765)
 ┌───────────────────────▼─────────────────────────┐

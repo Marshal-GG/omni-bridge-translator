@@ -1,4 +1,8 @@
-import 'package:omni_bridge/core/routes/routes_config.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_acrylic/flutter_acrylic.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/core/infrastructure/python_server_manager.dart';
 import 'package:omni_bridge/data/services/firebase/tracking_service.dart';
 

@@ -147,9 +147,9 @@ OmniBridge follows **Clean Architecture** principles across both its components:
 
 ### 📱 Flutter Client
 - **Feature-Driven Structure**: Organized by vertical slices (Auth, Translation, Settings, History, Subscription).
-- **Domain Layer**: Pure business logic with Entities, abstract Repositories, and UseCases.
+- **Domain Layer**: Pure business logic with Entities, abstract Repositories, and **UseCases** (14+ specialized logic blocks).
 - **Data Layer**: Repository implementations, DataSources (Firebase, WebSocket, REST), and DTOs.
-- **Presentation Layer**: UI screens and widgets using the **BLoC pattern** for state management.
+- **Presentation Layer**: UI screens and widgets using the **BLoC pattern** with route-scoped injection for optimized memory management.
 - **Dependency Injection**: Decoupled initialization via `get_it` in `injection.dart`.
 
 ### 🐍 Python Server
