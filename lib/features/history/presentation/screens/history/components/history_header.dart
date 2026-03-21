@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 
-Widget buildHistoryHeader(BuildContext context, {required VoidCallback onClear}) {
+Widget buildHistoryHeader(
+  BuildContext context, {
+  required VoidCallback onClear,
+}) {
   return Container(
     height: 32,
     color: Colors.black26,
@@ -23,11 +26,7 @@ Widget buildHistoryHeader(BuildContext context, {required VoidCallback onClear})
           ),
         ),
         const SizedBox(width: 4),
-        const Icon(
-          Icons.history,
-          size: 14,
-          color: Colors.tealAccent,
-        ),
+        const Icon(Icons.history, size: 14, color: Colors.tealAccent),
         const SizedBox(width: 8),
         const Text(
           'History',
@@ -38,7 +37,7 @@ Widget buildHistoryHeader(BuildContext context, {required VoidCallback onClear})
           ),
         ),
         Expanded(child: MoveWindow()),
-        
+
         // ── Action: Clear ─────────────────────────────────────────────
         SizedBox(
           width: 32,

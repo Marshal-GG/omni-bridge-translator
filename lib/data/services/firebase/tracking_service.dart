@@ -17,7 +17,9 @@ class TrackingService {
   TrackingService._();
   static final TrackingService instance = TrackingService._();
 
-  static final String _appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
+  static final String _appName = kDebugMode
+      ? 'OmniBridge-Debug'
+      : 'OmniBridge-Release';
   FirebaseApp get _app => Firebase.app(_appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
@@ -27,7 +29,8 @@ class TrackingService {
   );
 
   String get _sessionKeyPrefix => kDebugMode ? 'debug_' : 'release_';
-  String get _googleCredentialsStorageKey => '${_sessionKeyPrefix}google_translation_credentials_json';
+  String get _googleCredentialsStorageKey =>
+      '${_sessionKeyPrefix}google_translation_credentials_json';
 
   String? _currentSessionId;
   DateTime? _sessionStartTime;
@@ -78,7 +81,8 @@ class TrackingService {
         return response;
       } catch (e) {
         attempts++;
-        final isTransient = e is HandshakeException ||
+        final isTransient =
+            e is HandshakeException ||
             e is SocketException ||
             e is http.ClientException ||
             e is TimeoutException;
@@ -163,7 +167,9 @@ class TrackingService {
             await sessionRef.set({
               'appReopenedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
-            debugPrint('[Tracking] Resumed existing session $_currentSessionId');
+            debugPrint(
+              '[Tracking] Resumed existing session $_currentSessionId',
+            );
           }
         }
       } catch (e) {
@@ -207,7 +213,9 @@ class TrackingService {
         if (snapshot.exists) {
           final data = snapshot.data();
           if (data is Map<String, dynamic> && data['forceLogout'] == true) {
-            debugPrint('[Tracking] Remote forceLogout for session $_currentSessionId');
+            debugPrint(
+              '[Tracking] Remote forceLogout for session $_currentSessionId',
+            );
             _handleRemoteLogout();
           }
         }
@@ -215,7 +223,9 @@ class TrackingService {
     });
 
     _userSub?.cancel();
-    _userSub = _firestore.collection('users').doc(uid).snapshots().listen((snapshot) {
+    _userSub = _firestore.collection('users').doc(uid).snapshots().listen((
+      snapshot,
+    ) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (snapshot.exists) {
           final data = snapshot.data();
@@ -233,7 +243,9 @@ class TrackingService {
         await _rtdbRequest(
           () => _httpClient.patch(
             url,
-            body: jsonEncode({'started_at': {'.sv': 'timestamp'}}),
+            body: jsonEncode({
+              'started_at': {'.sv': 'timestamp'},
+            }),
           ),
           context: 'startSession',
         );
@@ -248,10 +260,14 @@ class TrackingService {
   }
 
   void _handleRemoteLogout() async {
-    await _secureStorage.delete(key: '${_sessionKeyPrefix}current_session_id_$uid');
+    await _secureStorage.delete(
+      key: '${_sessionKeyPrefix}current_session_id_$uid',
+    );
     try {
       if (uid != null) {
-        await _firestore.collection('users').doc(uid).update({'forceLogout': false});
+        await _firestore.collection('users').doc(uid).update({
+          'forceLogout': false,
+        });
         if (_currentSessionId != null) {
           await _firestore
               .collection('users')
@@ -276,7 +292,9 @@ class TrackingService {
     }
 
     try {
-      await _secureStorage.delete(key: '${_sessionKeyPrefix}current_session_id_$uid');
+      await _secureStorage.delete(
+        key: '${_sessionKeyPrefix}current_session_id_$uid',
+      );
 
       final sessionRef = _firestore
           .collection('users')
@@ -383,7 +401,9 @@ class TrackingService {
   Future<String> getGoogleCredentials({bool forceRefresh = false}) async {
     try {
       if (!forceRefresh) {
-        final cached = await _secureStorage.read(key: _googleCredentialsStorageKey);
+        final cached = await _secureStorage.read(
+          key: _googleCredentialsStorageKey,
+        );
         if (cached != null && cached.isNotEmpty) return cached;
       }
 
@@ -391,10 +411,14 @@ class TrackingService {
           .collection('system')
           .doc('translation_config')
           .get();
-      final credentialsJson = doc.data()?['googleCredentialsJson'] as String? ?? '';
+      final credentialsJson =
+          doc.data()?['googleCredentialsJson'] as String? ?? '';
       if (credentialsJson.isEmpty) return '';
 
-      await _secureStorage.write(key: _googleCredentialsStorageKey, value: credentialsJson);
+      await _secureStorage.write(
+        key: _googleCredentialsStorageKey,
+        value: credentialsJson,
+      );
       return credentialsJson;
     } catch (e) {
       debugPrint('[Tracking] Failed to fetch Google credentials: $e');
@@ -417,7 +441,9 @@ class TrackingService {
           .doc('app_preferences')
           .get();
       if (doc.exists) {
-        debugPrint('[Tracking] Successfully fetched user settings from Firestore.');
+        debugPrint(
+          '[Tracking] Successfully fetched user settings from Firestore.',
+        );
         return doc.data();
       } else {
         debugPrint('[Tracking] No settings found in Firestore for UID: $uid');
@@ -442,7 +468,8 @@ class TrackingService {
       return;
     }
     debugPrint(
-        '[Tracking] Error: $message${errorStr.isNotEmpty ? ' — $errorStr' : ''}');
+      '[Tracking] Error: $message${errorStr.isNotEmpty ? ' — $errorStr' : ''}',
+    );
   }
 
   /// Push high-frequency Live Caption data to RTDB
@@ -569,7 +596,9 @@ class TrackingService {
       _usageFlushTimer?.cancel();
       _usageFlushTimer = Timer(const Duration(seconds: 3), () => _flushUsage());
 
-      debugPrint('[Tracking] Buffered model usage: $engine (+$inputTokens/+$outputTokens tokens)');
+      debugPrint(
+        '[Tracking] Buffered model usage: $engine (+$inputTokens/+$outputTokens tokens)',
+      );
     } catch (e) {
       debugPrint('[Tracking] Error buffering model usage: $e');
     }
@@ -601,35 +630,66 @@ class TrackingService {
         final engine = entry.key;
         final data = entry.value;
 
-        updates['model_stats/$engine/total_calls'] = {'.sv': {'increment': data['calls']}};
-        updates['model_stats/$engine/total_tokens'] = {'.sv': {'increment': data['total_tokens']}};
-        updates['model_stats/$engine/total_input_tokens'] = {'.sv': {'increment': data['input_tokens']}};
-        updates['model_stats/$engine/total_output_tokens'] = {'.sv': {'increment': data['output_tokens']}};
-        updates['model_stats/$engine/total_latency_ms'] = {'.sv': {'increment': data['latency_ms']}};
+        updates['model_stats/$engine/total_calls'] = {
+          '.sv': {'increment': data['calls']},
+        };
+        updates['model_stats/$engine/total_tokens'] = {
+          '.sv': {'increment': data['total_tokens']},
+        };
+        updates['model_stats/$engine/total_input_tokens'] = {
+          '.sv': {'increment': data['input_tokens']},
+        };
+        updates['model_stats/$engine/total_output_tokens'] = {
+          '.sv': {'increment': data['output_tokens']},
+        };
+        updates['model_stats/$engine/total_latency_ms'] = {
+          '.sv': {'increment': data['latency_ms']},
+        };
         updates['model_stats/$engine/last_used'] = {'.sv': 'timestamp'};
         updates['model_stats/$engine/engine'] = engine;
 
         if (data['total_tokens'] > 0) {
-          updates['daily_usage/$todayStr/tokens'] = {'.sv': {'increment': data['total_tokens']}};
+          updates['daily_usage/$todayStr/tokens'] = {
+            '.sv': {'increment': data['total_tokens']},
+          };
           updates['daily_usage/$todayStr/last_updated'] = {'.sv': 'timestamp'};
-          updates['daily_usage/$todayStr/models/$engine/tokens'] = {'.sv': {'increment': data['total_tokens']}};
-          updates['daily_usage/$todayStr/models/$engine/calls'] = {'.sv': {'increment': data['calls']}};
-          updates['daily_usage/$todayStr/models/$engine/last_updated'] = {'.sv': 'timestamp'};
+          updates['daily_usage/$todayStr/models/$engine/tokens'] = {
+            '.sv': {'increment': data['total_tokens']},
+          };
+          updates['daily_usage/$todayStr/models/$engine/calls'] = {
+            '.sv': {'increment': data['calls']},
+          };
+          updates['daily_usage/$todayStr/models/$engine/last_updated'] = {
+            '.sv': 'timestamp',
+          };
           totalDailyTokens += data['total_tokens'] as int;
         }
 
         if (data['last_error'] != null) {
-          updates['daily_usage/$todayStr/errors/$engine/failed_calls'] = {'.sv': {'increment': data['calls']}};
-          updates['daily_usage/$todayStr/errors/$engine/last_error'] = data['last_error'];
-          updates['daily_usage/$todayStr/errors/$engine/last_error_time'] = {'.sv': 'timestamp'};
+          updates['daily_usage/$todayStr/errors/$engine/failed_calls'] = {
+            '.sv': {'increment': data['calls']},
+          };
+          updates['daily_usage/$todayStr/errors/$engine/last_error'] =
+              data['last_error'];
+          updates['daily_usage/$todayStr/errors/$engine/last_error_time'] = {
+            '.sv': 'timestamp',
+          };
         }
       }
 
       if (totalDailyTokens > 0) {
-        updates['usage/totals/lifetime'] = {'.sv': {'increment': totalDailyTokens}};
-        updates['usage/totals/calendar_monthly'] = {'.sv': {'increment': totalDailyTokens}};
-        updates['usage/totals/subscription_monthly'] = {'.sv': {'increment': totalDailyTokens}};
-        updates['usage/totals/weekly'] = {'.sv': {'increment': totalDailyTokens}};
+        updates['usage/totals/lifetime'] = {
+          '.sv': {'increment': totalDailyTokens},
+        };
+        updates['usage/totals/calendar_monthly'] = {
+          '.sv': {'increment': totalDailyTokens},
+        };
+        updates['usage/totals/subscription_monthly'] = {
+          '.sv': {'increment': totalDailyTokens},
+        };
+        updates['usage/totals/weekly'] = {
+          '.sv': {'increment': totalDailyTokens},
+        };
       }
 
       if (updates.isNotEmpty) {
@@ -637,7 +697,9 @@ class TrackingService {
           () => _httpClient.patch(url, body: jsonEncode(updates)),
           context: 'flushUsage',
         );
-        debugPrint('[Tracking] Flushed usage stats to RTDB (+$totalDailyTokens tokens).');
+        debugPrint(
+          '[Tracking] Flushed usage stats to RTDB (+$totalDailyTokens tokens).',
+        );
       }
     } catch (e) {
       debugPrint('[Tracking] Failed to flush usage to RTDB: $e');
@@ -686,8 +748,9 @@ class TrackingService {
       final user = _auth.currentUser;
       if (user == null) return;
       final idToken = await user.getIdToken();
-      final deleteUrl =
-          Uri.parse('$_rtdbBaseUrl/users/$userUid/captions.json?auth=$idToken');
+      final deleteUrl = Uri.parse(
+        '$_rtdbBaseUrl/users/$userUid/captions.json?auth=$idToken',
+      );
 
       await _rtdbRequest(
         () => _httpClient.patch(deleteUrl, body: jsonEncode(deletions)),
@@ -695,7 +758,8 @@ class TrackingService {
         maxRetries: 1,
       );
       debugPrint(
-          '[Tracking] Cleaned up ${deletions.length} old captions (>${retentionDays}d).');
+        '[Tracking] Cleaned up ${deletions.length} old captions (>${retentionDays}d).',
+      );
     } catch (e) {
       debugPrint('[Tracking] Caption cleanup failed: $e');
     }
@@ -714,7 +778,8 @@ class TrackingService {
       final idToken = await user.getIdToken();
 
       final url = Uri.parse(
-          '$_rtdbBaseUrl/users/$userUid/daily_usage.json?shallow=true&auth=$idToken');
+        '$_rtdbBaseUrl/users/$userUid/daily_usage.json?shallow=true&auth=$idToken',
+      );
       final response = await _rtdbRequest(
         () => _httpClient.get(url),
         context: 'cleanupOldDailyUsage:fetch',
@@ -740,14 +805,16 @@ class TrackingService {
       if (deletions.isEmpty) return;
 
       final deleteUrl = Uri.parse(
-          '$_rtdbBaseUrl/users/$userUid/daily_usage.json?auth=$idToken');
+        '$_rtdbBaseUrl/users/$userUid/daily_usage.json?auth=$idToken',
+      );
       await _rtdbRequest(
         () => _httpClient.patch(deleteUrl, body: jsonEncode(deletions)),
         context: 'cleanupOldDailyUsage:delete',
         maxRetries: 1,
       );
       debugPrint(
-          '[Tracking] Cleaned up ${deletions.length} old daily_usage entries (>90d).');
+        '[Tracking] Cleaned up ${deletions.length} old daily_usage entries (>90d).',
+      );
     } catch (e) {
       debugPrint('[Tracking] daily_usage cleanup failed: $e');
     }
@@ -760,7 +827,8 @@ class TrackingService {
 
     try {
       final cutoff = Timestamp.fromDate(
-          DateTime.now().subtract(const Duration(days: 30)));
+        DateTime.now().subtract(const Duration(days: 30)),
+      );
       final snapshot = await _firestore
           .collection('users')
           .doc(userUid)
@@ -776,7 +844,8 @@ class TrackingService {
       }
       await batch.commit();
       debugPrint(
-          '[Tracking] Cleaned up ${snapshot.docs.length} old sessions (>30d).');
+        '[Tracking] Cleaned up ${snapshot.docs.length} old sessions (>30d).',
+      );
     } catch (e) {
       debugPrint('[Tracking] Session cleanup failed: $e');
     }

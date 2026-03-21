@@ -95,4 +95,3 @@ const String customAuthSuccessHtml = '''
 </body>
 </html>
 ''';
-

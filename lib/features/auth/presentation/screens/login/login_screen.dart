@@ -78,7 +78,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       if (_isLoginMode) {
-        await AuthRemoteDataSource.instance.signInWithEmailAndPassword(email, password);
+        await AuthRemoteDataSource.instance.signInWithEmailAndPassword(
+          email,
+          password,
+        );
       } else {
         await AuthRemoteDataSource.instance.registerWithEmailAndPassword(
           email,
@@ -346,6 +349,3 @@ class _GoogleSignInButtonState extends State<_GoogleSignInButton> {
     );
   }
 }
-
-
-

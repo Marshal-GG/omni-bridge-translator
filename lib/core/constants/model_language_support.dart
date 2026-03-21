@@ -14,7 +14,16 @@ library;
 
 /// Riva NMT — both source AND target must be in this set.
 const Set<String> rivaTranslationLangs = {
-  'en', 'de', 'es', 'fr', 'pt', 'ru', 'zh', 'ja', 'ko', 'ar',
+  'en',
+  'de',
+  'es',
+  'fr',
+  'pt',
+  'ru',
+  'zh',
+  'ja',
+  'ko',
+  'ar',
 };
 
 /// Google Translate (free) — supports all app languages.
@@ -34,8 +43,25 @@ const Set<String>? llamaLangs = null;
 /// Riva Parakeet ASR — app-level codes (not BCP-47) it covers.
 /// Canary handles the remainder; combined they cover all app languages.
 const Set<String> rivaAsrLangs = {
-  'en', 'es', 'fr', 'de', 'it', 'ar', 'ko', 'pt', 'ru',
-  'hi', 'nl', 'da', 'cs', 'pl', 'sv', 'th', 'tr', 'he', 'bn',
+  'en',
+  'es',
+  'fr',
+  'de',
+  'it',
+  'ar',
+  'ko',
+  'pt',
+  'ru',
+  'hi',
+  'nl',
+  'da',
+  'cs',
+  'pl',
+  'sv',
+  'th',
+  'tr',
+  'he',
+  'bn',
 };
 
 /// Whisper offline — supports all app languages.
@@ -50,12 +76,18 @@ const Set<String>? googleSrLangs = null;
 /// or null if the model is unrestricted.
 Set<String>? translationLangsFor(String model) {
   switch (model) {
-    case 'riva':       return rivaTranslationLangs;
-    case 'google':     return googleFreeLangs;
-    case 'google_api': return googleCloudLangs;
-    case 'mymemory':   return myMemoryLangs;
-    case 'llama':      return llamaLangs;
-    default:           return null;
+    case 'riva':
+      return rivaTranslationLangs;
+    case 'google':
+      return googleFreeLangs;
+    case 'google_api':
+      return googleCloudLangs;
+    case 'mymemory':
+      return myMemoryLangs;
+    case 'llama':
+      return llamaLangs;
+    default:
+      return null;
   }
 }
 
@@ -95,10 +127,10 @@ String? translationCompatibilityError(
 }
 
 String _modelLabel(String model) => switch (model) {
-      'riva'       => 'Riva NMT',
-      'google'     => 'Google Translate',
-      'google_api' => 'Google Cloud',
-      'mymemory'   => 'MyMemory',
-      'llama'      => 'Llama 3.1 8B',
-      _            => model,
-    };
+  'riva' => 'Riva NMT',
+  'google' => 'Google Translate',
+  'google_api' => 'Google Cloud',
+  'mymemory' => 'MyMemory',
+  'llama' => 'Llama 3.1 8B',
+  _ => model,
+};

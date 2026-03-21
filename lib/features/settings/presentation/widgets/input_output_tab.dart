@@ -78,9 +78,8 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                         onChangeEnd: (v) => context.read<SettingsBloc>().add(
                           UpdateTempSettingEvent(micVolume: v),
                         ),
-                        onLiveChange: (v) => context
-                            .read<TranslationBloc>()
-                            .liveVolumeUpdate(
+                        onLiveChange: (v) =>
+                            context.read<TranslationBloc>().liveVolumeUpdate(
                               desktopVolume: state.settings.desktopVolume,
                               micVolume: v,
                             ),
@@ -152,9 +151,8 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                       onChangeEnd: (v) => context.read<SettingsBloc>().add(
                         UpdateTempSettingEvent(desktopVolume: v),
                       ),
-                      onLiveChange: (v) => context
-                          .read<TranslationBloc>()
-                          .liveVolumeUpdate(
+                      onLiveChange: (v) =>
+                          context.read<TranslationBloc>().liveVolumeUpdate(
                             desktopVolume: v,
                             micVolume: state.settings.micVolume,
                           ),

@@ -3,7 +3,6 @@ import 'package:omni_bridge/data/models/subscription_models.dart';
 import 'package:intl/intl.dart';
 import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
 
-
 Widget buildPlanCard({
   required SubscriptionPlan plan,
   bool isCurrent = false,
@@ -13,8 +12,8 @@ Widget buildPlanCard({
   final accentColor = plan.isTrial
       ? Colors.amberAccent
       : plan.isPopular
-          ? Colors.tealAccent
-          : Colors.white70;
+      ? Colors.tealAccent
+      : Colors.white70;
 
   return Container(
     padding: const EdgeInsets.all(16),
@@ -22,15 +21,15 @@ Widget buildPlanCard({
       color: plan.isTrial
           ? Colors.amberAccent.withValues(alpha: 0.05)
           : plan.isPopular
-              ? Colors.tealAccent.withValues(alpha: 0.05)
-              : Colors.white.withValues(alpha: 0.05),
+          ? Colors.tealAccent.withValues(alpha: 0.05)
+          : Colors.white.withValues(alpha: 0.05),
       borderRadius: BorderRadius.circular(16),
       border: Border.all(
         color: plan.isTrial
             ? Colors.amberAccent.withValues(alpha: 0.3)
             : plan.isPopular
-                ? Colors.tealAccent.withValues(alpha: 0.3)
-                : Colors.white.withValues(alpha: 0.08),
+            ? Colors.tealAccent.withValues(alpha: 0.3)
+            : Colors.white.withValues(alpha: 0.08),
         width: 1,
       ),
       boxShadow: plan.isTrial
@@ -42,14 +41,14 @@ Widget buildPlanCard({
               ),
             ]
           : plan.isPopular
-              ? [
-                  BoxShadow(
-                    color: Colors.tealAccent.withValues(alpha: 0.08),
-                    blurRadius: 25,
-                    spreadRadius: 2,
-                  ),
-                ]
-              : null,
+          ? [
+              BoxShadow(
+                color: Colors.tealAccent.withValues(alpha: 0.08),
+                blurRadius: 25,
+                spreadRadius: 2,
+              ),
+            ]
+          : null,
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,7 +213,10 @@ Widget buildPlanCard({
               final suffix = limit != null
                   ? ' (${formatter.format(limit)}/mo)'
                   : '';
-              return _ModelChip(label: '${SubscriptionService.instance.getModelDisplayName(m)}$suffix');
+              return _ModelChip(
+                label:
+                    '${SubscriptionService.instance.getModelDisplayName(m)}$suffix',
+              );
             }).toList(),
           ),
         ],
@@ -234,7 +236,9 @@ Widget buildPlanCard({
             spacing: 4,
             runSpacing: 4,
             children: plan.allowedTranscriptionModels.map((m) {
-              return _ModelChip(label: SubscriptionService.instance.getModelDisplayName(m));
+              return _ModelChip(
+                label: SubscriptionService.instance.getModelDisplayName(m),
+              );
             }).toList(),
           ),
         ],
@@ -248,24 +252,25 @@ Widget buildPlanCard({
             onPressed: isCurrent || (plan.isTrial && trialUsed)
                 ? null
                 : plan.isTrial
-                    ? () async {
-                        final err = await SubscriptionService.instance.activateTrial();
-                        if (err != null) {
-                          debugPrint('[Trial] $err');
-                        }
-                      }
-                    : () => SubscriptionService.instance.openCheckout(plan.id),
+                ? () async {
+                    final err = await SubscriptionService.instance
+                        .activateTrial();
+                    if (err != null) {
+                      debugPrint('[Trial] $err');
+                    }
+                  }
+                : () => SubscriptionService.instance.openCheckout(plan.id),
             style: ElevatedButton.styleFrom(
               backgroundColor: plan.isTrial
                   ? (trialUsed ? Colors.white10 : Colors.amberAccent)
                   : plan.isPopular
-                      ? Colors.tealAccent
-                      : Colors.white10,
+                  ? Colors.tealAccent
+                  : Colors.white10,
               foregroundColor: plan.isTrial
                   ? (trialUsed ? Colors.white38 : Colors.black)
                   : plan.isPopular
-                      ? Colors.black
-                      : Colors.white,
+                  ? Colors.black
+                  : Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 14),
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -277,8 +282,8 @@ Widget buildPlanCard({
               isCurrent
                   ? 'Current Plan'
                   : plan.isTrial
-                      ? (trialUsed ? 'Trial Used' : 'Start Free Trial')
-                      : 'Select Plan',
+                  ? (trialUsed ? 'Trial Used' : 'Start Free Trial')
+                  : 'Select Plan',
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             ),
           ),

@@ -37,7 +37,8 @@ Widget buildAccountNameEditor({
           ),
           const SizedBox(width: 8),
           SizedBox(
-            height: 36, // TODO: Refine size, currently perceived as too big compared to TextField
+            height:
+                36, // TODO: Refine size, currently perceived as too big compared to TextField
             child: ElevatedButton(
               onPressed: isSaving ? null : onSave,
               style: ElevatedButton.styleFrom(

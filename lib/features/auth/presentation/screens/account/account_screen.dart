@@ -261,7 +261,8 @@ class _AccountScreenState extends State<AccountScreen> {
                                     return const SizedBox.shrink();
                                   }
 
-                                  final tierName = SubscriptionService.instance.getNameForTier(status.tier)
+                                  final tierName = SubscriptionService.instance
+                                      .getNameForTier(status.tier)
                                       .toUpperCase();
                                   final isUnlimited = status.isUnlimited;
                                   final progress = status.progress;
@@ -320,22 +321,35 @@ class _AccountScreenState extends State<AccountScreen> {
                                                     const SizedBox(height: 4),
                                                     Row(
                                                       children: [
-                                                          _UsageBadge(
-                                                            label: 'WEEKLY',
-                                                            value: _formatter.format(status.weeklyTokensUsed),
+                                                        _UsageBadge(
+                                                          label: 'WEEKLY',
+                                                          value: _formatter.format(
+                                                            status
+                                                                .weeklyTokensUsed,
                                                           ),
-                                                          const SizedBox(width: 8),
-                                                          _UsageBadge(
-                                                            label: 'MONTHLY',
-                                                            value: _formatter.format(status.monthlyTokensUsed),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        _UsageBadge(
+                                                          label: 'MONTHLY',
+                                                          value: _formatter.format(
+                                                            status
+                                                                .monthlyTokensUsed,
                                                           ),
-                                                          const SizedBox(width: 8),
-                                                          _UsageBadge(
-                                                            label: 'LIFETIME',
-                                                            value: _formatter.format(status.lifetimeTokensUsed),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        _UsageBadge(
+                                                          label: 'LIFETIME',
+                                                          value: _formatter.format(
+                                                            status
+                                                                .lifetimeTokensUsed,
                                                           ),
-                                                        ],
-                                                      ),
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ],
                                                 ),
                                               ),
@@ -548,6 +562,3 @@ class _UsageBadge extends StatelessWidget {
     );
   }
 }
-
-
-

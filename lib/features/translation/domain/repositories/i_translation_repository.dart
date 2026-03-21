@@ -4,7 +4,7 @@ import 'package:omni_bridge/data/models/subscription_models.dart';
 abstract class ITranslationRepository {
   Stream<CaptionMessage>? get captions;
   void Function(double inputLevel, double outputLevel)? onAudioLevel;
-  
+
   // Subscription / Quota support
   SubscriptionStatus? get currentQuotaStatus;
   Stream<SubscriptionStatus> get quotaStatusStream;

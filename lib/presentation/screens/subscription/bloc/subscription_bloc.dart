@@ -33,13 +33,25 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     add(SubscriptionLoaded());
   }
 
-  Future<void> _onLoaded(SubscriptionLoaded event, Emitter<SubscriptionState> emit) async {
+  Future<void> _onLoaded(
+    SubscriptionLoaded event,
+    Emitter<SubscriptionState> emit,
+  ) async {
     final plans = _service.availablePlans;
     final status = _service.currentStatus;
     final trialUsed = await _service.hasUsedTrial();
-    debugPrint('[SubscriptionBloc] _onLoaded: ${plans.length} plans, '
-        'status=${status?.tier ?? "null"}, trialUsed=$trialUsed');
-    emit(state.copyWith(isLoading: false, status: status, plans: plans, trialUsed: trialUsed));
+    debugPrint(
+      '[SubscriptionBloc] _onLoaded: ${plans.length} plans, '
+      'status=${status?.tier ?? "null"}, trialUsed=$trialUsed',
+    );
+    emit(
+      state.copyWith(
+        isLoading: false,
+        status: status,
+        plans: plans,
+        trialUsed: trialUsed,
+      ),
+    );
   }
 
   void _onStatusUpdated(
@@ -47,14 +59,11 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     Emitter<SubscriptionState> emit,
   ) {
     final plans = _service.availablePlans;
-    debugPrint('[SubscriptionBloc] _onStatusUpdated: tier=${event.status.tier}, '
-        '${plans.length} plans');
-    emit(
-      state.copyWith(
-        status: event.status,
-        plans: plans,
-      ),
+    debugPrint(
+      '[SubscriptionBloc] _onStatusUpdated: tier=${event.status.tier}, '
+      '${plans.length} plans',
     );
+    emit(state.copyWith(status: event.status, plans: plans));
   }
 
   @override

@@ -18,7 +18,9 @@ class AuthRemoteDataSource {
   AuthRemoteDataSource._();
   static final AuthRemoteDataSource instance = AuthRemoteDataSource._();
 
-  static final String _appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
+  static final String _appName = kDebugMode
+      ? 'OmniBridge-Debug'
+      : 'OmniBridge-Release';
   FirebaseApp get _app => Firebase.app(_appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
@@ -63,9 +65,7 @@ class AuthRemoteDataSource {
     );
 
     // Listen to Firebase auth state changes automatically
-    _authStateSub = _auth.authStateChanges().listen((
-      user,
-    ) async {
+    _authStateSub = _auth.authStateChanges().listen((user) async {
       // Ensure state updates happen on the UI thread to avoid Windows threading errors
       SchedulerBinding.instance.addPostFrameCallback((_) async {
         currentUser.value = user;
@@ -237,8 +237,10 @@ class AuthRemoteDataSource {
     String email,
     String password,
   ) async {
-    final userCredential =
-        await _auth.signInWithEmailAndPassword(email: email, password: password);
+    final userCredential = await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
     if (userCredential.user != null) {
       await _saveUserToFirestore(userCredential.user!);
       await TrackingService.instance.logEvent('Sign In With Email/Password');
@@ -251,7 +253,9 @@ class AuthRemoteDataSource {
     String password,
   ) async {
     final userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email, password: password);
+      email: email,
+      password: password,
+    );
     if (userCredential.user != null) {
       await _saveUserToFirestore(userCredential.user!);
       await TrackingService.instance.logEvent('Registered With Email/Password');
@@ -320,4 +324,3 @@ class AuthRemoteDataSource {
     }
   }
 }
-

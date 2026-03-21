@@ -21,8 +21,11 @@ class UpgradeSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final plans = SubscriptionService.instance.availablePlans;
     final promptConfig = SubscriptionService.instance.upgradePromptConfig;
-    final title = promptConfig?['feature_locked']?['title'] as String? ?? 'Upgrade Your Plan';
-    final message = promptConfig?['feature_locked']?['message'] as String? ??
+    final title =
+        promptConfig?['feature_locked']?['title'] as String? ??
+        'Upgrade Your Plan';
+    final message =
+        promptConfig?['feature_locked']?['message'] as String? ??
         'Get more daily tokens and unlock exclusive features like premium translation engines.';
 
     return Container(
@@ -61,7 +64,9 @@ class UpgradeSheet extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           // Show highlights from each paid plan (skip the first/free tier)
-          ...plans.where((p) => p.id != SubscriptionService.instance.defaultTier).map((plan) {
+          ...plans.where((p) => p.id != SubscriptionService.instance.defaultTier).map((
+            plan,
+          ) {
             final highlight = plan.isUnlimited
                 ? '${plan.name}: Unlimited usage & ${plan.allowedTranslationModels.length} engines'
                 : '${plan.name}: ${plan.features.isNotEmpty ? plan.features.first : plan.description}';
@@ -71,8 +76,15 @@ class UpgradeSheet extends StatelessWidget {
             );
           }),
           // Extra highlights from Firestore upgrade_prompts config
-          ...((promptConfig?['feature_locked']?['highlights'] as List<dynamic>?) ?? [])
-              .map((h) => _buildFeatureRow(Icons.contact_support_rounded, h.toString())),
+          ...((promptConfig?['feature_locked']?['highlights']
+                      as List<dynamic>?) ??
+                  [])
+              .map(
+                (h) => _buildFeatureRow(
+                  Icons.contact_support_rounded,
+                  h.toString(),
+                ),
+              ),
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,

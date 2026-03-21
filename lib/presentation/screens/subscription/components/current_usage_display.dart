@@ -7,7 +7,9 @@ Widget buildCurrentUsageDisplay({
   required SubscriptionStatus status,
   required NumberFormat formatter,
 }) {
-  final tierName = SubscriptionService.instance.getNameForTier(status.tier).toUpperCase();
+  final tierName = SubscriptionService.instance
+      .getNameForTier(status.tier)
+      .toUpperCase();
 
   if (status.isUnlimited) {
     return Container(
@@ -20,7 +22,11 @@ Widget buildCurrentUsageDisplay({
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.check_circle_rounded, color: Colors.tealAccent, size: 16),
+          const Icon(
+            Icons.check_circle_rounded,
+            color: Colors.tealAccent,
+            size: 16,
+          ),
           const SizedBox(width: 8),
           Text(
             '$tierName UNLIMITED ACCESS ACTIVE',

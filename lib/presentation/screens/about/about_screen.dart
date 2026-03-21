@@ -1028,5 +1028,3 @@ class _LegalDialog extends StatelessWidget {
     );
   }
 }
-
-

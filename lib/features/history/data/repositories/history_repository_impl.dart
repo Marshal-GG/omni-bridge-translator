@@ -9,10 +9,12 @@ class HistoryRepositoryImpl implements IHistoryRepository {
   HistoryRepositoryImpl({required this.localDataSource});
 
   @override
-  ValueListenable<List<HistoryEntry>> get liveEntries => localDataSource.liveEntries;
+  ValueListenable<List<HistoryEntry>> get liveEntries =>
+      localDataSource.liveEntries;
 
   @override
-  ValueListenable<List<HistoryEntry>> get chunkedEntries => localDataSource.chunkedEntries;
+  ValueListenable<List<HistoryEntry>> get chunkedEntries =>
+      localDataSource.chunkedEntries;
 
   @override
   void addEntry(String transcription, String translation) {
@@ -28,7 +30,8 @@ class HistoryRepositoryImpl implements IHistoryRepository {
   void configure({
     required String sourceLang,
     required String targetLang,
-    required Future<String> Function(String text, String src, String tgt) translateFn,
+    required Future<String> Function(String text, String src, String tgt)
+    translateFn,
   }) {
     localDataSource.configure(
       sourceLang: sourceLang,

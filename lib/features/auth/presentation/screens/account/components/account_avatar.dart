@@ -76,9 +76,7 @@ Widget buildAccountAvatar(User? user, bool isAnon) {
         decoration: BoxDecoration(
           color: Colors.tealAccent.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.tealAccent.withValues(alpha: 0.2),
-          ),
+          border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.2)),
         ),
         child: Text(
           _providerLabel(isAnon, user).toUpperCase(),

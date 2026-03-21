@@ -22,7 +22,8 @@ class HistoryPanel extends StatelessWidget {
       stream: SubscriptionService.instance.statusStream,
       initialData: SubscriptionService.instance.currentStatus,
       builder: (context, snapshot) {
-        final tier = snapshot.data?.tier ?? SubscriptionService.instance.defaultTier;
+        final tier =
+            snapshot.data?.tier ?? SubscriptionService.instance.defaultTier;
         return _HistoryPanelBody(tier: tier);
       },
     );
@@ -78,7 +79,8 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                     title: 'History Unavailable',
                     subtitle:
                         'Upgrade to ${SubscriptionService.instance.getNameForRank(1)} or higher plan to access your translation history.',
-                    requiredTier: '${SubscriptionService.instance.getNameForRank(1)}+',
+                    requiredTier:
+                        '${SubscriptionService.instance.getNameForRank(1)}+',
                   ),
                 ),
               ],
@@ -164,17 +166,25 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                             Expanded(
                               child: _TierGateView(
                                 icon: Icons.auto_fix_high,
-                                title: '${SubscriptionService.instance.getNameForRank(SubscriptionService.instance.getTierRank(widget.tier) + 1)} Feature',
+                                title:
+                                    '${SubscriptionService.instance.getNameForRank(SubscriptionService.instance.getTierRank(widget.tier) + 1)} Feature',
                                 subtitle:
                                     'Upgrade to ${SubscriptionService.instance.getNameForRank(SubscriptionService.instance.getTierRank(widget.tier) + 1)} to unlock Intelligent Context Refresh — '
                                     'AI that corrects translations up to 5 seconds back in real time.',
-                                requiredTier: SubscriptionService.instance.getNameForRank(SubscriptionService.instance.getTierRank(widget.tier) + 1),
+                                requiredTier: SubscriptionService.instance
+                                    .getNameForRank(
+                                      SubscriptionService.instance.getTierRank(
+                                            widget.tier,
+                                          ) +
+                                          1,
+                                    ),
                               ),
                             )
                           else
                             Expanded(
                               child: ValueListenableBuilder<List<HistoryEntry>>(
-                                valueListenable: sl<GetChunkedHistoryUseCase>()(),
+                                valueListenable:
+                                    sl<GetChunkedHistoryUseCase>()(),
                                 builder: (_, entries, _) {
                                   if (entries.isEmpty) {
                                     return buildHistoryEmptyState(
@@ -211,10 +221,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
   }
 
   /// Filter entries based on the user's tier's history rank.
-  List<HistoryEntry> _filterByTier(
-    List<HistoryEntry> entries,
-    String tier,
-  ) {
+  List<HistoryEntry> _filterByTier(List<HistoryEntry> entries, String tier) {
     final rank = SubscriptionService.instance.getTierRank(tier);
     if (rank >= 3) return entries; // Unlimited
     if (rank == 2) {
@@ -222,7 +229,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
       return entries.where((e) => e.timestamp.isAfter(cutoff)).toList();
     }
     // rank == 1 is session only, UI handles liveEntries lifetime.
-    return entries; 
+    return entries;
   }
 }
 

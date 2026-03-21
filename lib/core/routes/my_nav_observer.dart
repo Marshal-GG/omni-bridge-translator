@@ -50,7 +50,7 @@ class MyNavigatorObserver extends NavigatorObserver {
   void _handleWindowState(Route<dynamic> route) {
     final name = route.settings.name;
     if (name == null) return;
-    
+
     debugPrint('[NavObserver] Routing to: $name');
 
     if (name == '/login') {

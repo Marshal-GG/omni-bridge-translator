@@ -70,7 +70,8 @@ class SettingsState extends Equatable {
           defaultOutputDeviceName ?? this.defaultOutputDeviceName,
       translationCompatibilityError: clearCompatibilityError
           ? null
-          : (translationCompatibilityError ?? this.translationCompatibilityError),
+          : (translationCompatibilityError ??
+                this.translationCompatibilityError),
     );
   }
 

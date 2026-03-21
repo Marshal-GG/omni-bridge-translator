@@ -169,8 +169,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                                         child: buildPlanCard(
                                                           plan: plan,
                                                           isCurrent:
-                                                              status?.tier == plan.id,
-                                                          trialUsed: state.trialUsed,
+                                                              status?.tier ==
+                                                              plan.id,
+                                                          trialUsed:
+                                                              state.trialUsed,
                                                           formatter: _formatter,
                                                         ),
                                                       ),

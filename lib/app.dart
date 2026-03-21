@@ -27,12 +27,8 @@ class MyApp extends StatelessWidget {
 
     return MultiBlocProvider(
       providers: [
-        BlocProvider<TranslationBloc>(
-          create: (_) => sl<TranslationBloc>(),
-        ),
-        BlocProvider<SettingsBloc>(
-          create: (_) => sl<SettingsBloc>(),
-        ),
+        BlocProvider<TranslationBloc>(create: (_) => sl<TranslationBloc>()),
+        BlocProvider<SettingsBloc>(create: (_) => sl<SettingsBloc>()),
       ],
       child: MaterialApp(
         navigatorKey: GlobalNavigator.key,

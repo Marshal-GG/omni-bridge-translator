@@ -127,7 +127,6 @@ class AsrTextController extends ValueNotifier<String> {
     _typingTimer = null;
   }
 
-
   void clear() {
     _stopTyping();
     _finalSegments.clear();

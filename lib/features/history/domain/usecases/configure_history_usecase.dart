@@ -8,7 +8,8 @@ class ConfigureHistoryUseCase {
   void call({
     required String sourceLang,
     required String targetLang,
-    required Future<String> Function(String text, String src, String tgt) translateFn,
+    required Future<String> Function(String text, String src, String tgt)
+    translateFn,
   }) {
     repository.configure(
       sourceLang: sourceLang,

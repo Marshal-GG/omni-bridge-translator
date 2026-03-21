@@ -246,7 +246,6 @@ Widget buildTranslationModelSelector(
       ['riva', 'llama'].contains(state.settings.translationModel) ||
       state.settings.transcriptionModel == 'riva';
 
-
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -309,8 +308,10 @@ Widget buildTranslationModelSelector(
                     Expanded(
                       child: Text(
                         selectedItem.value,
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 13),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -367,8 +368,9 @@ Widget buildTranslationModelSelector(
                     highlightColor: itemHasAccess
                         ? Colors.white10
                         : Colors.transparent,
-                    hoverColor:
-                        itemHasAccess ? Colors.white10 : Colors.transparent,
+                    hoverColor: itemHasAccess
+                        ? Colors.white10
+                        : Colors.transparent,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -448,7 +450,11 @@ Widget buildTranslationModelSelector(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.error_outline, color: Colors.redAccent, size: 16),
+              const Icon(
+                Icons.error_outline,
+                color: Colors.redAccent,
+                size: 16,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -489,87 +495,98 @@ Widget _buildTranscriptionModelSection(
         builder: (context, transState) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            sectionLabel('Transcription Method'),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _TranscriptionOption(
-                    value: 'online',
-                    groupValue: state.settings.transcriptionModel,
-                    label: 'Google Online',
-                    icon: Icons.cloud_outlined,
-                    status: transState.modelStatuses['google_asr'],
-                    onChanged: (v) {
-                      // Explicitly unload current model from memory upon selection change
-                      TranslationRestDatasource().unloadModel();
-                      context.read<SettingsBloc>().add(
-                        UpdateTempSettingEvent(transcriptionModel: v),
-                      );
-                    },
+            children: [
+              sectionLabel('Transcription Method'),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _TranscriptionOption(
+                      value: 'online',
+                      groupValue: state.settings.transcriptionModel,
+                      label: 'Google Online',
+                      icon: Icons.cloud_outlined,
+                      status: transState.modelStatuses['google_asr'],
+                      onChanged: (v) {
+                        // Explicitly unload current model from memory upon selection change
+                        TranslationRestDatasource().unloadModel();
+                        context.read<SettingsBloc>().add(
+                          UpdateTempSettingEvent(transcriptionModel: v),
+                        );
+                      },
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _TranscriptionOption(
-                    value: 'riva',
-                    groupValue: state.settings.transcriptionModel,
-                    label: 'NVIDIA Riva',
-                    status: transState.modelStatuses['riva'],
-                    isRecommended: true,
-                    locked: !SubscriptionService.instance.canUseModel('riva'),
-                    icon: Icons.bolt_rounded,
-                    onChanged: (v) {
-                      // Explicitly unload current model from memory upon selection change
-                      TranslationRestDatasource().unloadModel();
-                      context.read<SettingsBloc>().add(
-                        UpdateTempSettingEvent(transcriptionModel: v),
-                      );
-                    },
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _TranscriptionOption(
+                      value: 'riva',
+                      groupValue: state.settings.transcriptionModel,
+                      label: 'NVIDIA Riva',
+                      status: transState.modelStatuses['riva'],
+                      isRecommended: true,
+                      locked: !SubscriptionService.instance.canUseModel('riva'),
+                      icon: Icons.bolt_rounded,
+                      onChanged: (v) {
+                        // Explicitly unload current model from memory upon selection change
+                        TranslationRestDatasource().unloadModel();
+                        context.read<SettingsBloc>().add(
+                          UpdateTempSettingEvent(transcriptionModel: v),
+                        );
+                      },
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _TranscriptionOption(
-                    value: state.settings.transcriptionModel.startsWith('whisper')
-                        ? state.settings.transcriptionModel
-                        : 'whisper-base',
-                    groupValue: state.settings.transcriptionModel,
-                    label: 'Whisper Offline',
-                    status: transState.modelStatuses[state.settings.transcriptionModel.startsWith('whisper') ? state.settings.transcriptionModel : 'whisper-base'],
-                    locked: !SubscriptionService.instance.canUseModel('whisper-base'),
-                    icon: Icons.offline_bolt_outlined,
-                    onChanged: (v) {
-                      // Explicitly unload current model from memory upon selection change
-                      TranslationRestDatasource().unloadModel();
-                      context.read<SettingsBloc>().add(
-                        UpdateTempSettingEvent(transcriptionModel: v),
-                      );
-                    },
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _TranscriptionOption(
+                      value:
+                          state.settings.transcriptionModel.startsWith(
+                            'whisper',
+                          )
+                          ? state.settings.transcriptionModel
+                          : 'whisper-base',
+                      groupValue: state.settings.transcriptionModel,
+                      label: 'Whisper Offline',
+                      status:
+                          transState.modelStatuses[state
+                                  .settings
+                                  .transcriptionModel
+                                  .startsWith('whisper')
+                              ? state.settings.transcriptionModel
+                              : 'whisper-base'],
+                      locked: !SubscriptionService.instance.canUseModel(
+                        'whisper-base',
+                      ),
+                      icon: Icons.offline_bolt_outlined,
+                      onChanged: (v) {
+                        // Explicitly unload current model from memory upon selection change
+                        TranslationRestDatasource().unloadModel();
+                        context.read<SettingsBloc>().add(
+                          UpdateTempSettingEvent(transcriptionModel: v),
+                        );
+                      },
+                    ),
                   ),
+                ],
+              ),
+
+              // Whisper model manager (shown when offline is selected)
+              if (state.settings.transcriptionModel.startsWith('whisper')) ...[
+                const SizedBox(height: 12),
+                _WhisperModelCard(
+                  selectedModel: state.settings.transcriptionModel,
+                  modelStatuses: transState.modelStatuses,
+                  onModelChanged: (newModel) {
+                    // Explicitly unload current model from memory upon selection change
+                    TranslationRestDatasource().unloadModel();
+                    context.read<SettingsBloc>().add(
+                      UpdateTempSettingEvent(transcriptionModel: newModel),
+                    );
+                  },
                 ),
               ],
-            ),
-
-            // Whisper model manager (shown when offline is selected)
-            if (state.settings.transcriptionModel.startsWith('whisper')) ...[
-              const SizedBox(height: 12),
-              _WhisperModelCard(
-                selectedModel: state.settings.transcriptionModel,
-                modelStatuses: transState.modelStatuses,
-                onModelChanged: (newModel) {
-                  // Explicitly unload current model from memory upon selection change
-                  TranslationRestDatasource().unloadModel();
-                  context.read<SettingsBloc>().add(
-                        UpdateTempSettingEvent(transcriptionModel: newModel),
-                      );
-                },
-              ),
             ],
-          ],
-        );
-      },
+          );
+        },
       ),
     ],
   );
@@ -609,48 +626,52 @@ class _TranscriptionOption extends StatelessWidget {
       child: Opacity(
         opacity: locked ? 0.4 : 1.0,
         child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.tealAccent.withValues(alpha: 0.1)
-              : Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
             color: isSelected
-                ? Colors.tealAccent.withValues(alpha: 0.5)
-                : Colors.white12,
+                ? Colors.tealAccent.withValues(alpha: 0.1)
+                : Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected
+                  ? Colors.tealAccent.withValues(alpha: 0.5)
+                  : Colors.white12,
+            ),
+          ),
+          child: Column(
+            children: [
+              locked
+                  ? const Icon(
+                      Icons.lock_outline,
+                      size: 18,
+                      color: Colors.white24,
+                    )
+                  : Icon(
+                      icon,
+                      size: 18,
+                      color: isSelected ? Colors.tealAccent : Colors.white38,
+                    ),
+              if (status != null) ...[
+                const SizedBox(height: 4),
+                ModelStatusIndicator(status: status, compact: true),
+              ],
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.white38,
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              if (isRecommended) ...[
+                const SizedBox(height: 6),
+                _buildRecommendedBadge(isActive: isSelected),
+              ],
+            ],
           ),
         ),
-        child: Column(
-          children: [
-            locked
-                ? const Icon(Icons.lock_outline, size: 18, color: Colors.white24)
-                : Icon(
-                    icon,
-                    size: 18,
-                    color: isSelected ? Colors.tealAccent : Colors.white38,
-                  ),
-            if (status != null) ...[
-              const SizedBox(height: 4),
-              ModelStatusIndicator(status: status, compact: true),
-            ],
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.white38,
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            if (isRecommended) ...[
-              const SizedBox(height: 6),
-              _buildRecommendedBadge(isActive: isSelected),
-            ],
-          ],
-        ),
-      ),
       ),
     );
   }
@@ -810,7 +831,9 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
       final required = SubscriptionService.instance.getRequirement(
         'whisper',
         size,
-        size == 'medium' ? SubscriptionService.instance.getTierAt(2) : SubscriptionService.instance.getTierAt(1),
+        size == 'medium'
+            ? SubscriptionService.instance.getTierAt(2)
+            : SubscriptionService.instance.getTierAt(1),
       );
       return SubscriptionService.instance.tierHasAccess(currentTier, required);
     }
@@ -819,7 +842,9 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
       final required = SubscriptionService.instance.getRequirement(
         'whisper',
         size,
-        size == 'medium' ? SubscriptionService.instance.getTierAt(2) : SubscriptionService.instance.getTierAt(1),
+        size == 'medium'
+            ? SubscriptionService.instance.getTierAt(2)
+            : SubscriptionService.instance.getTierAt(1),
       );
       return '${SubscriptionService.instance.getNameForTier(required)}+';
     }
@@ -947,8 +972,9 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
                             child: Text(
                               e.value,
                               style: TextStyle(
-                                color:
-                                    hasAccess ? Colors.white : Colors.white30,
+                                color: hasAccess
+                                    ? Colors.white
+                                    : Colors.white30,
                               ),
                             ),
                           ),
@@ -1416,8 +1442,6 @@ class _NvidiaApiKeySectionState extends State<_NvidiaApiKeySection> {
     );
   }
 }
-
-
 
 class _ApiKeyInstructions {
   final String description;

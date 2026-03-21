@@ -37,7 +37,10 @@ class AsrWebSocketClient {
   void _ensureService() {
     if (_service != null) return;
     debugPrint('ASR WS pre-connecting to: ${ServerConfig.wsUrl}/captions');
-    _service = TranslationService(serverHost: ServerConfig.host, serverPort: ServerConfig.port);
+    _service = TranslationService(
+      serverHost: ServerConfig.host,
+      serverPort: ServerConfig.port,
+    );
 
     _service!.captions.listen((msg) {
       // Audio level update — dispatch via callback

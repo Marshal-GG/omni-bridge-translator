@@ -2,7 +2,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_app_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/update_app_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_google_credentials_usecase.dart';
-import 'package:omni_bridge/features/translation/domain/repositories/i_translation_repository.dart';
+import 'package:omni_bridge/features/settings/domain/usecases/load_devices_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/usecases/observe_audio_levels_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.dart';
 import 'package:omni_bridge/core/constants/model_language_support.dart';
 import 'settings_event.dart';
 import 'settings_state.dart';
@@ -11,13 +13,17 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   final GetAppSettingsUseCase getAppSettingsUseCase;
   final UpdateAppSettingsUseCase updateAppSettingsUseCase;
   final GetGoogleCredentialsUseCase getGoogleCredentialsUseCase;
-  final ITranslationRepository translationRepo;
+  final LoadDevicesUseCase loadDevicesUseCase;
+  final ObserveAudioLevelsUseCase observeAudioLevelsUseCase;
+  final LogEventUseCase logEventUseCase;
 
   SettingsBloc({
     required this.getAppSettingsUseCase,
     required this.updateAppSettingsUseCase,
     required this.getGoogleCredentialsUseCase,
-    required this.translationRepo,
+    required this.loadDevicesUseCase,
+    required this.observeAudioLevelsUseCase,
+    required this.logEventUseCase,
   }) : super(SettingsState.initial()) {
     on<UpdateTempSettingEvent>(_onUpdateTempSetting);
     on<SyncTempSettingsEvent>(_onSyncTempSettings);
@@ -26,13 +32,12 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<ResetIODefaultsEvent>(_onResetIODefaults);
     on<SaveSettingsEvent>(_onSaveSettings);
 
-    translationRepo.onAudioLevel = (inputLevel, outputLevel) {
+    observeAudioLevelsUseCase((inputLevel, outputLevel) {
       if (!isClosed) {
         add(UpdateAudioLevelsEvent(inputLevel, outputLevel));
       }
-    };
+    });
   }
-
 
   void _onSyncTempSettings(
     SyncTempSettingsEvent event,
@@ -58,11 +63,13 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       newSettings.sourceLang,
       newSettings.targetLang,
     );
-    emit(state.copyWith(
-      settings: newSettings,
-      translationCompatibilityError: error,
-      clearCompatibilityError: error == null,
-    ));
+    emit(
+      state.copyWith(
+        settings: newSettings,
+        translationCompatibilityError: error,
+        clearCompatibilityError: error == null,
+      ),
+    );
   }
 
   void _onUpdateTempSetting(
@@ -91,11 +98,13 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       newSettings.sourceLang,
       newSettings.targetLang,
     );
-    emit(state.copyWith(
-      settings: newSettings,
-      translationCompatibilityError: error,
-      clearCompatibilityError: error == null,
-    ));
+    emit(
+      state.copyWith(
+        settings: newSettings,
+        translationCompatibilityError: error,
+        clearCompatibilityError: error == null,
+      ),
+    );
   }
 
   Future<void> _onLoadDevices(
@@ -103,7 +112,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) async {
     emit(state.copyWith(devicesLoading: true));
-    final result = await translationRepo.loadDevices();
+    final result = await loadDevicesUseCase();
 
     emit(
       state.copyWith(

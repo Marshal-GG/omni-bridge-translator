@@ -15,7 +15,9 @@ class SubscriptionService {
   SubscriptionService._();
   static final SubscriptionService instance = SubscriptionService._();
 
-  static final String _appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
+  static final String _appName = kDebugMode
+      ? 'OmniBridge-Debug'
+      : 'OmniBridge-Release';
   FirebaseApp get _app => Firebase.app(_appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
@@ -70,8 +72,10 @@ class SubscriptionService {
         .listen((doc) {
           if (doc.exists) {
             _monetizationConfig = doc.data();
-            debugPrint('[Subscription] Monetization config updated – '
-                '${availablePlans.length} plans available');
+            debugPrint(
+              '[Subscription] Monetization config updated – '
+              '${availablePlans.length} plans available',
+            );
             // Always emit status so bloc/UI refreshes with the latest plans
             if (_currentStatus != null) {
               _updateCurrentStatus();
@@ -82,20 +86,24 @@ class SubscriptionService {
             configNotifier.value++;
             _maybeRestartPolling();
           } else {
-            debugPrint('[Subscription] system/monetization document does NOT exist');
+            debugPrint(
+              '[Subscription] system/monetization document does NOT exist',
+            );
           }
         });
   }
 
   /// Returns the usage polling interval from Firestore config, defaulting to 30s.
   int get _pollIntervalSeconds =>
-      (_monetizationConfig?['usage_poll_interval_seconds'] as num?)?.toInt() ?? 30;
+      (_monetizationConfig?['usage_poll_interval_seconds'] as num?)?.toInt() ??
+      30;
 
   /// Returns caption retention days for the current tier from tiers config.
   int get captionRetentionDays {
     final tier = _currentStatus?.tier ?? defaultTier;
     final config = _tierConfig(tier);
-    return (config?['features']?['caption_retention_days'] as num?)?.toInt() ?? 30;
+    return (config?['features']?['caption_retention_days'] as num?)?.toInt() ??
+        30;
   }
 
   // ── Tier Config Helpers ─────────────────────────────────────────────────
@@ -125,12 +133,13 @@ class SubscriptionService {
   /// Whether a specific model is allowed for the current tier.
   bool isModelAllowed(String modelId) {
     return allowedTranslationModels().contains(modelId) ||
-           allowedTranscriptionModels().contains(modelId);
+        allowedTranscriptionModels().contains(modelId);
   }
 
   /// Whether a model is globally enabled (kill switch).
   bool isModelEnabled(String modelId) {
-    final overrides = _monetizationConfig?['model_overrides'] as Map<String, dynamic>?;
+    final overrides =
+        _monetizationConfig?['model_overrides'] as Map<String, dynamic>?;
     if (overrides == null) return true;
     final model = overrides[modelId] as Map<String, dynamic>?;
     return model?['enabled'] as bool? ?? true;
@@ -164,7 +173,8 @@ class SubscriptionService {
   /// Returns the display name for a model/engine ID.
   /// Reads from system/monetization → model_overrides → {id} → display_name.
   String getModelDisplayName(String engineId) {
-    final overrides = _monetizationConfig?['model_overrides'] as Map<String, dynamic>?;
+    final overrides =
+        _monetizationConfig?['model_overrides'] as Map<String, dynamic>?;
     final entry = overrides?[engineId] as Map<String, dynamic>?;
     return entry?['display_name'] as String? ?? engineId;
   }
@@ -202,7 +212,9 @@ class SubscriptionService {
     if (_currentPollInterval == newInterval) return;
     final user = _auth.currentUser;
     if (user == null) return;
-    debugPrint('[Subscription] Poll interval changed to ${newInterval}s, restarting.');
+    debugPrint(
+      '[Subscription] Poll interval changed to ${newInterval}s, restarting.',
+    );
     _startUsagePolling(user.uid);
   }
 
@@ -217,7 +229,9 @@ class SubscriptionService {
       if (user == null) return;
       final idToken = await user.getIdToken();
 
-      final url = Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken');
+      final url = Uri.parse(
+        '$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken',
+      );
       final resp = await _httpClient.get(url);
       if (resp.statusCode != 200) return;
       final totals = jsonDecode(resp.body) as Map<String, dynamic>? ?? {};
@@ -225,8 +239,10 @@ class SubscriptionService {
       final now = DateTime.now();
 
       // --- 1. Calendar Rollover ---
-      final currentMonthStr = '${now.year}_${now.month.toString().padLeft(2, '0')}';
-      final lastCalendarMonth = totals['last_calendar_month'] as String? ?? currentMonthStr;
+      final currentMonthStr =
+          '${now.year}_${now.month.toString().padLeft(2, '0')}';
+      final lastCalendarMonth =
+          totals['last_calendar_month'] as String? ?? currentMonthStr;
 
       if (currentMonthStr != lastCalendarMonth) {
         final calendarUsed = (totals['calendar_monthly'] as num?)?.toInt() ?? 0;
@@ -236,11 +252,11 @@ class SubscriptionService {
             .collection('usage_history')
             .doc('calendar_$lastCalendarMonth')
             .set({
-          'tokens': calendarUsed,
-          'period_type': 'calendar',
-          'period': lastCalendarMonth,
-          'archivedAt': FieldValue.serverTimestamp(),
-        });
+              'tokens': calendarUsed,
+              'period_type': 'calendar',
+              'period': lastCalendarMonth,
+              'archivedAt': FieldValue.serverTimestamp(),
+            });
         await _httpClient.patch(
           Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken'),
           body: jsonEncode({
@@ -248,7 +264,9 @@ class SubscriptionService {
             'last_calendar_month': currentMonthStr,
           }),
         );
-        debugPrint('[Subscription] Calendar rollover performed: $lastCalendarMonth');
+        debugPrint(
+          '[Subscription] Calendar rollover performed: $lastCalendarMonth',
+        );
       }
 
       // --- 1.5 Weekly Rollover ---
@@ -265,17 +283,14 @@ class SubscriptionService {
             .collection('usage_history')
             .doc('weekly_$lastWeekStr')
             .set({
-          'tokens': weeklyUsed,
-          'period_type': 'weekly',
-          'period': lastWeekStr,
-          'archivedAt': FieldValue.serverTimestamp(),
-        });
+              'tokens': weeklyUsed,
+              'period_type': 'weekly',
+              'period': lastWeekStr,
+              'archivedAt': FieldValue.serverTimestamp(),
+            });
         await _httpClient.patch(
           Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken'),
-          body: jsonEncode({
-            'weekly': 0,
-            'last_week': currentWeekStr,
-          }),
+          body: jsonEncode({'weekly': 0, 'last_week': currentWeekStr}),
         );
         debugPrint('[Subscription] Weekly rollover performed: $lastWeekStr');
       }
@@ -292,7 +307,8 @@ class SubscriptionService {
             now.add(const Duration(days: 30));
 
         if (now.isAfter(monthlyResetAt)) {
-          final subUsed = (totals['subscription_monthly'] as num?)?.toInt() ?? 0;
+          final subUsed =
+              (totals['subscription_monthly'] as num?)?.toInt() ?? 0;
           final cycleLabel =
               '${monthlyResetAt.subtract(const Duration(days: 30)).toIso8601String().split('T')[0]}__${monthlyResetAt.toIso8601String().split('T')[0]}';
 
@@ -302,11 +318,11 @@ class SubscriptionService {
               .collection('usage_history')
               .doc('subscription_$cycleLabel')
               .set({
-            'tokens': subUsed,
-            'period_type': 'subscription',
-            'period': cycleLabel,
-            'archivedAt': FieldValue.serverTimestamp(),
-          });
+                'tokens': subUsed,
+                'period_type': 'subscription',
+                'period': cycleLabel,
+                'archivedAt': FieldValue.serverTimestamp(),
+              });
 
           while (now.isAfter(monthlyResetAt)) {
             monthlyResetAt = monthlyResetAt.add(const Duration(days: 30));
@@ -314,14 +330,18 @@ class SubscriptionService {
 
           await Future.wait([
             _httpClient.patch(
-              Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken'),
+              Uri.parse(
+                '$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken',
+              ),
               body: jsonEncode({'subscription_monthly': 0}),
             ),
             _firestore.collection('users').doc(uid).update({
               'monthlyResetAt': Timestamp.fromDate(monthlyResetAt),
             }),
           ]);
-          debugPrint('[Subscription] Subscription rollover performed for period ending $cycleLabel');
+          debugPrint(
+            '[Subscription] Subscription rollover performed for period ending $cycleLabel',
+          );
         }
       }
     } catch (e) {
@@ -333,7 +353,9 @@ class SubscriptionService {
     _usagePollTimer?.cancel();
     _currentPollInterval = _pollIntervalSeconds;
     _fetchDailyUsage(uid); // initial fetch
-    _usagePollTimer = Timer.periodic(Duration(seconds: _currentPollInterval!), (_) {
+    _usagePollTimer = Timer.periodic(Duration(seconds: _currentPollInterval!), (
+      _,
+    ) {
       _fetchDailyUsage(uid);
     });
   }
@@ -362,15 +384,18 @@ class SubscriptionService {
       final dailyResponse = results[0];
       final aggregatesResponse = results[1];
 
-      if (dailyResponse.statusCode == 200 && aggregatesResponse.statusCode == 200) {
+      if (dailyResponse.statusCode == 200 &&
+          aggregatesResponse.statusCode == 200) {
         final dailyData = jsonDecode(dailyResponse.body);
         final aggregatesData =
             jsonDecode(aggregatesResponse.body) as Map<String, dynamic>? ?? {};
 
         final dailyUsed = (dailyData as num?)?.toInt() ?? 0;
         final lifetimeUsed = (aggregatesData['lifetime'] as num?)?.toInt() ?? 0;
-        final calendarUsed = (aggregatesData['calendar_monthly'] as num?)?.toInt() ?? 0;
-        final subUsed = (aggregatesData['subscription_monthly'] as num?)?.toInt() ?? 0;
+        final calendarUsed =
+            (aggregatesData['calendar_monthly'] as num?)?.toInt() ?? 0;
+        final subUsed =
+            (aggregatesData['subscription_monthly'] as num?)?.toInt() ?? 0;
         final weeklyUsed = (aggregatesData['weekly'] as num?)?.toInt() ?? 0;
 
         _updateCurrentStatus(
@@ -406,10 +431,14 @@ class SubscriptionService {
 
     final wasExceeded = _currentStatus?.isExceeded ?? false;
     final newTier = tier ?? _currentStatus?.tier ?? defaultTier;
-    final newDailyUsed = dailyTokensUsed ?? _currentStatus?.dailyTokensUsed ?? 0;
-    final newWeeklyUsed = weeklyTokensUsed ?? _currentStatus?.weeklyTokensUsed ?? 0;
-    final newMonthlyUsed = monthlyTokensUsed ?? _currentStatus?.monthlyTokensUsed ?? 0;
-    final newLifetimeUsed = lifetimeTokensUsed ?? _currentStatus?.lifetimeTokensUsed ?? 0;
+    final newDailyUsed =
+        dailyTokensUsed ?? _currentStatus?.dailyTokensUsed ?? 0;
+    final newWeeklyUsed =
+        weeklyTokensUsed ?? _currentStatus?.weeklyTokensUsed ?? 0;
+    final newMonthlyUsed =
+        monthlyTokensUsed ?? _currentStatus?.monthlyTokensUsed ?? 0;
+    final newLifetimeUsed =
+        lifetimeTokensUsed ?? _currentStatus?.lifetimeTokensUsed ?? 0;
     final newReset =
         resetAt ?? _currentStatus?.dailyResetAt ?? _getNextDailyReset();
 
@@ -434,54 +463,50 @@ class SubscriptionService {
   }
 
   void _listenToUserDoc(String uid) {
-    _userSub = _firestore
-        .collection('users')
-        .doc(uid)
-        .snapshots()
-        .listen((doc) {
-          SchedulerBinding.instance.addPostFrameCallback((_) {
-            if (!doc.exists) {
-              _initializeUserDoc(uid);
-              return;
-            }
+    _userSub = _firestore.collection('users').doc(uid).snapshots().listen((
+      doc,
+    ) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!doc.exists) {
+          _initializeUserDoc(uid);
+          return;
+        }
 
-            final data = doc.data()!;
-            final tierStr = data['tier'] as String? ?? defaultTier;
-            final tier = tierStr;
-            final resetAt =
-                (data['dailyResetAt'] as Timestamp?)?.toDate() ??
-                _getNextDailyReset();
+        final data = doc.data()!;
+        final tierStr = data['tier'] as String? ?? defaultTier;
+        final tier = tierStr;
+        final resetAt =
+            (data['dailyResetAt'] as Timestamp?)?.toDate() ??
+            _getNextDailyReset();
 
-            if (DateTime.now().isAfter(resetAt)) {
-              _resetDailyQuota(uid);
-              return;
-            }
+        if (DateTime.now().isAfter(resetAt)) {
+          _resetDailyQuota(uid);
+          return;
+        }
 
-            final monthlyResetAt =
-                (data['monthlyResetAt'] as Timestamp?)?.toDate();
-            if (monthlyResetAt != null &&
-                DateTime.now().isAfter(monthlyResetAt)) {
-              _resetMonthlyQuota(uid);
-              return;
-            }
+        final monthlyResetAt = (data['monthlyResetAt'] as Timestamp?)?.toDate();
+        if (monthlyResetAt != null && DateTime.now().isAfter(monthlyResetAt)) {
+          _resetMonthlyQuota(uid);
+          return;
+        }
 
-            // Auto-expire trial
-            if (tier == 'trial') {
-              _checkTrialExpiry(uid, data);
-            }
+        // Auto-expire trial
+        if (tier == 'trial') {
+          _checkTrialExpiry(uid, data);
+        }
 
-            if (_lastKnownTier != null && _lastKnownTier != tier) {
-              _logSubscriptionEvent(
-                uid: uid,
-                fromTier: _lastKnownTier!,
-                toTier: tier,
-              );
-            }
-            _lastKnownTier = tier;
+        if (_lastKnownTier != null && _lastKnownTier != tier) {
+          _logSubscriptionEvent(
+            uid: uid,
+            fromTier: _lastKnownTier!,
+            toTier: tier,
+          );
+        }
+        _lastKnownTier = tier;
 
-            _updateCurrentStatus(tier: tier, resetAt: resetAt);
-          });
-        });
+        _updateCurrentStatus(tier: tier, resetAt: resetAt);
+      });
+    });
   }
 
   Future<void> _initializeUserDoc(String uid) async {
@@ -605,7 +630,9 @@ class SubscriptionService {
       'trialActivatedAt': FieldValue.serverTimestamp(),
     });
 
-    debugPrint('[Subscription] Trial activated for $uid, expires at $expiresAt');
+    debugPrint(
+      '[Subscription] Trial activated for $uid, expires at $expiresAt',
+    );
     return null; // success
   }
 
@@ -724,17 +751,21 @@ class SubscriptionService {
 
     final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];
     if (order.isEmpty) {
-      debugPrint('[Subscription] availablePlans: order is EMPTY. '
-          'Config keys: ${_monetizationConfig?.keys.toList()}');
+      debugPrint(
+        '[Subscription] availablePlans: order is EMPTY. '
+        'Config keys: ${_monetizationConfig?.keys.toList()}',
+      );
       return [];
     }
 
     final tiers = _monetizationConfig?['tiers'] as Map<String, dynamic>?;
     final popular = _monetizationConfig?['popular'] as String? ?? '';
 
-    debugPrint('[Subscription] availablePlans: order=$order, '
-        'tiers=${tiers != null ? "present (${tiers.keys.toList()})" : "NULL"}, '
-        'popular=$popular');
+    debugPrint(
+      '[Subscription] availablePlans: order=$order, '
+      'tiers=${tiers != null ? "present (${tiers.keys.toList()})" : "NULL"}, '
+      'popular=$popular',
+    );
 
     // Prefer tiers structure if available
     if (tiers != null) {
@@ -743,42 +774,53 @@ class SubscriptionService {
         final config = tiers[id] as Map<String, dynamic>? ?? {};
         final quotas = config['quotas'] as Map<String, dynamic>? ?? {};
         final rateLimits = config['rate_limits'] as Map<String, dynamic>? ?? {};
-        final engineLimitsRaw = config['engine_limits'] as Map<String, dynamic>? ?? {};
+        final engineLimitsRaw =
+            config['engine_limits'] as Map<String, dynamic>? ?? {};
         return SubscriptionPlan(
           id: id,
           name: config['name']?.toString() ?? id.toUpperCase(),
           price: config['price']?.toString() ?? '',
           description: config['description']?.toString() ?? '',
-          features: (config['display_features'] as List<dynamic>?)
+          features:
+              (config['display_features'] as List<dynamic>?)
                   ?.map((e) => e.toString())
                   .toList() ??
               [],
           isPopular: id == popular,
           isTrial: config['is_trial'] as bool? ?? false,
-          trialDurationHours: (config['trial_duration_hours'] as num?)?.toInt() ?? 24,
+          trialDurationHours:
+              (config['trial_duration_hours'] as num?)?.toInt() ?? 24,
           dailyTokens: (quotas['daily_tokens'] as num?)?.toInt() ?? 0,
           monthlyTokens: (quotas['monthly_tokens'] as num?)?.toInt() ?? 0,
-          allowedTranslationModels: (config['allowed_translation_models'] as List<dynamic>?)
+          allowedTranslationModels:
+              (config['allowed_translation_models'] as List<dynamic>?)
                   ?.map((e) => e.toString())
                   .toList() ??
               [],
-          allowedTranscriptionModels: (config['allowed_transcription_models'] as List<dynamic>?)
+          allowedTranscriptionModels:
+              (config['allowed_transcription_models'] as List<dynamic>?)
                   ?.map((e) => e.toString())
                   .toList() ??
               [],
-          requestsPerMinute: (rateLimits['requests_per_minute'] as num?)?.toInt() ?? 0,
-          concurrentSessions: (rateLimits['concurrent_sessions'] as num?)?.toInt() ?? 1,
-          engineLimits: engineLimitsRaw
-              .map((k, v) => MapEntry(k, (v as num).toInt())),
+          requestsPerMinute:
+              (rateLimits['requests_per_minute'] as num?)?.toInt() ?? 0,
+          concurrentSessions:
+              (rateLimits['concurrent_sessions'] as num?)?.toInt() ?? 1,
+          engineLimits: engineLimitsRaw.map(
+            (k, v) => MapEntry(k, (v as num).toInt()),
+          ),
         );
       }).toList();
     }
 
     // Fallback: legacy flat structure
     final names = _monetizationConfig?['names'] as Map<String, dynamic>? ?? {};
-    final prices = _monetizationConfig?['prices'] as Map<String, dynamic>? ?? {};
-    final descriptions = _monetizationConfig?['descriptions'] as Map<String, dynamic>? ?? {};
-    final featuresMap = _monetizationConfig?['features'] as Map<String, dynamic>? ?? {};
+    final prices =
+        _monetizationConfig?['prices'] as Map<String, dynamic>? ?? {};
+    final descriptions =
+        _monetizationConfig?['descriptions'] as Map<String, dynamic>? ?? {};
+    final featuresMap =
+        _monetizationConfig?['features'] as Map<String, dynamic>? ?? {};
 
     return order.map((key) {
       final id = key.toString();

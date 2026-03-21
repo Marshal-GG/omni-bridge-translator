@@ -143,38 +143,38 @@ class TranslationState extends Equatable {
 
   @override
   List<Object?> get props => [
-        isShrunk,
-        isRunning,
-        activeTargetLang,
-        activeSourceLang,
-        activeUseMic,
-        activeFontSize,
-        activeIsBold,
-        activeOpacity,
-        activeInputDeviceIndex,
-        activeOutputDeviceIndex,
-        activeDesktopVolume,
-        activeMicVolume,
-        activeTranslationModel,
-        activeApiKey,
-        activeTranscriptionModel,
-        autoDetectWarning,
-        quotaStatus,
-        isQuotaExceeded,
-        isSettingsLoading,
-        isSettingsSaving,
-        navToSubscriptionTrigger,
-        modelStatuses,
-      ];
+    isShrunk,
+    isRunning,
+    activeTargetLang,
+    activeSourceLang,
+    activeUseMic,
+    activeFontSize,
+    activeIsBold,
+    activeOpacity,
+    activeInputDeviceIndex,
+    activeOutputDeviceIndex,
+    activeDesktopVolume,
+    activeMicVolume,
+    activeTranslationModel,
+    activeApiKey,
+    activeTranscriptionModel,
+    autoDetectWarning,
+    quotaStatus,
+    isQuotaExceeded,
+    isSettingsLoading,
+    isSettingsSaving,
+    navToSubscriptionTrigger,
+    modelStatuses,
+  ];
 
   String get activeTranslationModelStatusKey {
     return {
-      'google': 'google_translate',
-      'mymemory': 'mymemory',
-      'riva': 'riva',
-      'llama': 'llama',
-    }[activeTranslationModel] ??
-    activeTranslationModel;
+          'google': 'google_translate',
+          'mymemory': 'mymemory',
+          'riva': 'riva',
+          'llama': 'llama',
+        }[activeTranslationModel] ??
+        activeTranslationModel;
   }
 
   String get activeTranscriptionModelStatusKey {

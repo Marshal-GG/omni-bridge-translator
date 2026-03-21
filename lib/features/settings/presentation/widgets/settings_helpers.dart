@@ -220,11 +220,7 @@ class ModelStatusIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (status == null) {
-      return _buildBadge(
-        'Offline',
-        Colors.white24,
-        Icons.cloud_off_rounded,
-      );
+      return _buildBadge('Offline', Colors.white24, Icons.cloud_off_rounded);
     }
 
     final String statusStr = status!['status'] ?? 'unknown';
@@ -241,7 +237,7 @@ class ModelStatusIndicator extends StatelessWidget {
         );
       case 'loading':
         return _buildBadge(
-          progress > 0 ? 'Loading ${ (progress * 100).toInt()}%' : 'Loading...',
+          progress > 0 ? 'Loading ${(progress * 100).toInt()}%' : 'Loading...',
           Colors.orangeAccent,
           null,
           isSpinning: true,
@@ -275,7 +271,9 @@ class ModelStatusIndicator extends StatelessWidget {
         return _buildBadge(
           ready ? 'Ready' : statusStr.toUpperCase(),
           ready ? Colors.greenAccent : Colors.white38,
-          ready ? Icons.check_circle_outline_rounded : Icons.help_outline_rounded,
+          ready
+              ? Icons.check_circle_outline_rounded
+              : Icons.help_outline_rounded,
         );
     }
   }
@@ -304,10 +302,7 @@ class ModelStatusIndicator extends StatelessWidget {
             SizedBox(
               width: 10,
               height: 10,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.5,
-                color: color,
-              ),
+              child: CircularProgressIndicator(strokeWidth: 1.5, color: color),
             )
           else if (icon != null)
             Icon(icon, size: 10, color: color),
@@ -327,10 +322,7 @@ class ModelStatusIndicator extends StatelessWidget {
     );
 
     if (tooltip != null) {
-      return Tooltip(
-        message: tooltip,
-        child: content,
-      );
+      return Tooltip(message: tooltip, child: content);
     }
     return content;
   }
@@ -341,10 +333,7 @@ class ModelStatusIndicator extends StatelessWidget {
 class GpuStatusIndicator extends StatelessWidget {
   final Map<String, dynamic>? status;
 
-  const GpuStatusIndicator({
-    super.key,
-    required this.status,
-  });
+  const GpuStatusIndicator({super.key, required this.status});
 
   @override
   Widget build(BuildContext context) {
@@ -354,9 +343,11 @@ class GpuStatusIndicator extends StatelessWidget {
     final String deviceName = status!['device_name'] ?? 'No GPU Detected';
     final double vramUsed = (status!['vram_used'] as num?)?.toDouble() ?? 0.0;
     final double vramTotal = (status!['vram_total'] as num?)?.toDouble() ?? 0.0;
-    
+
     final color = isAvailable ? Colors.blueAccent : Colors.white24;
-    final vramPct = vramTotal > 0 ? (vramUsed / vramTotal).clamp(0.0, 1.0) : 0.0;
+    final vramPct = vramTotal > 0
+        ? (vramUsed / vramTotal).clamp(0.0, 1.0)
+        : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(10),
@@ -371,7 +362,9 @@ class GpuStatusIndicator extends StatelessWidget {
           Row(
             children: [
               Icon(
-                isAvailable ? Icons.memory_rounded : Icons.developer_board_off_rounded,
+                isAvailable
+                    ? Icons.memory_rounded
+                    : Icons.developer_board_off_rounded,
                 size: 14,
                 color: color,
               ),
@@ -389,11 +382,16 @@ class GpuStatusIndicator extends StatelessWidget {
               ),
               if (isAvailable)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blueAccent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: Colors.blueAccent.withValues(alpha: 0.2),
+                    ),
                   ),
                   child: const Text(
                     'CUDA',

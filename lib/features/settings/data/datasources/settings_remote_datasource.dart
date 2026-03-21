@@ -13,10 +13,12 @@ class SettingsRemoteDataSourceImpl implements ISettingsRemoteDataSource {
   SettingsRemoteDataSourceImpl(this._trackingService);
 
   @override
-  Future<String> getGoogleCredentials() => _trackingService.getGoogleCredentials();
+  Future<String> getGoogleCredentials() =>
+      _trackingService.getGoogleCredentials();
 
   @override
-  Future<void> syncSettings(Map<String, dynamic> settings) => _trackingService.syncSettings(settings);
+  Future<void> syncSettings(Map<String, dynamic> settings) =>
+      _trackingService.syncSettings(settings);
 
   @override
   Future<Map<String, dynamic>?> getSettings() => _trackingService.getSettings();

@@ -20,7 +20,9 @@ class SettingsRepositoryImpl implements ISettingsRepository {
   }
 
   @override
-  Future<Either<Failure, void>> syncSettings(Map<String, dynamic> settings) async {
+  Future<Either<Failure, void>> syncSettings(
+    Map<String, dynamic> settings,
+  ) async {
     try {
       await _remoteDataSource.syncSettings(settings);
       return const Right(null);
@@ -41,7 +43,10 @@ class SettingsRepositoryImpl implements ISettingsRepository {
   }
 
   @override
-  Future<Either<Failure, void>> logEvent(String name, {Map<String, dynamic>? parameters}) async {
+  Future<Either<Failure, void>> logEvent(
+    String name, {
+    Map<String, dynamic>? parameters,
+  }) async {
     try {
       await _remoteDataSource.logEvent(name, parameters: parameters);
       return const Right(null);

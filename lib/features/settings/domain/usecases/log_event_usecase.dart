@@ -1,0 +1,16 @@
+import 'package:dartz/dartz.dart';
+import 'package:omni_bridge/core/error/failures.dart';
+import 'package:omni_bridge/features/settings/domain/repositories/i_settings_repository.dart';
+
+class LogEventUseCase {
+  final ISettingsRepository repository;
+
+  LogEventUseCase(this.repository);
+
+  Future<Either<Failure, void>> call(
+    String name, {
+    Map<String, dynamic>? parameters,
+  }) async {
+    return await repository.logEvent(name, parameters: parameters);
+  }
+}

@@ -46,13 +46,13 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: '',            // Firebase API Key
-    appId: '',             // Firebase App ID
+    apiKey: '', // Firebase API Key
+    appId: '', // Firebase App ID
     messagingSenderId: '', // Firebase Messaging Sender ID
-    projectId: '',         // Firebase Project ID
-    authDomain: '',        // Firebase Auth Domain (e.g. project.firebaseapp.com)
-    databaseURL: '',       // Firebase Realtime Database URL
-    storageBucket: '',     // Firebase Storage Bucket
-    measurementId: '',     // Google Analytics Measurement ID
+    projectId: '', // Firebase Project ID
+    authDomain: '', // Firebase Auth Domain (e.g. project.firebaseapp.com)
+    databaseURL: '', // Firebase Realtime Database URL
+    storageBucket: '', // Firebase Storage Bucket
+    measurementId: '', // Google Analytics Measurement ID
   );
 }

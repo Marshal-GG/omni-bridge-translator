@@ -45,7 +45,7 @@ class AppTheme {
         thumbColor: Colors.tealAccent,
         inactiveTrackColor: Colors.white24,
       ),
-      
+
       // Global TextButton Styling
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
@@ -60,10 +60,7 @@ class AppTheme {
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
         hintStyle: const TextStyle(color: Colors.white24, fontSize: 13),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 8,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         border: const OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(6)),
           borderSide: BorderSide(color: Colors.white12),

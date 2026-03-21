@@ -58,7 +58,9 @@ class _AccountButtonState extends State<AccountButton> {
                   ? (_isHovered
                         ? Colors.redAccent.withValues(alpha: 0.12)
                         : Colors.white.withValues(alpha: 0.03))
-                  : (_isHovered ? Colors.tealAccent : Colors.white.withValues(alpha: 0.05)),
+                  : (_isHovered
+                        ? Colors.tealAccent
+                        : Colors.white.withValues(alpha: 0.05)),
               foregroundColor: danger ? Colors.redAccent : Colors.black,
               elevation: 0,
               shadowColor: Colors.transparent,
@@ -67,7 +69,9 @@ class _AccountButtonState extends State<AccountButton> {
                 borderRadius: BorderRadius.circular(6),
                 side: BorderSide(
                   color: danger
-                      ? Colors.redAccent.withValues(alpha: _isHovered ? 0.4 : 0.2)
+                      ? Colors.redAccent.withValues(
+                          alpha: _isHovered ? 0.4 : 0.2,
+                        )
                       : (_isHovered ? Colors.tealAccent : Colors.white12),
                   width: 1,
                 ),

@@ -89,8 +89,9 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.black54),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.black54,
+                            ),
                           ),
                         )
                       : const Text(

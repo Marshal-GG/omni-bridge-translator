@@ -5,10 +5,7 @@ class UpdateVolumeUseCase {
 
   UpdateVolumeUseCase(this._repository);
 
-  void call({
-    required double desktopVolume,
-    required double micVolume,
-  }) {
+  void call({required double desktopVolume, required double micVolume}) {
     _repository.liveVolumeUpdate(
       desktopVolume: desktopVolume,
       micVolume: micVolume,

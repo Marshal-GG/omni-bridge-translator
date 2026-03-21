@@ -145,4 +145,3 @@ class _AppWindowListener extends WindowListener {
     }
   }
 }
-

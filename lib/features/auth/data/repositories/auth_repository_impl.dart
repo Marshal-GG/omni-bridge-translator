@@ -14,7 +14,8 @@ class AuthRepositoryImpl implements IAuthRepository {
   ValueListenable<User?> get currentUser => _authRemoteDataSource.currentUser;
 
   @override
-  Stream<User?> get authStateChanges => _authRemoteDataSource.auth.authStateChanges();
+  Stream<User?> get authStateChanges =>
+      _authRemoteDataSource.auth.authStateChanges();
 
   @override
   Future<Either<Failure, User>> signInWithGoogle() async {
@@ -32,9 +33,14 @@ class AuthRepositoryImpl implements IAuthRepository {
 
   @override
   Future<Either<Failure, User>> signInWithEmailAndPassword(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     try {
-      final user = await _authRemoteDataSource.signInWithEmailAndPassword(email, password);
+      final user = await _authRemoteDataSource.signInWithEmailAndPassword(
+        email,
+        password,
+      );
       if (user != null) {
         return Right(user);
       } else {
@@ -47,10 +53,14 @@ class AuthRepositoryImpl implements IAuthRepository {
 
   @override
   Future<Either<Failure, User>> registerWithEmailAndPassword(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     try {
-      final user =
-          await _authRemoteDataSource.registerWithEmailAndPassword(email, password);
+      final user = await _authRemoteDataSource.registerWithEmailAndPassword(
+        email,
+        password,
+      );
       if (user != null) {
         return Right(user);
       } else {
@@ -76,6 +86,3 @@ class AuthRepositoryImpl implements IAuthRepository {
     await _authRemoteDataSource.signOut();
   }
 }
-
-
-

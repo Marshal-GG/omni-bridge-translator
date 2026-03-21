@@ -10,27 +10,36 @@ class TranslationRepositoryImpl implements ITranslationRepository {
   final TranslationRestDatasource _restDatasource;
   final SubscriptionService _subscriptionService;
 
-  TranslationRepositoryImpl(this._asrClient, this._restDatasource, this._subscriptionService);
+  TranslationRepositoryImpl(
+    this._asrClient,
+    this._restDatasource,
+    this._subscriptionService,
+  );
 
   @override
   Stream<CaptionMessage>? get captions => _asrClient.captions;
 
   @override
-  SubscriptionStatus? get currentQuotaStatus => _subscriptionService.currentStatus;
+  SubscriptionStatus? get currentQuotaStatus =>
+      _subscriptionService.currentStatus;
 
   @override
-  Stream<SubscriptionStatus> get quotaStatusStream => _subscriptionService.statusStream;
+  Stream<SubscriptionStatus> get quotaStatusStream =>
+      _subscriptionService.statusStream;
 
   @override
   String get defaultTier => _subscriptionService.defaultTier;
 
   @override
-  set onAudioLevel(void Function(double inputLevel, double outputLevel)? callback) {
+  set onAudioLevel(
+    void Function(double inputLevel, double outputLevel)? callback,
+  ) {
     _asrClient.onAudioLevel = callback;
   }
 
   @override
-  void Function(double inputLevel, double outputLevel)? get onAudioLevel => _asrClient.onAudioLevel;
+  void Function(double inputLevel, double outputLevel)? get onAudioLevel =>
+      _asrClient.onAudioLevel;
 
   @override
   void start({
@@ -91,14 +100,18 @@ class TranslationRepositoryImpl implements ITranslationRepository {
     required double desktopVolume,
     required double micVolume,
   }) {
-    _asrClient.liveVolumeUpdate(desktopVolume: desktopVolume, micVolume: micVolume);
+    _asrClient.liveVolumeUpdate(
+      desktopVolume: desktopVolume,
+      micVolume: micVolume,
+    );
   }
 
   @override
   Future<Map<String, dynamic>> loadDevices() => _asrClient.loadDevices();
 
   @override
-  Future<List<dynamic>> getModelStatuses() => _restDatasource.getModelStatuses();
+  Future<List<dynamic>> getModelStatuses() =>
+      _restDatasource.getModelStatuses();
 
   @override
   void stop() => _asrClient.stop();

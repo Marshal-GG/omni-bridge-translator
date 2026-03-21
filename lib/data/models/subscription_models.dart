@@ -6,6 +6,7 @@ class SubscriptionStatus {
   final int lifetimeTokensUsed;
   final int dailyLimit;
   final DateTime dailyResetAt;
+
   /// For time-limited tiers (e.g. trial): total token pool for the whole period.
   /// 0 = not applicable (use daily limit instead).
   final int periodLimit;
@@ -70,11 +71,14 @@ class SubscriptionPlan {
   final List<String> allowedTranscriptionModels;
   final int requestsPerMinute;
   final int concurrentSessions;
+
   /// Per-engine monthly token limits. Key = engine id, value = monthly cap.
   /// Engines not in this map follow overall quotas only (unlimited within plan).
   final Map<String, int> engineLimits;
+
   /// Whether this plan is a one-time trial.
   final bool isTrial;
+
   /// Trial duration in hours (only relevant when [isTrial] is true).
   final int trialDurationHours;
 
@@ -110,12 +114,18 @@ class SubscriptionPlan {
       trialDurationHours: json['trialDurationHours'] as int? ?? 24,
       dailyTokens: json['dailyTokens'] as int? ?? 0,
       monthlyTokens: json['monthlyTokens'] as int? ?? 0,
-      allowedTranslationModels: List<String>.from(json['allowedTranslationModels'] ?? []),
-      allowedTranscriptionModels: List<String>.from(json['allowedTranscriptionModels'] ?? []),
+      allowedTranslationModels: List<String>.from(
+        json['allowedTranslationModels'] ?? [],
+      ),
+      allowedTranscriptionModels: List<String>.from(
+        json['allowedTranscriptionModels'] ?? [],
+      ),
       requestsPerMinute: json['requestsPerMinute'] as int? ?? 0,
       concurrentSessions: json['concurrentSessions'] as int? ?? 1,
-      engineLimits: (json['engineLimits'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, (v as num).toInt())) ??
+      engineLimits:
+          (json['engineLimits'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, (v as num).toInt()),
+          ) ??
           const {},
     );
   }

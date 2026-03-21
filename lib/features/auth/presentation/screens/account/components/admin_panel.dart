@@ -177,7 +177,9 @@ class _AdminPanelState extends State<AdminPanel> {
                           final name = data['displayName'] ?? 'No Name';
                           final email = data['email'] ?? 'No Email';
                           final isSelected = _selectedUserUid == uid;
-                          final tier = data['tier'] ?? SubscriptionService.instance.defaultTier;
+                          final tier =
+                              data['tier'] ??
+                              SubscriptionService.instance.defaultTier;
 
                           return ListTile(
                             dense: true,
@@ -254,7 +256,8 @@ class _AdminPanelState extends State<AdminPanel> {
                   ),
                   const SizedBox(height: 8),
                   ValueListenableBuilder<int>(
-                    valueListenable: SubscriptionService.instance.configNotifier,
+                    valueListenable:
+                        SubscriptionService.instance.configNotifier,
                     builder: (context, _, _) {
                       final plans = SubscriptionService.instance.availablePlans;
                       if (plans.isEmpty) {
@@ -272,18 +275,23 @@ class _AdminPanelState extends State<AdminPanel> {
                             height: 32,
                             child: ActionChip(
                               label: Text(
-                                SubscriptionService.instance.getNameForTier(tier).toUpperCase(),
+                                SubscriptionService.instance
+                                    .getNameForTier(tier)
+                                    .toUpperCase(),
                                 style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              backgroundColor: Colors.white.withValues(alpha: 0.05),
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.05,
+                              ),
                               onPressed: () {
-                                SubscriptionService.instance.setTierForOtherUser(
-                                  _selectedUserUid!,
-                                  tier,
-                                );
+                                SubscriptionService.instance
+                                    .setTierForOtherUser(
+                                      _selectedUserUid!,
+                                      tier,
+                                    );
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
@@ -352,15 +360,9 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'caption_retention_days': 0,
           'simultaneous_sessions': 1,
         },
-        'quotas': {
-          'daily_tokens': 5000,
-          'monthly_tokens': 0,
-        },
+        'quotas': {'daily_tokens': 5000, 'monthly_tokens': 0},
         'engine_limits': {},
-        'rate_limits': {
-          'requests_per_minute': 20,
-          'concurrent_sessions': 1,
-        },
+        'rate_limits': {'requests_per_minute': 20, 'concurrent_sessions': 1},
       },
       'trial': {
         'name': 'Trial',
@@ -375,11 +377,19 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'One-time per account',
         ],
         'allowed_transcription_models': [
-          'online', 'whisper-tiny', 'whisper-base',
-          'whisper-small', 'whisper-medium', 'riva',
+          'online',
+          'whisper-tiny',
+          'whisper-base',
+          'whisper-small',
+          'whisper-medium',
+          'riva',
         ],
         'allowed_translation_models': [
-          'google', 'mymemory', 'google_api', 'riva', 'llama',
+          'google',
+          'mymemory',
+          'google_api',
+          'riva',
+          'llama',
         ],
         'features': {
           'mic_audio': true,
@@ -387,19 +397,9 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'caption_retention_days': 0,
           'simultaneous_sessions': 1,
         },
-        'quotas': {
-          'daily_tokens': -1,
-          'monthly_tokens': 15000,
-        },
-        'engine_limits': {
-          'google_api': 6000,
-          'riva': 6000,
-          'llama': 6000,
-        },
-        'rate_limits': {
-          'requests_per_minute': 60,
-          'concurrent_sessions': 1,
-        },
+        'quotas': {'daily_tokens': -1, 'monthly_tokens': 15000},
+        'engine_limits': {'google_api': 6000, 'riva': 6000, 'llama': 6000},
+        'rate_limits': {'requests_per_minute': 60, 'concurrent_sessions': 1},
       },
       'pro': {
         'name': 'Pro',
@@ -413,11 +413,17 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           '25,000 tokens/day',
         ],
         'allowed_transcription_models': [
-          'online', 'whisper-tiny', 'whisper-base',
+          'online',
+          'whisper-tiny',
+          'whisper-base',
           'whisper-small',
         ],
         'allowed_translation_models': [
-          'google', 'mymemory', 'google_api', 'riva', 'llama',
+          'google',
+          'mymemory',
+          'google_api',
+          'riva',
+          'llama',
         ],
         'features': {
           'mic_audio': true,
@@ -425,19 +431,13 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'caption_retention_days': 7,
           'simultaneous_sessions': 2,
         },
-        'quotas': {
-          'daily_tokens': 25000,
-          'monthly_tokens': 250000,
-        },
+        'quotas': {'daily_tokens': 25000, 'monthly_tokens': 250000},
         'engine_limits': {
           'google_api': 100000,
           'riva': 100000,
           'llama': 150000,
         },
-        'rate_limits': {
-          'requests_per_minute': 60,
-          'concurrent_sessions': 2,
-        },
+        'rate_limits': {'requests_per_minute': 60, 'concurrent_sessions': 2},
       },
       'enterprise': {
         'name': 'Enterprise',
@@ -451,11 +451,19 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           '75,000 tokens/day',
         ],
         'allowed_transcription_models': [
-          'online', 'whisper-tiny', 'whisper-base',
-          'whisper-small', 'whisper-medium', 'riva',
+          'online',
+          'whisper-tiny',
+          'whisper-base',
+          'whisper-small',
+          'whisper-medium',
+          'riva',
         ],
         'allowed_translation_models': [
-          'google', 'mymemory', 'google_api', 'riva', 'llama',
+          'google',
+          'mymemory',
+          'google_api',
+          'riva',
+          'llama',
         ],
         'features': {
           'mic_audio': true,
@@ -463,28 +471,18 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'caption_retention_days': 30,
           'simultaneous_sessions': 5,
         },
-        'quotas': {
-          'daily_tokens': 75000,
-          'monthly_tokens': 750000,
-        },
+        'quotas': {'daily_tokens': 75000, 'monthly_tokens': 750000},
         'engine_limits': {
           'google_api': 300000,
           'riva': 300000,
           'llama': 500000,
         },
-        'rate_limits': {
-          'requests_per_minute': 120,
-          'concurrent_sessions': 5,
-        },
+        'rate_limits': {'requests_per_minute': 120, 'concurrent_sessions': 5},
       },
     },
 
     // ── Payment Links (replace with real Razorpay URLs) ────────────────
-    'payment_links': {
-      'trial': '',
-      'pro': '',
-      'enterprise': '',
-    },
+    'payment_links': {'trial': '', 'pro': '', 'enterprise': ''},
 
     // ── Global Settings ───────────────────────────────────────────────
     'usage_poll_interval_seconds': 30,
@@ -492,15 +490,15 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
 
     // ── Model Kill Switches + Display Names ───────────────────────────
     'model_overrides': {
-      'online':         {'enabled': true, 'display_name': 'Google Speech'},
-      'google':         {'enabled': true, 'display_name': 'Google Translate'},
-      'mymemory':       {'enabled': true, 'display_name': 'MyMemory'},
-      'google_api':     {'enabled': true, 'display_name': 'Google Cloud'},
-      'riva':           {'enabled': true, 'display_name': 'NVIDIA Riva'},
-      'llama':          {'enabled': true, 'display_name': 'Llama 3.1'},
-      'whisper-tiny':   {'enabled': true, 'display_name': 'Whisper Tiny'},
-      'whisper-base':   {'enabled': true, 'display_name': 'Whisper Base'},
-      'whisper-small':  {'enabled': true, 'display_name': 'Whisper Small'},
+      'online': {'enabled': true, 'display_name': 'Google Speech'},
+      'google': {'enabled': true, 'display_name': 'Google Translate'},
+      'mymemory': {'enabled': true, 'display_name': 'MyMemory'},
+      'google_api': {'enabled': true, 'display_name': 'Google Cloud'},
+      'riva': {'enabled': true, 'display_name': 'NVIDIA Riva'},
+      'llama': {'enabled': true, 'display_name': 'Llama 3.1'},
+      'whisper-tiny': {'enabled': true, 'display_name': 'Whisper Tiny'},
+      'whisper-base': {'enabled': true, 'display_name': 'Whisper Base'},
+      'whisper-small': {'enabled': true, 'display_name': 'Whisper Small'},
       'whisper-medium': {'enabled': true, 'display_name': 'Whisper Medium'},
     },
 
@@ -521,10 +519,9 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
       'promo_message': '',
       'feature_locked': {
         'title': 'Upgrade Your Plan',
-        'message': 'Get more daily tokens and unlock exclusive features like premium translation engines.',
-        'highlights': [
-          'Priority Support',
-        ],
+        'message':
+            'Get more daily tokens and unlock exclusive features like premium translation engines.',
+        'highlights': ['Priority Support'],
       },
     },
 
@@ -547,10 +544,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
       await AuthRemoteDataSource.instance.firestore
           .collection('system')
           .doc('monetization')
-          .set({
-        ..._seedData,
-        'last_seeded_at': FieldValue.serverTimestamp(),
-      });
+          .set({..._seedData, 'last_seeded_at': FieldValue.serverTimestamp()});
 
       if (mounted) {
         setState(() {
@@ -558,7 +552,9 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           _lastResult = 'success';
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Monetization config seeded successfully.')),
+          const SnackBar(
+            content: Text('Monetization config seeded successfully.'),
+          ),
         );
       }
     } catch (e) {
@@ -567,9 +563,9 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           _seeding = false;
           _lastResult = 'error';
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Seed failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Seed failed: $e')));
       }
     }
   }
@@ -584,7 +580,11 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           children: [
             const Row(
               children: [
-                Icon(Icons.settings_suggest_rounded, size: 16, color: Colors.orangeAccent),
+                Icon(
+                  Icons.settings_suggest_rounded,
+                  size: 16,
+                  color: Colors.orangeAccent,
+                ),
                 SizedBox(width: 8),
                 Text(
                   'SYSTEM CONFIG',
@@ -624,7 +624,9 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
                     style: const TextStyle(fontSize: 12),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orangeAccent.withValues(alpha: 0.15),
+                    backgroundColor: Colors.orangeAccent.withValues(
+                      alpha: 0.15,
+                    ),
                     foregroundColor: Colors.orangeAccent,
                   ),
                 ),
@@ -634,7 +636,11 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
                 ],
                 if (_lastResult == 'error') ...[
                   const SizedBox(width: 8),
-                  const Icon(Icons.error_outline, size: 14, color: Colors.redAccent),
+                  const Icon(
+                    Icons.error_outline,
+                    size: 14,
+                    color: Colors.redAccent,
+                  ),
                 ],
               ],
             ),
@@ -706,9 +712,10 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
   Future<void> _saveEmails(List<String> emails) async {
     setState(() => _saving = true);
     try {
-      await AuthRemoteDataSource.instance.firestore.collection('system').doc('admins').set({
-        'emails': emails,
-      }, SetOptions(merge: true));
+      await AuthRemoteDataSource.instance.firestore
+          .collection('system')
+          .doc('admins')
+          .set({'emails': emails}, SetOptions(merge: true));
       if (mounted) {
         setState(() {
           _adminEmails = emails;
@@ -854,5 +861,3 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
     );
   }
 }
-
-

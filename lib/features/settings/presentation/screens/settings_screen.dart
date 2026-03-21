@@ -7,14 +7,12 @@ import 'package:omni_bridge/features/settings/presentation/blocs/settings_state.
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
 
-
 import 'package:omni_bridge/features/settings/presentation/widgets/settings_footer.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/settings_header.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/input_output_tab.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/languages_tab.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/display_tab.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -32,29 +30,29 @@ class _SettingsScreenState extends State<SettingsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    
+
     // Sync current active settings to temporary state
     final translationState = context.read<TranslationBloc>().state;
     context.read<SettingsBloc>().add(
-          SyncTempSettingsEvent(
-            targetLang: translationState.activeTargetLang,
-            sourceLang: translationState.activeSourceLang,
-            useMic: translationState.activeUseMic,
-            fontSize: translationState.activeFontSize,
-            isBold: translationState.activeIsBold,
-            opacity: translationState.activeOpacity,
-            inputDeviceIndex: translationState.activeInputDeviceIndex,
-            outputDeviceIndex: translationState.activeOutputDeviceIndex,
-            desktopVolume: translationState.activeDesktopVolume,
-            micVolume: translationState.activeMicVolume,
-            translationModel: translationState.activeTranslationModel,
-            apiKey: translationState.activeApiKey,
-            transcriptionModel: translationState.activeTranscriptionModel,
-          ),
-        );
+      SyncTempSettingsEvent(
+        targetLang: translationState.activeTargetLang,
+        sourceLang: translationState.activeSourceLang,
+        useMic: translationState.activeUseMic,
+        fontSize: translationState.activeFontSize,
+        isBold: translationState.activeIsBold,
+        opacity: translationState.activeOpacity,
+        inputDeviceIndex: translationState.activeInputDeviceIndex,
+        outputDeviceIndex: translationState.activeOutputDeviceIndex,
+        desktopVolume: translationState.activeDesktopVolume,
+        micVolume: translationState.activeMicVolume,
+        translationModel: translationState.activeTranslationModel,
+        apiKey: translationState.activeApiKey,
+        transcriptionModel: translationState.activeTranscriptionModel,
+      ),
+    );
 
     context.read<SettingsBloc>().add(LoadDevicesEvent());
-    
+
     PackageInfo.fromPlatform().then((info) {
       if (mounted) setState(() => _version = info.version);
     });
@@ -75,23 +73,22 @@ class _SettingsScreenState extends State<SettingsScreen>
               previous.isSettingsLoading && !current.isSettingsLoading,
           listener: (context, translationState) {
             context.read<SettingsBloc>().add(
-                  SyncTempSettingsEvent(
-                    targetLang: translationState.activeTargetLang,
-                    sourceLang: translationState.activeSourceLang,
-                    useMic: translationState.activeUseMic,
-                    fontSize: translationState.activeFontSize,
-                    isBold: translationState.activeIsBold,
-                    opacity: translationState.activeOpacity,
-                    inputDeviceIndex: translationState.activeInputDeviceIndex,
-                    outputDeviceIndex: translationState.activeOutputDeviceIndex,
-                    desktopVolume: translationState.activeDesktopVolume,
-                    micVolume: translationState.activeMicVolume,
-                    translationModel: translationState.activeTranslationModel,
-                    apiKey: translationState.activeApiKey,
-                    transcriptionModel:
-                        translationState.activeTranscriptionModel,
-                  ),
-                );
+              SyncTempSettingsEvent(
+                targetLang: translationState.activeTargetLang,
+                sourceLang: translationState.activeSourceLang,
+                useMic: translationState.activeUseMic,
+                fontSize: translationState.activeFontSize,
+                isBold: translationState.activeIsBold,
+                opacity: translationState.activeOpacity,
+                inputDeviceIndex: translationState.activeInputDeviceIndex,
+                outputDeviceIndex: translationState.activeOutputDeviceIndex,
+                desktopVolume: translationState.activeDesktopVolume,
+                micVolume: translationState.activeMicVolume,
+                translationModel: translationState.activeTranslationModel,
+                apiKey: translationState.activeApiKey,
+                transcriptionModel: translationState.activeTranscriptionModel,
+              ),
+            );
           },
         ),
         BlocListener<TranslationBloc, TranslationState>(
@@ -100,23 +97,22 @@ class _SettingsScreenState extends State<SettingsScreen>
           listener: (context, translationState) {
             // After saving, sync state and close screen
             context.read<SettingsBloc>().add(
-                  SyncTempSettingsEvent(
-                    targetLang: translationState.activeTargetLang,
-                    sourceLang: translationState.activeSourceLang,
-                    useMic: translationState.activeUseMic,
-                    fontSize: translationState.activeFontSize,
-                    isBold: translationState.activeIsBold,
-                    opacity: translationState.activeOpacity,
-                    inputDeviceIndex: translationState.activeInputDeviceIndex,
-                    outputDeviceIndex: translationState.activeOutputDeviceIndex,
-                    desktopVolume: translationState.activeDesktopVolume,
-                    micVolume: translationState.activeMicVolume,
-                    translationModel: translationState.activeTranslationModel,
-                    apiKey: translationState.activeApiKey,
-                    transcriptionModel:
-                        translationState.activeTranscriptionModel,
-                  ),
-                );
+              SyncTempSettingsEvent(
+                targetLang: translationState.activeTargetLang,
+                sourceLang: translationState.activeSourceLang,
+                useMic: translationState.activeUseMic,
+                fontSize: translationState.activeFontSize,
+                isBold: translationState.activeIsBold,
+                opacity: translationState.activeOpacity,
+                inputDeviceIndex: translationState.activeInputDeviceIndex,
+                outputDeviceIndex: translationState.activeOutputDeviceIndex,
+                desktopVolume: translationState.activeDesktopVolume,
+                micVolume: translationState.activeMicVolume,
+                translationModel: translationState.activeTranslationModel,
+                apiKey: translationState.activeApiKey,
+                transcriptionModel: translationState.activeTranscriptionModel,
+              ),
+            );
 
             if (mounted) {
               Navigator.pop(context);
@@ -177,12 +173,17 @@ class _SettingsScreenState extends State<SettingsScreen>
                             controller: _tabController,
                             children: [
                               SingleChildScrollView(
-                                padding:
-                                    const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  20,
+                                  20,
+                                  20,
+                                ),
                                 child: Center(
                                   child: ConstrainedBox(
-                                    constraints:
-                                        const BoxConstraints(maxWidth: 500),
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 500,
+                                    ),
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
@@ -205,12 +206,17 @@ class _SettingsScreenState extends State<SettingsScreen>
                                 ),
                               ),
                               SingleChildScrollView(
-                                padding:
-                                    const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  20,
+                                  20,
+                                  20,
+                                ),
                                 child: Center(
                                   child: ConstrainedBox(
-                                    constraints:
-                                        const BoxConstraints(maxWidth: 500),
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 500,
+                                    ),
                                     child: Column(
                                       children: [
                                         buildDisplayTab(context, state),
@@ -222,12 +228,17 @@ class _SettingsScreenState extends State<SettingsScreen>
                                 ),
                               ),
                               SingleChildScrollView(
-                                padding:
-                                    const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  20,
+                                  20,
+                                  20,
+                                ),
                                 child: Center(
                                   child: ConstrainedBox(
-                                    constraints:
-                                        const BoxConstraints(maxWidth: 500),
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 500,
+                                    ),
                                     child: Column(
                                       children: [
                                         buildInputOutputTab(context, state),

@@ -51,9 +51,7 @@ class PythonServerManager {
         _serverProcess = await Process.start(
           pyPath,
           [],
-          environment: {
-            if (kDebugMode) 'OMNI_BRIDGE_DEBUG': 'true',
-          },
+          environment: {if (kDebugMode) 'OMNI_BRIDGE_DEBUG': 'true'},
         );
 
         // Pipe Python stdout/stderr to Flutter console for visibility
