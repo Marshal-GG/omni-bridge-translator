@@ -57,20 +57,33 @@ on:
 
 ---
 
-### `release.yml` — Runs Only When You Tag a Version
+### `release.yml` — Full Option B: Build Everything & Ship Installer
+
+Triggers on version tags like `v1.2.5`:
 
 ```yaml
 on:
   push:
     tags:
-      - 'v*.*.*'   # e.g. v1.0.0, v2.3.1
+      - 'v*.*.*'
 ```
 
+**Steps in order:**
+
 | Step | What it does |
-|------|-------------|
-| `flutter build windows --release` | Builds the release binary |
-| `Compress-Archive` | Zips the output folder |
-| `softprops/action-gh-release@v2` | Creates a GitHub Release and attaches the zip |
+|------|--------------|
+| `flutter build windows --release` | Builds the Flutter app |
+| `pip install pyinstaller + deps` | Installs Python server dependencies |
+| `pyinstaller omni_bridge_server.spec` | Compiles `omni_bridge_server.exe` |
+| `choco install innosetup` | Installs Inno Setup on the GitHub runner |
+| `iscc installer_setup.iss` | Compiles the `.iss` script → produces `OmniBridge_Setup_vX.X.X.exe` |
+| `softprops/action-gh-release@v2` | Creates GitHub Release and attaches the `.exe` installer |
+
+> [!WARNING]
+> `pyaudiowpatch` (Windows WASAPI audio) and `nvidia-riva-client` are hardware-specific packages.
+> The CI runner will attempt to install them with `|| echo "...failed"` so the build doesn't break if they're unavailable.
+> If your server requires these at *runtime*, the resulting binary may not work without the hardware.
+> The Whisper and Riva ASR models are loaded at runtime — they are **not** bundled into the installer.
 
 ---
 

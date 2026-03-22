@@ -1,36 +1,64 @@
-name: Release
-
+# Release is currently PAUSED — triggers disabled.
+# To re-enable, replace the `on:` block below with:
+#   on:
+#     push:
+#       tags:
+#         - 'v*.*.*'
 on:
-  push:
-    tags:
-      - 'v*.*.*'   # Triggers on tags like v1.0.0, v2.3.1
+  workflow_dispatch:  # Manual-only — run from GitHub Actions tab
 
 jobs:
   release:
-    name: Build & Release Windows
+    name: Build & Release
     runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
 
+      # ── Flutter Setup ─────────────────────────────────────────────────────────
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: Install dependencies
+      - name: Install Flutter dependencies
         run: flutter pub get
 
-      - name: Build Windows Release
+      - name: Build Flutter Windows (release)
         run: flutter build windows --release
 
-      - name: Zip build output
-        run: |
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath OmniBridge-${{ github.ref_name }}-windows.zip
+      # ── Python Server Setup ───────────────────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
+      - name: Install Python dependencies
+        working-directory: server
+        run: |
+          pip install pyinstaller
+          pip install fastapi "uvicorn[standard]" websockets structlog pysbd openai deep-translator speechrecognition psutil sounddevice numpy requests httpx python-multipart pyaudio openai-whisper resampy google-cloud-translate
+          # Note: pyaudiowpatch and nvidia-riva-client are Windows/hardware-specific.
+          # They are installed separately below.
+          pip install pyaudiowpatch || echo "pyaudiowpatch install failed (may need PortAudio headers)"
+          pip install nvidia-riva-client || echo "nvidia-riva-client install failed (optional - Riva support)"
+
+      - name: Build Python server with PyInstaller
+        working-directory: server
+        run: pyinstaller omni_bridge_server.spec
+
+      # ── Inno Setup Installer ──────────────────────────────────────────────────
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Compile installer
+        run: iscc installer_setup.iss
+
+      # ── GitHub Release ────────────────────────────────────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: OmniBridge-${{ github.ref_name }}-windows.zip
+          files: installers/OmniBridge_Setup_v*.exe
           generate_release_notes: true
+          fail_on_unmatched_files: true

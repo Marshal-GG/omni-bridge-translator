@@ -1,10 +1,12 @@
-name: Flutter CI
-
+# CI is currently PAUSED — triggers disabled.
+# To re-enable, replace the `on:` block below with:
+#   on:
+#     push:
+#       branches: [ "main" ]
+#     pull_request:
+#       branches: [ "main" ]
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:  # Manual-only — run from GitHub Actions tab
 
 jobs:
   # ─────────────────────────────────────────────
