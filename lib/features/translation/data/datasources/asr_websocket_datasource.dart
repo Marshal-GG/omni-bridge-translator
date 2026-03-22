@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:omni_bridge/core/config/server_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:omni_bridge/core/device/asr_text_controller.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/tracking_remote_datasource.dart';
+import 'package:omni_bridge/core/data/datasources/usage_metrics_remote_datasource.dart';
 import './translation_websocket_client.dart';
 import 'package:omni_bridge/features/history/domain/usecases/add_history_entry_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/configure_history_usecase.dart';
@@ -51,7 +51,7 @@ class AsrWebSocketClient {
 
       // Usage stats — log to Firestore
       if (msg.usageStats != null) {
-        TrackingRemoteDataSource.instance.logModelUsage(msg.usageStats!);
+        UsageMetricsRemoteDataSource.instance.logModelUsage(msg.usageStats!);
         return;
       }
 
@@ -70,7 +70,7 @@ class AsrWebSocketClient {
         asrTextController.showSystemMessage('⚠ Error: $errMsg.');
 
         // Remote logging
-        TrackingRemoteDataSource.instance.logError('Server Error', errMsg);
+        UsageMetricsRemoteDataSource.instance.logEvent('Server Error', {'error': errMsg});
         return;
       }
 
@@ -195,6 +195,13 @@ class AsrWebSocketClient {
   /// open. The next [start] call skips the handshake and fires immediately.
   void stop() {
     _service?.sendStopCommand();
+  }
+
+  /// Sends a reset_session command to the Python server so it clears all
+  /// cached model error states. Called on user logout to prevent Red Markers
+  /// from persisting into the next session.
+  void resetSession() {
+    _service?.sendResetSessionCommand();
   }
 
   /// Hard-stop: fully tears down the WebSocket. Only call on app shutdown.

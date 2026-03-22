@@ -34,6 +34,20 @@ class ServerContext:
             "mic_volume": 1.0,
         }
 
+    def reset(self):
+        """Clears user-specific configuration and the orchestrator to ensure a fresh session."""
+        self.orchestrator = None
+        self.config["api_key"] = ""
+        self.config["google_credentials_json"] = ""
+        self.is_running = False
+        self.session_id = 0
+        # Revert to defaults
+        self.config["source_lang"] = "auto"
+        self.config["target_lang"] = "en"
+        self.config["ai_engine"] = "google"
+        self.config["transcription_model"] = "online"
+        self.config["translation_model"] = "google"
+
     def get_server_context(self):
         """Returns context for audio_poll_loop."""
         return {

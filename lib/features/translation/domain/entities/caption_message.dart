@@ -12,6 +12,7 @@ class CaptionMessage {
   final Map<String, dynamic>? usageStats;
   // Non-null when type == 'model_status'
   final List<dynamic>? modelStatuses;
+  final bool isReset;
 
   const CaptionMessage({
     required this.text,
@@ -24,5 +25,6 @@ class CaptionMessage {
     this.outputLevel,
     this.usageStats,
     this.modelStatuses,
+    this.isReset = false,
   });
 }

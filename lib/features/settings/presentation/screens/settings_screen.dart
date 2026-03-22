@@ -47,23 +47,30 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (!_synced) {
       _synced = true;
       final translationState = context.read<TranslationBloc>().state;
-      context.read<SettingsBloc>().add(
-        SyncTempSettingsEvent(
-          targetLang: translationState.activeTargetLang,
-          sourceLang: translationState.activeSourceLang,
-          useMic: translationState.activeUseMic,
-          fontSize: translationState.activeFontSize,
-          isBold: translationState.activeIsBold,
-          opacity: translationState.activeOpacity,
-          inputDeviceIndex: translationState.activeInputDeviceIndex,
-          outputDeviceIndex: translationState.activeOutputDeviceIndex,
-          desktopVolume: translationState.activeDesktopVolume,
-          micVolume: translationState.activeMicVolume,
-          translationModel: translationState.activeTranslationModel,
-          apiKey: translationState.activeApiKey,
-          transcriptionModel: translationState.activeTranscriptionModel,
-        ),
-      );
+      // Only sync temp settings if the TranslationBloc has already finished
+      // loading settings from Firestore. If it's still loading, the
+      // BlocListener below will fire a SyncTempSettingsEvent once loading
+      // completes, so we don't need to do anything here and risk syncing
+      // stale default values.
+      if (!translationState.isSettingsLoading) {
+        context.read<SettingsBloc>().add(
+          SyncTempSettingsEvent(
+            targetLang: translationState.activeTargetLang,
+            sourceLang: translationState.activeSourceLang,
+            useMic: translationState.activeUseMic,
+            fontSize: translationState.activeFontSize,
+            isBold: translationState.activeIsBold,
+            opacity: translationState.activeOpacity,
+            inputDeviceIndex: translationState.activeInputDeviceIndex,
+            outputDeviceIndex: translationState.activeOutputDeviceIndex,
+            desktopVolume: translationState.activeDesktopVolume,
+            micVolume: translationState.activeMicVolume,
+            translationModel: translationState.activeTranslationModel,
+            apiKey: translationState.activeApiKey,
+            transcriptionModel: translationState.activeTranscriptionModel,
+          ),
+        );
+      }
       context.read<SettingsBloc>().add(LoadDevicesEvent());
     }
   }
@@ -179,87 +186,120 @@ class _SettingsScreenState extends State<SettingsScreen>
                           ),
                         ),
                         Expanded(
-                          child: TabBarView(
-                            controller: _tabController,
-                            children: [
-                              SingleChildScrollView(
-                                padding: const EdgeInsets.fromLTRB(
-                                  20,
-                                  20,
-                                  20,
-                                  20,
-                                ),
-                                child: Center(
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 500,
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        buildLanguagesTab(context, state),
-                                        const SizedBox(height: 28),
-                                        buildTranslationModelSelector(
-                                          context,
-                                          state,
+                          child: BlocBuilder<TranslationBloc, TranslationState>(
+                            buildWhen: (prev, curr) =>
+                                prev.isSettingsLoading !=
+                                curr.isSettingsLoading,
+                            builder: (context, translationState) {
+                              if (translationState.isSettingsLoading) {
+                                return const Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.tealAccent,
                                         ),
-                                        const SizedBox(height: 40),
-                                        Center(
-                                          child: _VersionChip(
-                                            label: 'v$_version',
-                                          ),
+                                      ),
+                                      SizedBox(height: 12),
+                                      Text(
+                                        'Loading settings…',
+                                        style: TextStyle(
+                                          color: Colors.white38,
+                                          fontSize: 11,
+                                          fontFamily: 'Inter',
                                         ),
-                                      ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                              return TabBarView(
+                                controller: _tabController,
+                                children: [
+                                  SingleChildScrollView(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      20,
+                                      20,
+                                      20,
+                                      20,
+                                    ),
+                                    child: Center(
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 500,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            buildLanguagesTab(context, state),
+                                            const SizedBox(height: 28),
+                                            buildTranslationModelSelector(
+                                              context,
+                                              state,
+                                            ),
+                                            const SizedBox(height: 40),
+                                            Center(
+                                              child: _VersionChip(
+                                                label: 'v$_version',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
-                              SingleChildScrollView(
-                                padding: const EdgeInsets.fromLTRB(
-                                  20,
-                                  20,
-                                  20,
-                                  20,
-                                ),
-                                child: Center(
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 500,
+                                  SingleChildScrollView(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      20,
+                                      20,
+                                      20,
+                                      20,
                                     ),
-                                    child: Column(
-                                      children: [
-                                        buildDisplayTab(context, state),
-                                        const SizedBox(height: 40),
-                                        _VersionChip(label: 'v$_version'),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SingleChildScrollView(
-                                padding: const EdgeInsets.fromLTRB(
-                                  20,
-                                  20,
-                                  20,
-                                  20,
-                                ),
-                                child: Center(
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 500,
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        buildInputOutputTab(context, state),
-                                        const SizedBox(height: 40),
-                                        _VersionChip(label: 'v$_version'),
-                                      ],
+                                    child: Center(
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 500,
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            buildDisplayTab(context, state),
+                                            const SizedBox(height: 40),
+                                            _VersionChip(label: 'v$_version'),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
-                            ],
+                                  SingleChildScrollView(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      20,
+                                      20,
+                                      20,
+                                      20,
+                                    ),
+                                    child: Center(
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 500,
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            buildInputOutputTab(context, state),
+                                            const SizedBox(height: 40),
+                                            _VersionChip(label: 'v$_version'),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ),
                         buildSettingsFooter(context, state),

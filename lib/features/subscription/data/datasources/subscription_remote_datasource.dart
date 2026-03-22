@@ -49,17 +49,26 @@ class SubscriptionRemoteDataSource {
   void init() {
     _listenToMonetizationConfig();
     _auth.authStateChanges().listen((user) {
-      _userSub?.cancel();
-      _usagePollTimer?.cancel();
-      _lastKnownTier = null;
       if (user != null) {
+        _lastKnownTier = null;
         _listenToUserDoc(user.uid);
         _listenToRTDBUsage(user.uid);
       } else {
-        _currentStatus = null;
-        _statusController.add(_getDefaultStatus());
+        reset();
       }
     });
+  }
+
+  /// Resets the singleton state. Called on logout to prevent state leakage.
+  void reset() {
+    _userSub?.cancel();
+    _userSub = null;
+    _usagePollTimer?.cancel();
+    _usagePollTimer = null;
+    _lastKnownTier = null;
+    _currentStatus = null;
+    _statusController.add(_getDefaultStatus());
+    debugPrint('[Subscription] SubscriptionRemoteDataSource state reset');
   }
 
   void _listenToMonetizationConfig() {

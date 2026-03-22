@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:omni_bridge/firebase_options.dart';
 import 'package:omni_bridge/core/config/app_config.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/tracking_remote_datasource.dart';
+import 'package:omni_bridge/core/data/datasources/usage_metrics_remote_datasource.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:omni_bridge/core/platform/tray_manager.dart';
 import 'package:omni_bridge/core/platform/window_manager.dart';
@@ -72,16 +72,16 @@ class AppInitializer {
       // Fallback for desktop platforms without native crash tools
       FlutterError.onError = (details) {
         debugPrint('Flutter Error: ${details.exceptionAsString()}');
-        TrackingRemoteDataSource.instance.logError(
+        UsageMetricsRemoteDataSource.instance.logEvent(
           'Flutter Error: ${details.exceptionAsString()}',
-          details.stack,
+          {'stackTrace': details.stack.toString()},
         );
         debugPrintStack(stackTrace: details.stack);
       };
 
       PlatformDispatcher.instance.onError = (error, stack) {
         debugPrint('Async Error: $error');
-        TrackingRemoteDataSource.instance.logError('Async Error', error);
+        UsageMetricsRemoteDataSource.instance.logEvent('Async Error', {'error': error.toString()});
         debugPrintStack(stackTrace: stack);
         return true;
       };
@@ -152,7 +152,7 @@ class AppInitializer {
     }
 
     // Log App Launch Strategy
-    TrackingRemoteDataSource.instance.logEvent('App Started (Dart Main)');
+    UsageMetricsRemoteDataSource.instance.logEvent('App Started (Dart Main)');
 
     // Determine initial route
 
@@ -167,8 +167,27 @@ class AppInitializer {
       // Timeout, proceed with current state
     }
 
-    // Use FirebaseAuth directly since AuthRemoteDataSource might not have initialized its ValueNotifier yet
-    final isLoggedIn = auth.currentUser != null;
+    // Force a reload of the current user profile to ensure the session is still valid on the server.
+    // This handles cases where the user was deleted/disabled in the Firebase Console while the app was closed.
+    User? currentUser = auth.currentUser;
+    if (currentUser != null) {
+      try {
+        await currentUser.reload();
+        // Refresh the local user object after reload
+        currentUser = auth.currentUser;
+      } catch (e) {
+        debugPrint('[AppInitializer] Auth Session Validation Failed: $e');
+        // If the user is not found or account is disabled, sign out locally
+        if (e is FirebaseAuthException &&
+            (e.code == 'user-not-found' || e.code == 'user-disabled')) {
+          await auth.signOut();
+          currentUser = null;
+        }
+      }
+    }
+
+    // Use the updated currentUser state for root navigation
+    final isLoggedIn = currentUser != null;
 
     String initialRoute = '/splash';
     if (isLoggedIn) {

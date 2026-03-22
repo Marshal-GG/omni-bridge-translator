@@ -38,6 +38,8 @@ class CaptionTextChangedEvent extends TranslationEvent {
 }
 
 class LoadSettingsEvent extends TranslationEvent {}
+class ResetSettingsEvent extends TranslationEvent {}
+
 
 class SourceLangOverrideEvent extends TranslationEvent {
   final String sourceLang;

@@ -47,6 +47,7 @@ router.register("stop", session_h.stop)
 router.register("settings_update", config_h.update_settings)
 router.register("volume_update", config_h.update_volume)
 router.register("list_devices", device_h.list_devices)
+router.register("reset_session", status_h.reset_session)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

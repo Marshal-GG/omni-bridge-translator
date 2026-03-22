@@ -12,9 +12,21 @@ class CaptionDto extends CaptionMessage {
     super.outputLevel,
     super.usageStats,
     super.modelStatuses,
+    super.isReset = false,
   });
 
   factory CaptionDto.fromJson(Map<String, dynamic> json) {
+    // Session reset packet
+    if (json['type'] == 'reset') {
+      return const CaptionDto(
+        text: '',
+        original: '',
+        isError: false,
+        isFinal: false,
+        isReset: true,
+      );
+    }
+
     // Audio level packets
     if (json['type'] == 'audio_levels') {
       return CaptionDto(

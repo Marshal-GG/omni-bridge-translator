@@ -16,12 +16,14 @@ omni_bridge/
 │   ├── core/                        # Framework-level logic (Shared)
 │   │   ├── config/                  # AppConfig, ServerConfig
 │   │   ├── constants/               # Strings, Colors, Model Language Support
+│   │   ├── data/                    # App-level DataSources (Sessions, Usage, Maintenance)
 │   │   ├── di/                      # Dependency Injection (injection.dart)
 │   │   ├── error/                   # Failure classes
 │   │   ├── navigation/              # AppRouter & GlobalNavigator
+│   │   ├── network/                 # Global HTTP Clients (e.g., RTDBClient)
 │   │   ├── platform/                # Tray, Window, AppInitializer
 │   │   ├── theme/                   # AppTheme
-│   │   └── utils/                   # Shared utilities & Extensions
+│   │   └── utils/                   # Shared utilities (e.g., DeviceInfoUtil)
 │   │
 │   └── features/                    # Feature Modules (Vertical Slice Architecture)
 │       ├── auth/                    # Authentication

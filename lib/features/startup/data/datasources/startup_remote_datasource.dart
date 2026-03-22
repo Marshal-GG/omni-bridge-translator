@@ -4,7 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/tracking_remote_datasource.dart';
+import 'package:omni_bridge/core/data/datasources/session_remote_datasource.dart';
 import 'package:omni_bridge/features/translation/data/datasources/transcription_remote_datasource.dart';
 
 class StartupRemoteDataSource {
@@ -27,9 +27,9 @@ class StartupRemoteDataSource {
     // Session tracking (requires auth)
     _auth.authStateChanges().listen((user) {
       if (user != null) {
-        TrackingRemoteDataSource.instance.startSession();
+        SessionRemoteDataSource.instance.startSession();
       } else {
-        TrackingRemoteDataSource.instance.endSession();
+        SessionRemoteDataSource.instance.endSession();
       }
     });
 

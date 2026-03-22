@@ -9,8 +9,11 @@ import 'package:omni_bridge/features/auth/data/repositories/auth_repository_impl
 import 'package:omni_bridge/features/translation/data/repositories/translation_repository_impl.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/tracking_remote_datasource.dart';
 import 'package:omni_bridge/features/translation/data/datasources/asr_websocket_datasource.dart';
+import 'package:omni_bridge/features/translation/data/datasources/live_caption_sync_datasource.dart';
+import 'package:omni_bridge/core/data/datasources/data_maintenance_remote_datasource.dart';
+import 'package:omni_bridge/core/data/datasources/session_remote_datasource.dart';
+import 'package:omni_bridge/core/data/datasources/usage_metrics_remote_datasource.dart';
 import 'package:omni_bridge/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_app_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/update_app_settings_usecase.dart';
@@ -120,7 +123,7 @@ Future<void> setupInjection() async {
   sl.registerLazySingleton<IAuthRepository>(() => AuthRepositoryImpl(sl()));
   // Features - Settings
   sl.registerLazySingleton<ISettingsRemoteDataSource>(
-    () => SettingsRemoteDataSourceImpl(sl<TrackingRemoteDataSource>()),
+    () => SettingsRemoteDataSourceImpl(),
   );
   sl.registerLazySingleton<ISettingsRepository>(
     () => SettingsRepositoryImpl(sl()),
@@ -187,11 +190,14 @@ Future<void> setupInjection() async {
 
   // Services / Datasources
   sl.registerLazySingleton(() => AuthRemoteDataSource.instance);
-  sl.registerLazySingleton(() => TrackingRemoteDataSource.instance);
   sl.registerLazySingleton(
     () => AsrWebSocketClient(addHistoryEntry: sl(), configureHistory: sl()),
   );
   sl.registerLazySingleton(() => TranslationRestDatasource());
   sl.registerLazySingleton(() => SubscriptionRemoteDataSource.instance);
   sl.registerLazySingleton(() => UpdateRemoteDataSource.instance);
+  sl.registerLazySingleton(() => SessionRemoteDataSource.instance);
+  sl.registerLazySingleton(() => UsageMetricsRemoteDataSource.instance);
+  sl.registerLazySingleton(() => DataMaintenanceRemoteDataSource.instance);
+  sl.registerLazySingleton(() => LiveCaptionSyncDataSource.instance);
 }

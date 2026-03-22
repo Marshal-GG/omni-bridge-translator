@@ -18,6 +18,7 @@ import 'package:omni_bridge/features/translation/domain/usecases/get_default_tie
 import 'package:omni_bridge/features/translation/domain/usecases/update_translation_settings_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/observe_auth_changes_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/entities/app_settings.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_app_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_google_credentials_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/sync_settings_usecase.dart';
@@ -78,6 +79,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     on<ModelStatusChangedEvent>(_onModelStatusChanged);
     on<ApplySettingsEvent>(_onApplySettings);
     on<LoadSettingsEvent>(_onLoadSettings);
+    on<ResetSettingsEvent>(_onResetSettings);
     on<LangErrorEvent>(_onLangError);
 
     // Initial load of model statuses
@@ -103,9 +105,13 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   }
 
   void _onAuthChanged() {
-    if (getCurrentUserUseCase().value != null && !isClosed) {
+    final user = getCurrentUserUseCase().value;
+    if (user != null && !isClosed) {
       debugPrint('[TranslationBloc] Auth detected, reloading settings...');
       add(LoadSettingsEvent());
+    } else if (user == null && !isClosed) {
+      debugPrint('[TranslationBloc] Logout detected, resetting settings...');
+      add(ResetSettingsEvent());
     }
   }
 
@@ -254,6 +260,13 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     emit(state.copyWith(autoDetectWarning: null));
   }
 
+  void _onResetSettings(
+    ResetSettingsEvent event,
+    Emitter<TranslationState> emit,
+  ) {
+    emit(TranslationState.initial());
+  }
+
   Future<void> _onLoadSettings(
     LoadSettingsEvent event,
     Emitter<TranslationState> emit,
@@ -299,6 +312,26 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
                 translationModel: settings.translationModel,
                 apiKey: settings.apiKey,
                 transcriptionModel: settings.transcriptionModel,
+              ),
+            );
+          } else {
+            // If no settings found, reset to defaults
+            final defaults = AppSettings.initial();
+            emit(
+              state.copyWith(
+                activeTargetLang: defaults.targetLang,
+                activeSourceLang: defaults.sourceLang,
+                activeUseMic: defaults.useMic,
+                activeFontSize: defaults.fontSize,
+                activeIsBold: defaults.isBold,
+                activeOpacity: defaults.opacity,
+                activeInputDeviceIndex: defaults.inputDeviceIndex,
+                activeOutputDeviceIndex: defaults.outputDeviceIndex,
+                activeDesktopVolume: defaults.desktopVolume,
+                activeMicVolume: defaults.micVolume,
+                activeTranslationModel: defaults.translationModel,
+                activeApiKey: defaults.apiKey,
+                activeTranscriptionModel: defaults.transcriptionModel,
               ),
             );
           }

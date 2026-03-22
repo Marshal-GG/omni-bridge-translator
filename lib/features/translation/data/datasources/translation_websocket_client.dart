@@ -272,6 +272,13 @@ class TranslationWebsocketClient {
     }
   }
 
+  /// Sends a reset_session command to the server to clear all session state.
+  void sendResetSessionCommand() {
+    if (_channel != null) {
+      _channel!.sink.add(jsonEncode({'cmd': 'reset_session'}));
+    }
+  }
+
   /// Hard-stop: send stop, close WebSocket, cancel auto-reconnect.
   /// Use this only on app shutdown.
   Future<void> stop() async {

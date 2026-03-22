@@ -11,8 +11,13 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/tracking_remote_datasource.dart';
+import 'package:omni_bridge/core/data/datasources/session_remote_datasource.dart';
+import 'package:omni_bridge/core/data/datasources/usage_metrics_remote_datasource.dart';
 import 'package:omni_bridge/core/navigation/global_navigator.dart';
+import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/features/history/data/datasources/history_local_datasource.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/features/translation/data/datasources/asr_websocket_datasource.dart';
 
 class AuthRemoteDataSource {
   AuthRemoteDataSource._();
@@ -70,15 +75,15 @@ class AuthRemoteDataSource {
       SchedulerBinding.instance.addPostFrameCallback((_) async {
         currentUser.value = user;
         if (user != null) {
-          if (!TrackingRemoteDataSource.instance.hasActiveSession) {
-            await TrackingRemoteDataSource.instance.startSession();
-            await TrackingRemoteDataSource.instance.logEvent(
+          if (!SessionRemoteDataSource.instance.hasActiveSession) {
+            await SessionRemoteDataSource.instance.startSession();
+            await UsageMetricsRemoteDataSource.instance.logEvent(
               'App Opened (Restored Session)',
             );
           }
         } else {
-          if (TrackingRemoteDataSource.instance.hasActiveSession) {
-            await TrackingRemoteDataSource.instance.endSession();
+          if (SessionRemoteDataSource.instance.hasActiveSession) {
+            await SessionRemoteDataSource.instance.endSession();
           }
         }
       });
@@ -92,7 +97,7 @@ class AuthRemoteDataSource {
           idToken: credentials.idToken,
         );
         await _auth.signInWithCredential(credential);
-        await TrackingRemoteDataSource.instance.logEvent('Silent Sign In via Init');
+        await UsageMetricsRemoteDataSource.instance.logEvent('Silent Sign In via Init');
       }
     });
   }
@@ -223,7 +228,7 @@ class AuthRemoteDataSource {
       final userCredential = await _auth.signInWithCredential(credential);
       if (userCredential.user != null) {
         await _saveUserToFirestore(userCredential.user!);
-        await TrackingRemoteDataSource.instance.logEvent('Sign In With Google');
+        await UsageMetricsRemoteDataSource.instance.logEvent('Sign In With Google');
       }
       debugPrint('[Auth] Step 5: Done → ${userCredential.user?.email}');
       return userCredential.user;
@@ -243,7 +248,7 @@ class AuthRemoteDataSource {
     );
     if (userCredential.user != null) {
       await _saveUserToFirestore(userCredential.user!);
-      await TrackingRemoteDataSource.instance.logEvent('Sign In With Email/Password');
+      await UsageMetricsRemoteDataSource.instance.logEvent('Sign In With Email/Password');
     }
     return userCredential.user;
   }
@@ -258,14 +263,14 @@ class AuthRemoteDataSource {
     );
     if (userCredential.user != null) {
       await _saveUserToFirestore(userCredential.user!);
-      await TrackingRemoteDataSource.instance.logEvent('Registered With Email/Password');
+      await UsageMetricsRemoteDataSource.instance.logEvent('Registered With Email/Password');
     }
     return userCredential.user;
   }
 
   Future<void> sendPasswordReset(String email) async {
     await _auth.sendPasswordResetEmail(email: email);
-    await TrackingRemoteDataSource.instance.logEvent('Password Reset Requested');
+    await UsageMetricsRemoteDataSource.instance.logEvent('Password Reset Requested');
   }
 
   Future<void> updateDisplayName(String newName) async {
@@ -281,15 +286,23 @@ class AuthRemoteDataSource {
         await _saveUserToFirestore(updatedUser);
       }
 
-      await TrackingRemoteDataSource.instance.logEvent('Display Name Updated');
+      await UsageMetricsRemoteDataSource.instance.logEvent('Display Name Updated');
     }
   }
 
   Future<void> signOut() async {
     // Do NOT call _googleSignIn.signOut() — it corrupts the package's
     // internal HTTP server state, causing the next signIn() to hang.
-    await TrackingRemoteDataSource.instance.logEvent('User Signed Out');
-    await TrackingRemoteDataSource.instance.endSession();
+    await UsageMetricsRemoteDataSource.instance.logEvent('User Signed Out');
+
+    // Phase 1: Client-Side Orchestration (ensure clean state before splash)
+    await SessionRemoteDataSource.instance.endSession();
+    SubscriptionRemoteDataSource.instance.reset();
+    sl<HistoryLocalDataSource>().clear();
+    
+    // Phase 2: Server-Side Orchestration
+    sl<AsrWebSocketClient>().resetSession();
+
     await _auth.signOut();
 
     // Ensure we redirect to splash on manual sign out as well

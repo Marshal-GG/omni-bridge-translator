@@ -129,13 +129,15 @@ A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically run
 |-----------|----------------|
 | `AsrWebSocketDataSource` | High-level wrapper around the caption WebSocket. Dispatches events to `AsrTextController`. |
 | `AsrTextController` | Manages display buffer, interim vs final text, and typing catch-up logic. |
+| `LiveCaptionSyncDataSource` | Manages high-frequency real-time caption syncing logic to the database. |
 | `TranslationRemoteDataSource` | Manages translation configurations and engine-specific logic via Firestore. |
 | `TranscriptionRemoteDataSource` | Manages transcription (ASR) configurations via Firestore. |
 | `SubscriptionRemoteDataSource`| Handles real-time subscription status, tiers, and monetization configs. |
-| `TrackingRemoteDataSource` | Sole source of truth for usage tracking, session management, and buffering stats. |
-| `UpdateRemoteDataSource` | Checks for new versions via GitHub API (Migrated from `UpdateService`). |
+| `SessionRemoteDataSource` | App-level tracking for user session lifecycle and total duration. |
+| `UsageMetricsRemoteDataSource` | App-level tracking for translation bytes and AI usage quotas. |
+| `DataMaintenanceRemoteDataSource` | App-level scheduled cleanup for legacy data, stale sessions, and cache. |
+| `UpdateRemoteDataSource` | Checks for new versions via GitHub API. |
 | `AuthRemoteDataSource` | Handles Firebase Auth and Google Sign-In redirects. |
-| `StorageService` | Secure DPAPI storage wrapper (located in `core/platform`). |
 | `PythonServerManager` | Manages local Python process lifecycle (Auto-restart, backoff). |
 
 ---
