@@ -100,7 +100,7 @@ Future<void> setupInjection() async {
   );
 
   sl.registerFactory(
-    () => StartupBloc(),
+    () => StartupBloc(authRepository: sl()),
   );
 
   sl.registerFactory(

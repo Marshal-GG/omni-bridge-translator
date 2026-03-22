@@ -36,19 +36,14 @@ lib/
 │   ├── theme/                   # AppTheme (Dark Material 3)
 │   └── utils/                   # Shared helpers & Extensions
 │
-├── features/                    # Feature Modules (Vertical Slice)
-│   ├── auth/                    # Auth: Login, Logout, User state
-│   ├── translation/             # Translation: Live captions & engine control
-│   ├── settings/                # Settings: User preferences & device management
-│   ├── history/                 # History: Local session storage
-│   ├── subscription/            # Subscription: Quota & monetization
-│   ├── startup/                 # Startup: Bootstrapping, Splash, Onboarding
-│   └── about/                   # About: Version info & updates
-│
-├── core/                        # Shared Framework & Cross-cutting Concerns
-│   ├── di/                      # Dependency Injection (injection.dart)
-│   ├── navigation/              # AppRouter (Route generation)
-│   └── ...                      # platform, theme, utils, etc.
+└── features/                    # Feature Modules (Vertical Slice)
+    ├── auth/                    # Auth: Login, Logout, User state
+    ├── translation/             # Translation: Live captions & engine control
+    ├── settings/                # Settings: User preferences & device management
+    ├── history/                 # History: Local session storage
+    ├── subscription/            # Subscription: Quota & monetization
+    ├── startup/                 # Startup: Bootstrapping, Splash, Onboarding
+    └── about/                   # About: Version info & updates
 ```
 
 ---
@@ -62,7 +57,8 @@ lib/
 | `TranslationBloc` | Live translation session control, caption streaming, and quota tracking | `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `StartTranslationUseCase` |
 | `HistoryBloc` | Live and chunked transcription history | `GetLiveHistoryUseCase`, `GetChunkedHistoryUseCase`, `ClearHistoryUseCase` |
 | `AboutBloc` | App versioning and updates | `CheckForUpdateUseCase` |
-| `StartupBloc` | Bootstrapping, auth check, and routing | - |
+| `StartupBloc` | Bootstrapping, auth check, and routing | `IAuthRepository` |
+| `SubscriptionBloc` | Real-time subscription status and plan management | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial` |
 
 ---
 
@@ -86,7 +82,41 @@ The application uses `get_it` for dependency injection. All UseCases are registe
 
 See `lib/core/di/injection.dart` and `lib/core/navigation/app_router.dart`.
 
-### Key DataSources & Services
+---
+
+## Unit Testing
+
+The Flutter app uses [`bloc_test`](https://pub.dev/packages/bloc_test) and [`mocktail`](https://pub.dev/packages/mocktail) for BLoC unit testing.
+
+### Running Flutter Tests
+
+```powershell
+# From the project root:
+flutter test
+
+# Run a specific test file:
+flutter test test/features/auth/presentation/blocs/auth_bloc_test.dart
+```
+
+### Test Coverage (Phase 14)
+
+| BLoC | Test File | Tests |
+|------|-----------|-------|
+| `AuthBloc` | `test/features/auth/presentation/blocs/auth_bloc_test.dart` | 3 |
+| `AboutBloc` | `test/features/about/presentation/blocs/about_bloc_test.dart` | 4 |
+| `HistoryBloc` | `test/features/history/presentation/blocs/history_bloc_test.dart` | 5 |
+| `SettingsBloc` | `test/features/settings/presentation/blocs/settings_bloc_test.dart` | 5 |
+| `StartupBloc` | `test/features/startup/presentation/blocs/startup_bloc_test.dart` | 3 |
+| `SubscriptionBloc` | `test/features/subscription/presentation/bloc/subscription_bloc_test.dart` | 5 |
+
+Shared mock helpers are located in `test/helpers/test_mocks.dart`.
+
+> [!NOTE]
+> `TranslationBloc` is intentionally excluded from unit tests due to its deep dependency on live WebSocket streams and audio capture. It is covered by integration/manual testing.
+
+### CI/CD
+
+A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically runs `flutter analyze` and `flutter test` on every push and pull request to `main`.
 
 | Component | Responsibility |
 |-----------|----------------|

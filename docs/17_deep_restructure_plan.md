@@ -241,7 +241,7 @@ We have a mix of `screens/` and `pages/` across features. We will standardize to
 
 ---
 
-## 10. Phase 10: Final Core Refinement & Audit
+## 10. Phase 10: Final Core Refinement & Audit ✅ **COMPLETE**
 
 Final cleanup of the `core/` folder and overall project structure.
 
@@ -250,3 +250,41 @@ Final cleanup of the `core/` folder and overall project structure.
 2. **Consolidate Navigation**: Ensure `app_router.dart` and `global_navigator.dart` are the only sources of truth for routing.
 3. **DI Audit**: Final verification of `injection.dart` to ensure no dead singletons or misconfigured dependencies.
 4. **Final Synchronization**: Update `README.md` and all documentation to reflect the 100% clean state.
+
+---
+
+## 11. Phase 11: Root Folder Cleanup ✅ **COMPLETE**
+
+Removed all legacy debug/analysis text files from the root directory (`analyze.txt`, `analysis*.txt`). Repository root is now lean and clean.
+
+---
+
+## 12. Phase 12: CI/CD Automation ✅ **COMPLETE**
+
+A GitHub Actions workflow (`.github/workflows/flutter_ci.yml`) was created to run `flutter analyze` and `flutter test` automatically on every push and pull request targeting `main`.
+
+---
+
+## 13. Phase 13: Core Unit Testing ✅ **COMPLETE**
+
+Introduced `bloc_test` and `mocktail` as dev dependencies. Authored the first unit test suite for `AuthBloc`, including shared mock helpers in `test/helpers/test_mocks.dart`.
+
+---
+
+## 14. Phase 14: Comprehensive Unit Testing ✅ **COMPLETE**
+
+Extended unit test coverage to all major BLoCs in the application. All **27 tests pass**.
+
+| BLoC | Tests |
+|------|-------|
+| `AuthBloc` | 3 |
+| `AboutBloc` | 4 |
+| `HistoryBloc` | 5 |
+| `SettingsBloc` | 5 |
+| `StartupBloc` | 3 |
+| `SubscriptionBloc` | 5 |
+
+**Key changes made:**
+- `StartupBloc` was refactored to accept `IAuthRepository` via constructor injection (previously accessed `AuthRemoteDataSource.instance` directly), enabling clean unit testing without singleton side effects.
+- `SubscriptionBloc` tests use `verify:` callbacks instead of `expect:` state lists because `SubscriptionPlan` does not extend `Equatable`.
+- `TranslationBloc` is intentionally excluded — its deep WebSocket/audio stream dependencies make it unsuitable for isolation-level unit tests.

@@ -1,10 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:omni_bridge/features/auth/domain/repositories/i_auth_repository.dart';
 import 'startup_event.dart';
 import 'startup_state.dart';
 
 class StartupBloc extends Bloc<StartupEvent, StartupState> {
-  StartupBloc() : super(const StartupInitial()) {
+  final IAuthRepository authRepository;
+
+  StartupBloc({required this.authRepository}) : super(const StartupInitial()) {
     on<StartupInitializeEvent>(_onInitialize);
   }
 
@@ -18,7 +20,7 @@ class StartupBloc extends Bloc<StartupEvent, StartupState> {
       // Simulate splash time or do any async initialization here
       await Future.delayed(const Duration(milliseconds: 2000));
 
-      final isLoggedIn = AuthRemoteDataSource.instance.isLoggedIn;
+      final isLoggedIn = authRepository.currentUser.value != null;
 
       if (isLoggedIn) {
         emit(const StartupNavigateToHome());

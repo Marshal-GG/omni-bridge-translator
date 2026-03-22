@@ -116,6 +116,25 @@ flutter run -d windows
 > [!NOTE]
 > **Windows Build Fix**: A known issue where `firebase_core` fails to find specific CMake files on Windows has been resolved in the project's root `windows/CMakeLists.txt`. No manual intervention is required.
 
+### Running Flutter Unit Tests
+
+The Flutter app has a comprehensive unit test suite covering all core BLoCs. No device, Firebase, or network connection is required to run them.
+
+```powershell
+# Run all tests:
+flutter test
+
+# Run tests for a specific feature:
+flutter test test/features/auth/
+
+# Run with verbose output to see each test name:
+flutter test --reporter expanded
+```
+
+Test files live under `test/features/[feature_name]/`. Shared mock helpers (using `mocktail`) are in `test/helpers/test_mocks.dart`.
+
+For details on what each BLoC test covers, see [Flutter Architecture](04_flutter_architecture.md#unit-testing).
+
 ### Resetting Environment
 
 If you need to clear all local data specifically for this project without affecting other Firebase apps on your system, run:
