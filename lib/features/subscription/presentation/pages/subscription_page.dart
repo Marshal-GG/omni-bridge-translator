@@ -4,25 +4,31 @@ import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:omni_bridge/presentation/screens/subscription/bloc/subscription_bloc.dart';
-import 'package:omni_bridge/presentation/screens/subscription/bloc/subscription_state.dart';
-import 'package:omni_bridge/presentation/screens/subscription/components/info_card.dart';
-import 'package:omni_bridge/presentation/screens/subscription/components/plan_card.dart';
-import 'package:omni_bridge/presentation/screens/subscription/components/section_title.dart';
-import 'package:omni_bridge/presentation/screens/subscription/components/version_chip.dart';
-import 'package:omni_bridge/presentation/screens/subscription/components/subscription_header.dart';
-import 'package:omni_bridge/presentation/screens/subscription/components/subscription_footer.dart';
-import 'package:omni_bridge/presentation/screens/subscription/components/subscription_branding.dart';
-import 'package:omni_bridge/presentation/screens/subscription/components/current_usage_display.dart';
+import '../bloc/subscription_bloc.dart';
+import '../bloc/subscription_state.dart';
+import '../../domain/usecases/get_subscription_status.dart';
+import '../../domain/usecases/get_available_plans.dart';
+import '../../domain/usecases/activate_trial.dart';
+import '../../domain/usecases/open_checkout.dart';
+import '../../domain/usecases/has_used_trial.dart';
+import '../../data/repositories/subscription_repository.dart';
+import '../widgets/info_card.dart';
+import '../widgets/plan_card.dart';
+import '../widgets/section_title.dart';
+import '../widgets/version_chip.dart';
+import '../widgets/subscription_header.dart';
+import '../widgets/subscription_footer.dart';
+import '../widgets/subscription_branding.dart';
+import '../widgets/current_usage_display.dart';
 
-class SubscriptionScreen extends StatefulWidget {
-  const SubscriptionScreen({super.key});
+class SubscriptionPage extends StatefulWidget {
+  const SubscriptionPage({super.key});
 
   @override
-  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
+  State<SubscriptionPage> createState() => _SubscriptionPageState();
 }
 
-class _SubscriptionScreenState extends State<SubscriptionScreen>
+class _SubscriptionPageState extends State<SubscriptionPage>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   String _version = '1.0.0';
@@ -53,7 +59,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: BlocProvider(
-        create: (context) => SubscriptionBloc(),
+        create: (context) {
+          final repository = SubscriptionRepositoryImpl();
+          return SubscriptionBloc(
+            getStatus: GetSubscriptionStatus(repository),
+            getPlans: GetAvailablePlans(repository),
+            activateTrial: ActivateTrial(repository),
+            openCheckout: OpenCheckout(repository),
+            hasUsedTrial: HasUsedTrial(repository),
+          );
+        },
         child: WindowBorder(
           color: Colors.white12,
           width: 1,

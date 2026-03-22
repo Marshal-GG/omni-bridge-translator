@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:omni_bridge/data/models/subscription_models.dart';
+import '../../domain/entities/subscription_status.dart';
 
 abstract class SubscriptionEvent extends Equatable {
   const SubscriptionEvent();
@@ -17,4 +17,15 @@ class SubscriptionStatusUpdated extends SubscriptionEvent {
 
   @override
   List<Object?> get props => [status];
+}
+
+class SubscriptionActivateTrial extends SubscriptionEvent {}
+
+class SubscriptionOpenCheckout extends SubscriptionEvent {
+  final String tierId;
+
+  const SubscriptionOpenCheckout(this.tierId);
+
+  @override
+  List<Object?> get props => [tierId];
 }

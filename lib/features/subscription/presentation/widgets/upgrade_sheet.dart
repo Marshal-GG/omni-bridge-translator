@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
-import 'package:omni_bridge/presentation/screens/subscription/subscription_screen.dart';
+import '../pages/subscription_page.dart';
 
 void showUpgradeSheet(BuildContext context) {
   showModalBottomSheet(
@@ -95,7 +95,7 @@ class UpgradeSheet extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const SubscriptionScreen(),
+                    builder: (context) => const SubscriptionPage(),
                   ),
                 );
               },

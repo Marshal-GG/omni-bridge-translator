@@ -11,7 +11,7 @@ import 'package:omni_bridge/features/history/presentation/screens/history/compon
 import 'package:omni_bridge/features/history/presentation/screens/history/components/history_list_components.dart';
 import 'package:omni_bridge/features/history/presentation/screens/history/components/history_entry_item.dart';
 
-import 'package:omni_bridge/presentation/screens/subscription/upgrade_sheet.dart';
+import 'package:omni_bridge/features/subscription/presentation/widgets/upgrade_sheet.dart';
 
 class HistoryPanel extends StatelessWidget {
   const HistoryPanel({super.key});

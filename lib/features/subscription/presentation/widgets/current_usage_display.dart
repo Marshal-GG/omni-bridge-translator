@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:omni_bridge/data/models/subscription_models.dart';
+import '../../domain/entities/subscription_status.dart';
 import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
 import 'package:intl/intl.dart';
 

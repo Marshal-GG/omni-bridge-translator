@@ -2,22 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-
-enum UpdateStatus { idle, checking, upToDate, available, error }
-
-class UpdateResult {
-  final UpdateStatus status;
-  final String? latestVersion;
-  final String? releaseUrl;
-  final String? errorMessage;
-
-  const UpdateResult({
-    required this.status,
-    this.latestVersion,
-    this.releaseUrl,
-    this.errorMessage,
-  });
-}
+import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 
 class UpdateService {
   UpdateService._();

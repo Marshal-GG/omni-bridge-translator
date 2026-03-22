@@ -5,19 +5,23 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:omni_bridge/core/di/injection.dart';
 import 'package:omni_bridge/data/services/server/update_service.dart';
+import 'package:omni_bridge/features/about/domain/usecases/check_for_update.dart';
+import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 
-class AboutScreen extends StatefulWidget {
-  const AboutScreen({super.key});
+class AboutPage extends StatefulWidget {
+  const AboutPage({super.key});
 
   @override
-  State<AboutScreen> createState() => _AboutScreenState();
+  State<AboutPage> createState() => _AboutPageState();
 }
 
-class _AboutScreenState extends State<AboutScreen> {
+class _AboutPageState extends State<AboutPage> {
   String _version = '';
   UpdateStatus _updateStatus = UpdateStatus.idle;
   UpdateResult? _updateResult;
+  final CheckForUpdate _checkForUpdate = sl<CheckForUpdate>();
   final GlobalKey _contentKey = GlobalKey();
 
   @override
@@ -37,9 +41,9 @@ class _AboutScreenState extends State<AboutScreen> {
     }
   }
 
-  Future<void> _checkForUpdate() async {
+  Future<void> _handleUpdateCheck() async {
     setState(() => _updateStatus = UpdateStatus.checking);
-    final result = await UpdateService.instance.checkForUpdate();
+    final result = await _checkForUpdate();
     if (!mounted) return;
     setState(() {
       _updateResult = result;
@@ -155,7 +159,7 @@ class _AboutScreenState extends State<AboutScreen> {
                                                       _updateStatus ==
                                                           UpdateStatus.checking
                                                       ? null
-                                                      : _checkForUpdate,
+                                                      : _handleUpdateCheck,
                                                   style: OutlinedButton.styleFrom(
                                                     padding:
                                                         const EdgeInsets.symmetric(

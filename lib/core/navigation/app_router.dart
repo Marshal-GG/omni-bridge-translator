@@ -3,15 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/core/di/injection.dart';
 
 // Feature Screens
-import 'package:omni_bridge/presentation/screens/startup/splash_screen.dart';
-import 'package:omni_bridge/presentation/screens/startup/onboarding_screen.dart';
+import 'package:omni_bridge/features/startup/presentation/pages/splash_page.dart';
+import 'package:omni_bridge/features/startup/presentation/pages/onboarding_page.dart';
 import 'package:omni_bridge/features/auth/presentation/screens/login/login_screen.dart';
 import 'package:omni_bridge/features/translation/presentation/screens/translation_screen.dart';
 import 'package:omni_bridge/features/settings/presentation/screens/settings_screen.dart';
 import 'package:omni_bridge/features/history/presentation/screens/history/history_panel.dart';
 import 'package:omni_bridge/features/auth/presentation/screens/account/account_screen.dart';
-import 'package:omni_bridge/presentation/screens/about/about_screen.dart';
-import 'package:omni_bridge/presentation/screens/subscription/subscription_screen.dart';
+import 'package:omni_bridge/features/about/presentation/pages/about_page.dart';
+import 'package:omni_bridge/features/subscription/presentation/pages/subscription_page.dart';
 
 // Blocs
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
@@ -32,12 +32,12 @@ class AppRouter {
     switch (settings.name) {
       case splash:
         return MaterialPageRoute(
-          builder: (_) => const SplashScreen(),
+          builder: (_) => const SplashPage(),
           settings: settings,
         );
       case onboarding:
         return MaterialPageRoute(
-          builder: (_) => const OnboardingScreen(),
+          builder: (_) => const OnboardingPage(),
           settings: settings,
         );
       case login:
@@ -73,12 +73,12 @@ class AppRouter {
         );
       case about:
         return MaterialPageRoute(
-          builder: (_) => const AboutScreen(),
+          builder: (_) => const AboutPage(),
           settings: settings,
         );
       case subscription:
         return MaterialPageRoute(
-          builder: (_) => const SubscriptionScreen(),
+          builder: (_) => const SubscriptionPage(),
           settings: settings,
         );
       default:

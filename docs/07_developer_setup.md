@@ -260,4 +260,5 @@ While copyright is automatic upon creation, formalizing your protection is highl
 - [Server Health Checks](10_server_health_checks.md)
 - [Firebase Terminal Management](11_firebase_terminal_management.md)
 - [Publishing a New Release](12_github_releases_guide.md)
-- [Python Restructure Plan](16_restructure_plan.md)
+- [Deep Architecture Restructure Plan](17_deep_restructure_plan.md)
+- [Legacy Python Restructure Plan](16_restructure_plan.md)

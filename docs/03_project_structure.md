@@ -23,28 +23,26 @@ omni_bridge/
 │   │   ├── theme/                   # AppTheme
 │   │   └── utils/                   # Shared utilities
 │   │
-│   ├── features/                    # Feature Modules (Clean Architecture)
-│   │   ├── auth/                    # Auth: Domain (UseCases), Data, Presentation
-│   │   ├── history/                 # History: Domain, Data, Presentation
-│   │   ├── settings/                # Settings: Domain (UseCases), Data, Presentation
-│   │   └── translation/             # Translation: Domain (UseCases), Data, Presentation
-│   │
-│   ├── data/                        # Data Layer (Domain-grouped)
-│   │   ├── models/                  # AppSettings, CaptionModel, etc.
-│   │   ├── repositories/            # Future: Abstract data access
-│   │   └── services/                # Grouped by domain
-│   │       ├── firebase/            # TrackingService, SubscriptionService
-│   │       ├── server/              # AsrWsClient, UpdateService
-│   │       ├── system/              # AppLifecycle
-│   │       └── translation/         # TranslationService, WhisperService
-│   │
-│   └── presentation/                # UI Layer
-│       ├── blocs/                   # Feature BLoCs (Firebase MBs)
-│       ├── screens/                 # Decomposed into domain folders
-│   │   ├── about/               # About + links
-│       │   ├── subscription/        # Upgrade flows
-│       │   └── startup/             # Splash + onboarding
-│       └── widgets/                 # Common reusable widgets
+│    ├── features/                    # Feature Modules (Clean Architecture)
+    │   ├── auth/                    # Auth: Domain (UseCases), Data, Presentation
+    │   ├── history/                 # History: Domain, Data, Presentation
+    │   ├── settings/                # Settings: Domain (UseCases), Data, Presentation
+    │   ├── translation/             # Translation: Domain (UseCases), Data, Presentation
+    │   ├── subscription/            # Subscription: Domain, Data, Presentation [NEW]
+    │   ├── startup/                 # Startup: Splash, Onboarding [NEW]
+    │   └── about/                   # About: Update logic [NEW]
+    │
+    ├── data/                        # Core Data (Shared Models/Services)
+    │   ├── models/                  # AppSettings, CaptionModel, etc.
+    │   └── services/                # Grouped by provider
+    │       ├── firebase/            # TrackingService, SubscriptionService
+    │       ├── server/              # AsrWsClient, UpdateService
+    │       ├── system/              # AppLifecycle
+    │       └── translation/         # TranslationService, WhisperService
+    │
+    └── presentation/                # Layer for global UI & shared blocs
+        ├── blocs/                   # Global BLoCs
+        └── widgets/                 # Common reusable widgets
 │
 ├── server/                          # Python backend
 │   ├── flutter_server.py            # FastAPI entrypoint
@@ -83,8 +81,8 @@ omni_bridge/
 | **Phase 7** | Python Integration Tests (Warp Speed) | ⏭️ **SKIPPED** |
 | **Phase 8** | Python Unit Tests (Pytest) | ✅ **COMPLETE** |
 | **Phase 9** | Deep Restructure Phase 1: Core/Infra | ✅ **COMPLETE** |
-| **Phase 10**| Deep Restructure Phase 2: Features | ✅ **COMPLETE** (Auth, Translation, History & Settings extracted) |
-| **Phase 11**| Deep Restructure Phase 3: UseCases & DI | ✅ **COMPLETE** (14 UseCases created, BLoCs refactored) |
+| **Phase 10**| Deep Restructure Phase 2: Features | ✅ **COMPLETE** (Auth, Translation, History, Settings, Startup, About, Subscription extracted) |
+| **Phase 11**| Deep Restructure Phase 3: UseCases & DI | ✅ **COMPLETE** (20+ UseCases created, BLoCs refactored) |
 | **Phase 12**| Deep Restructure Phase 4: Routing & BLoC Scoping | ✅ **COMPLETE** (AppRouter created, Route-scoped Blocs) |
 ---
 
@@ -96,6 +94,6 @@ omni_bridge/
 | Dart classes | `PascalCase` | `HistoryService` |
 | BLoC events | Past tense or `Requested` | `SettingsUpdated` |
 | BLoC states | Describe the state | `AuthAuthenticated` |
-| Screens | Suffix `Screen` | `TranslationScreen` |
+| Screens/Pages | Suffix `Page` | `TranslationPage` |
 | Python files | `snake_case` | `asr_dispatcher.py` |
 | Python classes | `PascalCase` | `ASRDispatcher` |

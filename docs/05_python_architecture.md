@@ -111,7 +111,7 @@ Bridges the async FastAPI event loop with background worker threads:
 | `caption` | Transcript/translation result | `text`, `original`, `is_final`, `session_id` |
 | `usage_stats` | Per-call engine metrics | `engine`, `model`, `latency_ms`, `input_tokens`, `output_tokens`, `total_tokens` |
 | `audio_levels` | Real-time RMS levels | `input_level` (0.0–1.0), `output_level` (0.0–1.0) |
-| `model_status` | Model health broadcast | `models[]` with `name`, `status`, `ready`, `progress`. Polled via model-specific `get_status()` methods. |
+| `model_status` | Model health broadcast | `models[]` with `name`, `status`, `ready`, `progress`. Polled via model-specific `get_status()` methods (e.g., `RivaASRModel.get_status()` returns availability and error state). |
 | `error` | Error message | `text`, `is_final`, `original` |
 
 ### Commands Received from Clients

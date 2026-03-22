@@ -66,9 +66,13 @@ Auto-detect source language, or manually select from: English, Spanish, French, 
 - Standardized window controls (Minimize, Close, Drag) and a dedicated "Clear History" action.
 - **Contextual Upgrades**: Free-tier users are automatically presented with the `UpgradeSheet` upon entering the history view, providing a seamless path to premium features.
 
-### 🔄 Auto-Update
-- Built-in update checker — get notified when a new version is available
-- Update badge appears right in the overlay header
+### 🚀 Startup & Onboarding
+- **Seamless onboarding** flow for new users (Splash -> Onboarding -> Login).
+- **Proactive update checks** on startup to ensure you're always on the latest version.
+
+### ℹ️ About & Updates
+- Dedicated **About Panel** showing version info, licensing, and credits.
+- **Manual update check** button with real-time status feedback.
 
 ### 👤 Account & Sync
 - Sign in with **Google**, **Email/Password**, or use as **Guest**
@@ -146,11 +150,11 @@ For NVIDIA Riva ASR / NMT or Llama translation:
 OmniBridge follows **Clean Architecture** principles across both its components:
 
 ### 📱 Flutter Client
-- **Feature-Driven Structure**: Organized by vertical slices (Auth, Translation, Settings, History, Subscription).
-- **Domain Layer**: Pure business logic with Entities, abstract Repositories, and **UseCases** (14+ specialized logic blocks).
-- **Data Layer**: Repository implementations, DataSources (Firebase, WebSocket, REST), and DTOs.
-- **Presentation Layer**: UI screens and widgets using the **BLoC pattern** with route-scoped injection for optimized memory management.
-- **Dependency Injection**: Decoupled initialization via `get_it` in `injection.dart`.
+- **Feature-Driven Structure**: Organized by vertical slices: `auth`, `translation`, `settings`, `history`, `subscription`, `startup`, and `about`.
+- **Domain Layer**: Pure business logic with Entities, abstract Repositories, and **UseCases** (22+ specialized logic blocks).
+- **Data Layer**: Repository implementations, DataSources (Firebase, WebSocket, REST, Local), and DTOs.
+- **Presentation Layer**: UI screens (Pages) and widgets using the **BLoC pattern** with route-scoped injection for optimized memory management.
+- **Dependency Injection**: Decoupled initialization via `get_it` in `injection.dart`, following the `DataSource -> Repository -> UseCase -> Bloc` hierarchy.
 
 ### 🐍 Python Server
 - **Orchestration Layer**: Thin coordinator managing session lifecycle and queues.

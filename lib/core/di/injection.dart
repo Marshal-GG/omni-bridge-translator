@@ -33,14 +33,25 @@ import 'package:omni_bridge/features/auth/domain/usecases/login_with_google_usec
 import 'package:omni_bridge/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/observe_auth_changes_usecase.dart';
-import 'package:omni_bridge/features/history/data/datasources/history_local_datasource.dart';
 import 'package:omni_bridge/features/history/data/repositories/history_repository_impl.dart';
+import 'package:omni_bridge/features/history/data/datasources/history_local_datasource.dart';
 import 'package:omni_bridge/features/history/domain/repositories/i_history_repository.dart';
 import 'package:omni_bridge/features/history/domain/usecases/add_history_entry_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/clear_history_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/get_chunked_history_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/get_live_history_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/configure_history_usecase.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
+import 'package:omni_bridge/features/subscription/data/repositories/subscription_repository.dart';
+import 'package:omni_bridge/features/subscription/domain/usecases/get_subscription_status.dart';
+import 'package:omni_bridge/features/subscription/domain/usecases/get_available_plans.dart';
+import 'package:omni_bridge/features/subscription/domain/usecases/activate_trial.dart';
+import 'package:omni_bridge/features/subscription/domain/usecases/open_checkout.dart';
+import 'package:omni_bridge/features/subscription/domain/usecases/has_used_trial.dart';
+import 'package:omni_bridge/features/about/domain/repositories/i_update_repository.dart';
+import 'package:omni_bridge/features/about/data/repositories/update_repository.dart';
+import 'package:omni_bridge/features/about/domain/usecases/check_for_update.dart';
+import 'package:omni_bridge/data/services/server/update_service.dart';
 
 final sl = GetIt.instance;
 
@@ -90,6 +101,18 @@ Future<void> setupInjection() async {
   sl.registerLazySingleton<ITranslationRepository>(
     () => TranslationRepositoryImpl(sl(), sl(), sl()),
   );
+  sl.registerLazySingleton<ISubscriptionRepository>(
+    () => SubscriptionRepositoryImpl(service: sl()),
+  );
+  sl.registerLazySingleton<IUpdateRepository>(
+    () => UpdateRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton<HistoryLocalDataSource>(
+    () => HistoryLocalDataSource(),
+  );
+  sl.registerLazySingleton<IHistoryRepository>(
+    () => HistoryRepositoryImpl(localDataSource: sl()),
+  );
 
   // Use Cases
   // Auth
@@ -107,6 +130,13 @@ Future<void> setupInjection() async {
   sl.registerLazySingleton(() => SyncSettingsUseCase(sl()));
   sl.registerLazySingleton(() => LogEventUseCase(sl()));
 
+  // History
+  sl.registerLazySingleton(() => AddHistoryEntryUseCase(repository: sl()));
+  sl.registerLazySingleton(() => ClearHistoryUseCase(repository: sl()));
+  sl.registerLazySingleton(() => ConfigureHistoryUseCase(repository: sl()));
+  sl.registerLazySingleton(() => GetLiveHistoryUseCase(repository: sl()));
+  sl.registerLazySingleton(() => GetChunkedHistoryUseCase(repository: sl()));
+
   // Translation
   sl.registerLazySingleton(() => StartTranslationUseCase(sl()));
   sl.registerLazySingleton(() => StopTranslationUseCase(sl()));
@@ -118,6 +148,16 @@ Future<void> setupInjection() async {
   sl.registerLazySingleton(() => ObserveCaptionsUseCase(sl()));
   sl.registerLazySingleton(() => UpdateTranslationSettingsUseCase(sl()));
 
+  // Subscription
+  sl.registerLazySingleton(() => GetSubscriptionStatus(sl()));
+  sl.registerLazySingleton(() => GetAvailablePlans(sl()));
+  sl.registerLazySingleton(() => ActivateTrial(sl()));
+  sl.registerLazySingleton(() => OpenCheckout(sl()));
+  sl.registerLazySingleton(() => HasUsedTrial(sl()));
+
+  // About
+  sl.registerLazySingleton(() => CheckForUpdate(sl()));
+
   // Services / Datasources
   sl.registerLazySingleton(() => AuthRemoteDataSource.instance);
   sl.registerLazySingleton(() => TrackingService.instance);
@@ -126,18 +166,5 @@ Future<void> setupInjection() async {
   );
   sl.registerLazySingleton(() => TranslationRestDatasource());
   sl.registerLazySingleton(() => SubscriptionService.instance);
-
-  // History Dependencies
-  sl.registerLazySingleton<HistoryLocalDataSource>(
-    () => HistoryLocalDataSource(),
-  );
-  sl.registerLazySingleton<IHistoryRepository>(
-    () => HistoryRepositoryImpl(localDataSource: sl()),
-  );
-
-  sl.registerLazySingleton(() => AddHistoryEntryUseCase(repository: sl()));
-  sl.registerLazySingleton(() => ClearHistoryUseCase(repository: sl()));
-  sl.registerLazySingleton(() => ConfigureHistoryUseCase(repository: sl()));
-  sl.registerLazySingleton(() => GetLiveHistoryUseCase(repository: sl()));
-  sl.registerLazySingleton(() => GetChunkedHistoryUseCase(repository: sl()));
+  sl.registerLazySingleton(() => UpdateService.instance);
 }

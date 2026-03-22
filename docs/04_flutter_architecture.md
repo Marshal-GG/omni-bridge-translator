@@ -37,24 +37,18 @@ lib/
 │   └── utils/                   # Shared helpers & Extensions
 │
 ├── features/                    # Feature Modules (Vertical Slice)
-│   ├── auth/                    # Auth logic: Login, Logout, User state
-│   │   ├── domain/              # UseCases (LoginWithGoogle, Logout, etc.)
-│   │   ├── data/                # RemoteDatasource, Repository impl
-│   │   └── presentation/        # AuthBloc, LoginScreen
-│   ├── translation/             # Transcription & Translation logic
-│   │   ├── domain/              # UseCases (ObserveCaptions, ObserveQuota, etc.)
-│   │   ├── data/                # WebSocket client, Translation repository impl
-│   │   └── presentation/        # TranslationBloc, Overlay, Tabs
-│   ├── settings/                # User preferences
-│   │   ├── domain/              # UseCases (SyncSettings, LoadDevices, etc.)
-│   │   ├── data/                # Local storage repo impl
-│   │   └── presentation/        # SettingsBloc, Tabs, Widgets
-│   └── history/                 # Session history
+│   ├── auth/                    # Auth: Login, Logout, User state
+│   ├── translation/             # Translation: Live captions & engine control
+│   ├── settings/                # Settings: User preferences & device management
+│   ├── history/                 # History: Local session storage
+│   ├── subscription/            # Subscription: Quota & monetization
+│   ├── startup/                 # Startup: Bootstrapping, Splash, Onboarding
+│   └── about/                   # About: Version info & updates
 │
-├── core/                        # Shared Framework & Infrastructure
-│   ├── di/                      # Dependency Injection (standardized injection.dart)
-│   ├── navigation/              # AppRouter & Routing logic
-│   └── ...                      # See 03_project_structure.md for full list
+├── core/                        # Shared Framework & Cross-cutting Concerns
+│   ├── di/                      # Dependency Injection (injection.dart)
+│   ├── navigation/              # AppRouter (Route generation)
+│   └── ...                      # platform, theme, utils, etc.
 ```
 
 ---
@@ -78,6 +72,7 @@ UseCases are the brain of the feature. They encapsulate a single business logic 
 | **Auth** | `LoginWithGoogle`, `Logout`, `GetCurrentUser`, `ObserveAuthChanges` |
 | **Settings** | `LoadDevices`, `ObserveAudioLevels`, `SyncSettings`, `LogEvent` |
 | **Translation** | `ObserveCaptions`, `ObserveQuotaStatus`, `UpdateTranslationSettings`, `UpdateVolume` |
+| **About** | `CheckForUpdate` |
 
 ### Dependency Injection (DI)
 

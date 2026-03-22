@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
-import 'package:omni_bridge/presentation/screens/startup/components/startup_header.dart';
+import 'package:omni_bridge/features/startup/presentation/widgets/startup_header.dart';
 
-class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+class OnboardingPage extends StatefulWidget {
+  const OnboardingPage({super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  State<OnboardingPage> createState() => _OnboardingPageState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingPageState extends State<OnboardingPage> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 

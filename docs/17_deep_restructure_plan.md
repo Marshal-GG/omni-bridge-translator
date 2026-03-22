@@ -29,7 +29,7 @@ lib/features/[feature_name]/
 
 ---
 
-## 2. Phase 1: Core & Infrastructure Realignment (Foundation)
+## 2. Phase 1: Core & Infrastructure Realignment ✅ **COMPLETE**
 
 Before moving features, clean up the `core` folder. This houses code shared across *multiple* features.
 
@@ -48,7 +48,7 @@ Before moving features, clean up the `core` folder. This houses code shared acro
 
 ---
 
-## 3. Phase 2: Feature Extraction (The Core Migration)
+## 3. Phase 2: Feature Extraction ✅ **COMPLETE**
 
 We will create the `lib/features/` directory and migrate existing code feature by feature. Do **one feature at a time**, fix imports, and run the app.
 
