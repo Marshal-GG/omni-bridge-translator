@@ -178,14 +178,75 @@ Currently, all BLoCs (`TranslationBloc`, `SettingsBloc`) are instantiated global
 
 To prevent breaking the app during migration, follow this loop for **each feature** (do not do all features at once):
 
-1. [ ] **Create Folder Hierarchy** for the specific feature.
-2. [ ] **Move Domain layer files** (Interfaces & Entities). Fix imports.
-3. [ ] **Create Use Cases** if they do not exist. Update Blocs to rely on UseCases.
-4. [ ] **Move Data layer files** (Models, DataSources, Repo Impls). Fix imports.
-5. [ ] **Move Presentation layer files** (Screens, scattered Blocs). Fix imports. *Note: Ensure all old BLoC folders (like `core/blocs` or BLoCs inside `screens/`) are moved to their feature's `presentation/blocs/` and the old empty folders are deleted.*
-6. [ ] **Update DI (`injection.dart`)** to reflect the new paths and UseCases.
-7. [ ] **Scoped Routing**: Update `app_router.dart` to inject the feature's BLoC at the route level.
-9. [ ] **Phase Synchronization**: Update `README.md`, all `docs/*.md`, `.gitignore`, and `firestore.rules` for this feature.
-10. [ ] **Run Flutter Clean & Run**. Do not move to the next feature until the app compiles and runs perfectly.
+1. [x] **Create Folder Hierarchy** for the specific feature.
+2. [x] **Move Domain layer files** (Interfaces & Entities). Fix imports.
+3. [x] **Create Use Cases** if they do not exist. Update Blocs to rely on UseCases.
+4. [x] **Move Data layer files** (Models, DataSources, Repo Impls). Fix imports.
+5. [x] **Move Presentation layer files** (Screens, scattered Blocs). Fix imports. *Note: Ensure all old BLoC folders (like `core/blocs` or BLoCs inside `screens/`) are moved to their feature's `presentation/blocs/` and the old empty folders are deleted.*
+6. [x] **Update DI (`injection.dart`)** to reflect the new paths and UseCases.
+7. [x] **Scoped Routing**: Update `app_router.dart` to inject the feature's BLoC at the route level.
+8. [x] **Phase Synchronization**: Update `README.md`, all `docs/*.md`, `.gitignore`, and `firestore.rules` for this feature.
+9. [x] **Run Flutter Clean & Run**. Do not move to the next feature until the app compiles and runs perfectly.
 
-By doing this strictly, you maintain an always-working app while completely reforming the architecture.
+---
+
+## 7. Phase 7: Final Data Layer Consolidation & `lib/data` Removal ✅ **COMPLETE**
+
+The legacy `lib/data` directory still contains services and models that should be distributed into vertical features or `core`.
+
+**Actions:**
+1. **Migrate Services to Feature DataSources**:
+   - `lib/data/services/firebase/subscription_service.dart` -> `lib/features/subscription/data/datasources/subscription_remote_datasource.dart`.
+   - `lib/data/services/firebase/tracking_service.dart` -> `lib/features/subscription/data/datasources/tracking_remote_datasource.dart`.
+   - `lib/data/services/server/update_service.dart` -> `lib/features/startup/data/datasources/update_remote_datasource.dart`.
+2. **Migrate Models to Feature Models**:
+   - `lib/data/models/caption_model.dart` -> `lib/features/translation/data/models/caption_dto.dart`.
+   - `lib/data/models/subscription_models.dart` -> `lib/features/subscription/data/models/subscription_dto.dart`.
+   - `lib/data/models/tracking_models.dart` -> `lib/features/subscription/data/models/usage_tracking_dto.dart`.
+3. **Migrate System Services to Core**:
+   - `lib/data/services/system/app_lifecycle.dart` -> `lib/core/platform/app_lifecycle_manager.dart`.
+4. **Delete `lib/data`**: Use `git rm -r lib/data` once all files are moved and imports updated.
+
+---
+
+## 8. Phase 8: Component Consistency & BLoC Implementation
+
+Some features (About, Startup) are missing BLoCs, and others have empty `blocs/` folders.
+
+**Actions:**
+1. **Implement Missing BLoCs**:
+   - **AboutBloc**: Handle update checks and version info for `AboutScreen`.
+   - **StartupBloc**: Handle app initialization, session loading, and proactive update checks for `SplashScreen` and `OnboardingScreen`.
+2. **Clean up Empty BLoC Folders**:
+   - Remove empty `blocs/` or `bloc/` folders in `auth`, `history`, `subscription`, and `core`.
+   - Ensure all logic in `presentation/` is routed through a BLoC/Cubit.
+
+---
+
+## 9. Phase 9: Unified Presentation Naming (`pages/` -> `screens/`)
+
+We have a mix of `screens/` and `pages/` across features. We will standardize to `screens/` as per Phase 1 template.
+
+**Actions:**
+1. **Rename Directories**:
+   - `features/about/presentation/pages/` -> `features/about/presentation/screens/`.
+   - `features/startup/presentation/pages/` -> `features/startup/presentation/screens/`.
+   - `features/subscription/presentation/pages/` -> `features/subscription/presentation/screens/`.
+2. **Rename Files**:
+   - `about_page.dart` -> `about_screen.dart`.
+   - `startup_page.dart` -> `startup_screen.dart` (if applicable).
+   - `splash_page.dart` -> `splash_screen.dart`.
+   - `onboarding_page.dart` -> `onboarding_screen.dart`.
+3. **Update Router**: Ensure `app_router.dart` points to the new filenames and wraps them in `BlocProvider`.
+
+---
+
+## 10. Phase 10: Final Core Refinement & Audit
+
+Final cleanup of the `core/` folder and overall project structure.
+
+**Actions:**
+1. **Empty Folder Removal**: Prune any remaining empty folders in `lib/core/navigation`, `lib/core/services`, etc.
+2. **Consolidate Navigation**: Ensure `app_router.dart` and `global_navigator.dart` are the only sources of truth for routing.
+3. **DI Audit**: Final verification of `injection.dart` to ensure no dead singletons or misconfigured dependencies.
+4. **Final Synchronization**: Update `README.md` and all documentation to reflect the 100% clean state.

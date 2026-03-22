@@ -4,8 +4,8 @@ import 'package:get_it/get_it.dart';
 import 'package:omni_bridge/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:omni_bridge/features/translation/data/repositories/translation_repository_impl.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
-import 'package:omni_bridge/data/services/firebase/tracking_service.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/tracking_remote_datasource.dart';
 import 'package:omni_bridge/features/translation/data/datasources/asr_websocket_datasource.dart';
 import 'package:omni_bridge/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_app_settings_usecase.dart';
@@ -51,7 +51,7 @@ import 'package:omni_bridge/features/subscription/domain/usecases/has_used_trial
 import 'package:omni_bridge/features/about/domain/repositories/i_update_repository.dart';
 import 'package:omni_bridge/features/about/data/repositories/update_repository.dart';
 import 'package:omni_bridge/features/about/domain/usecases/check_for_update.dart';
-import 'package:omni_bridge/data/services/server/update_service.dart';
+import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
 
 final sl = GetIt.instance;
 
@@ -93,7 +93,7 @@ Future<void> setupInjection() async {
   sl.registerLazySingleton<IAuthRepository>(() => AuthRepositoryImpl(sl()));
   // Features - Settings
   sl.registerLazySingleton<ISettingsRemoteDataSource>(
-    () => SettingsRemoteDataSourceImpl(sl<TrackingService>()),
+    () => SettingsRemoteDataSourceImpl(sl<TrackingRemoteDataSource>()),
   );
   sl.registerLazySingleton<ISettingsRepository>(
     () => SettingsRepositoryImpl(sl()),
@@ -160,11 +160,11 @@ Future<void> setupInjection() async {
 
   // Services / Datasources
   sl.registerLazySingleton(() => AuthRemoteDataSource.instance);
-  sl.registerLazySingleton(() => TrackingService.instance);
+  sl.registerLazySingleton(() => TrackingRemoteDataSource.instance);
   sl.registerLazySingleton(
     () => AsrWebSocketClient(addHistoryEntry: sl(), configureHistory: sl()),
   );
   sl.registerLazySingleton(() => TranslationRestDatasource());
-  sl.registerLazySingleton(() => SubscriptionService.instance);
-  sl.registerLazySingleton(() => UpdateService.instance);
+  sl.registerLazySingleton(() => SubscriptionRemoteDataSource.instance);
+  sl.registerLazySingleton(() => UpdateRemoteDataSource.instance);
 }

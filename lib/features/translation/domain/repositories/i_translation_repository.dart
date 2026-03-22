@@ -1,5 +1,5 @@
 import '../entities/caption_message.dart';
-import 'package:omni_bridge/data/models/subscription_models.dart';
+import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
 
 abstract class ITranslationRepository {
   Stream<CaptionMessage>? get captions;

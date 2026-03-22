@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:omni_bridge/data/models/subscription_models.dart';
+import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:window_manager/window_manager.dart';
@@ -227,7 +227,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   }
 
   void _onUpdateQuota(UpdateQuotaEvent event, Emitter<TranslationState> emit) {
-    final bool exceeded = event.status.isExceeded;
+    final bool exceeded = event.status?.isExceeded ?? false;
     emit(state.copyWith(quotaStatus: event.status, isQuotaExceeded: exceeded));
 
     if (exceeded && state.isRunning) {

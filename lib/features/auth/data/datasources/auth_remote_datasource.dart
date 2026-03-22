@@ -11,7 +11,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:omni_bridge/data/services/firebase/tracking_service.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/tracking_remote_datasource.dart';
 import 'package:omni_bridge/core/navigation/global_navigator.dart';
 
 class AuthRemoteDataSource {
@@ -70,15 +70,15 @@ class AuthRemoteDataSource {
       SchedulerBinding.instance.addPostFrameCallback((_) async {
         currentUser.value = user;
         if (user != null) {
-          if (!TrackingService.instance.hasActiveSession) {
-            await TrackingService.instance.startSession();
-            await TrackingService.instance.logEvent(
+          if (!TrackingRemoteDataSource.instance.hasActiveSession) {
+            await TrackingRemoteDataSource.instance.startSession();
+            await TrackingRemoteDataSource.instance.logEvent(
               'App Opened (Restored Session)',
             );
           }
         } else {
-          if (TrackingService.instance.hasActiveSession) {
-            await TrackingService.instance.endSession();
+          if (TrackingRemoteDataSource.instance.hasActiveSession) {
+            await TrackingRemoteDataSource.instance.endSession();
           }
         }
       });
@@ -92,7 +92,7 @@ class AuthRemoteDataSource {
           idToken: credentials.idToken,
         );
         await _auth.signInWithCredential(credential);
-        await TrackingService.instance.logEvent('Silent Sign In via Init');
+        await TrackingRemoteDataSource.instance.logEvent('Silent Sign In via Init');
       }
     });
   }
@@ -223,7 +223,7 @@ class AuthRemoteDataSource {
       final userCredential = await _auth.signInWithCredential(credential);
       if (userCredential.user != null) {
         await _saveUserToFirestore(userCredential.user!);
-        await TrackingService.instance.logEvent('Sign In With Google');
+        await TrackingRemoteDataSource.instance.logEvent('Sign In With Google');
       }
       debugPrint('[Auth] Step 5: Done → ${userCredential.user?.email}');
       return userCredential.user;
@@ -243,7 +243,7 @@ class AuthRemoteDataSource {
     );
     if (userCredential.user != null) {
       await _saveUserToFirestore(userCredential.user!);
-      await TrackingService.instance.logEvent('Sign In With Email/Password');
+      await TrackingRemoteDataSource.instance.logEvent('Sign In With Email/Password');
     }
     return userCredential.user;
   }
@@ -258,14 +258,14 @@ class AuthRemoteDataSource {
     );
     if (userCredential.user != null) {
       await _saveUserToFirestore(userCredential.user!);
-      await TrackingService.instance.logEvent('Registered With Email/Password');
+      await TrackingRemoteDataSource.instance.logEvent('Registered With Email/Password');
     }
     return userCredential.user;
   }
 
   Future<void> sendPasswordReset(String email) async {
     await _auth.sendPasswordResetEmail(email: email);
-    await TrackingService.instance.logEvent('Password Reset Requested');
+    await TrackingRemoteDataSource.instance.logEvent('Password Reset Requested');
   }
 
   Future<void> updateDisplayName(String newName) async {
@@ -281,15 +281,15 @@ class AuthRemoteDataSource {
         await _saveUserToFirestore(updatedUser);
       }
 
-      await TrackingService.instance.logEvent('Display Name Updated');
+      await TrackingRemoteDataSource.instance.logEvent('Display Name Updated');
     }
   }
 
   Future<void> signOut() async {
     // Do NOT call _googleSignIn.signOut() — it corrupts the package's
     // internal HTTP server state, causing the next signIn() to hang.
-    await TrackingService.instance.logEvent('User Signed Out');
-    await TrackingService.instance.endSession();
+    await TrackingRemoteDataSource.instance.logEvent('User Signed Out');
+    await TrackingRemoteDataSource.instance.endSession();
     await _auth.signOut();
 
     // Ensure we redirect to splash on manual sign out as well

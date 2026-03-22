@@ -1,4 +1,4 @@
-import 'package:omni_bridge/data/services/firebase/tracking_service.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/tracking_remote_datasource.dart';
 
 abstract class ISettingsRemoteDataSource {
   Future<String> getGoogleCredentials();
@@ -8,7 +8,7 @@ abstract class ISettingsRemoteDataSource {
 }
 
 class SettingsRemoteDataSourceImpl implements ISettingsRemoteDataSource {
-  final TrackingService _trackingService;
+  final TrackingRemoteDataSource _trackingService;
 
   SettingsRemoteDataSourceImpl(this._trackingService);
 

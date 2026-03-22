@@ -9,7 +9,7 @@ import 'package:omni_bridge/features/settings/presentation/blocs/settings_event.
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_state.dart';
 import 'package:omni_bridge/core/constants/languages.dart';
 import 'package:omni_bridge/features/translation/data/datasources/translation_rest_datasource.dart';
-import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/settings_helpers.dart';
@@ -239,7 +239,7 @@ Widget buildTranslationModelSelector(
   };
 
   bool hasAccess(String engineKey) {
-    return SubscriptionService.instance.canUseModel(engineKey);
+    return SubscriptionRemoteDataSource.instance.canUseModel(engineKey);
   }
 
   final needsNvidiaKey =
@@ -407,7 +407,7 @@ Widget buildTranslationModelSelector(
                           if (!itemHasAccess) ...[
                             const SizedBox(width: 8),
                             _buildTierLockBadge(
-                              '${SubscriptionService.instance.getNameForTier(SubscriptionService.instance.getRequirement('engines', item.key, SubscriptionService.instance.getTierAt(1)))}+',
+                              '${SubscriptionRemoteDataSource.instance.getNameForTier(SubscriptionRemoteDataSource.instance.getRequirement('engines', item.key, SubscriptionRemoteDataSource.instance.getTierAt(1)))}+',
                             ),
                           ],
                           if (isCurrentlySelected) ...[
@@ -524,7 +524,7 @@ Widget _buildTranscriptionModelSection(
                       label: 'NVIDIA Riva',
                       status: transState.modelStatuses['riva'],
                       isRecommended: true,
-                      locked: !SubscriptionService.instance.canUseModel('riva'),
+                      locked: !SubscriptionRemoteDataSource.instance.canUseModel('riva'),
                       icon: Icons.bolt_rounded,
                       onChanged: (v) {
                         // Explicitly unload current model from memory upon selection change
@@ -553,7 +553,7 @@ Widget _buildTranscriptionModelSection(
                                   .startsWith('whisper')
                               ? state.settings.transcriptionModel
                               : 'whisper-base'],
-                      locked: !SubscriptionService.instance.canUseModel(
+                      locked: !SubscriptionRemoteDataSource.instance.canUseModel(
                         'whisper-base',
                       ),
                       icon: Icons.offline_bolt_outlined,
@@ -823,30 +823,30 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
     };
 
     final currentTier =
-        SubscriptionService.instance.currentStatus?.tier ??
-        SubscriptionService.instance.defaultTier;
+        SubscriptionRemoteDataSource.instance.currentStatus?.tier ??
+        SubscriptionRemoteDataSource.instance.defaultTier;
 
     bool whisperHasAccess(String size) {
       if (size == 'tiny' || size == 'base') return true;
-      final required = SubscriptionService.instance.getRequirement(
+      final required = SubscriptionRemoteDataSource.instance.getRequirement(
         'whisper',
         size,
         size == 'medium'
-            ? SubscriptionService.instance.getTierAt(2)
-            : SubscriptionService.instance.getTierAt(1),
+            ? SubscriptionRemoteDataSource.instance.getTierAt(2)
+            : SubscriptionRemoteDataSource.instance.getTierAt(1),
       );
-      return SubscriptionService.instance.tierHasAccess(currentTier, required);
+      return SubscriptionRemoteDataSource.instance.tierHasAccess(currentTier, required);
     }
 
     String whisperLockLabel(String size) {
-      final required = SubscriptionService.instance.getRequirement(
+      final required = SubscriptionRemoteDataSource.instance.getRequirement(
         'whisper',
         size,
         size == 'medium'
-            ? SubscriptionService.instance.getTierAt(2)
-            : SubscriptionService.instance.getTierAt(1),
+            ? SubscriptionRemoteDataSource.instance.getTierAt(2)
+            : SubscriptionRemoteDataSource.instance.getTierAt(1),
       );
-      return '${SubscriptionService.instance.getNameForTier(required)}+';
+      return '${SubscriptionRemoteDataSource.instance.getNameForTier(required)}+';
     }
 
     return Container(

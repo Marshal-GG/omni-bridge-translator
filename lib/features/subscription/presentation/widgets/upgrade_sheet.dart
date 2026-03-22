@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import '../pages/subscription_page.dart';
 
 void showUpgradeSheet(BuildContext context) {
@@ -19,8 +19,8 @@ class UpgradeSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final plans = SubscriptionService.instance.availablePlans;
-    final promptConfig = SubscriptionService.instance.upgradePromptConfig;
+    final plans = SubscriptionRemoteDataSource.instance.availablePlans;
+    final promptConfig = SubscriptionRemoteDataSource.instance.upgradePromptConfig;
     final title =
         promptConfig?['feature_locked']?['title'] as String? ??
         'Upgrade Your Plan';
@@ -64,7 +64,7 @@ class UpgradeSheet extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           // Show highlights from each paid plan (skip the first/free tier)
-          ...plans.where((p) => p.id != SubscriptionService.instance.defaultTier).map((
+          ...plans.where((p) => p.id != SubscriptionRemoteDataSource.instance.defaultTier).map((
             plan,
           ) {
             final highlight = plan.isUnlimited

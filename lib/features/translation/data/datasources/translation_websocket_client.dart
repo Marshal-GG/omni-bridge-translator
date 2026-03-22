@@ -1,4 +1,4 @@
-// lib/core/services/translation_service.dart
+// lib/features/translation/data/datasources/translation_websocket_client.dart
 //
 // Connects to the Python WebSocket server (flutter_server.py) and
 // streams live translated captions, with automatic reconnection.
@@ -11,7 +11,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:omni_bridge/features/translation/domain/entities/caption_message.dart';
 import 'package:omni_bridge/features/translation/data/models/caption_dto.dart';
 
-class TranslationService {
+class TranslationWebsocketClient {
   final String serverHost;
   final int serverPort;
 
@@ -38,7 +38,7 @@ class TranslationService {
 
   String get _wsUrl => 'ws://$serverHost:$serverPort/captions';
 
-  TranslationService({required this.serverHost, this.serverPort = 8765});
+  TranslationWebsocketClient({required this.serverHost, this.serverPort = 8765});
 
   /// Stream of incoming caption messages from the server
   Stream<CaptionMessage> get captions => _captionController.stream;
@@ -120,7 +120,7 @@ class TranslationService {
             final jsonMap = jsonDecode(data as String) as Map<String, dynamic>;
             _captionController.add(CaptionDto.fromJson(jsonMap));
           } catch (e, st) {
-            debugPrint('[TranslationService] Failed to parse message: $e\n$st');
+            debugPrint('[TranslationWebsocketClient] Failed to parse message: $e\n$st');
           }
         },
         onDone: () {

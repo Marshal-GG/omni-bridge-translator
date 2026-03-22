@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 
 class AdminPanel extends StatefulWidget {
   const AdminPanel({super.key});
@@ -179,7 +179,7 @@ class _AdminPanelState extends State<AdminPanel> {
                           final isSelected = _selectedUserUid == uid;
                           final tier =
                               data['tier'] ??
-                              SubscriptionService.instance.defaultTier;
+                              SubscriptionRemoteDataSource.instance.defaultTier;
 
                           return ListTile(
                             dense: true,
@@ -257,9 +257,9 @@ class _AdminPanelState extends State<AdminPanel> {
                   const SizedBox(height: 8),
                   ValueListenableBuilder<int>(
                     valueListenable:
-                        SubscriptionService.instance.configNotifier,
+                        SubscriptionRemoteDataSource.instance.configNotifier,
                     builder: (context, _, _) {
-                      final plans = SubscriptionService.instance.availablePlans;
+                      final plans = SubscriptionRemoteDataSource.instance.availablePlans;
                       if (plans.isEmpty) {
                         return const Text(
                           'No plans loaded – seed config first',
@@ -275,7 +275,7 @@ class _AdminPanelState extends State<AdminPanel> {
                             height: 32,
                             child: ActionChip(
                               label: Text(
-                                SubscriptionService.instance
+                                SubscriptionRemoteDataSource.instance
                                     .getNameForTier(tier)
                                     .toUpperCase(),
                                 style: const TextStyle(
@@ -287,7 +287,7 @@ class _AdminPanelState extends State<AdminPanel> {
                                 alpha: 0.05,
                               ),
                               onPressed: () {
-                                SubscriptionService.instance
+                                SubscriptionRemoteDataSource.instance
                                     .setTierForOtherUser(
                                       _selectedUserUid!,
                                       tier,

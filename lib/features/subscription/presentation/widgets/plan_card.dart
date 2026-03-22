@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/subscription_plan.dart';
 import 'package:intl/intl.dart';
-import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 
 Widget buildPlanCard({
   required SubscriptionPlan plan,
@@ -215,7 +215,7 @@ Widget buildPlanCard({
                   : '';
               return _ModelChip(
                 label:
-                    '${SubscriptionService.instance.getModelDisplayName(m)}$suffix',
+                    '${SubscriptionRemoteDataSource.instance.getModelDisplayName(m)}$suffix',
               );
             }).toList(),
           ),
@@ -237,7 +237,7 @@ Widget buildPlanCard({
             runSpacing: 4,
             children: plan.allowedTranscriptionModels.map((m) {
               return _ModelChip(
-                label: SubscriptionService.instance.getModelDisplayName(m),
+                label: SubscriptionRemoteDataSource.instance.getModelDisplayName(m),
               );
             }).toList(),
           ),
@@ -253,13 +253,13 @@ Widget buildPlanCard({
                 ? null
                 : plan.isTrial
                 ? () async {
-                    final err = await SubscriptionService.instance
+                    final err = await SubscriptionRemoteDataSource.instance
                         .activateTrial();
                     if (err != null) {
                       debugPrint('[Trial] $err');
                     }
                   }
-                : () => SubscriptionService.instance.openCheckout(plan.id),
+                : () => SubscriptionRemoteDataSource.instance.openCheckout(plan.id),
             style: ElevatedButton.styleFrom(
               backgroundColor: plan.isTrial
                   ? (trialUsed ? Colors.white10 : Colors.amberAccent)

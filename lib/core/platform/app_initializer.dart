@@ -4,8 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:omni_bridge/firebase_options.dart';
 import 'package:omni_bridge/core/config/app_config.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:omni_bridge/data/services/firebase/tracking_service.dart';
-import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/tracking_remote_datasource.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:omni_bridge/core/platform/tray_manager.dart';
 import 'package:omni_bridge/core/platform/window_manager.dart';
 
@@ -72,7 +72,7 @@ class AppInitializer {
       // Fallback for desktop platforms without native crash tools
       FlutterError.onError = (details) {
         debugPrint('Flutter Error: ${details.exceptionAsString()}');
-        TrackingService.instance.logError(
+        TrackingRemoteDataSource.instance.logError(
           'Flutter Error: ${details.exceptionAsString()}',
           details.stack,
         );
@@ -81,7 +81,7 @@ class AppInitializer {
 
       PlatformDispatcher.instance.onError = (error, stack) {
         debugPrint('Async Error: $error');
-        TrackingService.instance.logError('Async Error', error);
+        TrackingRemoteDataSource.instance.logError('Async Error', error);
         debugPrintStack(stackTrace: stack);
         return true;
       };
@@ -93,7 +93,7 @@ class AppInitializer {
     AuthRemoteDataSource.instance.init();
 
     // Initialize Subscription/Quota Service
-    SubscriptionService.instance.init();
+    SubscriptionRemoteDataSource.instance.init();
 
     // Initialize the window and tray manager
     await initializeWindow();
@@ -152,7 +152,7 @@ class AppInitializer {
     }
 
     // Log App Launch Strategy
-    TrackingService.instance.logEvent('App Started (Dart Main)');
+    TrackingRemoteDataSource.instance.logEvent('App Started (Dart Main)');
 
     // Determine initial route
 

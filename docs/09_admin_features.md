@@ -15,7 +15,7 @@ The application identifies administrators by checking their email against a whit
 - **Admin Management**: Admins have an "Admin Identity" UI directly embedded within the panel that allows them to view, add, and remove admin emails from the `system/admins` list, propagating instantly.
 
 ## 2. Administrative Actions
-**File**: `lib/data/services/firebase/subscription_service.dart`
+**File**: `lib/features/subscription/data/datasources/subscription_remote_datasource.dart`
 
 Administrators have the capability to manually override any user's subscription tier.
 

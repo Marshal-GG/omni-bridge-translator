@@ -3,8 +3,8 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
-import 'package:omni_bridge/data/models/subscription_models.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
 
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_header.dart';
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_avatar.dart';
@@ -252,16 +252,16 @@ class _AccountScreenState extends State<AccountScreen> {
                               // ── Plan Details Card ──────────────────────────
                               StreamBuilder<SubscriptionStatus>(
                                 stream:
-                                    SubscriptionService.instance.statusStream,
+                                    SubscriptionRemoteDataSource.instance.statusStream,
                                 initialData:
-                                    SubscriptionService.instance.currentStatus,
+                                    SubscriptionRemoteDataSource.instance.currentStatus,
                                 builder: (context, snapshot) {
                                   final status = snapshot.data;
                                   if (status == null) {
                                     return const SizedBox.shrink();
                                   }
 
-                                  final tierName = SubscriptionService.instance
+                                  final tierName = SubscriptionRemoteDataSource.instance
                                       .getNameForTier(status.tier)
                                       .toUpperCase();
                                   final isUnlimited = status.isUnlimited;

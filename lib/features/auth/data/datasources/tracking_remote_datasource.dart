@@ -11,11 +11,11 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:omni_bridge/core/navigation/global_navigator.dart';
-import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 
-class TrackingService {
-  TrackingService._();
-  static final TrackingService instance = TrackingService._();
+class TrackingRemoteDataSource {
+  TrackingRemoteDataSource._();
+  static final TrackingRemoteDataSource instance = TrackingRemoteDataSource._();
 
   static final String _appName = kDebugMode
       ? 'OmniBridge-Debug'
@@ -708,13 +708,13 @@ class TrackingService {
 
   /// Deletes RTDB captions older than the tier's retention window.
   /// Called fire-and-forget on session start. Reads retention config from
-  /// SubscriptionService (sourced from system/monetization in Firestore).
+  /// SubscriptionRemoteDataSource (sourced from system/monetization in Firestore).
   Future<void> _cleanupOldCaptions() async {
     final userUid = uid;
     if (userUid == null) return;
 
     try {
-      final retentionDays = SubscriptionService.instance.captionRetentionDays;
+      final retentionDays = SubscriptionRemoteDataSource.instance.captionRetentionDays;
       if (retentionDays <= 0) return; // free tier — nothing stored to clean
 
       final cutoffMs = DateTime.now()

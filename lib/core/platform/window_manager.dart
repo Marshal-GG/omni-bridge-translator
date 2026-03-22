@@ -4,7 +4,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/core/infrastructure/python_server_manager.dart';
-import 'package:omni_bridge/data/services/firebase/tracking_service.dart';
+import 'package:omni_bridge/features/auth/data/datasources/tracking_remote_datasource.dart';
 
 Future<void> initializeWindow() async {
   await Window.initialize();
@@ -137,7 +137,7 @@ class _AppWindowListener extends WindowListener {
   @override
   void onWindowClose() async {
     // End the Firebase tracing session gracefully before closing
-    await TrackingService.instance.endSession();
+    await TrackingRemoteDataSource.instance.endSession();
 
     // Stop the Python server when the window is closed
     PythonServerManager.stopServer();

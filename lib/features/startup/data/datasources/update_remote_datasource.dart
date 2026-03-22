@@ -4,9 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 
-class UpdateService {
-  UpdateService._();
-  static final UpdateService instance = UpdateService._();
+class UpdateRemoteDataSource {
+  UpdateRemoteDataSource._();
+  static final UpdateRemoteDataSource instance = UpdateRemoteDataSource._();
 
   static const _owner = 'Marshal-GG';
   static const _repo = 'omni-bridge-translator';
@@ -26,7 +26,7 @@ class UpdateService {
       }
       return false;
     } catch (e) {
-      debugPrint('[UpdateService] Version parse error: $e');
+      debugPrint('[UpdateRemoteDataSource] Version parse error: $e');
       return false;
     }
   }
@@ -70,7 +70,7 @@ class UpdateService {
         latestVersion: current,
       );
     } catch (e) {
-      debugPrint('[UpdateService] Error: $e');
+      debugPrint('[UpdateRemoteDataSource] Error: $e');
       return UpdateResult(
         status: UpdateStatus.error,
         errorMessage: 'Check failed. Verify your internet connection.',

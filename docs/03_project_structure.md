@@ -23,23 +23,16 @@ omni_bridge/
 │   │   ├── theme/                   # AppTheme
 │   │   └── utils/                   # Shared utilities
 │   │
-│    ├── features/                    # Feature Modules (Clean Architecture)
-    │   ├── auth/                    # Auth: Domain (UseCases), Data, Presentation
+│    ├── features/                    # Feature Modules (Vertical Slice Architecture)
+    │   ├── auth/                    # Auth: Domain, Data, Presentation
     │   ├── history/                 # History: Domain, Data, Presentation
-    │   ├── settings/                # Settings: Domain (UseCases), Data, Presentation
-    │   ├── translation/             # Translation: Domain (UseCases), Data, Presentation
-    │   ├── subscription/            # Subscription: Domain, Data, Presentation [NEW]
-    │   ├── startup/                 # Startup: Splash, Onboarding [NEW]
-    │   └── about/                   # About: Update logic [NEW]
+    │   ├── settings/                # Settings: Domain, Data, Presentation
+    │   ├── translation/             # Translation: Domain, Data, Presentation
+    │   ├── subscription/            # Subscription: Domain, Data, Presentation
+    │   ├── startup/                 # Startup: Splash, Onboarding
+    │   └── about/                   # About: Version info
     │
-    ├── data/                        # Core Data (Shared Models/Services)
-    │   ├── models/                  # AppSettings, CaptionModel, etc.
-    │   └── services/                # Grouped by provider
-    │       ├── firebase/            # TrackingService, SubscriptionService
-    │       ├── server/              # AsrWsClient, UpdateService
-    │       ├── system/              # AppLifecycle
-    │       └── translation/         # TranslationService, WhisperService
-    │
+
     └── presentation/                # Layer for global UI & shared blocs
         ├── blocs/                   # Global BLoCs
         └── widgets/                 # Common reusable widgets
@@ -81,9 +74,13 @@ omni_bridge/
 | **Phase 7** | Python Integration Tests (Warp Speed) | ⏭️ **SKIPPED** |
 | **Phase 8** | Python Unit Tests (Pytest) | ✅ **COMPLETE** |
 | **Phase 9** | Deep Restructure Phase 1: Core/Infra | ✅ **COMPLETE** |
-| **Phase 10**| Deep Restructure Phase 2: Features | ✅ **COMPLETE** (Auth, Translation, History, Settings, Startup, About, Subscription extracted) |
-| **Phase 11**| Deep Restructure Phase 3: UseCases & DI | ✅ **COMPLETE** (20+ UseCases created, BLoCs refactored) |
-| **Phase 12**| Deep Restructure Phase 4: Routing & BLoC Scoping | ✅ **COMPLETE** (AppRouter created, Route-scoped Blocs) |
+| **Phase 10**| Deep Restructure Phase 2: Features | ✅ **COMPLETE** |
+| **Phase 11**| Deep Restructure Phase 3: UseCases & DI | ✅ **COMPLETE** |
+| **Phase 12**| Deep Restructure Phase 4: Routing & BLoC Scoping | ✅ **COMPLETE** |
+| **Phase 13**| Phase 7: Final Data Layer Consolidation | ✅ **COMPLETE** |
+| **Phase 14**| Phase 8: BLoC Consistency | 🚧 **IN PROGRESS** |
+| **Phase 15**| Phase 9: Unified Naming | ⏳ **PENDING** |
+| **Phase 16**| Phase 10: Final Core Refinement | ⏳ **PENDING** |
 ---
 
 ## Naming Conventions

@@ -36,7 +36,7 @@ To prevent "Session Bleed" (where logging into one version affects the other), w
 - **Result**: You can run both the Debug version and the Installed version simultaneously without one "swallowing" the other's launch request.
 
 ### D. Deep Link & OAuth Isolation
-**Location**: `lib/data/services/firebase/auth_service.dart` and `lib/core/platform/app_initializer.dart`
+**Location**: `lib/features/auth/data/datasources/auth_remote_datasource.dart` and `lib/core/platform/app_initializer.dart`
 **Mechanism**: Google Sign-In relies on a "Custom URI Scheme" redirect.
 - **Debug Protocol**: `omni-bridge-debug://auth`
 - **Release Protocol**: `omni-bridge://auth`

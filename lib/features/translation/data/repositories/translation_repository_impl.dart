@@ -1,6 +1,6 @@
 import '../../domain/entities/caption_message.dart';
-import 'package:omni_bridge/data/models/subscription_models.dart';
-import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
+import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import '../datasources/asr_websocket_datasource.dart';
 import '../datasources/translation_rest_datasource.dart';
 import '../../domain/repositories/i_translation_repository.dart';
@@ -8,7 +8,7 @@ import '../../domain/repositories/i_translation_repository.dart';
 class TranslationRepositoryImpl implements ITranslationRepository {
   final AsrWebSocketClient _asrClient;
   final TranslationRestDatasource _restDatasource;
-  final SubscriptionService _subscriptionService;
+  final SubscriptionRemoteDataSource _subscriptionService;
 
   TranslationRepositoryImpl(
     this._asrClient,

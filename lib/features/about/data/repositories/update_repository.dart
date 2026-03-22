@@ -1,9 +1,9 @@
 import '../../domain/entities/update_result.dart' as domain;
 import '../../domain/repositories/i_update_repository.dart';
-import '../../../../data/services/server/update_service.dart';
+import '../../../../features/startup/data/datasources/update_remote_datasource.dart';
 
 class UpdateRepositoryImpl implements IUpdateRepository {
-  final UpdateService _updateService;
+  final UpdateRemoteDataSource _updateService;
 
   UpdateRepositoryImpl(this._updateService);
 

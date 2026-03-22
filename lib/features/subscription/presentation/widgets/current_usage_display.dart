@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/subscription_status.dart';
-import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:intl/intl.dart';
 
 Widget buildCurrentUsageDisplay({
   required SubscriptionStatus status,
   required NumberFormat formatter,
 }) {
-  final tierName = SubscriptionService.instance
+  final tierName = SubscriptionRemoteDataSource.instance
       .getNameForTier(status.tier)
       .toUpperCase();
 

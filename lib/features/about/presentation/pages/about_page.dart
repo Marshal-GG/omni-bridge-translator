@@ -6,7 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/core/di/injection.dart';
-import 'package:omni_bridge/data/services/server/update_service.dart';
+import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
 import 'package:omni_bridge/features/about/domain/usecases/check_for_update.dart';
 import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 

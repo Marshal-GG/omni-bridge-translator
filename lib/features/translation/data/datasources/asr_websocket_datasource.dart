@@ -4,8 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:omni_bridge/core/config/server_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:omni_bridge/core/device/asr_text_controller.dart';
-import 'package:omni_bridge/data/services/firebase/tracking_service.dart';
-import 'package:omni_bridge/data/services/translation/translation_service.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/tracking_remote_datasource.dart';
+import './translation_websocket_client.dart';
 import 'package:omni_bridge/features/history/domain/usecases/add_history_entry_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/configure_history_usecase.dart';
 
@@ -16,7 +16,7 @@ import 'package:omni_bridge/features/history/domain/usecases/configure_history_u
 /// the WASAPI cold-start delay on every toggle. Only [dispose] fully tears down
 /// the connection (called on app shutdown).
 class AsrWebSocketClient {
-  TranslationService? _service;
+  TranslationWebsocketClient? _service;
 
   Stream<CaptionMessage>? get captions => _service?.captions;
 
@@ -32,12 +32,12 @@ class AsrWebSocketClient {
     _ensureService();
   }
 
-  /// Creates the [TranslationService] and pre-connects the WebSocket
+  /// Creates the [TranslationWebsocketClient] and pre-connects the WebSocket
   /// so the connection is ready before the user presses play.
   void _ensureService() {
     if (_service != null) return;
     debugPrint('ASR WS pre-connecting to: ${ServerConfig.wsUrl}/captions');
-    _service = TranslationService(
+    _service = TranslationWebsocketClient(
       serverHost: ServerConfig.host,
       serverPort: ServerConfig.port,
     );
@@ -51,7 +51,7 @@ class AsrWebSocketClient {
 
       // Usage stats — log to Firestore
       if (msg.usageStats != null) {
-        TrackingService.instance.logModelUsage(msg.usageStats!);
+        TrackingRemoteDataSource.instance.logModelUsage(msg.usageStats!);
         return;
       }
 
@@ -70,7 +70,7 @@ class AsrWebSocketClient {
         asrTextController.showSystemMessage('⚠ Error: $errMsg.');
 
         // Remote logging
-        TrackingService.instance.logError('Server Error', errMsg);
+        TrackingRemoteDataSource.instance.logError('Server Error', errMsg);
         return;
       }
 

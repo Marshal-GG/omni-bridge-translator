@@ -2,14 +2,14 @@ import 'dart:async';
 import '../../domain/entities/subscription_plan.dart' as entity;
 import '../../domain/entities/subscription_status.dart' as entity;
 import '../../domain/repositories/i_subscription_repository.dart';
-import '../../../../data/services/firebase/subscription_service.dart';
-import '../../../../data/models/subscription_models.dart' as old;
+import '../../../../features/subscription/data/datasources/subscription_remote_datasource.dart';
+import '../../../../features/subscription/data/models/subscription_dto.dart' as old;
 
 class SubscriptionRepositoryImpl implements ISubscriptionRepository {
-  final SubscriptionService _service;
+  final SubscriptionRemoteDataSource _service;
 
-  SubscriptionRepositoryImpl({SubscriptionService? service})
-      : _service = service ?? SubscriptionService.instance;
+  SubscriptionRepositoryImpl({SubscriptionRemoteDataSource? service})
+      : _service = service ?? SubscriptionRemoteDataSource.instance;
 
   @override
   Stream<entity.SubscriptionStatus> get statusStream =>

@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:omni_bridge/data/models/subscription_models.dart';
+import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
 
 class TranslationState extends Equatable {
   // App UI State

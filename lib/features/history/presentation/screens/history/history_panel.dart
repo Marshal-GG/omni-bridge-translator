@@ -4,8 +4,8 @@ import 'package:omni_bridge/core/di/injection.dart';
 import 'package:omni_bridge/features/history/domain/usecases/clear_history_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/get_live_history_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/get_chunked_history_usecase.dart';
-import 'package:omni_bridge/data/services/firebase/subscription_service.dart';
-import 'package:omni_bridge/data/models/subscription_models.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
 import 'package:omni_bridge/features/history/domain/entities/history_entry.dart';
 import 'package:omni_bridge/features/history/presentation/screens/history/components/history_header.dart';
 import 'package:omni_bridge/features/history/presentation/screens/history/components/history_list_components.dart';
@@ -19,11 +19,11 @@ class HistoryPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<SubscriptionStatus>(
-      stream: SubscriptionService.instance.statusStream,
-      initialData: SubscriptionService.instance.currentStatus,
+      stream: SubscriptionRemoteDataSource.instance.statusStream,
+      initialData: SubscriptionRemoteDataSource.instance.currentStatus,
       builder: (context, snapshot) {
         final tier =
-            snapshot.data?.tier ?? SubscriptionService.instance.defaultTier;
+            snapshot.data?.tier ?? SubscriptionRemoteDataSource.instance.defaultTier;
         return _HistoryPanelBody(tier: tier);
       },
     );
@@ -42,7 +42,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
   @override
   void initState() {
     super.initState();
-    if (SubscriptionService.instance.getTierRank(widget.tier) == 0) {
+    if (SubscriptionRemoteDataSource.instance.getTierRank(widget.tier) == 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           showUpgradeSheet(context);
@@ -53,7 +53,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
 
   @override
   Widget build(BuildContext context) {
-    final rank = SubscriptionService.instance.getTierRank(widget.tier);
+    final rank = SubscriptionRemoteDataSource.instance.getTierRank(widget.tier);
     // Base tier (0): blocked entirely — showing upgrade sheet via callback above.
     if (rank == 0) {
       return WindowBorder(
@@ -78,9 +78,9 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                     icon: Icons.history_toggle_off,
                     title: 'History Unavailable',
                     subtitle:
-                        'Upgrade to ${SubscriptionService.instance.getNameForRank(1)} or higher plan to access your translation history.',
+                        'Upgrade to ${SubscriptionRemoteDataSource.instance.getNameForRank(1)} or higher plan to access your translation history.',
                     requiredTier:
-                        '${SubscriptionService.instance.getNameForRank(1)}+',
+                        '${SubscriptionRemoteDataSource.instance.getNameForRank(1)}+',
                   ),
                 ),
               ],
@@ -90,7 +90,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
       );
     }
 
-    final isPro = SubscriptionService.instance.isHighestTier(widget.tier);
+    final isPro = SubscriptionRemoteDataSource.instance.isHighestTier(widget.tier);
 
     return WindowBorder(
       color: Colors.white10,
@@ -167,13 +167,13 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                               child: _TierGateView(
                                 icon: Icons.auto_fix_high,
                                 title:
-                                    '${SubscriptionService.instance.getNameForRank(SubscriptionService.instance.getTierRank(widget.tier) + 1)} Feature',
+                                    '${SubscriptionRemoteDataSource.instance.getNameForRank(SubscriptionRemoteDataSource.instance.getTierRank(widget.tier) + 1)} Feature',
                                 subtitle:
-                                    'Upgrade to ${SubscriptionService.instance.getNameForRank(SubscriptionService.instance.getTierRank(widget.tier) + 1)} to unlock Intelligent Context Refresh — '
+                                    'Upgrade to ${SubscriptionRemoteDataSource.instance.getNameForRank(SubscriptionRemoteDataSource.instance.getTierRank(widget.tier) + 1)} to unlock Intelligent Context Refresh — '
                                     'AI that corrects translations up to 5 seconds back in real time.',
-                                requiredTier: SubscriptionService.instance
+                                requiredTier: SubscriptionRemoteDataSource.instance
                                     .getNameForRank(
-                                      SubscriptionService.instance.getTierRank(
+                                      SubscriptionRemoteDataSource.instance.getTierRank(
                                             widget.tier,
                                           ) +
                                           1,
@@ -213,7 +213,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
 
   /// Subtitle shown under the Live Transcripts column header.
   String _historySubtitle(String tier) {
-    final rank = SubscriptionService.instance.getTierRank(tier);
+    final rank = SubscriptionRemoteDataSource.instance.getTierRank(tier);
     if (rank == 0) return 'No history available';
     if (rank == 1) return 'Current session only';
     if (rank == 2) return 'Last 3 days';
@@ -222,7 +222,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
 
   /// Filter entries based on the user's tier's history rank.
   List<HistoryEntry> _filterByTier(List<HistoryEntry> entries, String tier) {
-    final rank = SubscriptionService.instance.getTierRank(tier);
+    final rank = SubscriptionRemoteDataSource.instance.getTierRank(tier);
     if (rank >= 3) return entries; // Unlimited
     if (rank == 2) {
       final cutoff = DateTime.now().subtract(const Duration(days: 3));

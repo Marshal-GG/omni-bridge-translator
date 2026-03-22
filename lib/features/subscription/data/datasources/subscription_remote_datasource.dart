@@ -6,14 +6,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
-
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:omni_bridge/data/models/subscription_models.dart';
+import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
 
-class SubscriptionService {
-  SubscriptionService._();
-  static final SubscriptionService instance = SubscriptionService._();
+class SubscriptionRemoteDataSource {
+  SubscriptionRemoteDataSource._();
+  static final SubscriptionRemoteDataSource instance = SubscriptionRemoteDataSource._();
 
   static final String _appName = kDebugMode
       ? 'OmniBridge-Debug'
@@ -716,6 +715,14 @@ class SubscriptionService {
     return tier == defaultTier ? 10000 : -1;
   }
 
+  int _getPeriodLimitForTier(String tier) {
+     final config = _tierConfig(tier);
+     if (config != null) {
+       return (config['quotas']?['period_tokens'] as num?)?.toInt() ?? 0;
+     }
+     return 0;
+  }
+
   String getPriceForTier(String tier) {
     final config = _tierConfig(tier);
     if (config != null) return config['price'] as String? ?? '';
@@ -743,6 +750,18 @@ class SubscriptionService {
     return names?[tier] ?? tier.toUpperCase();
   }
 
+  SubscriptionStatus _getDefaultStatus() {
+    return SubscriptionStatus(
+      tier: defaultTier,
+      dailyTokensUsed: 0,
+      weeklyTokensUsed: 0,
+      monthlyTokensUsed: 0,
+      lifetimeTokensUsed: 0,
+      dailyLimit: _getLimitForTier(defaultTier),
+      dailyResetAt: _getNextDailyReset(),
+    );
+  }
+
   List<SubscriptionPlan> get availablePlans {
     if (_monetizationConfig == null) {
       debugPrint('[Subscription] availablePlans: _monetizationConfig is NULL');
@@ -761,21 +780,12 @@ class SubscriptionService {
     final tiers = _monetizationConfig?['tiers'] as Map<String, dynamic>?;
     final popular = _monetizationConfig?['popular'] as String? ?? '';
 
-    debugPrint(
-      '[Subscription] availablePlans: order=$order, '
-      'tiers=${tiers != null ? "present (${tiers.keys.toList()})" : "NULL"}, '
-      'popular=$popular',
-    );
-
     // Prefer tiers structure if available
     if (tiers != null) {
       return order.map((key) {
         final id = key.toString();
         final config = tiers[id] as Map<String, dynamic>? ?? {};
         final quotas = config['quotas'] as Map<String, dynamic>? ?? {};
-        final rateLimits = config['rate_limits'] as Map<String, dynamic>? ?? {};
-        final engineLimitsRaw =
-            config['engine_limits'] as Map<String, dynamic>? ?? {};
         return SubscriptionPlan(
           id: id,
           name: config['name']?.toString() ?? id.toUpperCase(),
@@ -802,71 +812,21 @@ class SubscriptionService {
                   ?.map((e) => e.toString())
                   .toList() ??
               [],
-          requestsPerMinute:
-              (rateLimits['requests_per_minute'] as num?)?.toInt() ?? 0,
-          concurrentSessions:
-              (rateLimits['concurrent_sessions'] as num?)?.toInt() ?? 1,
-          engineLimits: engineLimitsRaw.map(
-            (k, v) => MapEntry(k, (v as num).toInt()),
-          ),
+          requestsPerMinute: (config['rate_limits']?['requests_per_minute'] as num?)?.toInt() ?? 0,
+          concurrentSessions: (config['rate_limits']?['concurrent_sessions'] as num?)?.toInt() ?? 1,
+          engineLimits: (config['engine_limits'] as Map<String, dynamic>?)?.map((k,v) => MapEntry(k, (v as num).toInt())) ?? {},
         );
       }).toList();
     }
 
-    // Fallback: legacy flat structure
-    final names = _monetizationConfig?['names'] as Map<String, dynamic>? ?? {};
-    final prices =
-        _monetizationConfig?['prices'] as Map<String, dynamic>? ?? {};
-    final descriptions =
-        _monetizationConfig?['descriptions'] as Map<String, dynamic>? ?? {};
-    final featuresMap =
-        _monetizationConfig?['features'] as Map<String, dynamic>? ?? {};
-
-    return order.map((key) {
-      final id = key.toString();
-      return SubscriptionPlan(
-        id: id,
-        name: names[id]?.toString() ?? id.toUpperCase(),
-        price: prices[id]?.toString() ?? '',
-        description: descriptions[id]?.toString() ?? '',
-        features:
-            (featuresMap[id] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            [],
-        isPopular: id == popular,
-      );
-    }).toList();
-  }
-
-  SubscriptionStatus _getDefaultStatus() {
-    return SubscriptionStatus(
-      tier: defaultTier,
-      dailyTokensUsed: 0,
-      weeklyTokensUsed: 0,
-      monthlyTokensUsed: 0,
-      lifetimeTokensUsed: 0,
-      dailyLimit: _getLimitForTier(defaultTier),
-      dailyResetAt: _getNextDailyReset(),
-      periodLimit: _getPeriodLimitForTier(defaultTier),
-    );
-  }
-
-  /// Returns the total-period token limit for time-limited tiers (e.g. trial).
-  /// Returns 0 for regular tiers (daily limit applies instead).
-  int _getPeriodLimitForTier(String tier) {
-    final config = _tierConfig(tier);
-    final isTrial = config?['is_trial'] as bool? ?? false;
-    if (!isTrial) return 0;
-    return (config?['quotas']?['monthly_tokens'] as num?)?.toInt() ?? 0;
+    return [];
   }
 
   void dispose() {
     _monetizationSub?.cancel();
     _userSub?.cancel();
     _usagePollTimer?.cancel();
-    _httpClient.close();
     _statusController.close();
-    configNotifier.dispose();
+    _httpClient.close();
   }
 }
