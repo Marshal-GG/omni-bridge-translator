@@ -16,7 +16,7 @@ State management: **BLoC pattern** throughout.
 Architecture: **Clean Architecture (Layered)** with **Repository Pattern** and **Dependency Injection** using `get_it`.
 
 > [!NOTE]
-> The application is currently transitioning from a **Horizontal Layered** architecture to a **Feature-Driven (Vertical Slice)** architecture. For the new roadmap and component boundaries, refer to **`docs/17_deep_restructure_plan.md`**.
+> The Vertical Slice (Feature-Driven) architecture is **fully implemented** as of Phase 16. All features have been migrated to `lib/features/` with complete `domain/`, `data/`, and `presentation/` sub-layers.
 
 ---
 
@@ -116,7 +116,14 @@ Shared mock helpers are located in `test/helpers/test_mocks.dart`.
 
 ### CI/CD
 
-A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically runs `flutter analyze` and `flutter test` on every push and pull request to `main`.
+A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically runs `flutter analyze` and `flutter test --coverage` on every push and pull request to `main`.
+
+> [!IMPORTANT]
+> Both `flutter_ci.yml` and `release.yml` are currently configured as **manual-trigger only** (`workflow_dispatch`). Auto-triggers are commented out at the top of each file. To re-enable push/PR triggers, follow the instructions in the comment header of each workflow file. See [18 — GitHub Workflow Guide](18_github_workflow_guide.md) for full details on the CI/CD setup, branching strategy, and how to ship a release.
+
+---
+
+## Data Sources
 
 | Component | Responsibility |
 |-----------|----------------|

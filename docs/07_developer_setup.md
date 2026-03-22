@@ -124,6 +124,9 @@ The Flutter app has a comprehensive unit test suite covering all core BLoCs. No 
 # Run all tests:
 flutter test
 
+# Run all tests with coverage report (same as CI):
+flutter test --coverage
+
 # Run tests for a specific feature:
 flutter test test/features/auth/
 
@@ -279,5 +282,6 @@ While copyright is automatic upon creation, formalizing your protection is highl
 - [Server Health Checks](10_server_health_checks.md)
 - [Firebase Terminal Management](11_firebase_terminal_management.md)
 - [Publishing a New Release](12_github_releases_guide.md)
+- [CI/CD, Branching & GitHub Actions](18_github_workflow_guide.md) — how to run CI manually, enable auto-triggers, and ship a release
 - [Deep Architecture Restructure Plan](17_deep_restructure_plan.md)
 - [Legacy Python Restructure Plan](16_restructure_plan.md)

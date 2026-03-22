@@ -12,40 +12,40 @@ The server uses an **Asynchronous Modular Architecture** built on **FastAPI** an
 
 ```
 server/
-├── src/
-│   ├── pipeline/
-│   └── orchestrator.py     # Coordination layer delegating to specialized dispatchers
-├── asr/
-│   └── asr_dispatcher.py   # selection of ASR models & silence gating
-├── translation/
-│   └── translation_dispatcher.py # Language detection & comprehensive fallback trees
-├── audio/
-│   ├── capture.py          # WASAPI loopback + mic capture (pyaudiowpatch) with VAD
-│   ├── handler.py          # caption_callback, audio_poll_loop, levels
-│   ├── meter.py            # RMS metering (dB-normalized 0.0–1.0)
-│   └── shared_pyaudio.py   # Thread-safe global PyAudio singleton
-├── network/
-│   ├── handlers/           # Modular command handlers
-│   │   ├── base_handler.py     # Shared BaseHandler and ServerContext
-│   │   ├── session_handler.py  # Session lifecycle (start/stop)
-│   │   ├── config_handler.py   # Settings and Volume management
-│   │   ├── device_handler.py   # Audio device enumeration
-│   │   └── status_handler.py   # Health and model status reporting
-│   ├── ws_manager.py       # WebSocket connection management
-│   └── router.py           # Command routing (Decouples WS from logic)
-│   ├── utils/
-│   │   ├── server_utils.py     # structlog setup, process management
-│   │   └── language_support.py # Single source of truth for language capabilities
-│   └── models/                 # Low-level model implementation wrappers
-│       ├── asr/                # Riva ASR, Whisper, Google ASR
-│       └── translation/        # Riva NMT, Llama, Google, MyMemory
+├── flutter_server.py           # FastAPI Entry point
+├── pyproject.toml              # Dependency management (includes pytest)
 ├── tests/                      # Pytest unit testing suite
 │   ├── conftest.py             # Shared fixtures and AI model mocks
 │   ├── test_asr_dispatcher.py
 │   ├── test_translation_dispatcher.py
 │   └── test_orchestrator.py
-├── flutter_server.py           # FastAPI Entry point
-└── pyproject.toml              # Dependency management (includes pytest)
+└── src/
+    ├── pipeline/
+    │   └── orchestrator.py     # Thin coordinator — delegates to ASRDispatcher & TranslationDispatcher
+    ├── asr/
+    │   └── asr_dispatcher.py   # ASR model selection & silence gating
+    ├── translation/
+    │   └── translation_dispatcher.py  # Language detection & comprehensive fallback trees
+    ├── audio/
+    │   ├── capture.py          # WASAPI loopback + mic capture (pyaudiowpatch) with VAD
+    │   ├── handler.py          # caption_callback, audio_poll_loop, levels
+    │   ├── meter.py            # RMS metering (dB-normalized 0.0–1.0)
+    │   └── shared_pyaudio.py   # Thread-safe global PyAudio singleton
+    ├── models/
+    │   ├── asr/                # ASR models (Riva, Faster-Whisper, Google)
+    │   └── translation/        # Translation models (Riva NMT, Llama, Google Cloud, Google Free, MyMemory)
+    ├── network/
+    │   ├── handlers/           # Modular command handlers
+    │   │   ├── base_handler.py     # Shared BaseHandler and ServerContext
+    │   │   ├── session_handler.py  # Session lifecycle (start/stop)
+    │   │   ├── config_handler.py   # Settings and Volume management
+    │   │   ├── device_handler.py   # Audio device enumeration
+    │   │   └── status_handler.py   # Health and model status reporting
+    │   ├── ws_manager.py       # WebSocket connection management
+    │   └── router.py           # Command routing (Decouples WS from logic)
+    └── utils/
+        ├── server_utils.py     # structlog setup, process management
+        └── language_support.py # Single source of truth for language capabilities
 ```
 
 ---
@@ -86,7 +86,7 @@ Acts as a high-level coordinator that delegates specialized tasks to dedicated d
   - **Model Selection**: Routes audio to Riva, Faster-Whisper, or Google based on configuration and availability.
   - **Silence Gating**: Calculates RMS and drops chunks < 120 RMS to prevent "hallucinations" during silence.
   - **Confidence Filtering**: Discards Riva results with confidence < 0.5.
-- **`TranslationDispatcher`** (`src/src/translation/translation_dispatcher.py`):
+- **`TranslationDispatcher`** (`src/translation/translation_dispatcher.py`):
   - **Fallback Trees**: Implements the multi-stage fallback logic (e.g., Riva -> Llama -> Google Free).
   - **Language Detection**: Orchestrates detection using specialized scripts or model-native capabilities.
 - **Background Thread Stability**: Implements a "Thread-Safe Queue" pattern ensuring background worker threads (ASR/Translation) can safely communicate results back to the FastAPI event loop.

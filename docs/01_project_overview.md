@@ -71,8 +71,10 @@ No extra hardware. No complex setup for the default configuration. Just launch a
 
 | Document | Description |
 |----------|-------------|
+| [00_doc_index.md](00_doc_index.md) | Master documentation index — start here |
 | [02_tech_stack.md](02_tech_stack.md) | All technologies, frameworks, and dependencies |
 | [03_project_structure.md](03_project_structure.md) | Full directory layout with annotations |
 | [04_flutter_architecture.md](04_flutter_architecture.md) | Flutter client architecture deep-dive |
 | [05_python_architecture.md](05_python_architecture.md) | Python server architecture deep-dive |
 | [07_developer_setup.md](07_developer_setup.md) | How to run from source |
+| [18_github_workflow_guide.md](18_github_workflow_guide.md) | CI/CD pipelines, branching, and releasing |

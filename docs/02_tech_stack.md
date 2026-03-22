@@ -61,7 +61,9 @@
 | InnoSetup (`installer_setup.iss`) | Windows installer generator |
 | flutter_launcher_icons | App icon generation |
 | bloc_test + mocktail | BLoC unit testing |
-| GitHub Actions (`.github/`) | CI pipeline |
+| pytest | Python server unit testing (server/ tests/) |
+| `flutter_ci.yml` | GitHub Actions: analyze + BLoC unit tests + Codecov coverage + Windows build verification |
+| `release.yml` | GitHub Actions: full installer build (PyInstaller + Inno Setup) + GitHub Release creation |
 
 ---
 

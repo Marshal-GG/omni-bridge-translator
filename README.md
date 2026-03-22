@@ -7,6 +7,7 @@
 
 [![Download Latest](https://img.shields.io/github/v/release/Marshal-GG/omni-bridge-translator?label=Download&style=for-the-badge&color=teal)](https://github.com/Marshal-GG/omni-bridge-translator/releases/latest)
 [![Platform](https://img.shields.io/badge/Platform-Windows-blue?style=for-the-badge&logo=windows)](https://github.com/Marshal-GG/omni-bridge-translator/releases)
+[![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/Marshal-GG/omni-bridge-translator/actions)
 [![License](https://img.shields.io/badge/License-Restricted_Study_Only-black.svg)](LICENSE)
 
 </div>
@@ -116,7 +117,7 @@ Pro unlocks caption history, microphone audio, and all AI engines. Clear visual 
 
 ### Option 2 — Run from Source
 
-See [Developer Setup →](docs/developer_setup.md)
+See [Developer Setup →](docs/07_developer_setup.md)
 
 ---
 
@@ -141,9 +142,6 @@ For NVIDIA Riva ASR / NMT or Llama translation:
 3. Select **NVIDIA Riva** or **Llama** as your engine
 
 ---
-
-| Desktop Volume | 1.0 (Wait for Live Update) |
-| Audio not captured | Check playback device and WebSocket logs |
 
 ---
 

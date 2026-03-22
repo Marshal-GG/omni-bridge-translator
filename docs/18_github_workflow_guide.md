@@ -30,6 +30,9 @@ Your instruction sheet for the robot lives in `.github/workflows/*.yml`.
 
 ## 3. Your Workflows Explained
 
+> [!IMPORTANT]
+> **Both workflows are currently PAUSED.** The `on:` trigger in each file is set to `workflow_dispatch` (manual run from the GitHub Actions tab only). Auto-triggers on push/PR and version tags are commented out at the top of each `.yml` file. To re-enable them, follow the instructions in the comment block at the top of `flutter_ci.yml` or `release.yml`.
+
 ### `flutter_ci.yml` — Runs on Every Push & PR
 
 ```yaml
@@ -197,11 +200,12 @@ git push origin v1.0.0
 ```
 
 That's it. `release.yml` fires automatically:
-- Builds the Windows release binary
-- Creates a zip file: `OmniBridge-v1.0.0-windows.zip`
-- Creates a new **GitHub Release** with auto-generated release notes and the zip attached
+- Builds the Flutter Windows release binary
+- Compiles the Python server into `omni_bridge_server.exe` via PyInstaller
+- Packages everything into a Windows installer: `OmniBridge_Setup_v1.0.0.exe` (via Inno Setup)
+- Creates a new **GitHub Release** with auto-generated release notes and the `.exe` installer attached
 
-Users can then download the zip from the **Releases** page of your repository.
+Users can then download the installer from the **Releases** page of your repository.
 
 ---
 
