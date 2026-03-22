@@ -170,8 +170,9 @@ class TranslationState extends Equatable {
   String get activeTranslationModelStatusKey {
     return {
           'google': 'google_translate',
+          'google_api': 'google_api',
           'mymemory': 'mymemory',
-          'riva': 'riva',
+          'riva': 'riva-nmt',
           'llama': 'llama',
         }[activeTranslationModel] ??
         activeTranslationModel;
@@ -179,6 +180,7 @@ class TranslationState extends Equatable {
 
   String get activeTranscriptionModelStatusKey {
     if (activeTranscriptionModel == 'online') return 'google_asr';
+    if (activeTranscriptionModel == 'riva') return 'riva-asr';
     return activeTranscriptionModel;
   }
 }

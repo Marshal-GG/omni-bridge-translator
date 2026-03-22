@@ -164,10 +164,11 @@ Launch
 
 Settings
  └─ SettingsBloc syncs preferences to Firestore on save
+ └─ TranslationBloc triggers initial sync to Python server on app launch to populate model statuses
 
 Start Translation
  └─ TranslationBloc sends `start` command via AsrWsClient
-     └─ AppRouter injects TranslationBloc into Overlay Route
+     └─ TranslationBloc is provided at app root (BlocProvider) to ensure state persistence
          └─ Overlay window opens (bitsdojo_window)
              └─ AsrTextController buffers caption events
                  └─ UI reacts via BlocBuilder

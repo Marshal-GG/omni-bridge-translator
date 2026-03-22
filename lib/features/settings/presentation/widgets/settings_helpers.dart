@@ -248,9 +248,10 @@ class ModelStatusIndicator extends StatelessWidget {
           Colors.blueAccent,
           Icons.download_for_offline_rounded,
         );
+      case 'no_credentials':
       case 'no_api_key':
         return _buildBadge(
-          'API Key Missing',
+          'Validation Error/Key Missing',
           Colors.redAccent,
           Icons.key_off_rounded,
         );

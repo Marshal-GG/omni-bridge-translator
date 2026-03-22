@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
 
 /// Shows a snack bar when the auto-detect language warning fires.
@@ -58,7 +60,11 @@ void showAutoDetectWarning(BuildContext context, TranslationState state) {
               TextButton(
                 onPressed: () {
                   messenger.hideCurrentSnackBar();
-                  Navigator.pushNamed(context, '/settings-overlay');
+                  Navigator.pushNamed(
+                    context,
+                    '/settings-overlay',
+                    arguments: context.read<TranslationBloc>(),
+                  );
                 },
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.tealAccent,

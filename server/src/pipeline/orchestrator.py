@@ -284,19 +284,12 @@ class InferenceOrchestrator:
             "details": gpu
         })
             
-        # Combine Riva ASR and NMT status
+        # Separate Riva ASR and NMT status
         asr_status = self.riva_asr.get_status()
         nmt_status = self.riva_nmt.get_status()
         
-        combined_riva = {
-            "name": "riva",
-            "status": "ready" if (asr_status["ready"] and nmt_status["ready"]) else "error",
-            "ready": asr_status["ready"] and nmt_status["ready"],
-            "message": f"ASR: {asr_status['message']} | NMT: {nmt_status['message']}",
-            "progress": (asr_status["progress"] + nmt_status["progress"]) / 2,
-            "details": {"asr": asr_status, "nmt": nmt_status}
-        }
-        statuses.append(combined_riva)
+        statuses.append(asr_status)
+        statuses.append(nmt_status)
         
         statuses.append(self.local_asr.get_status())
         statuses.append(self.llama.get_status())

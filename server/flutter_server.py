@@ -87,6 +87,7 @@ async def captions_ws(websocket: WebSocket):
     if ctx.orchestrator:
         caps = ctx.orchestrator.get_capabilities()
         await websocket.send_text(json.dumps({"type": "capabilities", "capabilities": caps}))
+        await manager.broadcast_status(ctx.orchestrator)
     
     try:
         while True:

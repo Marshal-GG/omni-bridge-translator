@@ -61,15 +61,27 @@ class AppRouter {
       case translationOverlay:
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
-            create: (context) => sl<TranslationBloc>(),
+            create: (_) => sl<TranslationBloc>(),
             child: const TranslationScreen(),
           ),
           settings: settings,
         );
       case settingsOverlay:
+        // When navigating from within the translation screen, the caller
+        // passes its live TranslationBloc as arguments so settings can read
+        // the same accumulated modelStatuses. Other callers (login, subscription)
+        // omit the argument and get a fresh instance.
+        final passedBloc = settings.arguments is TranslationBloc
+            ? settings.arguments as TranslationBloc
+            : null;
         return MaterialPageRoute(
-          builder: (_) => BlocProvider(
-            create: (context) => sl<SettingsBloc>(),
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              passedBloc != null
+                  ? BlocProvider<TranslationBloc>.value(value: passedBloc)
+                  : BlocProvider<TranslationBloc>(create: (_) => sl<TranslationBloc>()),
+              BlocProvider<SettingsBloc>(create: (_) => sl<SettingsBloc>()),
+            ],
             child: const SettingsScreen(),
           ),
           settings: settings,

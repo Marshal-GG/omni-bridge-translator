@@ -26,36 +26,46 @@ class _SettingsScreenState extends State<SettingsScreen>
   late TabController _tabController;
   String _version = '1.0.0';
 
+  bool _synced = false;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
 
-    // Sync current active settings to temporary state
-    final translationState = context.read<TranslationBloc>().state;
-    context.read<SettingsBloc>().add(
-      SyncTempSettingsEvent(
-        targetLang: translationState.activeTargetLang,
-        sourceLang: translationState.activeSourceLang,
-        useMic: translationState.activeUseMic,
-        fontSize: translationState.activeFontSize,
-        isBold: translationState.activeIsBold,
-        opacity: translationState.activeOpacity,
-        inputDeviceIndex: translationState.activeInputDeviceIndex,
-        outputDeviceIndex: translationState.activeOutputDeviceIndex,
-        desktopVolume: translationState.activeDesktopVolume,
-        micVolume: translationState.activeMicVolume,
-        translationModel: translationState.activeTranslationModel,
-        apiKey: translationState.activeApiKey,
-        transcriptionModel: translationState.activeTranscriptionModel,
-      ),
-    );
-
-    context.read<SettingsBloc>().add(LoadDevicesEvent());
-
     PackageInfo.fromPlatform().then((info) {
       if (mounted) setState(() => _version = info.version);
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Read providers here — this is the correct lifecycle hook for accessing
+    // inherited widgets. initState runs before the element is inserted into
+    // the tree, so Provider.of / context.read will throw there.
+    if (!_synced) {
+      _synced = true;
+      final translationState = context.read<TranslationBloc>().state;
+      context.read<SettingsBloc>().add(
+        SyncTempSettingsEvent(
+          targetLang: translationState.activeTargetLang,
+          sourceLang: translationState.activeSourceLang,
+          useMic: translationState.activeUseMic,
+          fontSize: translationState.activeFontSize,
+          isBold: translationState.activeIsBold,
+          opacity: translationState.activeOpacity,
+          inputDeviceIndex: translationState.activeInputDeviceIndex,
+          outputDeviceIndex: translationState.activeOutputDeviceIndex,
+          desktopVolume: translationState.activeDesktopVolume,
+          micVolume: translationState.activeMicVolume,
+          translationModel: translationState.activeTranslationModel,
+          apiKey: translationState.activeApiKey,
+          transcriptionModel: translationState.activeTranscriptionModel,
+        ),
+      );
+      context.read<SettingsBloc>().add(LoadDevicesEvent());
+    }
   }
 
   @override

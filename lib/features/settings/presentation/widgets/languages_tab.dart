@@ -299,7 +299,7 @@ Widget buildTranslationModelSelector(
                   'google': 'google_translate',
                   'google_api': 'google_api',
                   'mymemory': 'mymemory',
-                  'riva': 'riva',
+                  'riva': 'riva-nmt',
                   'llama': 'llama',
                 }[selectedItem.key];
 
@@ -317,9 +317,14 @@ Widget buildTranslationModelSelector(
                     ),
                     if (statusKey != null) ...[
                       const SizedBox(width: 8),
-                      ModelStatusIndicator(
-                        status: transState.modelStatuses[statusKey],
-                        compact: true,
+                      BlocBuilder<TranslationBloc, TranslationState>(
+                        bloc: context.read<TranslationBloc>(),
+                        builder: (context, state) {
+                          return ModelStatusIndicator(
+                            status: state.modelStatuses[statusKey],
+                            compact: true,
+                          );
+                        },
                       ),
                     ],
                     if (isRecommended) ...[
@@ -339,22 +344,23 @@ Widget buildTranslationModelSelector(
                     borderRadius: BorderRadius.all(Radius.circular(10)),
                   ),
                 ),
-                itemBuilder: (context, item, _) {
+                itemBuilder: (popupContext, item, _) {
                   final isCurrentlySelected =
                       item.key == state.settings.translationModel;
                   final isRecommended = item.key == 'google';
                   final itemHasAccess = hasAccess(item.key);
                   final statusKey = {
                     'google': 'google_translate',
+                    'google_api': 'google_api',
                     'mymemory': 'mymemory',
-                    'riva': 'riva',
+                    'riva': 'riva-nmt',
                     'llama': 'llama',
                   }[item.key];
 
                   return InkWell(
                     onTap: () {
                       if (itemHasAccess) {
-                        Navigator.pop(context);
+                        Navigator.pop(popupContext);
                         // Explicitly unload current model from memory upon selection change
                         TranslationRestDatasource().unloadModel();
                         context.read<SettingsBloc>().add(
@@ -399,9 +405,14 @@ Widget buildTranslationModelSelector(
                           ),
                           if (statusKey != null) ...[
                             const SizedBox(width: 8),
-                            ModelStatusIndicator(
-                              status: transState.modelStatuses[statusKey],
-                              compact: true,
+                            BlocBuilder<TranslationBloc, TranslationState>(
+                              bloc: context.read<TranslationBloc>(),
+                              builder: (context, state) {
+                                return ModelStatusIndicator(
+                                  status: state.modelStatuses[statusKey],
+                                  compact: true,
+                                );
+                              },
                             ),
                           ],
                           if (!itemHasAccess) ...[
@@ -522,7 +533,7 @@ Widget _buildTranscriptionModelSection(
                       value: 'riva',
                       groupValue: state.settings.transcriptionModel,
                       label: 'NVIDIA Riva',
-                      status: transState.modelStatuses['riva'],
+                      status: transState.modelStatuses['riva-asr'],
                       isRecommended: true,
                       locked: !SubscriptionRemoteDataSource.instance.canUseModel('riva'),
                       icon: Icons.bolt_rounded,

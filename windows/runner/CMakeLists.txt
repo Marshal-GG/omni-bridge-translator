@@ -34,6 +34,13 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 # dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
 target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
+
+# Suppress LNK4099: pre-built Firebase SDK (firebase_app.lib) does not ship
+# libcurl-d.pdb, so the linker cannot find debug symbols for libcurl. This is
+# a known upstream limitation and does not affect correctness or runtime behavior.
+if(MSVC)
+  target_link_options(${BINARY_NAME} PRIVATE "/ignore:4099")
+endif()
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.

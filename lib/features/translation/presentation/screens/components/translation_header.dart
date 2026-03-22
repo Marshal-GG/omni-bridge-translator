@@ -29,7 +29,11 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
         _QuotaUsageText(status: state.quotaStatus),
         const SizedBox(width: 12),
         GestureDetector(
-          onTap: () => Navigator.pushNamed(context, '/settings-overlay'),
+          onTap: () => Navigator.pushNamed(
+            context,
+            '/settings-overlay',
+            arguments: context.read<TranslationBloc>(),
+          ),
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
             child: Text(

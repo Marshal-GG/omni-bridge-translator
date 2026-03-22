@@ -263,7 +263,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       final result = await getAppSettingsUseCase();
       result.fold(
         (failure) => debugPrint('Error loading settings: ${failure.message}'),
-        (settings) {
+        (settings) async {
           if (settings != null) {
             emit(
               state.copyWith(
@@ -280,6 +280,25 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
                 activeTranslationModel: settings.translationModel,
                 activeApiKey: settings.apiKey,
                 activeTranscriptionModel: settings.transcriptionModel,
+              ),
+            );
+
+            // Trigger status update in backend
+            add(
+              ApplySettingsEvent(
+                targetLang: settings.targetLang,
+                sourceLang: settings.sourceLang,
+                useMic: settings.useMic,
+                fontSize: settings.fontSize,
+                isBold: settings.isBold,
+                opacity: settings.opacity,
+                inputDeviceIndex: settings.inputDeviceIndex,
+                outputDeviceIndex: settings.outputDeviceIndex,
+                desktopVolume: settings.desktopVolume,
+                micVolume: settings.micVolume,
+                translationModel: settings.translationModel,
+                apiKey: settings.apiKey,
+                transcriptionModel: settings.transcriptionModel,
               ),
             );
           }
