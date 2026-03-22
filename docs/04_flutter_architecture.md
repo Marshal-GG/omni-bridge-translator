@@ -57,9 +57,12 @@ lib/
 
 | BLoC | Responsibility | Depends On |
 |------|----------------|------------|
-| `AuthBloc` | Firebase Auth state management | `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, etc. |
+| `AuthBloc` | Firebase Auth state management | `IAuthRepository` |
 | `SettingsBloc` | User preferences, device selection, and audio monitoring | `SyncSettingsUseCase`, `LoadDevicesUseCase`, `ObserveAudioLevelsUseCase` |
-| `TranslationBloc` | Live translation session control, caption streaming, and quota tracking | `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `ToggleTranslationUseCase` |
+| `TranslationBloc` | Live translation session control, caption streaming, and quota tracking | `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `StartTranslationUseCase` |
+| `HistoryBloc` | Live and chunked transcription history | `GetLiveHistoryUseCase`, `GetChunkedHistoryUseCase`, `ClearHistoryUseCase` |
+| `AboutBloc` | App versioning and updates | `CheckForUpdateUseCase` |
+| `StartupBloc` | Bootstrapping, auth check, and routing | - |
 
 ---
 

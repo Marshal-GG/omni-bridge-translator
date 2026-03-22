@@ -1,4 +1,8 @@
 import 'package:omni_bridge/features/settings/domain/repositories/i_settings_repository.dart';
+import 'package:omni_bridge/features/about/presentation/blocs/about_bloc.dart';
+import 'package:omni_bridge/features/startup/presentation/blocs/startup_bloc.dart';
+import 'package:omni_bridge/features/auth/presentation/blocs/auth_bloc.dart';
+import 'package:omni_bridge/features/history/presentation/blocs/history_bloc.dart';
 import 'package:omni_bridge/features/settings/data/repositories/settings_repository_impl.dart';
 import 'package:get_it/get_it.dart';
 import 'package:omni_bridge/features/auth/data/repositories/auth_repository_impl.dart';
@@ -86,6 +90,29 @@ Future<void> setupInjection() async {
       loadDevicesUseCase: sl(),
       observeAudioLevelsUseCase: sl(),
       logEventUseCase: sl(),
+    ),
+  );
+
+  sl.registerFactory(
+    () => AboutBloc(
+      checkForUpdate: sl(),
+    ),
+  );
+
+  sl.registerFactory(
+    () => StartupBloc(),
+  );
+
+  sl.registerFactory(
+    () => AuthBloc(authRepository: sl()),
+  );
+
+  sl.registerFactory(
+    () => HistoryBloc(
+      getLiveHistoryUseCase: sl(),
+      getChunkedHistoryUseCase: sl(),
+      clearHistoryUseCase: sl(),
+      subscriptionDataSource: sl(),
     ),
   );
 

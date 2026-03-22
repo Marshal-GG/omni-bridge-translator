@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
-import 'package:omni_bridge/core/di/injection.dart';
-import 'package:omni_bridge/features/history/domain/usecases/clear_history_usecase.dart';
-import 'package:omni_bridge/features/history/domain/usecases/get_live_history_usecase.dart';
-import 'package:omni_bridge/features/history/domain/usecases/get_chunked_history_usecase.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:omni_bridge/features/history/presentation/blocs/history_bloc.dart';
+import 'package:omni_bridge/features/history/presentation/blocs/history_event.dart';
+import 'package:omni_bridge/features/history/presentation/blocs/history_state.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
 import 'package:omni_bridge/features/history/domain/entities/history_entry.dart';
 import 'package:omni_bridge/features/history/presentation/screens/history/components/history_header.dart';
 import 'package:omni_bridge/features/history/presentation/screens/history/components/history_list_components.dart';
@@ -18,21 +17,23 @@ class HistoryPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<SubscriptionStatus>(
-      stream: SubscriptionRemoteDataSource.instance.statusStream,
-      initialData: SubscriptionRemoteDataSource.instance.currentStatus,
-      builder: (context, snapshot) {
-        final tier =
-            snapshot.data?.tier ?? SubscriptionRemoteDataSource.instance.defaultTier;
-        return _HistoryPanelBody(tier: tier);
+    return BlocBuilder<HistoryBloc, HistoryState>(
+      builder: (context, state) {
+        if (state is HistoryLoaded) {
+          return _HistoryPanelBody(state: state);
+        }
+        return const Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(child: CircularProgressIndicator()),
+        );
       },
     );
   }
 }
 
 class _HistoryPanelBody extends StatefulWidget {
-  final String tier;
-  const _HistoryPanelBody({required this.tier});
+  final HistoryLoaded state;
+  const _HistoryPanelBody({required this.state});
 
   @override
   State<_HistoryPanelBody> createState() => _HistoryPanelBodyState();
@@ -42,7 +43,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
   @override
   void initState() {
     super.initState();
-    if (SubscriptionRemoteDataSource.instance.getTierRank(widget.tier) == 0) {
+    if (SubscriptionRemoteDataSource.instance.getTierRank(widget.state.subscriptionStatus.tier) == 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           showUpgradeSheet(context);
@@ -53,7 +54,8 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
 
   @override
   Widget build(BuildContext context) {
-    final rank = SubscriptionRemoteDataSource.instance.getTierRank(widget.tier);
+    final tier = widget.state.subscriptionStatus.tier;
+    final rank = SubscriptionRemoteDataSource.instance.getTierRank(tier);
     // Base tier (0): blocked entirely — showing upgrade sheet via callback above.
     if (rank == 0) {
       return WindowBorder(
@@ -90,7 +92,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
       );
     }
 
-    final isPro = SubscriptionRemoteDataSource.instance.isHighestTier(widget.tier);
+    final isPro = SubscriptionRemoteDataSource.instance.isHighestTier(tier);
 
     return WindowBorder(
       color: Colors.white10,
@@ -109,7 +111,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
             children: [
               buildHistoryHeader(
                 context,
-                onClear: () => sl<ClearHistoryUseCase>()(),
+                onClear: () => context.read<HistoryBloc>().add(ClearHistoryEvent()),
               ),
               const Divider(height: 1, color: Colors.white10),
               Expanded(
@@ -122,16 +124,15 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                         children: [
                           buildHistoryColumnHeader(
                             '📝  Live Transcripts',
-                            _historySubtitle(widget.tier),
+                            _historySubtitle(tier),
                           ),
                           const Divider(height: 1, color: Colors.white12),
                           Expanded(
-                            child: ValueListenableBuilder<List<HistoryEntry>>(
-                              valueListenable: sl<GetLiveHistoryUseCase>()(),
-                              builder: (_, entries, _) {
+                            child: Builder(
+                              builder: (context) {
                                 final filtered = _filterByTier(
-                                  entries,
-                                  widget.tier,
+                                  widget.state.liveEntries,
+                                  tier,
                                 );
                                 if (filtered.isEmpty) {
                                   return buildHistoryEmptyState(
@@ -167,14 +168,14 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                               child: _TierGateView(
                                 icon: Icons.auto_fix_high,
                                 title:
-                                    '${SubscriptionRemoteDataSource.instance.getNameForRank(SubscriptionRemoteDataSource.instance.getTierRank(widget.tier) + 1)} Feature',
+                                    '${SubscriptionRemoteDataSource.instance.getNameForRank(SubscriptionRemoteDataSource.instance.getTierRank(tier) + 1)} Feature',
                                 subtitle:
-                                    'Upgrade to ${SubscriptionRemoteDataSource.instance.getNameForRank(SubscriptionRemoteDataSource.instance.getTierRank(widget.tier) + 1)} to unlock Intelligent Context Refresh — '
+                                    'Upgrade to ${SubscriptionRemoteDataSource.instance.getNameForRank(SubscriptionRemoteDataSource.instance.getTierRank(tier) + 1)} to unlock Intelligent Context Refresh — '
                                     'AI that corrects translations up to 5 seconds back in real time.',
                                 requiredTier: SubscriptionRemoteDataSource.instance
                                     .getNameForRank(
                                       SubscriptionRemoteDataSource.instance.getTierRank(
-                                            widget.tier,
+                                            tier,
                                           ) +
                                           1,
                                     ),
@@ -182,10 +183,9 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                             )
                           else
                             Expanded(
-                              child: ValueListenableBuilder<List<HistoryEntry>>(
-                                valueListenable:
-                                    sl<GetChunkedHistoryUseCase>()(),
-                                builder: (_, entries, _) {
+                              child: Builder(
+                                builder: (context) {
+                                  final entries = widget.state.chunkedEntries;
                                   if (entries.isEmpty) {
                                     return buildHistoryEmptyState(
                                       'Chunks appear every 5 seconds\nonce translation is running.',

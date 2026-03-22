@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
-import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
-
+import 'package:omni_bridge/features/startup/presentation/blocs/startup_bloc.dart';
+import 'package:omni_bridge/features/startup/presentation/blocs/startup_state.dart';
 import 'package:omni_bridge/features/startup/presentation/widgets/startup_header.dart';
 
 class SplashPage extends StatefulWidget {
@@ -41,22 +42,6 @@ class _SplashPageState extends State<SplashPage>
     );
 
     _animController.forward();
-
-    _initializeApp();
-  }
-
-  Future<void> _initializeApp() async {
-    // Wait for the animation to play so it feels like a real splash screen
-    await Future.delayed(const Duration(milliseconds: 2000));
-
-    if (!mounted) return;
-
-    if (AuthRemoteDataSource.instance.isLoggedIn) {
-      Navigator.of(context).pushReplacementNamed('/translation-overlay');
-    } else {
-      // Always show tutorial/onboarding if not logged in
-      Navigator.of(context).pushReplacementNamed('/onboarding');
-    }
   }
 
   @override
@@ -67,86 +52,99 @@ class _SplashPageState extends State<SplashPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: WindowBorder(
-        color: Colors.white12,
-        width: 1,
-        child: Container(
-          color: const Color(0xFF121212), // Match login screen background
-          child: Column(
-            children: [
-              buildStartupHeader(),
-              Expanded(
-                child: Center(
-                  child: AnimatedBuilder(
-                    animation: _animController,
-                    builder: (context, child) {
-                      return FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: ScaleTransition(
-                          scale: _scaleAnimation,
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Logo placeholder or text
-                        Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF3B82F6), Color(0xFF8B5CF6)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF3B82F6,
-                                ).withValues(alpha: 0.5),
-                                blurRadius: 32,
-                                spreadRadius: 8,
+    return BlocListener<StartupBloc, StartupState>(
+      listener: (context, state) {
+        if (state is StartupNavigateToHome) {
+          Navigator.of(context).pushReplacementNamed('/translation-overlay');
+        } else if (state is StartupNavigateToOnboarding) {
+          Navigator.of(context).pushReplacementNamed('/onboarding');
+        } else if (state is StartupFailure) {
+          // If there's an error, maybe fallback to onboarding or show a snackbar
+          Navigator.of(context).pushReplacementNamed('/onboarding');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: WindowBorder(
+          color: Colors.white12,
+          width: 1,
+          child: Container(
+            color: const Color(0xFF121212), // Match login screen background
+            child: Column(
+              children: [
+                buildStartupHeader(),
+                Expanded(
+                  child: Center(
+                    child: AnimatedBuilder(
+                      animation: _animController,
+                      builder: (context, child) {
+                        return FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: ScaleTransition(
+                            scale: _scaleAnimation,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Logo placeholder or text
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF3B82F6), Color(0xFF8B5CF6)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                            ],
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFF3B82F6,
+                                  ).withValues(alpha: 0.5),
+                                  blurRadius: 32,
+                                  spreadRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.translate_rounded,
+                              size: 64,
+                              color: Colors.white,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.translate_rounded,
-                            size: 64,
-                            color: Colors.white,
+                          const SizedBox(height: 32),
+                          const Text(
+                            'Omni Bridge',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 1.2,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 32),
-                        const Text(
-                          'Omni Bridge',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 1.2,
+                          const SizedBox(height: 8),
+                          Text(
+                            'Live AI Translator',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white.withValues(alpha: 0.7),
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Live AI Translator',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.white.withValues(alpha: 0.7),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+

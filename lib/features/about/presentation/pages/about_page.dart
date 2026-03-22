@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:omni_bridge/core/di/injection.dart';
-import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
-import 'package:omni_bridge/features/about/domain/usecases/check_for_update.dart';
 import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
+import 'package:omni_bridge/features/about/presentation/blocs/about_bloc.dart';
+import 'package:omni_bridge/features/about/presentation/blocs/about_event.dart';
+import 'package:omni_bridge/features/about/presentation/blocs/about_state.dart';
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -18,47 +18,13 @@ class AboutPage extends StatefulWidget {
 }
 
 class _AboutPageState extends State<AboutPage> {
-  String _version = '';
-  UpdateStatus _updateStatus = UpdateStatus.idle;
-  UpdateResult? _updateResult;
-  final CheckForUpdate _checkForUpdate = sl<CheckForUpdate>();
   final GlobalKey _contentKey = GlobalKey();
 
-  @override
-  void initState() {
-    super.initState();
-    PackageInfo.fromPlatform().then((info) {
-      if (mounted) setState(() => _version = info.version);
-    });
-    // Reflect any background check that already ran
-    if (UpdateNotifier.instance.value) {
-      _updateStatus = UpdateStatus.available;
-      _updateResult = UpdateResult(
-        status: UpdateStatus.available,
-        latestVersion: UpdateNotifier.instance.latestVersion,
-        releaseUrl: UpdateNotifier.instance.releaseUrl,
-      );
-    }
+  Future<void> _handleUpdateCheck(BuildContext context) async {
+    context.read<AboutBloc>().add(const AboutCheckUpdateEvent());
   }
 
-  Future<void> _handleUpdateCheck() async {
-    setState(() => _updateStatus = UpdateStatus.checking);
-    final result = await _checkForUpdate();
-    if (!mounted) return;
-    setState(() {
-      _updateResult = result;
-      _updateStatus = result.status;
-    });
-    if (result.status == UpdateStatus.available) {
-      UpdateNotifier.instance.setAvailable(
-        result.latestVersion!,
-        result.releaseUrl!,
-      );
-    }
-  }
-
-  Future<void> _openRelease() async {
-    final url = _updateResult?.releaseUrl ?? '';
+  Future<void> _openRelease(String url) async {
     if (url.isEmpty) return;
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
@@ -97,11 +63,13 @@ class _AboutPageState extends State<AboutPage> {
                           child: SizedBox(
                             width: 1000,
                             key: _contentKey,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 28,
-                              ),
+                            child: BlocBuilder<AboutBloc, AboutState>(
+                              builder: (context, state) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 28,
+                                  ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
@@ -156,10 +124,10 @@ class _AboutPageState extends State<AboutPage> {
                                                 height: 26,
                                                 child: OutlinedButton(
                                                   onPressed:
-                                                      _updateStatus ==
+                                                      state.updateStatus ==
                                                           UpdateStatus.checking
                                                       ? null
-                                                      : _handleUpdateCheck,
+                                                      : () => _handleUpdateCheck(context),
                                                   style: OutlinedButton.styleFrom(
                                                     padding:
                                                         const EdgeInsets.symmetric(
@@ -168,7 +136,7 @@ class _AboutPageState extends State<AboutPage> {
                                                         ),
                                                     side: BorderSide(
                                                       color:
-                                                          _updateStatus ==
+                                                          state.updateStatus ==
                                                               UpdateStatus
                                                                   .checking
                                                           ? Colors.white10
@@ -192,7 +160,7 @@ class _AboutPageState extends State<AboutPage> {
                                                         ),
                                                   ),
                                                   child:
-                                                      _updateStatus ==
+                                                      state.updateStatus ==
                                                           UpdateStatus.checking
                                                       ? const SizedBox(
                                                           width: 10,
@@ -206,7 +174,7 @@ class _AboutPageState extends State<AboutPage> {
                                                               ),
                                                         )
                                                       : Text(
-                                                          _updateStatus ==
+                                                          state.updateStatus ==
                                                                   UpdateStatus
                                                                       .idle
                                                               ? 'Check for updates'
@@ -219,9 +187,9 @@ class _AboutPageState extends State<AboutPage> {
                                                 ),
                                               ),
                                               // Status result shown below
-                                              if (_updateStatus !=
+                                              if (state.updateStatus !=
                                                       UpdateStatus.idle &&
-                                                  _updateStatus !=
+                                                  state.updateStatus !=
                                                       UpdateStatus
                                                           .checking) ...[
                                                 const SizedBox(height: 4),
@@ -229,7 +197,7 @@ class _AboutPageState extends State<AboutPage> {
                                                   mainAxisSize:
                                                       MainAxisSize.min,
                                                   children: [
-                                                    if (_updateStatus ==
+                                                    if (state.updateStatus ==
                                                         UpdateStatus.upToDate)
                                                       const Icon(
                                                         Icons
@@ -238,7 +206,7 @@ class _AboutPageState extends State<AboutPage> {
                                                         color:
                                                             Colors.tealAccent,
                                                       )
-                                                    else if (_updateStatus ==
+                                                    else if (state.updateStatus ==
                                                         UpdateStatus.available)
                                                       const Icon(
                                                         Icons.upgrade_rounded,
@@ -246,7 +214,7 @@ class _AboutPageState extends State<AboutPage> {
                                                         color:
                                                             Colors.orangeAccent,
                                                       )
-                                                    else if (_updateStatus ==
+                                                    else if (state.updateStatus ==
                                                         UpdateStatus.error)
                                                       const Icon(
                                                         Icons
@@ -255,7 +223,7 @@ class _AboutPageState extends State<AboutPage> {
                                                         color: Colors.redAccent,
                                                       ),
                                                     const SizedBox(width: 4),
-                                                    if (_updateStatus ==
+                                                    if (state.updateStatus ==
                                                         UpdateStatus.upToDate)
                                                       const Text(
                                                         'Up to date',
@@ -265,12 +233,12 @@ class _AboutPageState extends State<AboutPage> {
                                                           fontSize: 10,
                                                         ),
                                                       )
-                                                    else if (_updateStatus ==
+                                                    else if (state.updateStatus ==
                                                         UpdateStatus.available)
                                                       GestureDetector(
-                                                        onTap: _openRelease,
+                                                        onTap: () => _openRelease(state.updateResult?.releaseUrl ?? ''),
                                                         child: Text(
-                                                          'v${_updateResult?.latestVersion} available — Download',
+                                                          'v${state.updateResult?.latestVersion} available — Download',
                                                           style: const TextStyle(
                                                             color: Colors
                                                                 .orangeAccent,
@@ -284,10 +252,10 @@ class _AboutPageState extends State<AboutPage> {
                                                           ),
                                                         ),
                                                       )
-                                                    else if (_updateStatus ==
+                                                    else if (state.updateStatus ==
                                                         UpdateStatus.error)
                                                       Text(
-                                                        _updateResult
+                                                        state.updateResult
                                                                 ?.errorMessage ??
                                                             'Check failed.',
                                                         style: const TextStyle(
@@ -513,7 +481,7 @@ class _AboutPageState extends State<AboutPage> {
                                     ),
                                   ),
                                   const SizedBox(height: 24),
-                                  if (_version.isNotEmpty) ...[
+                                  if (state.version.isNotEmpty) ...[
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 12,
@@ -531,7 +499,7 @@ class _AboutPageState extends State<AboutPage> {
                                         ),
                                       ),
                                       child: Text(
-                                        'Version $_version',
+                                        'Version ${state.version}',
                                         style: const TextStyle(
                                           color: Colors.white38,
                                           fontSize: 10,
@@ -552,7 +520,9 @@ class _AboutPageState extends State<AboutPage> {
                                   ),
                                   const SizedBox(height: 16),
                                 ],
-                              ),
+                                ),
+                              );
+                            },
                             ),
                           ),
                         ),

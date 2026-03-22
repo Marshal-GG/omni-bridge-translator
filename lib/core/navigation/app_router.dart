@@ -16,6 +16,13 @@ import 'package:omni_bridge/features/subscription/presentation/pages/subscriptio
 // Blocs
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_bloc.dart';
+import 'package:omni_bridge/features/about/presentation/blocs/about_bloc.dart';
+import 'package:omni_bridge/features/about/presentation/blocs/about_event.dart';
+import 'package:omni_bridge/features/startup/presentation/blocs/startup_bloc.dart';
+import 'package:omni_bridge/features/startup/presentation/blocs/startup_event.dart';
+import 'package:omni_bridge/features/auth/presentation/blocs/auth_bloc.dart';
+import 'package:omni_bridge/features/history/presentation/blocs/history_bloc.dart';
+import 'package:omni_bridge/features/history/presentation/blocs/history_event.dart';
 
 class AppRouter {
   static const String splash = '/splash';
@@ -32,7 +39,10 @@ class AppRouter {
     switch (settings.name) {
       case splash:
         return MaterialPageRoute(
-          builder: (_) => const SplashPage(),
+          builder: (_) => BlocProvider(
+            create: (context) => sl<StartupBloc>()..add(const StartupInitializeEvent()),
+            child: const SplashPage(),
+          ),
           settings: settings,
         );
       case onboarding:
@@ -42,7 +52,10 @@ class AppRouter {
         );
       case login:
         return MaterialPageRoute(
-          builder: (_) => const LoginScreen(),
+          builder: (_) => BlocProvider(
+            create: (context) => sl<AuthBloc>(),
+            child: const LoginScreen(),
+          ),
           settings: settings,
         );
       case translationOverlay:
@@ -63,17 +76,26 @@ class AppRouter {
         );
       case historyPanel:
         return MaterialPageRoute(
-          builder: (_) => const HistoryPanel(),
+          builder: (_) => BlocProvider(
+            create: (context) => sl<HistoryBloc>()..add(LoadHistoryEvent()),
+            child: const HistoryPanel(),
+          ),
           settings: settings,
         );
       case account:
         return MaterialPageRoute(
-          builder: (_) => const AccountScreen(),
+          builder: (_) => BlocProvider(
+            create: (context) => sl<AuthBloc>(),
+            child: const AccountScreen(),
+          ),
           settings: settings,
         );
       case about:
         return MaterialPageRoute(
-          builder: (_) => const AboutPage(),
+          builder: (_) => BlocProvider(
+            create: (context) => sl<AboutBloc>()..add(const AboutInitEvent()),
+            child: const AboutPage(),
+          ),
           settings: settings,
         );
       case subscription:
