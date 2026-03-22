@@ -21,14 +21,14 @@ import '../widgets/subscription_footer.dart';
 import '../widgets/subscription_branding.dart';
 import '../widgets/current_usage_display.dart';
 
-class SubscriptionPage extends StatefulWidget {
-  const SubscriptionPage({super.key});
+class SubscriptionScreen extends StatefulWidget {
+  const SubscriptionScreen({super.key});
 
   @override
-  State<SubscriptionPage> createState() => _SubscriptionPageState();
+  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
 }
 
-class _SubscriptionPageState extends State<SubscriptionPage>
+class _SubscriptionScreenState extends State<SubscriptionScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   String _version = '1.0.0';

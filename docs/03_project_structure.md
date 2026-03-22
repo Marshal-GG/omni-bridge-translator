@@ -78,9 +78,9 @@ omni_bridge/
 | **Phase 11**| Deep Restructure Phase 3: UseCases & DI | ✅ **COMPLETE** |
 | **Phase 12**| Deep Restructure Phase 4: Routing & BLoC Scoping | ✅ **COMPLETE** |
 | **Phase 13**| Phase 7: Final Data Layer Consolidation | ✅ **COMPLETE** |
-| **Phase 14**| Phase 8: BLoC Consistency | 🚧 **IN PROGRESS** |
-| **Phase 15**| Phase 9: Unified Naming | ⏳ **PENDING** |
-| **Phase 16**| Phase 10: Final Core Refinement | ⏳ **PENDING** |
+| **Phase 14**| Phase 8: BLoC Consistency | ✅ **COMPLETE** |
+| **Phase 15**| Phase 9: Unified Naming (`pages/` -> `screens/`) | ✅ **COMPLETE** |
+| **Phase 16**| Phase 10: Final Core Refinement | ✅ **COMPLETE** |
 ---
 
 ## Naming Conventions
@@ -91,6 +91,6 @@ omni_bridge/
 | Dart classes | `PascalCase` | `HistoryService` |
 | BLoC events | Past tense or `Requested` | `SettingsUpdated` |
 | BLoC states | Describe the state | `AuthAuthenticated` |
-| Screens/Pages | Suffix `Page` | `TranslationPage` |
+| Screens | Suffix `Screen` | `TranslationScreen` |
 | Python files | `snake_case` | `asr_dispatcher.py` |
 | Python classes | `PascalCase` | `ASRDispatcher` |

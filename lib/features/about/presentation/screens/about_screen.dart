@@ -10,14 +10,14 @@ import 'package:omni_bridge/features/about/presentation/blocs/about_bloc.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_event.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_state.dart';
 
-class AboutPage extends StatefulWidget {
-  const AboutPage({super.key});
+class AboutScreen extends StatefulWidget {
+  const AboutScreen({super.key});
 
   @override
-  State<AboutPage> createState() => _AboutPageState();
+  State<AboutScreen> createState() => _AboutScreenState();
 }
 
-class _AboutPageState extends State<AboutPage> {
+class _AboutScreenState extends State<AboutScreen> {
   final GlobalKey _contentKey = GlobalKey();
 
   Future<void> _handleUpdateCheck(BuildContext context) async {
