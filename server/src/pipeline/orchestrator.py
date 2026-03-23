@@ -40,15 +40,30 @@ class InferenceOrchestrator:
     Handles thread management, resource lifecycle, and overall session flow.
     """
 
-    def __init__(self, nvidia_api_key: str = "", google_credentials_json: str = ""):
+    def __init__(self, nvidia_api_key: str = "", google_credentials: Any = "", 
+                 riva_translation_id: str = "", riva_asr_parakeet_id: str = "", riva_asr_canary_id: str = ""):
         self.nvidia_api_key = nvidia_api_key
-        self.google_credentials_json = google_credentials_json
+        self.google_credentials = google_credentials
+        self.riva_translation_id = riva_translation_id
+        self.riva_asr_parakeet_id = riva_asr_parakeet_id
+        self.riva_asr_canary_id = riva_asr_canary_id
         
+        # Explicitly define models for linter and clarity
+        self.riva_asr: Optional[RivaASRModel] = None
+        self.riva_nmt: Optional[RivaNMTModel] = None
+        self.whisper: Optional[WhisperModel] = None
+        self.llama: Optional[LlamaModel] = None
+        self.google_free: Optional[GoogleModel] = None
+        self.google_api: Optional[GoogleCloudTranslationModel] = None
+        self.mymemory: Optional[MyMemoryModel] = None
+        self.local_asr: Optional[SpeechRecognitionModel] = None
+
         self.logger = structlog.get_logger()
 
         self.is_running = False
         self.audio_queue: queue.Queue = queue.Queue()
         self._translation_queue: queue.Queue = queue.Queue()
+        self._reloader_lock = threading.Lock()
         
         # Models
         self._init_models()
@@ -74,27 +89,44 @@ class InferenceOrchestrator:
 
     def _init_models(self):
         """Pre-instantiate model wrappers."""
-        self.riva_asr = RivaASRModel(self.nvidia_api_key)
-        self.riva_nmt = RivaNMTModel(self.nvidia_api_key)
+        self.riva_asr = RivaASRModel(self.nvidia_api_key, parakeet_fid=self.riva_asr_parakeet_id, canary_fid=self.riva_asr_canary_id)
+        self.riva_nmt = RivaNMTModel(self.nvidia_api_key, function_id=self.riva_translation_id)
         self.llama = LlamaModel(self.nvidia_api_key)
         self.google_free = GoogleModel()
-        self.google_api = GoogleCloudTranslationModel(self.google_credentials_json)
+        self.google_api = GoogleCloudTranslationModel(self.google_credentials)
         self.mymemory = MyMemoryModel()
         self.local_asr = SpeechRecognitionModel()
         self.whisper = WhisperModel("base")
 
     # ── Configuration ────────────────────────────────────────────────────────
 
-    def set_api_keys(self, nvidia_key: str, google_credentials_json: str):
+    def set_api_keys(self, nvidia_key: str, google_credentials: Any, 
+                     riva_translation_id: str = "", riva_asr_parakeet_id: str = "", riva_asr_canary_id: str = ""):
         """Update API keys across all relevant engines."""
         self.nvidia_api_key = nvidia_key
-        self.google_credentials_json = google_credentials_json
-        
-        # Reload models
-        self.riva_asr.reload(nvidia_key)
-        self.riva_nmt.reload(nvidia_key)
-        self.llama.reload(nvidia_key)
-        self.google_api.reload(google_credentials_json)
+        if google_credentials is not None:
+            self.google_credentials = google_credentials
+        self.riva_translation_id = riva_translation_id or self.riva_translation_id
+        self.riva_asr_parakeet_id = riva_asr_parakeet_id or self.riva_asr_parakeet_id
+
+        logging.info("[Orchestrator] Starting background model reload...")
+
+        def _do_reload():
+            with self._reloader_lock:
+                try:
+                    if self.riva_asr:
+                        self.riva_asr.reload(nvidia_key, parakeet_fid=self.riva_asr_parakeet_id, canary_fid=self.riva_asr_canary_id)
+                    if self.riva_nmt:
+                        self.riva_nmt.reload(nvidia_key, function_id=self.riva_translation_id)
+                    if self.llama:
+                        self.llama.reload(nvidia_key)
+                    if self.google_api:
+                        self.google_api.reload(self.google_credentials)
+                    logging.info("[Orchestrator] Background model reload complete.")
+                except Exception as e:
+                    logging.error(f"Error updating model API keys: {e}")
+
+        threading.Thread(target=_do_reload, daemon=True).start()
 
     # ── Stream Control ────────────────────────────────────────────────────────
 
@@ -151,6 +183,10 @@ class InferenceOrchestrator:
         self.is_running = False
         self.audio_queue.put(None)
         self._translation_queue.put(None)
+        
+        # Unload Whisper to free up VRAM when not in use
+        if self.whisper:
+            self.whisper.unload_model()
 
     def audio_clear(self):
         """Empty both ASR and Translation queues."""
@@ -166,34 +202,57 @@ class InferenceOrchestrator:
 
     def _validate_preflight(self) -> bool:
         """Check requirements for the selected models before starting."""
-        asr_model = self.asr_dispatcher.transcription_model
-        translation_model = self.translation_dispatcher.translation_model
-        
-        # Riva ASR Check
-        if asr_model == "riva" and not self.riva_asr.is_ready():
-            self._emit_error("API Key missing for Riva ASR")
-            return False
+        # Ensure any pending model reloads are complete before validating
+        with self._reloader_lock:
+            asr_id = self.asr_dispatcher.transcription_model.lower().strip()
+            trans_id = self.translation_dispatcher.translation_model.lower().strip()
+            
+            # 1. Riva ASR Check
+            if asr_id == "riva":
+                if self.riva_asr and self.riva_asr._is_loading:
+                    self._emit_error("Riva ASR is still initializing. Please wait.")
+                    return False
+                if not self.riva_asr or not self.riva_asr.is_ready():
+                    self._emit_error("Riva ASR is not ready. Check NVIDIA API key.")
+                    return False
 
-        # Whisper Check
-        if asr_model in _WHISPER_SIZES:
-            whisper_size = asr_model.split("-", 1)[1]
-            self.whisper.model_size = whisper_size
-            if not self.whisper.is_downloaded():
-                self._emit_error(f"Whisper {whisper_size} model not downloaded. Open Settings to fix.")
-                return False
-        else:
-            self.whisper.unload_model()
+            # 2. Whisper Check
+            elif asr_id in _WHISPER_SIZES:
+                whisper_size = asr_id.split("-", 1)[1]
+                if self.whisper:
+                    self.whisper.model_size = whisper_size
+                    if not self.whisper.is_downloaded():
+                        self._emit_error(f"Whisper {whisper_size} model not downloaded. Open Settings to fix.")
+                        return False
+            elif self.whisper:
+                self.whisper.unload_model()
 
-        # Translation Checks
-        if translation_model == "google_api" and not self.google_credentials_json:
-            self._emit_error("Google Cloud JSON missing. Check Translation settings.")
-            return False
+            # 3. Translation Checks
+            if trans_id == "riva":
+                if self.riva_nmt and self.riva_nmt._is_loading:
+                    self._emit_error("Riva NMT is still initializing. Please wait.")
+                    return False
+                if not self.riva_nmt or not self.riva_nmt.is_ready():
+                    logging.warning("[Orchestrator] Riva NMT not ready; using fallback.")
+                    # Allow stream to start; TranslationDispatcher will use fallback
 
-        if translation_model in ("riva", "llama") and not self.nvidia_api_key:
-            self._emit_error(f"NVIDIA API Key missing for {translation_model}.")
-            return False
+            elif trans_id == "llama":
+                if self.llama and self.llama._is_loading:
+                    self._emit_error("Llama is still initializing. Please wait.")
+                    return False
+                if not self.llama or not self.llama.is_ready():
+                    logging.warning("[Orchestrator] Llama not ready; using fallback if possible.")
+                    # Allow stream to start; TranslationDispatcher will try next fallback
 
-        return True
+            elif trans_id == "google_api":
+                if self.google_api and self.google_api._is_loading:
+                    self._emit_error("Google Cloud Translation is still initializing. Please wait.")
+                    return False
+                if not self.google_api or not self.google_api.is_ready():
+                    logging.warning("[Orchestrator] Google Cloud Translation not ready; using fallback.")
+                    # Allow stream to start; TranslationDispatcher will use fallback
+
+            return True
 
     def _emit_error(self, msg: str):
         if self._callback:
@@ -285,17 +344,17 @@ class InferenceOrchestrator:
         })
             
         # Separate Riva ASR and NMT status
-        asr_status = self.riva_asr.get_status()
-        nmt_status = self.riva_nmt.get_status()
+        asr_status = self.riva_asr.get_status() if self.riva_asr else {"name": "riva-asr", "status": "error", "ready": False}
+        nmt_status = self.riva_nmt.get_status() if self.riva_nmt else {"name": "riva-nmt", "status": "error", "ready": False}
         
         statuses.append(asr_status)
         statuses.append(nmt_status)
         
-        statuses.append(self.local_asr.get_status())
-        statuses.append(self.llama.get_status())
-        statuses.append(self.google_free.get_status())
-        statuses.append(self.google_api.get_status())
-        statuses.append(self.mymemory.get_status())
+        if self.local_asr: statuses.append(self.local_asr.get_status())
+        if self.llama: statuses.append(self.llama.get_status())
+        if self.google_free: statuses.append(self.google_free.get_status())
+        if self.google_api: statuses.append(self.google_api.get_status())
+        if self.mymemory: statuses.append(self.mymemory.get_status())
         return statuses
 
 
@@ -306,10 +365,10 @@ class InferenceOrchestrator:
             "has_gpu": gpu["available"],
             "gpu_name": gpu["name"],
             "vram_gb": (gpu.get("vram_total", 0) / 1024) if gpu.get("vram_total") else 0,
-            "has_google_auth": bool(self.google_api.is_ready()),
-            "has_nvidia_auth": bool(self.riva_asr.is_ready()),
+            "has_google_auth": bool(self.google_api and self.google_api.is_ready()),
+            "has_nvidia_auth": bool(self.riva_asr and self.riva_asr.is_ready()),
             "whisper_models": {
-                size.split("-")[1]: self.whisper.is_downloaded(size.split("-")[1])
+                size.split("-")[1]: self.whisper.is_downloaded(size.split("-")[1]) if self.whisper else False
                 for size in _WHISPER_SIZES
             }
         }

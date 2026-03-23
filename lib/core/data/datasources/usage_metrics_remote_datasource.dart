@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:omni_bridge/core/network/rtdb_client.dart';
 import 'package:omni_bridge/core/data/datasources/data_maintenance_remote_datasource.dart';
+import 'package:omni_bridge/core/network/rtdb_client.dart';
 
 class UsageMetricsRemoteDataSource {
   UsageMetricsRemoteDataSource._();
@@ -63,8 +63,7 @@ class UsageMetricsRemoteDataSource {
       b['last_model'] = stats['model'];
       if (stats['error'] != null) b['last_error'] = stats['error'];
 
-      _usageFlushTimer?.cancel();
-      _usageFlushTimer = Timer(const Duration(seconds: 3), () => flushUsage());
+      _usageFlushTimer ??= Timer(const Duration(seconds: 3), () => flushUsage());
 
       debugPrint(
         '[UsageMetrics] Buffered model usage: $engine (+$inputTokens/+$outputTokens tokens)',
@@ -78,6 +77,7 @@ class UsageMetricsRemoteDataSource {
   Future<void> flushUsage() async {
     if (_usageBuffer.isEmpty) return;
     _usageFlushTimer?.cancel();
+    _usageFlushTimer = null;
 
     final Map<String, dynamic> bufferCopy = Map.from(_usageBuffer);
     _usageBuffer.clear();
@@ -86,93 +86,84 @@ class UsageMetricsRemoteDataSource {
     if (userUid == null) return;
 
     try {
-      final url = await _rtdbClient.getAbsoluteUrl('users/$userUid');
-      if (url == null) return;
-
-      final Map<String, dynamic> updates = {};
       final now = DateTime.now();
       final todayStr =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
+      // 1. Fetch current totals to perform client-side increments (REST API limitation)
+      final rootUrl = await _rtdbClient.getRTDBUrl('');
+      if (rootUrl == null) return;
+
+      final getResp = await _rtdbClient.request(
+        (client) => client.get(rootUrl),
+        context: 'flushUsage:fetch',
+      );
+
+      Map<String, dynamic> currentData = {};
+      if (getResp != null && getResp.statusCode == 200) {
+        currentData = jsonDecode(getResp.body) as Map<String, dynamic>? ?? {};
+      }
+
+      final Map<String, dynamic> updates = {};
       int totalDailyTokens = 0;
 
       for (final entry in bufferCopy.entries) {
         final engine = entry.key;
         final data = entry.value;
 
-        updates['model_stats/$engine/total_calls'] = {
-          '.sv': {'increment': data['calls']},
-        };
-        updates['model_stats/$engine/total_tokens'] = {
-          '.sv': {'increment': data['total_tokens']},
-        };
-        updates['model_stats/$engine/total_input_tokens'] = {
-          '.sv': {'increment': data['input_tokens']},
-        };
-        updates['model_stats/$engine/total_output_tokens'] = {
-          '.sv': {'increment': data['output_tokens']},
-        };
-        updates['model_stats/$engine/total_latency_ms'] = {
-          '.sv': {'increment': data['latency_ms']},
-        };
-        updates['model_stats/$engine/last_used'] = {'.sv': 'timestamp'};
+        // Model Stats Base
+        final modelStats = currentData['model_stats']?[engine] as Map<String, dynamic>? ?? {};
+        
+        updates['model_stats/$engine/total_calls'] = (modelStats['total_calls'] ?? 0) + data['calls'];
+        updates['model_stats/$engine/total_tokens'] = (modelStats['total_tokens'] ?? 0) + data['total_tokens'];
+        updates['model_stats/$engine/total_input_tokens'] = (modelStats['total_input_tokens'] ?? 0) + data['input_tokens'];
+        updates['model_stats/$engine/total_output_tokens'] = (modelStats['total_output_tokens'] ?? 0) + data['output_tokens'];
+        updates['model_stats/$engine/total_latency_ms'] = (modelStats['total_latency_ms'] ?? 0) + data['latency_ms'];
+        updates['model_stats/$engine/last_used'] = {".sv": "timestamp"};
         updates['model_stats/$engine/engine'] = engine;
 
         if (data['total_tokens'] > 0) {
-          updates['daily_usage/$todayStr/tokens'] = {
-            '.sv': {'increment': data['total_tokens']},
-          };
-          updates['daily_usage/$todayStr/last_updated'] = {'.sv': 'timestamp'};
-          updates['daily_usage/$todayStr/models/$engine/tokens'] = {
-            '.sv': {'increment': data['total_tokens']},
-          };
-          updates['daily_usage/$todayStr/models/$engine/calls'] = {
-            '.sv': {'increment': data['calls']},
-          };
-          updates['daily_usage/$todayStr/models/$engine/last_updated'] = {
-            '.sv': 'timestamp',
-          };
+          final dailyModel = currentData['daily_usage']?[todayStr]?['models']?[engine] as Map<String, dynamic>? ?? {};
+          updates['daily_usage/$todayStr/models/$engine/tokens'] = (dailyModel['tokens'] ?? 0) + data['total_tokens'];
+          updates['daily_usage/$todayStr/models/$engine/calls'] = (dailyModel['calls'] ?? 0) + data['calls'];
+          updates['daily_usage/$todayStr/models/$engine/last_updated'] = {".sv": "timestamp"};
           totalDailyTokens += data['total_tokens'] as int;
         }
 
         if (data['last_error'] != null) {
-          updates['daily_usage/$todayStr/errors/$engine/failed_calls'] = {
-            '.sv': {'increment': data['calls']},
-          };
-          updates['daily_usage/$todayStr/errors/$engine/last_error'] =
-              data['last_error'];
-          updates['daily_usage/$todayStr/errors/$engine/last_error_time'] = {
-            '.sv': 'timestamp',
-          };
+          final dailyError = currentData['daily_usage']?[todayStr]?['errors']?[engine] as Map<String, dynamic>? ?? {};
+          updates['daily_usage/$todayStr/errors/$engine/failed_calls'] = (dailyError['failed_calls'] ?? 0) + data['calls'];
+          updates['daily_usage/$todayStr/errors/$engine/last_error'] = data['last_error'];
+          updates['daily_usage/$todayStr/errors/$engine/last_error_time'] = {".sv": "timestamp"};
         }
       }
 
       if (totalDailyTokens > 0) {
-        updates['usage/totals/lifetime'] = {
-          '.sv': {'increment': totalDailyTokens},
-        };
-        updates['usage/totals/calendar_monthly'] = {
-          '.sv': {'increment': totalDailyTokens},
-        };
-        updates['usage/totals/subscription_monthly'] = {
-          '.sv': {'increment': totalDailyTokens},
-        };
-        updates['usage/totals/weekly'] = {
-          '.sv': {'increment': totalDailyTokens},
-        };
+        final dailyBase = currentData['daily_usage']?[todayStr] as Map<String, dynamic>? ?? {};
+        final totalsBase = currentData['usage']?['totals'] as Map<String, dynamic>? ?? {};
+
+        updates['daily_usage/$todayStr/tokens'] = (dailyBase['tokens'] ?? 0) + totalDailyTokens;
+        updates['daily_usage/$todayStr/last_updated'] = {".sv": "timestamp"};
+        updates['usage/totals/lifetime'] = (totalsBase['lifetime'] ?? 0) + totalDailyTokens;
+        updates['usage/totals/calendar_monthly'] = (totalsBase['calendar_monthly'] ?? 0) + totalDailyTokens;
+        updates['usage/totals/subscription_monthly'] = (totalsBase['subscription_monthly'] ?? 0) + totalDailyTokens;
+        updates['usage/totals/weekly'] = (totalsBase['weekly'] ?? 0) + totalDailyTokens;
       }
 
       if (updates.isNotEmpty) {
+        final patchUrl = await _rtdbClient.getRTDBUrl('');
+        if (patchUrl == null) return;
+
         await _rtdbClient.request(
-          (client) => client.patch(url, body: jsonEncode(updates)),
-          context: 'flushUsage',
+          (client) => client.patch(patchUrl, body: jsonEncode(updates)),
+          context: 'flushUsage:patch',
         );
         debugPrint(
-          '[UsageMetrics] Flushed usage stats to RTDB (+$totalDailyTokens tokens).',
+          '[UsageMetrics] Flushed usage stats to RTDB (+$totalDailyTokens tokens) via REST.',
         );
       }
     } catch (e) {
-      debugPrint('[UsageMetrics] Failed to flush usage to RTDB: $e');
+      debugPrint('[UsageMetrics] Failed to flush usage to RTDB (REST): $e');
     }
   }
 

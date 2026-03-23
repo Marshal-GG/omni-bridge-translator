@@ -5,9 +5,13 @@ import 'package:omni_bridge/features/settings/domain/usecases/get_google_credent
 import 'package:omni_bridge/features/settings/domain/usecases/load_devices_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/observe_audio_levels_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/entities/app_settings.dart';
 import 'package:omni_bridge/core/constants/model_language_support.dart';
+import 'package:omni_bridge/features/subscription/domain/usecases/get_subscription_status.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'settings_event.dart';
 import 'settings_state.dart';
+import 'dart:async';
 
 class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   final GetAppSettingsUseCase getAppSettingsUseCase;
@@ -16,6 +20,8 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   final LoadDevicesUseCase loadDevicesUseCase;
   final ObserveAudioLevelsUseCase observeAudioLevelsUseCase;
   final LogEventUseCase logEventUseCase;
+  final GetSubscriptionStatus getSubscriptionStatus;
+  StreamSubscription? _subscriptionStatusSubscription;
 
   SettingsBloc({
     required this.getAppSettingsUseCase,
@@ -24,6 +30,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     required this.loadDevicesUseCase,
     required this.observeAudioLevelsUseCase,
     required this.logEventUseCase,
+    required this.getSubscriptionStatus,
   }) : super(SettingsState.initial()) {
     on<UpdateTempSettingEvent>(_onUpdateTempSetting);
     on<SyncTempSettingsEvent>(_onSyncTempSettings);
@@ -31,6 +38,11 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<UpdateAudioLevelsEvent>(_onUpdateAudioLevels);
     on<ResetIODefaultsEvent>(_onResetIODefaults);
     on<SaveSettingsEvent>(_onSaveSettings);
+    on<SubscriptionStatusChangedEvent>(_onSubscriptionStatusChanged);
+
+    _subscriptionStatusSubscription = getSubscriptionStatus().listen((status) {
+      add(SubscriptionStatusChangedEvent(status));
+    });
 
     observeAudioLevelsUseCase((inputLevel, outputLevel) {
       if (!isClosed) {
@@ -76,9 +88,12 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     UpdateTempSettingEvent event,
     Emitter<SettingsState> emit,
   ) {
+    String newSource = event.sourceLang ?? state.settings.sourceLang;
+    String newTarget = event.targetLang ?? state.settings.targetLang;
+
     final newSettings = state.settings.copyWith(
-      targetLang: event.targetLang,
-      sourceLang: event.sourceLang,
+      targetLang: newTarget,
+      sourceLang: newSource,
       useMic: event.useMic,
       fontSize: event.fontSize,
       isBold: event.isBold,
@@ -163,5 +178,53 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         ),
       ),
     );
+  }
+
+  Future<void> _onSubscriptionStatusChanged(
+    SubscriptionStatusChangedEvent event,
+    Emitter<SettingsState> emit,
+  ) async {
+    final status = event.status;
+    final currentSettings = state.settings;
+
+    bool needsTranslationReset = !SubscriptionRemoteDataSource.instance
+        .allowedTranslationModels(status.tier)
+        .contains(currentSettings.translationModel);
+
+    bool needsTranscriptionReset = !SubscriptionRemoteDataSource.instance
+        .allowedTranscriptionModels(status.tier)
+        .contains(currentSettings.transcriptionModel);
+
+    if (needsTranslationReset || needsTranscriptionReset) {
+      final initialSettings = AppSettings.initial();
+      final newSettings = currentSettings.copyWith(
+        translationModel: needsTranslationReset
+            ? initialSettings.translationModel
+            : currentSettings.translationModel,
+        transcriptionModel: needsTranscriptionReset
+            ? initialSettings.transcriptionModel
+            : currentSettings.transcriptionModel,
+      );
+
+      emit(state.copyWith(settings: newSettings));
+
+      // Persist the changes so they stick after app restart
+      await updateAppSettingsUseCase(newSettings.toJson());
+
+      logEventUseCase(
+        'subscription_downgrade_model_reset',
+        parameters: {
+          'tier': status.tier,
+          'was_translation_reset': needsTranslationReset,
+          'was_transcription_reset': needsTranscriptionReset,
+        },
+      );
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _subscriptionStatusSubscription?.cancel();
+    return super.close();
   }
 }

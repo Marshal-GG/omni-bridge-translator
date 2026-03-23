@@ -255,6 +255,12 @@ class ModelStatusIndicator extends StatelessWidget {
           Colors.redAccent,
           Icons.key_off_rounded,
         );
+      case 'fallback':
+        return _buildBadge(
+          'Ready (Fallback)',
+          Colors.greenAccent,
+          Icons.swap_calls_rounded,
+        );
       case 'error':
         return _buildBadge(
           'Error',

@@ -155,11 +155,11 @@ OmniBridge follows **Clean Architecture** principles across both its components:
 - **Dependency Injection**: Centralized `injection.dart` using `get_it`, following the `DataSource -> Repository -> UseCase -> Bloc` hierarchy.
 
 ### 🐍 Python Server
-- **Orchestration Layer**: Thin coordinator managing session lifecycle and queues.
-- **Dispatcher Layer**: Modular ASR and Translation dispatchers handling model selection, silence gating, and comprehensive fallbacks.
-- **Model Layer**: Abstracted AI model implementations (Riva, Whisper, Llama, Google).
-- **Network Layer**: Specialized handlers for protocol concerns (Config, Status, Session, Device).
-- **Testing Suite**: Robust `pytest` suite for core server logic with full AI engine mocking.
+- **Orchestration Layer**: Coordinates session lifecycles and manages asynchronous task queues for low-latency processing.
+- **Inference Pipeline**: A modular system for ASR and Translation that supports model-specific loading states and robust fallback mechanisms.
+- **Model Layer**: Standardized interfaces for diverse AI engines (NVIDIA Riva, OpenAI Whisper, Llama 3.1, Google Cloud).
+- **Communication Layer**: High-performance WebSocket handlers for real-time bidirectional data flow with the Flutter client.
+- **Verification**: Covered by a comprehensive `pytest` suite with extensive mocking for AI engine testing.
 
 ---
 

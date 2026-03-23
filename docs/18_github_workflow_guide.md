@@ -276,7 +276,10 @@ git push origin v1.2.0
 
 ## 9. Workflow Files in This Project
 
-| File | Trigger | Purpose |
+| File | Default Trigger | Purpose |
 |------|---------|---------|
-| `.github/workflows/flutter_ci.yml` | Push/PR to `main` | Analyze + Test + Coverage + Build |
-| `.github/workflows/release.yml` | Tag `v*.*.*` | Build Windows + GitHub Release |
+| `.github/workflows/flutter_ci.yml` | `workflow_dispatch` (Manual) | Analyze + Test + Coverage + Build |
+| `.github/workflows/release.yml` | `workflow_dispatch` (Manual) | Build Windows + GitHub Release |
+
+> [!NOTE]
+> To switch from **Manual** to **Auto-trigger** (on push/PR or tags), edit the `.yml` files in `.github/workflows/` and uncomment the `push:` and `pull_request:` blocks as described in their headers.

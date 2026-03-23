@@ -127,18 +127,20 @@ class AppSettings extends Equatable {
 
   @override
   List<Object?> get props => [
-    targetLang,
-    sourceLang,
-    useMic,
-    fontSize,
-    isBold,
-    opacity,
-    inputDeviceIndex,
-    outputDeviceIndex,
-    desktopVolume,
-    micVolume,
-    translationModel,
-    apiKey,
-    transcriptionModel,
-  ];
+        targetLang,
+        sourceLang,
+        useMic,
+        fontSize,
+        isBold,
+        opacity,
+        inputDeviceIndex,
+        outputDeviceIndex,
+        desktopVolume,
+        micVolume,
+        translationModel,
+        apiKey,
+        transcriptionModel,
+      ];
+
+
 }

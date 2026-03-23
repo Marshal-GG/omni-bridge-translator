@@ -13,6 +13,7 @@ class CaptionMessage {
   // Non-null when type == 'model_status'
   final List<dynamic>? modelStatuses;
   final bool isReset;
+  final bool isDisconnect;
 
   const CaptionMessage({
     required this.text,
@@ -26,5 +27,6 @@ class CaptionMessage {
     this.usageStats,
     this.modelStatuses,
     this.isReset = false,
+    this.isDisconnect = false,
   });
 }

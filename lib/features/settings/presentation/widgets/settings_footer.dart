@@ -72,6 +72,7 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
                               apiKey: state.settings.apiKey,
                               transcriptionModel:
                                   state.settings.transcriptionModel,
+                              isUserInitiated: true,
                             ),
                           );
                         },

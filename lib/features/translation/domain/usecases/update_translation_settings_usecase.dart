@@ -15,8 +15,11 @@ class UpdateTranslationSettingsUseCase {
     double micVolume = 1.0,
     required String translationModel,
     String apiKey = '',
-    String googleCredentialsJson = '',
+    dynamic googleCredentials = '',
     String transcriptionModel = 'online',
+    String rivaTranslationFunctionId = '',
+    String rivaAsrParakeetFunctionId = '',
+    String rivaAsrCanaryFunctionId = '',
   }) {
     repository.updateSettings(
       sourceLang: sourceLang,
@@ -28,8 +31,11 @@ class UpdateTranslationSettingsUseCase {
       micVolume: micVolume,
       translationModel: translationModel,
       apiKey: apiKey,
-      googleCredentialsJson: googleCredentialsJson,
+      googleCredentials: googleCredentials,
       transcriptionModel: transcriptionModel,
+      rivaTranslationFunctionId: rivaTranslationFunctionId,
+      rivaAsrParakeetFunctionId: rivaAsrParakeetFunctionId,
+      rivaAsrCanaryFunctionId: rivaAsrCanaryFunctionId,
     );
   }
 }

@@ -218,17 +218,35 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
 
 ### Translation Credentials — `system/translation_config`
 
-Stores Google Cloud service account credentials for the gRPC Translation API. Access is restricted by Firestore Security Rules — only admins and users whose tier includes `google_api` in `allowed_translation_models` can read this document.
+Stores Google Cloud service account credentials for the gRPC Translation API, and dynamic function IDs for NVIDIA Riva NIM endpoints. Access is restricted by Firestore Security Rules.
 
 ```json
 {
-  "googleCredentialsJson": "{\"type\": \"service_account\", \"project_id\": \"...\", ...}"
+  "google_credentials": {
+    "type": "service_account",
+    "project_id": "...",
+    "private_key_id": "...",
+    "private_key": "...",
+    "client_email": "...",
+    "client_id": "...",
+    "auth_uri": "...",
+    "token_uri": "...",
+    "auth_provider_x509_cert_url": "...",
+    "client_x509_cert_url": "...",
+    "universe_domain": "..."
+  },
+  "riva_nmt_fid": "...",
+  "riva_parakeet_fid": "...",
+  "riva_canary_fid": "..."
 }
 ```
 
 | Field | Type | Notes |
 |---|---|---|
-| `googleCredentialsJson` | `string` | Full service account JSON (pasted as a string). Read by `TrackingService.getGoogleCredentials()`, cached in `flutter_secure_storage`, sent to Python server via WebSocket. |
+| `google_credentials` | `map` | Full service account dictionary sent to the Python server via WebSocket. |
+| `riva_nmt_fid` | `string` | NVIDIA Riva NIM function ID for Neural Machine Translation endpoints. |
+| `riva_parakeet_fid` | `string` | NVIDIA Riva NIM function ID for Parakeet ASR models. |
+| `riva_canary_fid` | `string` | NVIDIA Riva NIM function ID for Canary ASR models. |
 
 ---
 
@@ -496,7 +514,7 @@ One node written **per translation call**. Never updated after creation.
 }
 ```
 
-> For Llama / Google / Google Cloud, `prompt_tokens`, `completion_tokens` and `total_tokens` are populated.
+> For all text-based engines, `total_tokens` is populated (estimated dynamically via heuristical character sizing as `((len(text) + 3) // 4)` where actual token counts aren't available).
 
 **Engines:** `riva` | `llama` | `google` | `google_api` | `mymemory` | `whisper`
 
@@ -505,7 +523,7 @@ One node written **per translation call**. Never updated after creation.
 | `engine` | `string` | Which backend handled this translation |
 | `model` | `string` | Exact model variant used |
 | `latency_ms` | `number` | Round-trip time from send → receive |
-| `total_tokens` | `number` | LLM token consumption (0 for Riva) |
+| `total_tokens` | `number` | LLM token consumption (estimated similarly across all engines) |
 | `input_tokens` | `number` | Token count of source text |
 | `output_tokens` | `number` | Token count of translated text |
 | `fallback_from` | `string?` | Set if this was a retry after engine failure |
@@ -576,7 +594,7 @@ One node **per engine**, updated atomically on every translation. Use this to an
 }
 ```
 
-> All counters use **atomic increments** via RTDB REST ServerValue syntax (`{".sv": {"increment": amount}}`) — safe for concurrent writes.
+> All counters are aggregated and updated via client-side total fetching and writing. Atomic increments were removed due to REST API multi-path constraints.
 
 ---
 

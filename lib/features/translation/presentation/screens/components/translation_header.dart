@@ -67,10 +67,16 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                 ? Icons.pause_circle_outline
                 : Icons.play_circle_outline,
             size: 16,
-            color: state.isRunning ? Colors.tealAccent : Colors.redAccent,
+            color: state.isRunning
+                ? Colors.tealAccent
+                : (state.isServerConnected ? Colors.redAccent : Colors.grey),
           ),
-          onPressed: () => bloc.add(ToggleRunningEvent()),
-          tooltip: state.isRunning ? 'Pause Translation' : 'Resume Translation',
+          onPressed: (state.isRunning || state.isServerConnected)
+              ? () => bloc.add(ToggleRunningEvent())
+              : null,
+          tooltip: state.isRunning
+              ? 'Pause Translation'
+              : (state.isServerConnected ? 'Resume Translation' : 'Server Offline'),
           padding: const EdgeInsets.all(8),
           constraints: const BoxConstraints(),
           splashRadius: 16,

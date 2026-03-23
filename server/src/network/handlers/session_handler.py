@@ -24,7 +24,10 @@ class SessionHandler(BaseHandler):
             "translation_model": msg.get("translation_model") or msg.get("ai_engine"),
             "transcription_model": msg.get("transcription_model"),
             "api_key": msg.get("api_key"),
-            "google_credentials_json": msg.get("google_credentials_json"),
+            "google_credentials": msg.get("google_credentials"),
+            "riva_translation_function_id": msg.get("riva_translation_function_id") or msg.get("rivaTranslationFunctionId"),
+            "riva_asr_parakeet_function_id": msg.get("riva_asr_parakeet_function_id") or msg.get("rivaAsrParakeetFunctionId"),
+            "riva_asr_canary_function_id": msg.get("riva_asr_canary_function_id") or msg.get("rivaAsrCanaryFunctionId"),
             "use_mic": msg.get("use_mic"),
             "input_device_index": msg.get("input_device_index"),
             "output_device_index": msg.get("output_device_index"),
@@ -52,14 +55,22 @@ class SessionHandler(BaseHandler):
                 await self.stop(websocket, msg)
                 await asyncio.sleep(0.5)
 
-            self.ctx.session_id += 1
             if self.ctx.orchestrator is None:
                 self.ctx.orchestrator = InferenceOrchestrator(
                     nvidia_api_key=self.ctx.config["api_key"],
-                    google_credentials_json=self.ctx.config["google_credentials_json"]
+                    google_credentials=self.ctx.config["google_credentials"],
+                    riva_translation_id=self.ctx.config["riva_translation_function_id"],
+                    riva_asr_parakeet_id=self.ctx.config["riva_asr_parakeet_function_id"],
+                    riva_asr_canary_id=self.ctx.config["riva_asr_canary_function_id"]
                 )
             else:
-                self.ctx.orchestrator.set_api_keys(self.ctx.config["api_key"], self.ctx.config["google_credentials_json"])
+                self.ctx.orchestrator.set_api_keys(
+                    self.ctx.config["api_key"], 
+                    self.ctx.config["google_credentials"],
+                    riva_translation_id=self.ctx.config["riva_translation_function_id"],
+                    riva_asr_parakeet_id=self.ctx.config["riva_asr_parakeet_function_id"],
+                    riva_asr_canary_id=self.ctx.config["riva_asr_canary_function_id"]
+                )
 
             is_nim_asr = self.ctx.config["transcription_model"] == "riva"
             is_nim_trans = self.ctx.config["translation_model"] in ("riva", "llama")

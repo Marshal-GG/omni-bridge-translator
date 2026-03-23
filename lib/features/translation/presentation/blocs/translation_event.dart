@@ -63,6 +63,10 @@ class ApplySettingsEvent extends TranslationEvent {
   final String translationModel;
   final String apiKey;
   final String transcriptionModel;
+  final String rivaTranslationFunctionId;
+  final String rivaAsrParakeetFunctionId;
+  final String rivaAsrCanaryFunctionId;
+  final bool isUserInitiated;
 
   const ApplySettingsEvent({
     required this.targetLang,
@@ -78,6 +82,10 @@ class ApplySettingsEvent extends TranslationEvent {
     required this.translationModel,
     this.apiKey = '',
     this.transcriptionModel = 'online',
+    this.rivaTranslationFunctionId = '',
+    this.rivaAsrParakeetFunctionId = '',
+    this.rivaAsrCanaryFunctionId = '',
+    this.isUserInitiated = false,
   });
 
   @override
@@ -95,6 +103,10 @@ class ApplySettingsEvent extends TranslationEvent {
     translationModel,
     apiKey,
     transcriptionModel,
+    rivaTranslationFunctionId,
+    rivaAsrParakeetFunctionId,
+    rivaAsrCanaryFunctionId,
+    isUserInitiated,
   ];
 }
 
@@ -114,4 +126,12 @@ class ModelStatusChangedEvent extends TranslationEvent {
 
   @override
   List<Object?> get props => [statuses];
+}
+
+class UpdateServerConnectionEvent extends TranslationEvent {
+  final bool isConnected;
+  const UpdateServerConnectionEvent({required this.isConnected});
+
+  @override
+  List<Object?> get props => [isConnected];
 }

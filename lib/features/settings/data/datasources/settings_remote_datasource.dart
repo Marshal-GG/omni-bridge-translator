@@ -1,12 +1,15 @@
+
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'package:omni_bridge/core/data/datasources/usage_metrics_remote_datasource.dart';
+import 'package:omni_bridge/features/settings/domain/entities/system_config.dart';
 
 abstract class ISettingsRemoteDataSource {
-  Future<String> getGoogleCredentials({bool forceRefresh = false});
+  Future<Map<String, dynamic>> getSystemConfig();
+  Future<dynamic> getGoogleCredentials();
   Future<void> syncSettings(Map<String, dynamic> settings);
   Future<Map<String, dynamic>?> getSettings();
   Future<void> logEvent(String name, {Map<String, dynamic>? parameters});
@@ -18,48 +21,29 @@ class SettingsRemoteDataSourceImpl implements ISettingsRemoteDataSource {
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
 
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
-
-  String get _sessionKeyPrefix => kDebugMode ? 'debug_' : 'release_';
-
   String? get uid => _auth.currentUser?.uid;
 
-  String get _googleCredentialsStorageKey {
-    final userUid = uid;
-    if (userUid == null) return '${_sessionKeyPrefix}google_translation_credentials_json';
-    // ignore: unnecessary_brace_in_string_interps
-    return '${_sessionKeyPrefix}${userUid}_google_translation_credentials_json';
-  }
-
   @override
-  Future<String> getGoogleCredentials({bool forceRefresh = false}) async {
+  Future<Map<String, dynamic>> getSystemConfig() async {
     try {
-      if (!forceRefresh) {
-        final cached = await _secureStorage.read(
-          key: _googleCredentialsStorageKey,
-        );
-        if (cached != null && cached.isNotEmpty) return cached;
-      }
-
       final doc = await _firestore
           .collection('system')
           .doc('translation_config')
           .get();
-      final credentialsJson =
-          doc.data()?['googleCredentialsJson'] as String? ?? '';
-      if (credentialsJson.isEmpty) return '';
-
-      await _secureStorage.write(
-        key: _googleCredentialsStorageKey,
-        value: credentialsJson,
-      );
-      return credentialsJson;
+      final data = doc.data() ?? {};
+      
+      return data;
     } catch (e) {
-      debugPrint('[Settings] Failed to fetch Google credentials: $e');
-      return '';
+      debugPrint('[Settings] Failed to fetch system config: $e');
+      return {};
     }
+  }
+
+  @override
+  Future<dynamic> getGoogleCredentials() async {
+    final systemData = await getSystemConfig();
+    final config = SystemConfig.fromMap(systemData);
+    return config.googleCredentials;
   }
 
   @override
@@ -70,6 +54,7 @@ class SettingsRemoteDataSourceImpl implements ISettingsRemoteDataSource {
     }
     try {
       debugPrint('[Settings] Attempting to sync settings for UID: $uid');
+      
       await _firestore
           .collection('users')
           .doc(uid)

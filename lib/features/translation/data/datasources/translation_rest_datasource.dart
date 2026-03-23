@@ -111,4 +111,14 @@ class TranslationRestDatasource {
     }
     return false;
   }
+
+  /// Pings the server status endpoint to check health.
+  Future<bool> checkHealth() async {
+    try {
+      final resp = await http.get(Uri.parse('$_base/status')).timeout(const Duration(seconds: 2));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
 }

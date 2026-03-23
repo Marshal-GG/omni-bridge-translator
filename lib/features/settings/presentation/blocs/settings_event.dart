@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../subscription/domain/entities/subscription_status.dart';
 
 abstract class SettingsEvent extends Equatable {
   const SettingsEvent();
@@ -125,3 +126,11 @@ class UpdateAudioLevelsEvent extends SettingsEvent {
 class ResetIODefaultsEvent extends SettingsEvent {}
 
 class SaveSettingsEvent extends SettingsEvent {}
+class SubscriptionStatusChangedEvent extends SettingsEvent {
+  final SubscriptionStatus status;
+
+  const SubscriptionStatusChangedEvent(this.status);
+
+  @override
+  List<Object?> get props => [status];
+}

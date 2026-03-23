@@ -33,8 +33,8 @@ No extra hardware. No complex setup for the default configuration. Just launch a
 │           Python FastAPI Server (local)          │
 │                                                  │
 │  Audio Capture ──► ASR Engine ──► Translation   │
-│  (PyAudio/WASAPI)   (Riva/Whisper/Google)       │
-│                      (Google/Llama/Riva NMT)    │
+│  (WASAPI/Mic)    (Riva/Whisper)   (Llama/Riva)  │
+│                  (Google)         (Google Cloud)│
 └─────────────────────────────────────────────────┘
                         │
                    Firebase (cloud)

@@ -1,3 +1,4 @@
+import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -11,6 +12,8 @@ import 'package:omni_bridge/features/settings/domain/usecases/get_google_credent
 import 'package:omni_bridge/features/settings/domain/usecases/load_devices_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/observe_audio_levels_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.dart';
+import 'package:omni_bridge/features/subscription/domain/usecases/get_subscription_status.dart';
+import 'package:omni_bridge/features/subscription/domain/entities/subscription_status.dart';
 
 class MockGetAppSettingsUseCase extends Mock implements GetAppSettingsUseCase {}
 class MockUpdateAppSettingsUseCase extends Mock implements UpdateAppSettingsUseCase {}
@@ -18,6 +21,7 @@ class MockGetGoogleCredentialsUseCase extends Mock implements GetGoogleCredentia
 class MockLoadDevicesUseCase extends Mock implements LoadDevicesUseCase {}
 class MockObserveAudioLevelsUseCase extends Mock implements ObserveAudioLevelsUseCase {}
 class MockLogEventUseCase extends Mock implements LogEventUseCase {}
+class MockGetSubscriptionStatus extends Mock implements GetSubscriptionStatus {}
 
 void main() {
   late SettingsBloc settingsBloc;
@@ -27,6 +31,7 @@ void main() {
   late MockLoadDevicesUseCase mockLoadDevicesUseCase;
   late MockObserveAudioLevelsUseCase mockObserveAudioLevelsUseCase;
   late MockLogEventUseCase mockLogEventUseCase;
+  late MockGetSubscriptionStatus mockGetSubscriptionStatus;
 
   setUp(() {
     mockGetAppSettingsUseCase = MockGetAppSettingsUseCase();
@@ -35,6 +40,9 @@ void main() {
     mockLoadDevicesUseCase = MockLoadDevicesUseCase();
     mockObserveAudioLevelsUseCase = MockObserveAudioLevelsUseCase();
     mockLogEventUseCase = MockLogEventUseCase();
+    mockGetSubscriptionStatus = MockGetSubscriptionStatus();
+
+    when(() => mockGetSubscriptionStatus()).thenAnswer((_) => Stream.empty());
 
     settingsBloc = SettingsBloc(
       getAppSettingsUseCase: mockGetAppSettingsUseCase,
@@ -43,6 +51,7 @@ void main() {
       loadDevicesUseCase: mockLoadDevicesUseCase,
       observeAudioLevelsUseCase: mockObserveAudioLevelsUseCase,
       logEventUseCase: mockLogEventUseCase,
+      getSubscriptionStatus: mockGetSubscriptionStatus,
     );
   });
 
@@ -118,6 +127,48 @@ void main() {
           ),
         ),
       ],
+    );
+
+    blocTest<SettingsBloc, SettingsState>(
+      'SubscriptionStatusChangedEvent resets models and PERSISTS if not supported by new tier',
+      build: () {
+        when(() => mockUpdateAppSettingsUseCase(any())).thenAnswer((_) async => const Right(null));
+        when(() => mockLogEventUseCase(any(), parameters: any(named: 'parameters')))
+            .thenAnswer((_) async => const Right(null));
+        return settingsBloc;
+      },
+      seed: () => SettingsState.initial().copyWith(
+        settings: AppSettings.initial().copyWith(
+          translationModel: 'nvidia-riva',
+          transcriptionModel: 'riva',
+        ),
+      ),
+      act: (bloc) => bloc.add(SubscriptionStatusChangedEvent(
+        SubscriptionStatus(
+          tier: 'free',
+          dailyTokensUsed: 0,
+          weeklyTokensUsed: 0,
+          monthlyTokensUsed: 0,
+          lifetimeTokensUsed: 0,
+          dailyLimit: 1000,
+          dailyResetAt: DateTime.now(),
+        ),
+      )),
+      expect: () => [
+        SettingsState.initial().copyWith(
+          settings: AppSettings.initial().copyWith(
+            translationModel: 'google',
+            transcriptionModel: 'online',
+          ),
+        ),
+      ],
+      verify: (_) {
+        verify(() => mockUpdateAppSettingsUseCase(any())).called(1);
+        verify(() => mockLogEventUseCase(
+              'subscription_downgrade_model_reset',
+              parameters: any(named: 'parameters'),
+            )).called(1);
+      },
     );
   });
 }

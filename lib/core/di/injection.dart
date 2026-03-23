@@ -21,6 +21,7 @@ import 'package:omni_bridge/features/settings/domain/usecases/get_google_credent
 import 'package:omni_bridge/features/settings/domain/usecases/load_devices_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/observe_audio_levels_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/sync_settings_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/usecases/get_system_config_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.dart';
 import 'package:omni_bridge/features/settings/data/datasources/settings_remote_datasource.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_bloc.dart';
@@ -35,6 +36,7 @@ import 'package:omni_bridge/features/translation/domain/usecases/get_initial_quo
 import 'package:omni_bridge/features/translation/domain/usecases/get_default_tier_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/observe_captions_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/update_translation_settings_usecase.dart';
+import 'package:omni_bridge/features/translation/domain/usecases/check_server_health_usecase.dart';
 import 'package:omni_bridge/features/translation/data/datasources/translation_rest_datasource.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/login_with_google_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/logout_usecase.dart';
@@ -75,6 +77,7 @@ Future<void> setupInjection() async {
       getInitialQuotaStatusUseCase: sl(),
       getDefaultTierUseCase: sl(),
       updateTranslationSettingsUseCase: sl(),
+      checkServerHealthUseCase: sl(),
       getCurrentUserUseCase: sl(),
       observeAuthChangesUseCase: sl(),
       getAppSettingsUseCase: sl(),
@@ -82,6 +85,9 @@ Future<void> setupInjection() async {
       syncSettingsUseCase: sl(),
       logEventUseCase: sl(),
       logoutUseCase: sl(),
+      getSystemConfigUseCase: sl(),
+      subscriptionDataSource: sl(),
+      translationRestDatasource: sl(),
     ),
   );
 
@@ -93,6 +99,7 @@ Future<void> setupInjection() async {
       loadDevicesUseCase: sl(),
       observeAudioLevelsUseCase: sl(),
       logEventUseCase: sl(),
+      getSubscriptionStatus: sl(),
     ),
   );
 
@@ -158,6 +165,7 @@ Future<void> setupInjection() async {
   sl.registerLazySingleton(() => LoadDevicesUseCase(sl()));
   sl.registerLazySingleton(() => ObserveAudioLevelsUseCase(sl()));
   sl.registerLazySingleton(() => SyncSettingsUseCase(sl()));
+  sl.registerLazySingleton(() => GetSystemConfigUseCase(sl()));
   sl.registerLazySingleton(() => LogEventUseCase(sl()));
 
   // History
@@ -177,6 +185,7 @@ Future<void> setupInjection() async {
   sl.registerLazySingleton(() => GetDefaultTierUseCase(sl()));
   sl.registerLazySingleton(() => ObserveCaptionsUseCase(sl()));
   sl.registerLazySingleton(() => UpdateTranslationSettingsUseCase(sl()));
+  sl.registerLazySingleton(() => CheckServerHealthUseCase(sl()));
 
   // Subscription
   sl.registerLazySingleton(() => GetSubscriptionStatus(sl()));

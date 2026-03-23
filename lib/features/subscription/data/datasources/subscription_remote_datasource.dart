@@ -20,9 +20,9 @@ class SubscriptionRemoteDataSource {
   FirebaseApp get _app => Firebase.app(_appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
-
   static const String _rtdbBaseUrl =
       'https://omni-bridge-ai-translator-default-rtdb.firebaseio.com';
+
 
   // --- Dynamic Monetization Config ---
   Map<String, dynamic>? _monetizationConfig;
@@ -81,8 +81,7 @@ class SubscriptionRemoteDataSource {
           if (doc.exists) {
             _monetizationConfig = doc.data();
             debugPrint(
-              '[Subscription] Monetization config updated – '
-              '${availablePlans.length} plans available',
+              '[Subscription] Monetization config updated. Keys: ${_monetizationConfig?.keys.toList()} - Interval: $pollIntervalSeconds',
             );
             // Always emit status so bloc/UI refreshes with the latest plans
             if (_currentStatus != null) {
@@ -102,9 +101,12 @@ class SubscriptionRemoteDataSource {
   }
 
   /// Returns the usage polling interval from Firestore config, defaulting to 30s.
-  int get _pollIntervalSeconds =>
-      (_monetizationConfig?['usage_poll_interval_seconds'] as num?)?.toInt() ??
-      30;
+  int get pollIntervalSeconds {
+    final raw = _monetizationConfig?['usage_poll_interval_seconds'];
+    if (raw is num) return raw.toInt();
+    if (raw is String) return int.tryParse(raw) ?? 30;
+    return 30;
+  }
 
   /// Returns caption retention days for the current tier from tiers config.
   int get captionRetentionDays {
@@ -216,12 +218,14 @@ class SubscriptionRemoteDataSource {
 
   /// Restarts the polling timer if the configured interval has changed.
   void _maybeRestartPolling() {
-    final newInterval = _pollIntervalSeconds;
+    final newInterval = pollIntervalSeconds;
     if (_currentPollInterval == newInterval) return;
     final user = _auth.currentUser;
     if (user == null) return;
+    
+    _currentPollInterval = newInterval;
     debugPrint(
-      '[Subscription] Poll interval changed to ${newInterval}s, restarting.',
+      '[Subscription] Poll interval changed to ${newInterval}s, restarting polling.',
     );
     _startUsagePolling(user.uid);
   }
@@ -229,6 +233,63 @@ class SubscriptionRemoteDataSource {
   void _listenToRTDBUsage(String uid) async {
     await _checkAndPerformRollovers(uid);
     _startUsagePolling(uid);
+  }
+
+  void _startUsagePolling(String uid) {
+    _usagePollTimer?.cancel();
+
+    debugPrint(
+      '[Subscription] Starting usage polling for $uid every $pollIntervalSeconds seconds.',
+    );
+
+    // Initial fetch
+    _fetchUsageData(uid);
+
+    // Periodic fetch
+    _usagePollTimer = Timer.periodic(
+      Duration(seconds: pollIntervalSeconds),
+      (_) => _fetchUsageData(uid),
+    );
+  }
+
+  Future<void> _fetchUsageData(String uid) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+      final idToken = await user.getIdToken();
+
+      final now = DateTime.now();
+      final todayStr =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+      // 1. Fetch daily usage
+      final dailyUrl = Uri.parse(
+        '$_rtdbBaseUrl/users/$uid/daily_usage/$todayStr/tokens.json?auth=$idToken',
+      );
+      final dailyResp = await _httpClient.get(dailyUrl);
+      final dailyUsed = (jsonDecode(dailyResp.body) as num?)?.toInt() ?? 0;
+
+      // 2. Fetch totals
+      final totalsUrl = Uri.parse(
+        '$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken',
+      );
+      final totalsResp = await _httpClient.get(totalsUrl);
+      final totalsData = jsonDecode(totalsResp.body) as Map<String, dynamic>? ?? {};
+
+      final lifetimeUsed = (totalsData['lifetime'] as num?)?.toInt() ?? 0;
+      final calendarUsed = (totalsData['calendar_monthly'] as num?)?.toInt() ?? 0;
+      final subUsed = (totalsData['subscription_monthly'] as num?)?.toInt() ?? 0;
+      final weeklyUsed = (totalsData['weekly'] as num?)?.toInt() ?? 0;
+
+      _updateCurrentStatus(
+        dailyTokensUsed: dailyUsed,
+        weeklyTokensUsed: weeklyUsed,
+        monthlyTokensUsed: subUsed > 0 ? subUsed : calendarUsed,
+        lifetimeTokensUsed: lifetimeUsed,
+      );
+    } catch (e) {
+      debugPrint('[Subscription] Error fetching usage via REST: $e');
+    }
   }
 
   Future<void> _checkAndPerformRollovers(String uid) async {
@@ -357,75 +418,9 @@ class SubscriptionRemoteDataSource {
     }
   }
 
-  void _startUsagePolling(String uid) {
-    _usagePollTimer?.cancel();
-    _currentPollInterval = _pollIntervalSeconds;
-    _fetchDailyUsage(uid); // initial fetch
-    _usagePollTimer = Timer.periodic(Duration(seconds: _currentPollInterval!), (
-      _,
-    ) {
-      _fetchDailyUsage(uid);
-    });
-  }
 
-  Future<void> _fetchDailyUsage(String uid, {int retryCount = 0}) async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return;
-      final idToken = await user.getIdToken();
-      final now = DateTime.now();
-      final todayStr =
-          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
-      final dailyUrl = Uri.parse(
-        '$_rtdbBaseUrl/users/$uid/daily_usage/$todayStr/tokens.json?auth=$idToken',
-      );
-      final aggregatesUrl = Uri.parse(
-        '$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken',
-      );
 
-      final results = await Future.wait([
-        _httpClient.get(dailyUrl).timeout(const Duration(seconds: 5)),
-        _httpClient.get(aggregatesUrl).timeout(const Duration(seconds: 5)),
-      ]);
-
-      final dailyResponse = results[0];
-      final aggregatesResponse = results[1];
-
-      if (dailyResponse.statusCode == 200 &&
-          aggregatesResponse.statusCode == 200) {
-        final dailyData = jsonDecode(dailyResponse.body);
-        final aggregatesData =
-            jsonDecode(aggregatesResponse.body) as Map<String, dynamic>? ?? {};
-
-        final dailyUsed = (dailyData as num?)?.toInt() ?? 0;
-        final lifetimeUsed = (aggregatesData['lifetime'] as num?)?.toInt() ?? 0;
-        final calendarUsed =
-            (aggregatesData['calendar_monthly'] as num?)?.toInt() ?? 0;
-        final subUsed =
-            (aggregatesData['subscription_monthly'] as num?)?.toInt() ?? 0;
-        final weeklyUsed = (aggregatesData['weekly'] as num?)?.toInt() ?? 0;
-
-        _updateCurrentStatus(
-          dailyTokensUsed: dailyUsed,
-          weeklyTokensUsed: weeklyUsed,
-          monthlyTokensUsed: subUsed > 0 ? subUsed : calendarUsed,
-          lifetimeTokensUsed: lifetimeUsed,
-        );
-      }
-    } on TimeoutException {
-      debugPrint('[Subscription] RTDB usage fetch timed out.');
-    } catch (e) {
-      if (retryCount < 3 &&
-          (e.toString().contains('Connection closed') ||
-              e.toString().contains('ClientException'))) {
-        final delay = Duration(milliseconds: 500 * (retryCount + 1));
-        await Future.delayed(delay);
-        return _fetchDailyUsage(uid, retryCount: retryCount + 1);
-      }
-      debugPrint('[Subscription] Failed to fetch usage counts: $e');
-    }
-  }
 
   void _updateCurrentStatus({
     int? dailyTokensUsed,

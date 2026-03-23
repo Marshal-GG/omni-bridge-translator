@@ -53,8 +53,8 @@ lib/
 | BLoC | Responsibility | Depends On |
 |------|----------------|------------|
 | `AuthBloc` | Firebase Auth state management | `IAuthRepository` |
-| `SettingsBloc` | User preferences, device selection, and audio monitoring | `SyncSettingsUseCase`, `LoadDevicesUseCase`, `ObserveAudioLevelsUseCase` |
-| `TranslationBloc` | Live translation session control, caption streaming, and quota tracking | `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `StartTranslationUseCase` |
+| `SettingsBloc` | User preferences, device selection, and audio monitoring | `SyncSettingsUseCase`, `LoadDevicesUseCase`, `ObserveAudioLevelsUseCase`, `LogEventUseCase`, `GetSystemConfigUseCase` |
+| `TranslationBloc` | Live translation session control, caption streaming, server health checking, and model status tracking | `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `StartTranslationUseCase`, `StopTranslationUseCase`, `UpdateTranslationSettingsUseCase`, `UpdateVolumeUseCase`, `CheckServerHealthUseCase` |
 | `HistoryBloc` | Live and chunked transcription history | `GetLiveHistoryUseCase`, `GetChunkedHistoryUseCase`, `ClearHistoryUseCase` |
 | `AboutBloc` | App versioning and updates | `CheckForUpdateUseCase` |
 | `StartupBloc` | Bootstrapping, auth check, and routing | `IAuthRepository` |
@@ -69,8 +69,8 @@ UseCases are the brain of the feature. They encapsulate a single business logic 
 | Feature | Key UseCases |
 |---------|--------------|
 | **Auth** | `LoginWithGoogle`, `Logout`, `GetCurrentUser`, `ObserveAuthChanges` |
-| **Settings** | `LoadDevices`, `ObserveAudioLevels`, `SyncSettings`, `LogEvent` |
-| **Translation** | `ObserveCaptions`, `ObserveQuotaStatus`, `UpdateTranslationSettings`, `UpdateVolume` |
+| **Settings** | `LoadDevices`, `ObserveAudioLevels`, `SyncSettings`, `LogEvent`, `GetSystemConfig` |
+| **Translation** | `ObserveCaptions`, `ObserveQuotaStatus`, `StartTranslation`, `StopTranslation`, `UpdateTranslationSettings`, `UpdateVolume`, `CheckServerHealth` |
 | **About** | `CheckForUpdate` |
 
 ### Dependency Injection (DI)
@@ -170,8 +170,25 @@ Settings
 
 Start Translation
  └─ TranslationBloc sends `start` command via AsrWsClient
+     ├─ Passes run-time configurations (dynamic Riva function IDs, Google credentials as JSON objects)
      └─ TranslationBloc is provided at app root (BlocProvider) to ensure state persistence
          └─ Overlay window opens (bitsdojo_window)
              └─ AsrTextController buffers caption events
-                 └─ UI reacts via BlocBuilder
+                 └─ UI reacts via BlocBuilder (Handling `interim` vs `final`)
+
+---
+
+## Inference Status Flow
+
+To handle heavy AI models (like Whisper Medium or Llama), the app implements a real-time status flow:
+
+1.  **Python Model**: The model engine (e.g., `WhisperASR`) sets an internal `_is_loading` flag during initialization or reload.
+2.  **Status Handler**: `status_handler.py` polls model states and broadcasts a `model_status` payload via WebSocket.
+3.  **Flutter Bloc**: `TranslationBloc` listens for `model_status` events.
+4.  **UI Updates**:
+    - **Loading**: UI shows a progress indicator (e.g., "Loading Whisper Medium...").
+    - **Ready**: UI enables the "Start" button and shows "Ready" status.
+    - **Fallback**: If a primary model fails to load, `TranslationBloc` reflects the switch to a fallback engine (e.g., Google Online).
+5.  **Connection Resilience**: If the server WebSocket disconnects, `TranslationBloc` detects the disconnect event, auto-pauses the stream, and the underlying `TranslationWebsocketClient` continuously attempts exponential backoff reconnection.
+6.  **Subscription Tier Reactivity**: The `TranslationBloc` validates model selections against real-time subscription quotas. If a tier downgrade occurs, it transparently unloads premium models, fallback-switches to default models, and updates the UI.
 ```

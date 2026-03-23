@@ -47,6 +47,10 @@ class TranslationDispatcher:
             if actual_hint != source:
                 source = actual_hint
         
+        # 1.5 Same-Language Check
+        if source == target:
+            return text, {"engine": "no-op", "reason": "same_language", "latency_ms": 0}
+        
         # 2. Script-based check (fallback if hint fails or is missing)
         if (self.source_lang == "auto") and not source_hint:
             script_lang = self._detect_lang_from_script(text)

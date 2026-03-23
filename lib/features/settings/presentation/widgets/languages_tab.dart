@@ -15,11 +15,18 @@ import 'package:omni_bridge/features/translation/presentation/blocs/translation_
 import 'package:omni_bridge/features/settings/presentation/widgets/settings_helpers.dart';
 
 Widget buildLanguagesTab(BuildContext context, SettingsState state) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(
-        children: [
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.04),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.white12),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,6 +94,7 @@ Widget buildLanguagesTab(BuildContext context, SettingsState state) {
         ],
       ),
     ],
+    ),
   );
 }
 
@@ -96,6 +104,7 @@ Widget _langDropdown({
   required MapEntry<String, String> selected,
   required String hint,
   required void Function(MapEntry<String, String> item) onSelect,
+  Set<String> disabledKeys = const {},
 }) {
   const dropDec = DropDownDecoratorProps(
     baseStyle: TextStyle(color: Colors.white, fontSize: 13),
@@ -105,7 +114,6 @@ Widget _langDropdown({
   return SizedBox(
     height: 36,
     child: DropdownSearch<MapEntry<String, String>>(
-      key: ValueKey(selected.key),
       items: items,
       itemAsString: (entry) => entry.value,
       selectedItem: selected,
@@ -145,11 +153,16 @@ Widget _langDropdown({
         ),
         itemBuilder: (popupContext, item, isSelectedRaw) {
           final isCurrentlySelected = item.key == selected.key;
+          final isDisabled = disabledKeys.contains(item.key);
           return InkWell(
-            onTap: () {
-              Navigator.pop(popupContext);
-              onSelect(item);
-            },
+            onTap: isDisabled
+                ? null
+                : () {
+                    Navigator.pop(popupContext);
+                    Future.delayed(Duration.zero, () {
+                      onSelect(item);
+                    });
+                  },
             splashColor: Colors.tealAccent.withValues(alpha: 0.2),
             highlightColor: Colors.white10,
             hoverColor: Colors.white10,
@@ -164,9 +177,11 @@ Widget _langDropdown({
                     child: Text(
                       item.value,
                       style: TextStyle(
-                        color: isCurrentlySelected
-                            ? Colors.white
-                            : Colors.white70,
+                        color: isDisabled
+                            ? Colors.white24
+                            : isCurrentlySelected
+                                ? Colors.white
+                                : Colors.white70,
                         fontWeight: isCurrentlySelected
                             ? FontWeight.w600
                             : FontWeight.normal,
@@ -249,8 +264,20 @@ Widget buildTranslationModelSelector(
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      BlocBuilder<TranslationBloc, TranslationState>(
-        builder: (context, transState) {
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            sectionLabel('Translation Engine'),
+            const SizedBox(height: 10),
+            BlocBuilder<TranslationBloc, TranslationState>(
+              builder: (context, transState) {
           return SizedBox(
             height: 36,
             child: DropdownSearch<MapEntry<String, String>>(
@@ -282,7 +309,7 @@ Widget buildTranslationModelSelector(
                 if (entry != null && hasAccess(entry.key)) {
                   // Explicitly unload current model from memory upon selection change
                   TranslationRestDatasource().unloadModel();
-                  Future.delayed(const Duration(milliseconds: 100), () {
+                  Future.delayed(const Duration(milliseconds: 50), () {
                     if (context.mounted) {
                       context.read<SettingsBloc>().add(
                         UpdateTempSettingEvent(translationModel: entry.key),
@@ -363,9 +390,13 @@ Widget buildTranslationModelSelector(
                         Navigator.pop(popupContext);
                         // Explicitly unload current model from memory upon selection change
                         TranslationRestDatasource().unloadModel();
-                        context.read<SettingsBloc>().add(
-                          UpdateTempSettingEvent(translationModel: item.key),
-                        );
+                        Future.delayed(Duration.zero, () {
+                          if (context.mounted) {
+                            context.read<SettingsBloc>().add(
+                              UpdateTempSettingEvent(translationModel: item.key),
+                            );
+                          }
+                        });
                       }
                     },
                     splashColor: itemHasAccess
@@ -482,13 +513,37 @@ Widget buildTranslationModelSelector(
         ),
       ],
 
+          ],
+        ),
+      ),
+
       if (needsNvidiaKey) ...[
         const SizedBox(height: 16),
-        _NvidiaApiKeySection(state: state),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Column(
+            children: [
+              _NvidiaApiKeySection(state: state),
+            ],
+          ),
+        ),
       ],
 
-      const SizedBox(height: 20),
-      _buildTranscriptionModelSection(context, state),
+      const SizedBox(height: 16),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: _buildTranscriptionModelSection(context, state),
+      ),
     ],
   );
 }
@@ -1453,6 +1508,8 @@ class _NvidiaApiKeySectionState extends State<_NvidiaApiKeySection> {
     );
   }
 }
+
+
 
 class _ApiKeyInstructions {
   final String description;

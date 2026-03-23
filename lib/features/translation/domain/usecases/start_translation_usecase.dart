@@ -13,8 +13,11 @@ class StartTranslationUseCase {
     int? outputDeviceIndex,
     String translationModel = 'google',
     String apiKey = '',
-    String googleCredentialsJson = '',
+    dynamic googleCredentials = '',
     String transcriptionModel = 'online',
+    String rivaTranslationFunctionId = '',
+    String rivaAsrParakeetFunctionId = '',
+    String rivaAsrCanaryFunctionId = '',
   }) {
     _repository.start(
       sourceLang: sourceLang,
@@ -24,8 +27,11 @@ class StartTranslationUseCase {
       outputDeviceIndex: outputDeviceIndex,
       translationModel: translationModel,
       apiKey: apiKey,
-      googleCredentialsJson: googleCredentialsJson,
+      googleCredentials: googleCredentials,
       transcriptionModel: transcriptionModel,
+      rivaTranslationFunctionId: rivaTranslationFunctionId,
+      rivaAsrParakeetFunctionId: rivaAsrParakeetFunctionId,
+      rivaAsrCanaryFunctionId: rivaAsrCanaryFunctionId,
     );
   }
 }

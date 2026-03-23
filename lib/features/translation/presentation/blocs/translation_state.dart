@@ -9,6 +9,7 @@ class TranslationState extends Equatable {
   final bool isQuotaExceeded;
   final bool isSettingsLoading;
   final bool isSettingsSaving;
+  final bool isServerConnected;
 
   // Active Settings (Applied to WebSocket)
   final String activeTargetLang;
@@ -54,12 +55,13 @@ class TranslationState extends Equatable {
     this.isSettingsSaving = false,
     this.navToSubscriptionTrigger = 0,
     this.modelStatuses = const {},
+    this.isServerConnected = true,
   });
 
   factory TranslationState.initial() {
     return const TranslationState(
       isShrunk: false,
-      isRunning: true,
+      isRunning: false,
       // Active
       activeTargetLang: 'en',
       activeSourceLang: 'auto',
@@ -81,6 +83,7 @@ class TranslationState extends Equatable {
       isSettingsSaving: false,
       navToSubscriptionTrigger: 0,
       modelStatuses: {},
+      isServerConnected: true,
     );
   }
 
@@ -107,6 +110,7 @@ class TranslationState extends Equatable {
     bool? isSettingsSaving,
     int? navToSubscriptionTrigger,
     Map<String, dynamic>? modelStatuses,
+    bool? isServerConnected,
   }) {
     return TranslationState(
       isShrunk: isShrunk ?? this.isShrunk,
@@ -138,6 +142,7 @@ class TranslationState extends Equatable {
       navToSubscriptionTrigger:
           navToSubscriptionTrigger ?? this.navToSubscriptionTrigger,
       modelStatuses: modelStatuses ?? this.modelStatuses,
+      isServerConnected: isServerConnected ?? this.isServerConnected,
     );
   }
 
@@ -165,6 +170,7 @@ class TranslationState extends Equatable {
     isSettingsSaving,
     navToSubscriptionTrigger,
     modelStatuses,
+    isServerConnected,
   ];
 
   String get activeTranslationModelStatusKey {

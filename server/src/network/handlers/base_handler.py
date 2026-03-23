@@ -26,7 +26,10 @@ class ServerContext:
             "transcription_model": "online",
             "translation_model": "google",
             "api_key": "",
-            "google_credentials_json": "",
+            "google_credentials": {},
+            "riva_translation_function_id": "",
+            "riva_asr_parakeet_function_id": "",
+            "riva_asr_canary_function_id": "",
             "use_mic": False,
             "input_device_index": None,
             "output_device_index": None,
@@ -38,7 +41,10 @@ class ServerContext:
         """Clears user-specific configuration and the orchestrator to ensure a fresh session."""
         self.orchestrator = None
         self.config["api_key"] = ""
-        self.config["google_credentials_json"] = ""
+        self.config["google_credentials"] = {}
+        self.config["riva_translation_function_id"] = ""
+        self.config["riva_asr_parakeet_function_id"] = ""
+        self.config["riva_asr_canary_function_id"] = ""
         self.is_running = False
         self.session_id = 0
         # Revert to defaults

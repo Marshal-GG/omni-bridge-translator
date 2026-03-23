@@ -101,8 +101,11 @@ class AsrWebSocketClient {
     int? outputDeviceIndex,
     String translationModel = 'google',
     String apiKey = '',
-    String googleCredentialsJson = '',
+    dynamic googleCredentials = '',
     String transcriptionModel = 'online',
+    String rivaTranslationFunctionId = '',
+    String rivaAsrParakeetFunctionId = '',
+    String rivaAsrCanaryFunctionId = '',
   }) {
     // Reuse the existing service + connection if already live.
     // This avoids the WebSocket handshake + WASAPI cold-start on every toggle.
@@ -116,8 +119,11 @@ class AsrWebSocketClient {
       outputDeviceIndex: outputDeviceIndex,
       translationModel: translationModel,
       apiKey: apiKey,
-      googleCredentialsJson: googleCredentialsJson,
+      googleCredentials: googleCredentials,
       transcriptionModel: transcriptionModel,
+      rivaTranslationFunctionId: rivaTranslationFunctionId,
+      rivaAsrParakeetFunctionId: rivaAsrParakeetFunctionId,
+      rivaAsrCanaryFunctionId: rivaAsrCanaryFunctionId,
     );
   }
 
@@ -131,8 +137,11 @@ class AsrWebSocketClient {
     double micVolume = 1.0,
     required String translationModel,
     String apiKey = '',
-    String googleCredentialsJson = '',
+    dynamic googleCredentials = '',
     String transcriptionModel = 'online',
+    String rivaTranslationFunctionId = '',
+    String rivaAsrParakeetFunctionId = '',
+    String rivaAsrCanaryFunctionId = '',
   }) {
     _service?.updateSettings(
       sourceLang: sourceLang,
@@ -144,8 +153,11 @@ class AsrWebSocketClient {
       micVolume: micVolume,
       translationModel: translationModel,
       apiKey: apiKey,
-      googleCredentialsJson: googleCredentialsJson,
+      googleCredentials: googleCredentials,
       transcriptionModel: transcriptionModel,
+      rivaTranslationFunctionId: rivaTranslationFunctionId,
+      rivaAsrParakeetFunctionId: rivaAsrParakeetFunctionId,
+      rivaAsrCanaryFunctionId: rivaAsrCanaryFunctionId,
     );
     configureHistory(
       sourceLang: sourceLang,
@@ -193,7 +205,7 @@ class AsrWebSocketClient {
 
   /// Soft-stop: tells the server to pause audio capture but keeps the WebSocket
   /// open. The next [start] call skips the handshake and fires immediately.
-  void stop() {
+  Future<void> stop() async {
     _service?.sendStopCommand();
   }
 

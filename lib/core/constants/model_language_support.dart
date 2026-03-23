@@ -114,7 +114,10 @@ String? translationCompatibilityError(
   final supported = translationLangsFor(model);
   if (supported == null) return null; // unrestricted model
 
-  final srcOk = source == 'auto' || supported.contains(source);
+  bool srcOk = supported.contains(source);
+  if (source == 'auto') {
+    srcOk = true; // Always allow 'auto' from UI for any model, backend will handle fallback
+  }
   final tgtOk = supported.contains(target);
   if (srcOk && tgtOk) return null;
 

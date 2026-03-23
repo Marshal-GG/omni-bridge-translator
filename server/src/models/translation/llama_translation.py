@@ -15,13 +15,15 @@ class LlamaModel:
     MODEL_ID = "meta/llama-3.1-8b-instruct"
 
     def __init__(self, api_key: str):
-        self.api_key = api_key
+        self.api_key = api_key.strip() if api_key else ""
         self.client = None
+        self._is_loading = False
         self._setup()
 
     # ── Setup ────────────────────────────────────────────────────────────────
 
     def _setup(self):
+        self._is_loading = True
         try:
             if not self.api_key:
                 return
@@ -32,27 +34,40 @@ class LlamaModel:
         except Exception as e:
             import logging
             logging.error(f"Llama setup failed: {e}")
+        finally:
+            self._is_loading = False
 
     def reload(self, api_key: str):
-        self.api_key = api_key
+        self.api_key = api_key.strip() if api_key else ""
         self._setup()
 
     def is_ready(self) -> bool:
-        return self.client is not None and bool(self.api_key)
+        return not self._is_loading and self.client is not None and bool(self.api_key)
 
     def get_status(self) -> dict:
         """Return status for Llama model."""
         ready = self.is_ready()
-        status = "ready" if ready else ("no_api_key" if not self.api_key else "error")
-        message = "Llama is ready." if ready else ("Llama requires an API key." if not self.api_key else "Llama setup failed.")
+        
+        if self._is_loading:
+            status = "loading"
+            message = "Llama is connecting..."
+        else:
+            # If not ready, we use "fallback" instead of "no_api_key" to avoid red indicator
+            # since the system automatically falls back to the free engine.
+            status = "ready" if ready else "fallback"
+            message = ("Llama is ready." if ready 
+                       else "Using fallback engine (Google Free). Configure NVIDIA API key for Llama.")
         
         return {
             "name": "llama",
             "status": status,
             "ready": ready,
             "message": message,
-            "progress": 100.0 if ready else 0.0,
-            "details": {"has_key": bool(self.api_key)}
+            "progress": 100.0 if ready else (50.0 if self._is_loading else 0.0),
+            "details": {
+                "has_key": bool(self.api_key),
+                "loading": self._is_loading
+            }
         }
 
     # ── Translation ──────────────────────────────────────────────────────────
@@ -99,8 +114,8 @@ class LlamaModel:
                 "latency_ms": latency_ms,
                 "api_prompt_tokens": usage.prompt_tokens if usage else 0,
                 "api_completion_tokens": usage.completion_tokens if usage else 0,
-                "input_tokens": len(text),
-                "output_tokens": len(result),
+                "input_tokens": (len(text) + 3) // 4,
+                "output_tokens": (len(result) + 3) // 4,
             }
             return result, stats
         except Exception as e:

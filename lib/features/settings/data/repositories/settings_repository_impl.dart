@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:omni_bridge/core/error/failures.dart';
 import 'package:omni_bridge/features/settings/data/datasources/settings_remote_datasource.dart';
 import 'package:omni_bridge/features/settings/domain/entities/app_settings.dart';
+import 'package:omni_bridge/features/settings/domain/entities/system_config.dart';
 import 'package:omni_bridge/features/settings/domain/repositories/i_settings_repository.dart';
 
 class SettingsRepositoryImpl implements ISettingsRepository {
@@ -10,10 +11,10 @@ class SettingsRepositoryImpl implements ISettingsRepository {
   SettingsRepositoryImpl(this._remoteDataSource);
 
   @override
-  Future<Either<Failure, String>> getGoogleCredentials() async {
+  Future<Either<Failure, dynamic>> getGoogleCredentials() async {
     try {
-      final jsonStr = await _remoteDataSource.getGoogleCredentials();
-      return Right(jsonStr);
+      final credentials = await _remoteDataSource.getGoogleCredentials();
+      return Right(credentials);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -37,6 +38,16 @@ class SettingsRepositoryImpl implements ISettingsRepository {
       final settingsMap = await _remoteDataSource.getSettings();
       if (settingsMap == null) return const Right(null);
       return Right(AppSettings.fromJson(settingsMap));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, SystemConfig>> getSystemConfig() async {
+    try {
+      final configMap = await _remoteDataSource.getSystemConfig();
+      return Right(SystemConfig.fromMap(configMap));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

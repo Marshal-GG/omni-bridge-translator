@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/features/translation/data/datasources/translation_rest_datasource.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:window_manager/window_manager.dart';
@@ -16,6 +18,7 @@ import 'package:omni_bridge/features/translation/domain/usecases/observe_quota_s
 import 'package:omni_bridge/features/translation/domain/usecases/get_initial_quota_status_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/get_default_tier_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/update_translation_settings_usecase.dart';
+import 'package:omni_bridge/features/translation/domain/usecases/check_server_health_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/observe_auth_changes_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/entities/app_settings.dart';
@@ -24,6 +27,8 @@ import 'package:omni_bridge/features/settings/domain/usecases/get_google_credent
 import 'package:omni_bridge/features/settings/domain/usecases/sync_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/logout_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/usecases/get_system_config_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/entities/system_config.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final StartTranslationUseCase startTranslationUseCase;
@@ -35,6 +40,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final GetInitialQuotaStatusUseCase getInitialQuotaStatusUseCase;
   final GetDefaultTierUseCase getDefaultTierUseCase;
   final UpdateTranslationSettingsUseCase updateTranslationSettingsUseCase;
+  final CheckServerHealthUseCase checkServerHealthUseCase;
   final GetCurrentUserUseCase getCurrentUserUseCase;
   final ObserveAuthChangesUseCase observeAuthChangesUseCase;
   final GetAppSettingsUseCase getAppSettingsUseCase;
@@ -42,9 +48,13 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final SyncSettingsUseCase syncSettingsUseCase;
   final LogEventUseCase logEventUseCase;
   final LogoutUseCase logoutUseCase;
+  final GetSystemConfigUseCase getSystemConfigUseCase;
+  final SubscriptionRemoteDataSource subscriptionDataSource;
+  final TranslationRestDatasource translationRestDatasource;
 
   StreamSubscription? _captionSub;
   StreamSubscription? _statusSub;
+  Timer? _healthCheckTimer;
   int _lastLineCount = 0;
 
   TranslationBloc({
@@ -57,6 +67,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     required this.getInitialQuotaStatusUseCase,
     required this.getDefaultTierUseCase,
     required this.updateTranslationSettingsUseCase,
+    required this.checkServerHealthUseCase,
     required this.getCurrentUserUseCase,
     required this.observeAuthChangesUseCase,
     required this.getAppSettingsUseCase,
@@ -64,6 +75,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     required this.syncSettingsUseCase,
     required this.logEventUseCase,
     required this.logoutUseCase,
+    required this.getSystemConfigUseCase,
+    required this.subscriptionDataSource,
+    required this.translationRestDatasource,
   }) : super(
          TranslationState.initial().copyWith(
            quotaStatus: getInitialQuotaStatusUseCase(),
@@ -81,6 +95,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     on<LoadSettingsEvent>(_onLoadSettings);
     on<ResetSettingsEvent>(_onResetSettings);
     on<LangErrorEvent>(_onLangError);
+    on<UpdateServerConnectionEvent>(_onUpdateServerConnection);
 
     // Initial load of model statuses
     _fetchInitialModelStatuses();
@@ -141,9 +156,22 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   }
 
   void _initAsr() {
-    add(LoadSettingsEvent());
-
     _captionSub = observeCaptionsUseCase()?.listen((msg) {
+      if (msg.isDisconnect) {
+        if (!isClosed) {
+          add(UpdateServerConnectionEvent(isConnected: false));
+        }
+        if (state.isRunning && !isClosed) {
+          debugPrint('[TranslationBloc] Server disconnect detected. Auto-pausing.');
+          add(ToggleRunningEvent());
+        }
+      } else {
+        // If we receive a normal message, we know the server is connected
+        if (!state.isServerConnected && !isClosed) {
+          add(const UpdateServerConnectionEvent(isConnected: true));
+        }
+      }
+
       final override = msg.sourceLangOverride;
       if (override != null && !isClosed) {
         add(SourceLangOverrideEvent(override));
@@ -191,16 +219,24 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         newStatuses[status['name']] = status;
       }
     }
-    emit(state.copyWith(modelStatuses: newStatuses));
+    final newState = state.copyWith(modelStatuses: newStatuses);
+    emit(newState);
   }
 
   Future<void> _onToggleRunning(
     ToggleRunningEvent event,
     Emitter<TranslationState> emit,
   ) async {
+    // Prevent starting translation if server is not connected
+    if (!state.isRunning && !state.isServerConnected) {
+      debugPrint('[TranslationBloc] Prevented resume: Server is not connected.');
+      return;
+    }
+
     if (state.isRunning) {
       stopTranslationUseCase();
-      emit(state.copyWith(isRunning: false));
+      final newState = state.copyWith(isRunning: false);
+      emit(newState);
     } else {
       if (state.isQuotaExceeded) {
         emit(
@@ -213,9 +249,12 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       }
 
       final result = await getGoogleCredentialsUseCase();
-      final googleCredentialsJson = state.activeTranslationModel == 'google_api'
+      final googleCredentials = state.activeTranslationModel == 'google_api'
           ? result.getOrElse(() => '')
           : '';
+
+      final systemConfigResult = await getSystemConfigUseCase();
+      final systemConfig = systemConfigResult.getOrElse(() => SystemConfig.empty());
 
       startTranslationUseCase(
         sourceLang: state.activeSourceLang,
@@ -225,18 +264,33 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         outputDeviceIndex: state.activeOutputDeviceIndex,
         translationModel: state.activeTranslationModel,
         apiKey: state.activeApiKey,
-        googleCredentialsJson: googleCredentialsJson,
+        googleCredentials: googleCredentials,
         transcriptionModel: state.activeTranscriptionModel,
+        rivaTranslationFunctionId: systemConfig.rivaTranslationFunctionId,
+        rivaAsrParakeetFunctionId: systemConfig.rivaAsrParakeetFunctionId,
+        rivaAsrCanaryFunctionId: systemConfig.rivaAsrCanaryFunctionId,
       );
-      emit(state.copyWith(isRunning: true));
+      final newState = state.copyWith(isRunning: true);
+      emit(newState);
     }
   }
 
-  void _onUpdateQuota(UpdateQuotaEvent event, Emitter<TranslationState> emit) {
-    final bool exceeded = event.status?.isExceeded ?? false;
-    emit(state.copyWith(quotaStatus: event.status, isQuotaExceeded: exceeded));
+  Future<void> _onUpdateQuota(UpdateQuotaEvent event, Emitter<TranslationState> emit) async {
+    if (event.status == null) return;
 
+    final bool exceeded = event.status!.isExceeded;
+    final String? oldTier = state.quotaStatus?.tier;
+    final String newTier = event.status!.tier;
+
+    final newState = state.copyWith(quotaStatus: event.status, isQuotaExceeded: exceeded);
+    if (newState != state) {
+      debugPrint('[DEBUG-EMIT] _onUpdateQuota: emitted state with tier $newTier, exceeded: $exceeded');
+    }
+    emit(newState);
+
+    // Handle Quota Exhaustion
     if (exceeded && state.isRunning) {
+      debugPrint('[TranslationBloc] Quota exceeded, stopping translation.');
       stopTranslationUseCase();
       emit(
         state.copyWith(
@@ -245,6 +299,72 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         ),
       );
       add(QuotaExceededEvent());
+      return;
+    }
+
+    // Handle Tier Change (Downgrade)
+    if (oldTier != null && oldTier != newTier) {
+      debugPrint('[TranslationBloc] Tier changed from $oldTier to $newTier');
+
+      final bool isTranslationAllowed = subscriptionDataSource
+          .allowedTranslationModels(newTier)
+          .contains(state.activeTranslationModel);
+      final bool isTranscriptionAllowed = subscriptionDataSource
+          .allowedTranscriptionModels(newTier)
+          .contains(state.activeTranscriptionModel);
+
+      if (!isTranslationAllowed || !isTranscriptionAllowed) {
+        if (state.isRunning) {
+          stopTranslationUseCase();
+        }
+
+        try {
+          await translationRestDatasource.unloadModel();
+        } catch (e) {
+          debugPrint('[TranslationBloc] Error unloading model: $e');
+        }
+
+        // Clear model statuses for the unsupported models to update UI immediately
+        final updatedStatuses = Map<String, dynamic>.from(state.modelStatuses);
+        if (!isTranslationAllowed) {
+          updatedStatuses.remove(state.activeTranslationModelStatusKey);
+        }
+        if (!isTranscriptionAllowed) {
+          updatedStatuses.remove(state.activeTranscriptionModelStatusKey);
+        }
+
+        final defaults = AppSettings.initial();
+        final newState = state.copyWith(
+          isRunning: false,
+          modelStatuses: updatedStatuses,
+          activeTranslationModel: isTranslationAllowed
+              ? state.activeTranslationModel
+              : defaults.translationModel,
+          activeTranscriptionModel: isTranscriptionAllowed
+              ? state.activeTranscriptionModel
+              : defaults.transcriptionModel,
+        );
+        emit(newState);
+
+        // Immediately apply and persist the new default models to avoid race conditions
+        add(
+          ApplySettingsEvent(
+            targetLang: state.activeTargetLang,
+            sourceLang: state.activeSourceLang,
+            useMic: state.activeUseMic,
+            fontSize: state.activeFontSize,
+            isBold: state.activeIsBold,
+            opacity: state.activeOpacity,
+            inputDeviceIndex: state.activeInputDeviceIndex,
+            outputDeviceIndex: state.activeOutputDeviceIndex,
+            desktopVolume: state.activeDesktopVolume,
+            micVolume: state.activeMicVolume,
+            translationModel: newState.activeTranslationModel,
+            apiKey: state.activeApiKey,
+            transcriptionModel: newState.activeTranscriptionModel,
+          ),
+        );
+      }
     }
   }
 
@@ -271,15 +391,15 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     LoadSettingsEvent event,
     Emitter<TranslationState> emit,
   ) async {
-    emit(state.copyWith(isSettingsLoading: true));
+    final loadingState = state.copyWith(isSettingsLoading: true);
+    emit(loadingState);
     try {
       final result = await getAppSettingsUseCase();
       result.fold(
         (failure) => debugPrint('Error loading settings: ${failure.message}'),
         (settings) async {
           if (settings != null) {
-            emit(
-              state.copyWith(
+            final loadedState = state.copyWith(
                 activeTargetLang: settings.targetLang,
                 activeSourceLang: settings.sourceLang,
                 activeUseMic: settings.useMic,
@@ -293,8 +413,8 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
                 activeTranslationModel: settings.translationModel,
                 activeApiKey: settings.apiKey,
                 activeTranscriptionModel: settings.transcriptionModel,
-              ),
-            );
+              );
+            emit(loadedState);
 
             // Trigger status update in backend
             add(
@@ -315,10 +435,8 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
               ),
             );
           } else {
-            // If no settings found, reset to defaults
             final defaults = AppSettings.initial();
-            emit(
-              state.copyWith(
+            final defaultState = state.copyWith(
                 activeTargetLang: defaults.targetLang,
                 activeSourceLang: defaults.sourceLang,
                 activeUseMic: defaults.useMic,
@@ -332,15 +450,19 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
                 activeTranslationModel: defaults.translationModel,
                 activeApiKey: defaults.apiKey,
                 activeTranscriptionModel: defaults.transcriptionModel,
-              ),
-            );
+              );
+            if (defaultState != state) {
+              debugPrint('[DEBUG-EMIT] _onLoadSettings: emitted state with default settings');
+            }
+            emit(defaultState);
           }
         },
       );
     } catch (e) {
       debugPrint('Error loading settings: $e');
     } finally {
-      emit(state.copyWith(isSettingsLoading: false));
+      final finishedState = state.copyWith(isSettingsLoading: false);
+      emit(finishedState);
     }
   }
 
@@ -436,7 +558,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         activeTranslationModel: event.translationModel,
         activeApiKey: event.apiKey,
         activeTranscriptionModel: event.transcriptionModel,
-        isSettingsSaving: true,
+        isSettingsSaving: event.isUserInitiated,
       ),
     );
 
@@ -448,10 +570,13 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
     try {
       final result = await getGoogleCredentialsUseCase();
-      final googleCredentialsJsonOnApply =
+      final googleCredentialsOnApply =
           event.translationModel == 'google_api'
           ? result.getOrElse(() => '')
           : '';
+
+      final systemConfigResult = await getSystemConfigUseCase();
+      final systemConfig = systemConfigResult.getOrElse(() => SystemConfig.empty());
 
       updateTranslationSettingsUseCase(
         targetLang: event.targetLang,
@@ -463,8 +588,11 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         micVolume: event.micVolume,
         translationModel: event.translationModel,
         apiKey: event.apiKey,
-        googleCredentialsJson: googleCredentialsJsonOnApply,
+        googleCredentials: googleCredentialsOnApply,
         transcriptionModel: event.transcriptionModel,
+        rivaTranslationFunctionId: systemConfig.rivaTranslationFunctionId,
+        rivaAsrParakeetFunctionId: systemConfig.rivaAsrParakeetFunctionId,
+        rivaAsrCanaryFunctionId: systemConfig.rivaAsrCanaryFunctionId,
       );
 
       await syncSettingsUseCase({
@@ -483,8 +611,41 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     }
   }
 
+  void _onUpdateServerConnection(
+    UpdateServerConnectionEvent event,
+    Emitter<TranslationState> emit,
+  ) {
+    if (event.isConnected) {
+      emit(state.copyWith(isServerConnected: true));
+      _stopHealthCheck();
+      _fetchInitialModelStatuses(); // Refresh statuses on reconnect
+    } else {
+      emit(state.copyWith(
+        isServerConnected: false,
+        modelStatuses: {}, // Clear statuses when disconnected
+      ));
+      _startHealthCheck();
+    }
+  }
+
+  void _startHealthCheck() {
+    if (_healthCheckTimer != null) return;
+    _healthCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      final isHealthy = await checkServerHealthUseCase();
+      if (isHealthy && !isClosed) {
+        add(const UpdateServerConnectionEvent(isConnected: true));
+      }
+    });
+  }
+
+  void _stopHealthCheck() {
+    _healthCheckTimer?.cancel();
+    _healthCheckTimer = null;
+  }
+
   @override
   Future<void> close() {
+    _stopHealthCheck();
     getCurrentUserUseCase().removeListener(_onAuthChanged);
     _captionSub?.cancel();
     _statusSub?.cancel();

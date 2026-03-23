@@ -13,8 +13,11 @@ class ConfigHandler(BaseHandler):
         new_key = msg.get("api_key", self.ctx.config["api_key"])
         new_trans = msg.get("transcription_model", self.ctx.config["transcription_model"])
         new_tl = msg.get("translation_model", self.ctx.config["translation_model"])
-        new_google_creds = msg.get("google_credentials_json", self.ctx.config["google_credentials_json"])
-
+        new_google_creds = msg.get("google_credentials", self.ctx.config["google_credentials"])
+        new_riva_tl_id = msg.get("riva_translation_function_id", self.ctx.config["riva_translation_function_id"]) or msg.get("rivaTranslationFunctionId")
+        new_riva_asr_p_id = msg.get("riva_asr_parakeet_function_id", self.ctx.config["riva_asr_parakeet_function_id"]) or msg.get("rivaAsrParakeetFunctionId")
+        new_riva_asr_c_id = msg.get("riva_asr_canary_function_id", self.ctx.config["riva_asr_canary_function_id"]) or msg.get("rivaAsrCanaryFunctionId")
+ 
         has_changed = (
             self.ctx.config["source_lang"] != new_source or
             self.ctx.config["target_lang"] != new_target or
@@ -23,9 +26,12 @@ class ConfigHandler(BaseHandler):
             self.ctx.config["api_key"] != new_key or
             self.ctx.config["transcription_model"] != new_trans or
             self.ctx.config["translation_model"] != new_tl or
-            self.ctx.config["google_credentials_json"] != new_google_creds
+            self.ctx.config["google_credentials"] != new_google_creds or
+            self.ctx.config["riva_translation_function_id"] != new_riva_tl_id or
+            self.ctx.config["riva_asr_parakeet_function_id"] != new_riva_asr_p_id or
+            self.ctx.config["riva_asr_canary_function_id"] != new_riva_asr_c_id
         )
-
+ 
         self.ctx.config.update({
             "source_lang": new_source,
             "target_lang": new_target,
@@ -34,7 +40,10 @@ class ConfigHandler(BaseHandler):
             "api_key": new_key,
             "transcription_model": new_trans,
             "translation_model": new_tl,
-            "google_credentials_json": new_google_creds,
+            "google_credentials": new_google_creds,
+            "riva_translation_function_id": new_riva_tl_id,
+            "riva_asr_parakeet_function_id": new_riva_asr_p_id,
+            "riva_asr_canary_function_id": new_riva_asr_c_id,
         })
 
         if self.ctx.is_running and has_changed:
@@ -43,7 +52,13 @@ class ConfigHandler(BaseHandler):
             await SessionHandler(self.ctx).start(websocket, self.ctx.config)
         elif not self.ctx.is_running:
             if self.ctx.orchestrator:
-                self.ctx.orchestrator.set_api_keys(new_key, self.ctx.config["google_credentials_json"])
+                self.ctx.orchestrator.set_api_keys(
+                    new_key, 
+                    self.ctx.config["google_credentials"],
+                    riva_translation_id=new_riva_tl_id,
+                    riva_asr_parakeet_id=new_riva_asr_p_id,
+                    riva_asr_canary_id=new_riva_asr_c_id
+                )
                 await self.ctx.manager.broadcast_status(self.ctx.orchestrator)
 
     async def update_volume(self, websocket, msg: Dict[str, Any]):

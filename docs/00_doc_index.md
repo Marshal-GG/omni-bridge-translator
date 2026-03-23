@@ -60,6 +60,6 @@ Firebase (cloud)
  └─ Auth (Google, Email, Anonymous) · Firestore (settings, sessions) · Realtime DB (usage counters)
 
 CI/CD (GitHub Actions)
- └─ flutter_ci.yml — Analyze + Test + Codecov + Windows build (manual-trigger; auto-trigger available)
- └─ release.yml — Full installer build → OmniBridge_Setup_v*.exe GitHub Release (manual-trigger)
+ └─ flutter_ci.yml — Analyze + Test + Codecov + Windows build (Manual or Auto trigger)
+ └─ release.yml — Full installer build → OmniBridge_Setup_v*.exe GitHub Release (Manual trigger)
 ```

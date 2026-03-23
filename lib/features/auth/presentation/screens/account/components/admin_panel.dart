@@ -334,7 +334,34 @@ class _SystemConfigSection extends StatefulWidget {
 
 class _SystemConfigSectionState extends State<_SystemConfigSection> {
   bool _seeding = false;
+  bool _updatingPoll = false;
   String? _lastResult;
+  late final _pollController = TextEditingController(
+    text: SubscriptionRemoteDataSource.instance.pollIntervalSeconds.toString(),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    SubscriptionRemoteDataSource.instance.configNotifier.addListener(_onConfigChanged);
+  }
+
+  void _onConfigChanged() {
+    if (!mounted) return;
+    final newValue = SubscriptionRemoteDataSource.instance.pollIntervalSeconds.toString();
+    if (_pollController.text != newValue && !_updatingPoll) {
+      setState(() {
+        _pollController.text = newValue;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    SubscriptionRemoteDataSource.instance.configNotifier.removeListener(_onConfigChanged);
+    _pollController.dispose();
+    super.dispose();
+  }
 
   static const Map<String, dynamic> _seedData = {
     // ── Tier Order (first = default/free tier) ────────────────────────
@@ -535,6 +562,42 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
     },
   };
 
+  Future<void> _updatePollingRate() async {
+    final val = int.tryParse(_pollController.text);
+    if (val == null || val < 1) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid polling rate (must be > 0)')),
+        );
+      }
+      return;
+    }
+
+    setState(() => _updatingPoll = true);
+    try {
+      await AuthRemoteDataSource.instance.firestore
+          .collection('system')
+          .doc('monetization')
+          .set(
+        {'usage_poll_interval_seconds': val},
+        SetOptions(merge: true),
+      );
+      if (mounted) {
+        setState(() => _updatingPoll = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Polling rate updated to $val seconds.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _updatingPoll = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Update failed: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _seedMonetization() async {
     setState(() {
       _seeding = true;
@@ -602,7 +665,64 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
               'model overrides, announcements, and version control.',
               style: TextStyle(fontSize: 11, color: Colors.white38),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            const Text(
+              'RTDB POLLING RATE (SECONDS)',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.white54,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: _pollController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10,
+                      ),
+                    ),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: _updatingPoll ? null : _updatePollingRate,
+                  icon: _updatingPoll
+                      ? const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.sync_rounded, size: 14),
+                  label: const Text(
+                    'Update Rate',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.tealAccent.withValues(alpha: 0.1),
+                    foregroundColor: Colors.tealAccent,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'FULL SEED (CAUTION)',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.white54,
+              ),
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 ElevatedButton.icon(
@@ -861,3 +981,4 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
     );
   }
 }
+

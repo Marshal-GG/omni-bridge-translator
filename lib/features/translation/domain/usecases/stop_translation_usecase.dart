@@ -5,7 +5,7 @@ class StopTranslationUseCase {
 
   StopTranslationUseCase(this._repository);
 
-  void call() {
-    _repository.stop();
+  Future<void> call() async {
+    await _repository.stop();
   }
 }

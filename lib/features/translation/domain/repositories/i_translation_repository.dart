@@ -18,8 +18,11 @@ abstract class ITranslationRepository {
     int? outputDeviceIndex,
     String translationModel = 'google',
     String apiKey = '',
-    String googleCredentialsJson = '',
+    dynamic googleCredentials = '',
     String transcriptionModel = 'online',
+    String rivaTranslationFunctionId = '',
+    String rivaAsrParakeetFunctionId = '',
+    String rivaAsrCanaryFunctionId = '',
   });
 
   void updateSettings({
@@ -32,8 +35,11 @@ abstract class ITranslationRepository {
     double micVolume,
     required String translationModel,
     String apiKey,
-    String googleCredentialsJson,
+    dynamic googleCredentials,
     String transcriptionModel,
+    String rivaTranslationFunctionId,
+    String rivaAsrParakeetFunctionId,
+    String rivaAsrCanaryFunctionId,
   });
 
   void liveVolumeUpdate({
@@ -43,6 +49,7 @@ abstract class ITranslationRepository {
 
   Future<Map<String, dynamic>> loadDevices();
   Future<List<dynamic>> getModelStatuses();
-  void stop();
+  Future<bool> checkServerHealth();
+  Future<void> stop();
   Future<void> dispose();
 }

@@ -60,9 +60,9 @@ The server uses a **Dependency Injection**-like pattern via `ServerContext`.
 ### Command Routing (`router.py` & Modular Handlers)
 Incoming JSON commands are dispatched by the `CommandRouter` to specialized modular handlers in `src/network/handlers/`:
 - **SessionHandler** (`session_handler.py`): Manages the lifecycle of an audio session (`start`/`stop`). It calculates the optimal audio chunk duration based on the selected AI engines to balance latency vs. API rate limits.
-- **ConfigHandler** (`config_handler.py`): Updates settings (languages, keys, devices) in real-time. If settings change during an active session, it triggers a seamless restart.
+- **ConfigHandler** (`config_handler.py`): Updates settings (languages, keys, devices, dynamic function IDs) in real-time. If settings change during an active session, it triggers a seamless restart. It handles API key and credential reloading asynchronously in a background thread (`threading.Thread`) via the Orchestrator to prevent blocking the WebSocket event loop.
 - **DeviceHandler** (`device_handler.py`): Enumerates WASAPI input and loopback devices for the Flutter UI.
-- **StatusHandler** (`status_handler.py`): Manages real-time health reporting. It provides standardized status payloads for both background broadcasting and on-demand HTTP polling.
+- **StatusHandler** (`status_handler.py`): Manages real-time health reporting. It polls the `InferenceOrchestrator` for model readiness and provides standardized `model_status` payloads.
 
 ### Audio Pipeline (`capture.py` & `meter.py`)
 - **Adaptive Chunking**: `AudioCapture` uses a combination of **Voice Activity Detection (VAD)** and time-based flushing. It flushes early when silence follows speech (lowering latency) but guarantees a flush at `MAX_CHUNK_DURATION` to ensure constant feedback.
@@ -82,6 +82,8 @@ Single source of truth for all model language capabilities — imported by both 
 ### AI Orchestration (`orchestrator.py`)
 Acts as a high-level coordinator that delegates specialized tasks to dedicated dispatchers. It transforms raw audio chunks from the frontend into polished, translated captions while managing the complex lifecycle of AI models.
 
+- **Pre-flight Validation**: Before starting a stream, the orchestrator checks if the selected models are ready. If a model is still initializing (blocked by the `_is_loading` flag from a background credentials update), it prevents the session from starting and sends a descriptive error to the client. It also supports graceful fallbacks: if a premium translation engine isn't authenticated, the orchestrator returns a `fallback` status and relies on the TranslationDispatcher to use free/local alternatives seamlessly.
+- **Graceful Resource Management**: When the stream session ends, the orchestrator automatically unloads large local models like Whisper from VRAM to reduce the idle memory footprint of the application.
 - **`ASRDispatcher`** (`src/asr/asr_dispatcher.py`):
   - **Model Selection**: Routes audio to Riva, Faster-Whisper, or Google based on configuration and availability.
   - **Silence Gating**: Calculates RMS and drops chunks < 120 RMS to prevent "hallucinations" during silence.
@@ -94,7 +96,7 @@ Acts as a high-level coordinator that delegates specialized tasks to dedicated d
 - **Queue Resilience**: Worker threads use non-blocking queue polling with timeouts to prevent deadlock or high CPU usage during idle periods.
 ### Audio Handler (`handler.py`)
 Bridges the async FastAPI event loop with background worker threads:
-- **`caption_callback()`** — Called by orchestrator for each transcript/translation. Broadcasts caption JSON to all WebSocket clients and calculates total tokens from engine-specific metrics.
+- **`caption_callback()`** — Called by orchestrator for each transcript/translation. Broadcasts caption JSON to all WebSocket clients and calculates total tokens based on a standardized 4-characters-per-token heuristic (`(len(text) + 3) // 4`), overriding model-specific token counters to ensure uniform quota tracking across all AI engines.
 - **`audio_poll_loop()`** — Background thread that polls audio chunks from `AudioCapture` and feeds them to the orchestrator. Detects session superseding for clean restarts.
 - **`audio_level_broadcast_loop()`** — Async coroutine broadcasting RMS audio levels to clients (~13 fps).
 - **`status_broadcast_loop()`** — Async coroutine broadcasting model health status every 2 seconds.
@@ -111,14 +113,14 @@ Bridges the async FastAPI event loop with background worker threads:
 | `caption` | Transcript/translation result | `text`, `original`, `is_final`, `session_id` |
 | `usage_stats` | Per-call engine metrics | `engine`, `model`, `latency_ms`, `input_tokens`, `output_tokens`, `total_tokens` |
 | `audio_levels` | Real-time RMS levels | `input_level` (0.0–1.0), `output_level` (0.0–1.0) |
-| `model_status` | Model health broadcast | `models[]` with `name`, `status`, `ready`, `progress`. Sent immediately upon connection and then periodically. Riva ASR and NMT are reported as separate entries (`riva-asr`, `riva-nmt`). |
+| `model_status` | Model health broadcast | `models[]` with `name`, `status`, `ready`, `progress`, `_is_loading`. Sent immediately upon connection and then periodically. States include `ready`, `error`, `loading`, and `fallback`. |
 | `error` | Error message | `text`, `is_final`, `original` |
 
 ### Commands Received from Clients
 
 | Command | Purpose | Key Fields |
 |---|---|---|
-| `start` | Begin audio session | `source`, `target`, `transcription_model`, `translation_model`, `use_mic`, `api_key`, `google_credentials_json` |
+| `start` | Begin audio session | `source`, `target`, `transcription_model`, `translation_model`, `use_mic`, `api_key`, `google_credentials`, plus dynamic `riva_` function IDs. |
 | `stop` | End audio session | (none) |
 | `settings_update` | Change settings mid-session | Same as `start` (triggers restart if running) |
 | `volume_update` | Adjust gain in real-time | `desktop_volume`, `mic_volume` |
@@ -153,10 +155,10 @@ sequenceDiagram
 
 The `google_cloud_model.py` module uses the **Google Cloud Translation gRPC v3** API (`google.cloud.translate_v3.TranslationServiceClient`). Credentials flow:
 
-1. Flutter sends the full service account JSON string via WebSocket (`google_credentials_json` key).
+1. Flutter sends the service account credentials as a native Map/Dict object via WebSocket (`google_credentials` key).
 2. `ConfigHandler` passes it to `InferenceOrchestrator.set_api_keys()`.
-3. `GoogleCloudModel.reload()` parses the JSON with `json.loads()`, extracts `project_id`, and creates a gRPC client via `service_account.Credentials.from_service_account_info()`.
-4. Error handling is sanitized — `json.JSONDecodeError` logs a generic message, other exceptions log only `type(e).__name__` to prevent credential leakage in logs.
+3. `GoogleCloudModel.reload()` receives the dictionary directly, extracts `project_id`, and creates a gRPC client via `service_account.Credentials.from_service_account_info()`.
+4. Error handling is sanitized — invalid dictionary structures log only `type(e).__name__` to prevent credential leakage in logs.
 
 ---
 

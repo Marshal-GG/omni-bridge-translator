@@ -269,7 +269,7 @@ Widget buildDeviceDropdown({
           : null,
       compareFn: (item, selectedItem) => item['index'] == selectedItem['index'],
       onChanged: (device) {
-        Future.delayed(const Duration(milliseconds: 100), () {
+        Future.delayed(Duration.zero, () {
           if (context.mounted) onChanged(device);
         });
       },

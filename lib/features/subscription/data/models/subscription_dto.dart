@@ -1,4 +1,6 @@
-class SubscriptionStatus {
+import 'package:equatable/equatable.dart';
+
+class SubscriptionStatus extends Equatable {
   final String tier;
   final int dailyTokensUsed;
   final int weeklyTokensUsed;
@@ -21,6 +23,18 @@ class SubscriptionStatus {
     required this.dailyResetAt,
     this.periodLimit = 0,
   });
+
+  @override
+  List<Object?> get props => [
+        tier,
+        dailyTokensUsed,
+        weeklyTokensUsed,
+        monthlyTokensUsed,
+        lifetimeTokensUsed,
+        dailyLimit,
+        dailyResetAt,
+        periodLimit,
+      ];
 
   bool get hasPeriodLimit => periodLimit > 0;
   bool get isUnlimited => dailyLimit < 0 && !hasPeriodLimit;

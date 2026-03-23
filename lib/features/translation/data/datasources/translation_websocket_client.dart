@@ -24,6 +24,8 @@ class TranslationWebsocketClient {
   Timer? _reconnectTimer;
   int _reconnectAttempt = 0;
   bool _wasConnected = false;
+  bool _isConnected = false;
+  bool _isRunning = false;
 
   // Last known settings so we can re-send start on reconnect
   String _sourceLang = 'auto';
@@ -33,8 +35,11 @@ class TranslationWebsocketClient {
   int? _outputDeviceIndex;
   String _translationModel = 'google';
   String _apiKey = '';
-  String _googleCredentialsJson = '';
+  dynamic _googleCredentials = '';
   String _transcriptionModel = 'online';
+  String _rivaTranslationFunctionId = '';
+  String _rivaAsrParakeetFunctionId = '';
+  String _rivaAsrCanaryFunctionId = '';
 
   String get _wsUrl => 'ws://$serverHost:$serverPort/captions';
 
@@ -62,10 +67,14 @@ class TranslationWebsocketClient {
     int? outputDeviceIndex,
     String translationModel = 'google',
     String apiKey = '',
-    String googleCredentialsJson = '',
+    dynamic googleCredentials = '',
     String transcriptionModel = 'online',
+    String rivaTranslationFunctionId = '',
+    String rivaAsrParakeetFunctionId = '',
+    String rivaAsrCanaryFunctionId = '',
   }) async {
     _intentionallyStopped = false;
+    _isRunning = true;
     _sourceLang = sourceLang;
     _targetLang = targetLang;
     _useMic = useMic;
@@ -73,14 +82,19 @@ class TranslationWebsocketClient {
     _outputDeviceIndex = outputDeviceIndex;
     _translationModel = translationModel;
     _apiKey = apiKey;
-    _googleCredentialsJson = googleCredentialsJson;
+    _googleCredentials = googleCredentials;
     _transcriptionModel = transcriptionModel;
+    _rivaTranslationFunctionId = rivaTranslationFunctionId;
+    _rivaAsrParakeetFunctionId = rivaAsrParakeetFunctionId;
+    _rivaAsrCanaryFunctionId = rivaAsrCanaryFunctionId;
     _reconnectAttempt = 0;
 
     if (_channel != null) {
-      // Already connected — skip handshake, just send the payload immediately.
-      debugPrint('[WS] Already connected — sending start payload directly.');
-      _sendStartPayload();
+      if (_isConnected) {
+        // Already connected and ready — skip handshake, just send the payload immediately.
+        debugPrint('[WS] Already connected — sending start payload directly.');
+        _sendStartPayload();
+      }
     } else {
       await _connect();
     }
@@ -99,6 +113,7 @@ class TranslationWebsocketClient {
       // Connected — reset backoff
       bool isReconnect = _wasConnected;
       _wasConnected = true;
+      _isConnected = true;
       _reconnectAttempt = 0;
       debugPrint('[WS] Connection established to $_wsUrl');
 
@@ -125,6 +140,7 @@ class TranslationWebsocketClient {
         },
         onDone: () {
           debugPrint('[WS] Connection closed.');
+          _isConnected = false;
           if (!_intentionallyStopped) {
             _captionController.add(
               CaptionMessage(
@@ -133,6 +149,7 @@ class TranslationWebsocketClient {
                 isError: false,
                 isFinal: true,
                 isSystemMessage: true,
+                isDisconnect: true,
               ),
             );
             _scheduleReconnect();
@@ -140,15 +157,19 @@ class TranslationWebsocketClient {
         },
         onError: (e) {
           debugPrint('[WS] Error: $e');
+          _isConnected = false;
           if (!_intentionallyStopped) _scheduleReconnect();
         },
         cancelOnError: true,
       );
 
-      // Send start command
-      _sendStartPayload();
+      // Send start command ONLY if we are supposed to be running
+      if (_isRunning) {
+        _sendStartPayload();
+      }
     } catch (e) {
       debugPrint('[WS] Connect failed: $e');
+      _isConnected = false;
       if (!_intentionallyStopped) {
         if (_reconnectAttempt == 0) {
           // First failure — let the UI know
@@ -159,6 +180,7 @@ class TranslationWebsocketClient {
               isError: false,
               isFinal: true,
               isSystemMessage: true,
+              isDisconnect: true,
             ),
           );
         }
@@ -192,7 +214,10 @@ class TranslationWebsocketClient {
       'translation_model': _translationModel,
       'transcription_model': _transcriptionModel,
       'api_key': _apiKey,
-      'google_credentials_json': _googleCredentialsJson,
+      'google_credentials': _googleCredentials,
+      'riva_translation_function_id': _rivaTranslationFunctionId,
+      'riva_asr_parakeet_function_id': _rivaAsrParakeetFunctionId,
+      'riva_asr_canary_function_id': _rivaAsrCanaryFunctionId,
     };
     if (_inputDeviceIndex != null) {
       payload['input_device_index'] = _inputDeviceIndex;
@@ -214,8 +239,11 @@ class TranslationWebsocketClient {
     double micVolume = 1.0,
     required String translationModel,
     String apiKey = '',
-    String googleCredentialsJson = '',
+    dynamic googleCredentials = '',
     String transcriptionModel = 'online',
+    String rivaTranslationFunctionId = '',
+    String rivaAsrParakeetFunctionId = '',
+    String rivaAsrCanaryFunctionId = '',
   }) {
     _sourceLang = sourceLang;
     _targetLang = targetLang;
@@ -224,8 +252,11 @@ class TranslationWebsocketClient {
     _outputDeviceIndex = outputDeviceIndex;
     _translationModel = translationModel;
     _apiKey = apiKey;
-    _googleCredentialsJson = googleCredentialsJson;
+    _googleCredentials = googleCredentials;
     _transcriptionModel = transcriptionModel;
+    _rivaTranslationFunctionId = rivaTranslationFunctionId;
+    _rivaAsrParakeetFunctionId = rivaAsrParakeetFunctionId;
+    _rivaAsrCanaryFunctionId = rivaAsrCanaryFunctionId;
 
     if (_channel != null) {
       final payload = <String, dynamic>{
@@ -238,7 +269,10 @@ class TranslationWebsocketClient {
         'translation_model': translationModel,
         'transcription_model': transcriptionModel,
         'api_key': apiKey,
-        'google_credentials_json': googleCredentialsJson,
+        'google_credentials': googleCredentials,
+        'riva_translation_function_id': rivaTranslationFunctionId,
+        'riva_asr_parakeet_function_id': rivaAsrParakeetFunctionId,
+        'riva_asr_canary_function_id': rivaAsrCanaryFunctionId,
       };
       if (inputDeviceIndex != null) {
         payload['input_device_index'] = inputDeviceIndex;
@@ -267,6 +301,7 @@ class TranslationWebsocketClient {
   /// Soft-stop: sends stop to server but keeps WebSocket open.
   /// Use this for toggle-off so the next [start] fires immediately.
   void sendStopCommand() {
+    _isRunning = false;
     if (_channel != null) {
       _channel!.sink.add(jsonEncode({'cmd': 'stop'}));
     }
@@ -283,6 +318,7 @@ class TranslationWebsocketClient {
   /// Use this only on app shutdown.
   Future<void> stop() async {
     _intentionallyStopped = true;
+    _isRunning = false;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _sub?.cancel();

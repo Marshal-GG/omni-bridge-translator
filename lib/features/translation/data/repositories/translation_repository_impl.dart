@@ -50,8 +50,11 @@ class TranslationRepositoryImpl implements ITranslationRepository {
     int? outputDeviceIndex,
     String translationModel = 'google',
     String apiKey = '',
-    String googleCredentialsJson = '',
+    dynamic googleCredentials = '',
     String transcriptionModel = 'online',
+    String rivaTranslationFunctionId = '',
+    String rivaAsrParakeetFunctionId = '',
+    String rivaAsrCanaryFunctionId = '',
   }) {
     _asrClient.start(
       sourceLang: sourceLang,
@@ -61,8 +64,11 @@ class TranslationRepositoryImpl implements ITranslationRepository {
       outputDeviceIndex: outputDeviceIndex,
       translationModel: translationModel,
       apiKey: apiKey,
-      googleCredentialsJson: googleCredentialsJson,
+      googleCredentials: googleCredentials,
       transcriptionModel: transcriptionModel,
+      rivaTranslationFunctionId: rivaTranslationFunctionId,
+      rivaAsrParakeetFunctionId: rivaAsrParakeetFunctionId,
+      rivaAsrCanaryFunctionId: rivaAsrCanaryFunctionId,
     );
   }
 
@@ -77,8 +83,11 @@ class TranslationRepositoryImpl implements ITranslationRepository {
     double micVolume = 1.0,
     required String translationModel,
     String apiKey = '',
-    String googleCredentialsJson = '',
+    dynamic googleCredentials = '',
     String transcriptionModel = 'online',
+    String rivaTranslationFunctionId = '',
+    String rivaAsrParakeetFunctionId = '',
+    String rivaAsrCanaryFunctionId = '',
   }) {
     _asrClient.updateSettings(
       sourceLang: sourceLang,
@@ -90,8 +99,11 @@ class TranslationRepositoryImpl implements ITranslationRepository {
       micVolume: micVolume,
       translationModel: translationModel,
       apiKey: apiKey,
-      googleCredentialsJson: googleCredentialsJson,
+      googleCredentials: googleCredentials,
       transcriptionModel: transcriptionModel,
+      rivaTranslationFunctionId: rivaTranslationFunctionId,
+      rivaAsrParakeetFunctionId: rivaAsrParakeetFunctionId,
+      rivaAsrCanaryFunctionId: rivaAsrCanaryFunctionId,
     );
   }
 
@@ -114,7 +126,14 @@ class TranslationRepositoryImpl implements ITranslationRepository {
       _restDatasource.getModelStatuses();
 
   @override
-  void stop() => _asrClient.stop();
+  Future<bool> checkServerHealth() => _restDatasource.checkHealth();
+
+  @override
+  Future<void> stop() async {
+    // Unload the Whisper model from GPU/RAM on the server to free up resources.
+    await _restDatasource.unloadModel();
+    await _asrClient.stop();
+  }
 
   @override
   Future<void> dispose() => _asrClient.dispose();

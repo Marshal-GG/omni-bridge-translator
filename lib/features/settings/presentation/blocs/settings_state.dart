@@ -1,9 +1,11 @@
 import 'package:equatable/equatable.dart';
 
 import 'package:omni_bridge/features/settings/domain/entities/app_settings.dart';
+import 'package:omni_bridge/features/settings/domain/entities/system_config.dart';
 
 class SettingsState extends Equatable {
   final AppSettings settings;
+  final SystemConfig systemConfig;
 
   // Audio Levels (live during settings open)
   final double currentInputVolume;
@@ -22,6 +24,7 @@ class SettingsState extends Equatable {
 
   const SettingsState({
     required this.settings,
+    required this.systemConfig,
     required this.currentInputVolume,
     required this.currentOutputVolume,
     required this.devicesLoading,
@@ -35,6 +38,7 @@ class SettingsState extends Equatable {
   factory SettingsState.initial() {
     return SettingsState(
       settings: AppSettings.initial(),
+      systemConfig: SystemConfig.initial(),
       currentInputVolume: 0.0,
       currentOutputVolume: 0.0,
       devicesLoading: false,
@@ -47,6 +51,7 @@ class SettingsState extends Equatable {
 
   SettingsState copyWith({
     AppSettings? settings,
+    SystemConfig? systemConfig,
     double? currentInputVolume,
     double? currentOutputVolume,
     bool? devicesLoading,
@@ -59,6 +64,7 @@ class SettingsState extends Equatable {
   }) {
     return SettingsState(
       settings: settings ?? this.settings,
+      systemConfig: systemConfig ?? this.systemConfig,
       currentInputVolume: currentInputVolume ?? this.currentInputVolume,
       currentOutputVolume: currentOutputVolume ?? this.currentOutputVolume,
       devicesLoading: devicesLoading ?? this.devicesLoading,
@@ -78,6 +84,7 @@ class SettingsState extends Equatable {
   @override
   List<Object?> get props => [
     settings,
+    systemConfig,
     currentInputVolume,
     currentOutputVolume,
     devicesLoading,
@@ -88,3 +95,4 @@ class SettingsState extends Equatable {
     translationCompatibilityError,
   ];
 }
+

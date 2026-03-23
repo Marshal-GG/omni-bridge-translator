@@ -7,7 +7,7 @@ class GetGoogleCredentialsUseCase {
 
   GetGoogleCredentialsUseCase(this.repository);
 
-  Future<Either<Failure, String>> call() {
+  Future<Either<Failure, dynamic>> call() {
     return repository.getGoogleCredentials();
   }
 }
