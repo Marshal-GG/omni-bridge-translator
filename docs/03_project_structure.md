@@ -17,13 +17,16 @@ omni_bridge/
 │   │   ├── config/                  # AppConfig, ServerConfig
 │   │   ├── constants/               # Strings, Colors, Model Language Support
 │   │   ├── data/                    # App-level DataSources (Sessions, Usage, Maintenance)
+│   │   ├── device/                  # Device info utilities
 │   │   ├── di/                      # Dependency Injection (injection.dart)
 │   │   ├── error/                   # Failure classes
+│   │   ├── infrastructure/          # PythonServerManager (process lifecycle)
 │   │   ├── navigation/              # AppRouter & GlobalNavigator
 │   │   ├── network/                 # Global HTTP Clients (e.g., RTDBClient)
 │   │   ├── platform/                # Tray, Window, AppInitializer
+│   │   ├── routes/                  # MyNavObserver (navigation analytics)
 │   │   ├── theme/                   # AppTheme
-│   │   └── utils/                   # Shared utilities (e.g., DeviceInfoUtil)
+│   │   └── utils/                   # Shared utilities
 │   │
 │   └── features/                    # Feature Modules (Vertical Slice Architecture)
 │       ├── auth/                    # Authentication
@@ -50,10 +53,14 @@ omni_bridge/
 │       │   ├── domain/              # StartupBloc dependencies
 │       │   ├── data/                # (minimal — delegates to auth/settings)
 │       │   └── presentation/        # StartupBloc, SplashScreen, OnboardingScreen
-│       └── about/                   # Version info & updates
+│       ├── about/                   # Version info & updates
 │           ├── domain/              # UseCases (CheckForUpdate)
 │           ├── data/                # UpdateRemoteDataSource
 │           └── presentation/        # AboutBloc, AboutScreen
+│       └── usage/                   # Usage analytics & statistics
+│           ├── domain/              # UsageRepository interface + entities
+│           ├── data/                # UsageRepositoryImpl (wraps SubscriptionRepository)
+│           └── presentation/        # UsageBloc, UsageScreen, widgets
 │
 ├── server/                          # Python backend
 │   ├── flutter_server.py            # FastAPI entrypoint

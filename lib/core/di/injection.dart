@@ -3,6 +3,7 @@ import 'package:omni_bridge/features/about/presentation/blocs/about_bloc.dart';
 import 'package:omni_bridge/features/startup/presentation/blocs/startup_bloc.dart';
 import 'package:omni_bridge/features/auth/presentation/blocs/auth_bloc.dart';
 import 'package:omni_bridge/features/history/presentation/blocs/history_bloc.dart';
+import 'package:omni_bridge/features/subscription/presentation/bloc/subscription_bloc.dart';
 import 'package:omni_bridge/features/settings/data/repositories/settings_repository_impl.dart';
 import 'package:get_it/get_it.dart';
 import 'package:omni_bridge/features/auth/data/repositories/auth_repository_impl.dart';
@@ -61,6 +62,8 @@ import 'package:omni_bridge/features/about/domain/repositories/i_update_reposito
 import 'package:omni_bridge/features/about/data/repositories/update_repository.dart';
 import 'package:omni_bridge/features/about/domain/usecases/check_for_update.dart';
 import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
+import 'package:omni_bridge/features/usage/domain/repositories/usage_repository.dart';
+import 'package:omni_bridge/features/usage/data/repositories/usage_repository_impl.dart';
 
 final sl = GetIt.instance;
 
@@ -118,6 +121,16 @@ Future<void> setupInjection() async {
   );
 
   sl.registerFactory(
+    () => SubscriptionBloc(
+      getStatus: sl(),
+      getPlans: sl(),
+      activateTrial: sl(),
+      openCheckout: sl(),
+      hasUsedTrial: sl(),
+    ),
+  );
+
+  sl.registerFactory(
     () => HistoryBloc(
       getLiveHistoryUseCase: sl(),
       getChunkedHistoryUseCase: sl(),
@@ -149,6 +162,9 @@ Future<void> setupInjection() async {
   );
   sl.registerLazySingleton<IHistoryRepository>(
     () => HistoryRepositoryImpl(localDataSource: sl()),
+  );
+  sl.registerLazySingleton<UsageRepository>(
+    () => UsageRepositoryImpl(subscriptionRepository: sl()),
   );
 
   // Use Cases

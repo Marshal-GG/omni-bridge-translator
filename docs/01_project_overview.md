@@ -24,7 +24,7 @@ No extra hardware. No complex setup for the default configuration. Just launch a
 ```
 ┌─────────────────────────────────────────────────┐
 │               Flutter Desktop App (UI)           │
-│  Overlay · Settings · History · Account · Auth   │
+│  Overlay · Settings · History · Usage · Auth     │
 │                                                  │
 │  State: BLoC  ·  DI: GetIt  ·  Nav: AppRouter  │
 └───────────────────────┬─────────────────────────┘

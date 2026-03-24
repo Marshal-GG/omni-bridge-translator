@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/features/usage/presentation/screens/usage_screen.dart';
 
 // Feature Screens
 import 'package:omni_bridge/features/startup/presentation/screens/splash_screen.dart';
@@ -34,6 +35,7 @@ class AppRouter {
   static const String account = '/account';
   static const String about = '/about';
   static const String subscription = '/subscription';
+  static const String usage = '/usage';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -108,6 +110,11 @@ class AppRouter {
             create: (context) => sl<AboutBloc>()..add(const AboutInitEvent()),
             child: const AboutScreen(),
           ),
+          settings: settings,
+        );
+      case usage:
+        return MaterialPageRoute(
+          builder: (_) => const UsageScreen(),
           settings: settings,
         );
       case subscription:

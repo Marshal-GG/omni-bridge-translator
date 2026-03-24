@@ -10,7 +10,7 @@ Widget buildStartupHeader() {
         const Icon(Icons.auto_awesome_rounded, size: 14, color: Colors.white38),
         const SizedBox(width: 8),
         const Text(
-          "Omni Bridge",
+          'Omni Bridge',
           style: TextStyle(
             color: Colors.white38,
             fontSize: 11,

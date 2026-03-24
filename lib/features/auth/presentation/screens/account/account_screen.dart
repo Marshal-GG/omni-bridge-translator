@@ -172,6 +172,7 @@ class _AccountScreenState extends State<AccountScreen> {
             children: [
               // ── Draggable Header ──────────────────────────────────────────
               buildAccountHeader(
+                context,
                 onBack: () {
                   Navigator.of(context).pop();
                 },
@@ -377,35 +378,68 @@ class _AccountScreenState extends State<AccountScreen> {
                                             ),
                                           ],
                                           const SizedBox(height: 16),
-                                          SizedBox(
-                                            width: double.infinity,
-                                            height: 36,
-                                            child: OutlinedButton(
-                                              onPressed: () {
-                                                Navigator.pushNamed(
-                                                  context,
-                                                  '/subscription',
-                                                );
-                                              },
-                                              style: OutlinedButton.styleFrom(
-                                                side: BorderSide(
-                                                  color: Colors.tealAccent
-                                                      .withValues(alpha: 0.3),
-                                                ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: SizedBox(
+                                                  height: 36,
+                                                  child: OutlinedButton(
+                                                    onPressed: () {
+                                                      Navigator.pushNamed(
+                                                        context,
+                                                        '/usage',
+                                                      );
+                                                    },
+                                                    style: OutlinedButton.styleFrom(
+                                                      side: BorderSide(
+                                                        color: Colors.tealAccent.withValues(alpha: 0.3),
+                                                      ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                    ),
+                                                    child: const Text(
+                                                      'Detailed Usage',
+                                                      style: TextStyle(
+                                                        color: Colors.tealAccent,
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
-                                              child: const Text(
-                                                'Manage Subscription',
-                                                style: TextStyle(
-                                                  color: Colors.tealAccent,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: SizedBox(
+                                                  height: 36,
+                                                  child: OutlinedButton(
+                                                    onPressed: () {
+                                                      Navigator.pushNamed(
+                                                        context,
+                                                        '/subscription',
+                                                      );
+                                                    },
+                                                    style: OutlinedButton.styleFrom(
+                                                      side: BorderSide(
+                                                        color: Colors.tealAccent.withValues(alpha: 0.3),
+                                                      ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                    ),
+                                                    child: const Text(
+                                                      'Manage Plan',
+                                                      style: TextStyle(
+                                                        color: Colors.tealAccent,
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
-                                            ),
+                                            ],
                                           ),
                                         ],
                                       ),

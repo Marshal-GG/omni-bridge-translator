@@ -39,6 +39,8 @@
 | 16 | [16_restructure_plan.md](16_restructure_plan.md) | Reference | Legacy restructure history (Phases 1–8) ✅ Complete |
 | 17 | [17_deep_restructure_plan.md](17_deep_restructure_plan.md) | Reference | Deep restructure history (Phases 9–16) ✅ Complete |
 | 18 | [18_github_workflow_guide.md](18_github_workflow_guide.md) | Developers | CI/CD, branching strategy, releasing with GitHub Actions |
+| 19 | [19_new_screen_setup_guide.md](19_new_screen_setup_guide.md) | Developers | Guide for setting up new screens and features |
+| 20 | [20_usage_analytics_guide.md](20_usage_analytics_guide.md) | Developers | Usage analytics feature: domain, data, presentation layers |
 
 ---
 
@@ -46,9 +48,9 @@
 
 ```
 Flutter Desktop App (Windows)
- └─ Feature-Driven Vertical Slices: auth · translation · settings · history · subscription · startup · about
+ └─ Feature-Driven Vertical Slices: auth · translation · settings · history · subscription · startup · about · usage
     └─ Each slice: Domain (Entities, UseCases, Repos) / Data (DataSources, Repo Impls) / Presentation (BLoC, Screens)
-    └─ Core: DI (get_it) · Navigation (AppRouter) · Platform (Window, Tray) · Theme · Utils
+    └─ Core: DI (get_it) · Navigation (AppRouter) · Platform (Window, Tray) · Infrastructure (PythonServerManager) · Theme · Utils
 
 Python FastAPI Server (local, ws://127.0.0.1:8765)
  └─ Pipeline: InferenceOrchestrator → ASRDispatcher → TranslationDispatcher

@@ -4,14 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:omni_bridge/core/di/injection.dart';
 import '../bloc/subscription_bloc.dart';
 import '../bloc/subscription_state.dart';
-import '../../domain/usecases/get_subscription_status.dart';
-import '../../domain/usecases/get_available_plans.dart';
-import '../../domain/usecases/activate_trial.dart';
-import '../../domain/usecases/open_checkout.dart';
-import '../../domain/usecases/has_used_trial.dart';
-import '../../data/repositories/subscription_repository.dart';
 import '../widgets/info_card.dart';
 import '../widgets/plan_card.dart';
 import '../widgets/section_title.dart';
@@ -59,16 +54,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: BlocProvider(
-        create: (context) {
-          final repository = SubscriptionRepositoryImpl();
-          return SubscriptionBloc(
-            getStatus: GetSubscriptionStatus(repository),
-            getPlans: GetAvailablePlans(repository),
-            activateTrial: ActivateTrial(repository),
-            openCheckout: OpenCheckout(repository),
-            hasUsedTrial: HasUsedTrial(repository),
-          );
-        },
+        create: (context) => sl<SubscriptionBloc>(),
         child: WindowBorder(
           color: Colors.white12,
           width: 1,

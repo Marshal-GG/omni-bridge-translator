@@ -10,22 +10,17 @@ Widget buildSubscriptionHeader(BuildContext context) {
           width: 32,
           height: 32,
           child: IconButton(
+            onPressed: () => Navigator.pop(context),
             icon: const Icon(
               Icons.arrow_back_rounded,
               size: 15,
               color: Colors.white38,
             ),
-            onPressed: () => Navigator.pop(context),
-            padding: EdgeInsets.zero,
             splashRadius: 16,
+            padding: EdgeInsets.zero,
           ),
         ),
-        const SizedBox(width: 4),
-        const Icon(
-          Icons.workspace_premium_rounded,
-          size: 14,
-          color: Colors.tealAccent,
-        ),
+        const Icon(Icons.workspace_premium_rounded, size: 14, color: Colors.tealAccent),
         const SizedBox(width: 8),
         const Text(
           'Subscription Plans',

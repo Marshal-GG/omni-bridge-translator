@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 
-Widget buildSettingsHeader(BuildContext context) {
+Widget buildUsageHeader(BuildContext context) {
   return SizedBox(
     height: 32,
     child: Row(
@@ -20,10 +20,10 @@ Widget buildSettingsHeader(BuildContext context) {
             padding: EdgeInsets.zero,
           ),
         ),
-        const Icon(Icons.settings_rounded, size: 14, color: Colors.tealAccent),
+        const Icon(Icons.analytics_rounded, size: 14, color: Colors.tealAccent),
         const SizedBox(width: 8),
         const Text(
-          'Settings',
+          'Usage Dashboard',
           style: TextStyle(
             color: Colors.white38,
             fontSize: 11,

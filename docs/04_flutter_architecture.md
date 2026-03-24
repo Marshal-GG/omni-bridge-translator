@@ -29,10 +29,15 @@ lib/
 ├── core/                        # Shared Framework & Infrastructure
 │   ├── config/                  # AppConfig, ServerConfig
 │   ├── constants/               # Strings, Colors, Model Language Support
+│   ├── data/                    # App-level DataSources (Sessions, Usage, Maintenance)
+│   ├── device/                  # Device info utilities
 │   ├── di/                      # Dependency Injection (injection.dart)
 │   ├── error/                   # Failure classes
+│   ├── infrastructure/          # PythonServerManager (process lifecycle)
 │   ├── navigation/              # AppRouter (Centralized) & GlobalNavigator
+│   ├── network/                 # Global HTTP Clients (e.g., RTDBClient)
 │   ├── platform/                # Platform-specific logic (Window, Tray, AppInitializer)
+│   ├── routes/                  # MyNavObserver (navigation analytics)
 │   ├── theme/                   # AppTheme (Dark Material 3)
 │   └── utils/                   # Shared helpers & Extensions
 │
@@ -43,7 +48,8 @@ lib/
     ├── history/                 # History: Local session storage
     ├── subscription/            # Subscription: Quota & monetization
     ├── startup/                 # Startup: Bootstrapping, Splash, Onboarding
-    └── about/                   # About: Version info & updates
+    ├── about/                   # About: Version info & updates
+    └── usage/                   # Usage: Analytics & statistics dashboard
 ```
 
 ---
@@ -53,12 +59,12 @@ lib/
 | BLoC | Responsibility | Depends On |
 |------|----------------|------------|
 | `AuthBloc` | Firebase Auth state management | `IAuthRepository` |
-| `SettingsBloc` | User preferences, device selection, and audio monitoring | `SyncSettingsUseCase`, `LoadDevicesUseCase`, `ObserveAudioLevelsUseCase`, `LogEventUseCase`, `GetSystemConfigUseCase` |
-| `TranslationBloc` | Live translation session control, caption streaming, server health checking, and model status tracking | `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `StartTranslationUseCase`, `StopTranslationUseCase`, `UpdateTranslationSettingsUseCase`, `UpdateVolumeUseCase`, `CheckServerHealthUseCase` |
-| `HistoryBloc` | Live and chunked transcription history | `GetLiveHistoryUseCase`, `GetChunkedHistoryUseCase`, `ClearHistoryUseCase` |
-| `AboutBloc` | App versioning and updates | `CheckForUpdateUseCase` |
+| `SettingsBloc` | User preferences, device selection, and audio monitoring | `GetAppSettingsUseCase`, `UpdateAppSettingsUseCase`, `GetGoogleCredentialsUseCase`, `LoadDevicesUseCase`, `ObserveAudioLevelsUseCase`, `LogEventUseCase`, `GetSubscriptionStatus` |
+| `TranslationBloc` | Live translation session control, caption streaming, server health, model status, quota reactivity, and auth-aware settings sync | `StartTranslationUseCase`, `StopTranslationUseCase`, `UpdateVolumeUseCase`, `GetModelStatusUseCase`, `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `GetInitialQuotaStatusUseCase`, `GetDefaultTierUseCase`, `UpdateTranslationSettingsUseCase`, `CheckServerHealthUseCase`, `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, `GetAppSettingsUseCase`, `GetGoogleCredentialsUseCase`, `SyncSettingsUseCase`, `LogEventUseCase`, `LogoutUseCase`, `GetSystemConfigUseCase`, `SubscriptionRemoteDataSource`, `TranslationRestDatasource` |
+| `HistoryBloc` | Live and chunked transcription history | `GetLiveHistoryUseCase`, `GetChunkedHistoryUseCase`, `ClearHistoryUseCase`, `AddHistoryEntryUseCase`, `ConfigureHistoryUseCase`, `SubscriptionRemoteDataSource` |
+| `AboutBloc` | App versioning and updates | `CheckForUpdate` |
 | `StartupBloc` | Bootstrapping, auth check, and routing | `IAuthRepository` |
-| `SubscriptionBloc` | Real-time subscription status and plan management | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial` |
+| `SubscriptionBloc` | Real-time subscription status and plan management | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial`, `OpenCheckout`, `HasUsedTrial` |
 
 ---
 
@@ -69,9 +75,12 @@ UseCases are the brain of the feature. They encapsulate a single business logic 
 | Feature | Key UseCases |
 |---------|--------------|
 | **Auth** | `LoginWithGoogle`, `Logout`, `GetCurrentUser`, `ObserveAuthChanges` |
-| **Settings** | `LoadDevices`, `ObserveAudioLevels`, `SyncSettings`, `LogEvent`, `GetSystemConfig` |
-| **Translation** | `ObserveCaptions`, `ObserveQuotaStatus`, `StartTranslation`, `StopTranslation`, `UpdateTranslationSettings`, `UpdateVolume`, `CheckServerHealth` |
+| **Settings** | `GetAppSettings`, `UpdateAppSettings`, `GetGoogleCredentials`, `LoadDevices`, `ObserveAudioLevels`, `SyncSettings`, `LogEvent`, `GetSystemConfig` |
+| **Translation** | `ObserveCaptions`, `ObserveQuotaStatus`, `GetInitialQuotaStatus`, `GetDefaultTier`, `StartTranslation`, `StopTranslation`, `UpdateTranslationSettings`, `UpdateVolume`, `CheckServerHealth`, `GetModelStatus` |
+| **History** | `GetLiveHistory`, `GetChunkedHistory`, `AddHistoryEntry`, `ConfigureHistory`, `ClearHistory` |
+| **Subscription** | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial`, `OpenCheckout`, `HasUsedTrial` |
 | **About** | `CheckForUpdate` |
+| **Usage** | *(Delegates to `UsageRepository` which wraps `ISubscriptionRepository`)* |
 
 ### Dependency Injection (DI)
 
@@ -127,18 +136,19 @@ A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically run
 
 | Component | Responsibility |
 |-----------|----------------|
-| `AsrWebSocketDataSource` | High-level wrapper around the caption WebSocket. Dispatches events to `AsrTextController`. |
+| `AsrWebSocketClient` | High-level wrapper around the caption WebSocket stream. Dispatches events to `AsrTextController`. Owns `AddHistoryEntryUseCase` and `ConfigureHistoryUseCase` for session-level history management. |
 | `AsrTextController` | Manages display buffer, interim vs final text, and typing catch-up logic. |
 | `LiveCaptionSyncDataSource` | Manages high-frequency real-time caption syncing logic to the database. |
 | `TranslationRemoteDataSource` | Manages translation configurations and engine-specific logic via Firestore. |
 | `TranscriptionRemoteDataSource` | Manages transcription (ASR) configurations via Firestore. |
+| `TranslationRestDatasource` | HTTP REST client for translation-related server queries (e.g., model download status, Whisper model management). |
 | `SubscriptionRemoteDataSource`| Handles real-time subscription status, tiers, and monetization configs. |
 | `SessionRemoteDataSource` | App-level tracking for user session lifecycle and total duration. |
 | `UsageMetricsRemoteDataSource` | App-level tracking for translation bytes and AI usage quotas. |
 | `DataMaintenanceRemoteDataSource` | App-level scheduled cleanup for legacy data, stale sessions, and cache. |
-| `UpdateRemoteDataSource` | Checks for new versions via GitHub API. |
+| `UpdateRemoteDataSource` | Checks for new versions via GitHub API. Also triggers a silent background update check on app launch (see `main.dart`). |
 | `AuthRemoteDataSource` | Handles Firebase Auth and Google Sign-In redirects. |
-| `PythonServerManager` | Manages local Python process lifecycle (Auto-restart, backoff). |
+| `PythonServerManager` | Manages local Python process lifecycle (auto-restart, backoff). Lives in `core/infrastructure/`. |
 
 ---
 

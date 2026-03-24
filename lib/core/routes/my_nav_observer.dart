@@ -37,6 +37,7 @@ class MyNavigatorObserver extends NavigatorObserver {
         name == AppRouter.about ||
         name == AppRouter.account ||
         name == AppRouter.settingsOverlay ||
+        name == AppRouter.usage ||
         name == AppRouter.onboarding ||
         name == AppRouter.splash) {
       if (previousRoute != null) {
@@ -65,6 +66,8 @@ class MyNavigatorObserver extends NavigatorObserver {
       setToAboutPosition();
     } else if (name == AppRouter.settingsOverlay) {
       setToSettingsPosition();
+    } else if (name == AppRouter.usage) {
+      setToUsagePosition();
     } else if (name == AppRouter.onboarding || name == AppRouter.splash) {
       setToStartupPosition();
     }

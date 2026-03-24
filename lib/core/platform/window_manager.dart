@@ -37,11 +37,13 @@ void configureMainWindow() async {
   // Use FirebaseAuth through AuthRemoteDataSource for named instance isolation
   if (AuthRemoteDataSource.instance.auth.currentUser != null) {
     await windowManager.setResizable(true);
+    appWindow.minSize = const Size(300, 150);
     await windowManager.setMinimumSize(const Size(300, 150));
     await windowManager.setSize(const Size(730, 150));
     appWindow.alignment = Alignment.bottomCenter;
   } else {
     await windowManager.setResizable(true);
+    appWindow.minSize = const Size(600, 500);
     await windowManager.setMinimumSize(const Size(600, 500));
     await windowManager.setSize(const Size(880, 700));
     appWindow.alignment = Alignment.center;
@@ -55,6 +57,7 @@ void configureMainWindow() async {
 /// Sets the window to a centered dialog style for Login
 Future<void> setToLoginPosition() async {
   await windowManager.setResizable(true);
+  appWindow.minSize = const Size(600, 500);
   await windowManager.setMinimumSize(const Size(600, 500));
   await windowManager.setSize(const Size(880, 700));
   appWindow.alignment = Alignment.center;
@@ -65,6 +68,7 @@ Future<void> setToLoginPosition() async {
 /// Sets the window to a centered dialog style for Startup/Splash
 Future<void> setToStartupPosition() async {
   await windowManager.setResizable(true);
+  appWindow.minSize = const Size(600, 500);
   await windowManager.setMinimumSize(const Size(600, 500));
   await windowManager.setSize(const Size(880, 700));
   appWindow.alignment = Alignment.center;
@@ -75,6 +79,7 @@ Future<void> setToStartupPosition() async {
 /// Sets window to the Account screen size
 Future<void> setToAccountPosition() async {
   await windowManager.setResizable(true);
+  appWindow.minSize = const Size(1000, 500);
   await windowManager.setMinimumSize(const Size(1000, 500));
   await windowManager.setSize(const Size(1140, 800));
   appWindow.alignment = Alignment.center;
@@ -85,6 +90,7 @@ Future<void> setToAccountPosition() async {
 /// Sets the window to the About screen size
 Future<void> setToAboutPosition() async {
   await windowManager.setResizable(true);
+  appWindow.minSize = const Size(1000, 500);
   await windowManager.setMinimumSize(const Size(1000, 500));
   await windowManager.setSize(const Size(1140, 800));
   appWindow.alignment = Alignment.center;
@@ -95,6 +101,7 @@ Future<void> setToAboutPosition() async {
 /// Sets the window to a centered large panel for Subscription
 Future<void> setToSubscriptionPosition() async {
   await windowManager.setResizable(true);
+  appWindow.minSize = const Size(1000, 500);
   await windowManager.setMinimumSize(const Size(1000, 500));
   await windowManager.setSize(const Size(1140, 880));
   appWindow.alignment = Alignment.center;
@@ -116,6 +123,7 @@ Future<void> setToTranslationPosition() async {
 /// Sets the window to a large centered view for History
 Future<void> setToHistoryPosition() async {
   await windowManager.setResizable(true);
+  appWindow.minSize = const Size(600, 400);
   await windowManager.setMinimumSize(const Size(600, 400));
   await windowManager.setSize(const Size(1000, 700));
   appWindow.alignment = Alignment.center;
@@ -126,8 +134,20 @@ Future<void> setToHistoryPosition() async {
 /// Sets the window to a centered panel for the Settings screen
 Future<void> setToSettingsPosition() async {
   await windowManager.setResizable(true);
+  appWindow.minSize = const Size(1000, 500);
   await windowManager.setMinimumSize(const Size(1000, 500));
   await windowManager.setSize(const Size(1140, 800));
+  appWindow.alignment = Alignment.center;
+  await windowManager.center();
+  await windowManager.setAlwaysOnTop(false);
+}
+
+/// Sets the window to a centered panel for the Usage Tracking screen
+Future<void> setToUsagePosition() async {
+  await windowManager.setResizable(true);
+  appWindow.minSize = const Size(1000, 500);
+  await windowManager.setMinimumSize(const Size(1000, 500));
+  await windowManager.setSize(const Size(1140, 850));
   appWindow.alignment = Alignment.center;
   await windowManager.center();
   await windowManager.setAlwaysOnTop(false);

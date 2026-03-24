@@ -3,7 +3,7 @@
 This document provides a technical overview of the administrative code in the Omni Bridge project, detailing how administrative capabilities are managed and implemented.
 
 ## 1. Admin Identity & Authorization
-**File**: `lib/screens/account/components/admin_panel.dart`
+**File**: `lib/features/auth/presentation/screens/account/components/admin_panel.dart`
 
 The application identifies administrators by checking their email against a whitelist stored in Firestore, completely localized to the `AdminPanel` widget.
 
@@ -25,7 +25,7 @@ Administrators have the capability to manually override any user's subscription 
   - **Note**: This logic relies on Firestore Security Rules to enforce that only verified admins can write to other users' documents.
 
 ## 3. Administrative User Interface
-**File**: `lib/screens/account/components/admin_panel.dart`
+**File**: `lib/features/auth/presentation/screens/account/components/admin_panel.dart`
 
 The `AdminPanel` encapsulates all admin-related dashboards, accessible via the main Account settings if authorized.
 
@@ -46,7 +46,7 @@ The Admin Panel includes a **System Config** section that allows admins to seed 
 - **App Version**: Minimum/latest version control
 - **Upgrade Prompts**: Dynamic upgrade messaging
 
-Changes to `system/monetization` take effect immediately for all connected clients via the real-time Firestore listener in `SubscriptionService._listenToMonetizationConfig()`.
+Changes to `system/monetization` take effect immediately for all connected clients via the real-time Firestore listener in `SubscriptionRemoteDataSource._listenToMonetizationConfig()`.
 
 ## 5. Security Architecture
 The security of these features is enforced entirely at the database level via **Firestore Security Rules**. Even if the UI code is tampered with or circumvented, the database natively rejects unauthorized writes to the `system/admins` collection and guards other users' metadata, guaranteeing administrative integrity regardless of client-side logic.

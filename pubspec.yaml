@@ -43,6 +43,7 @@ dependencies:
   flutter_markdown: ^0.7.7+1
   get_it: ^7.7.0
   dartz: ^0.10.1
+  fl_chart: ^1.2.0
 
 
 dev_dependencies:

@@ -13,6 +13,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
   final bloc = context.read<TranslationBloc>();
   return SizedBox(
     height: 32,
+    width: double.infinity,
     child: Row(
       children: [
         const SizedBox(width: 10),
@@ -190,6 +191,35 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                 thickness: 1,
                                 color: Colors.white12,
                               ),
+                              // Usage icon
+                              Tooltip(
+                                message: 'Usage Statistics',
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/usage',
+                                    );
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 10,
+                                    ),
+                                    child: Icon(
+                                      Icons.bar_chart_rounded,
+                                      size: 18,
+                                      color: Colors.orangeAccent,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const VerticalDivider(
+                                width: 1,
+                                thickness: 1,
+                                color: Colors.white12,
+                              ),
                               // Account icon
                               Tooltip(
                                 message: 'Account',
@@ -288,14 +318,14 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
         ),
 
         MinimizeWindowButton(
-          colors: WindowButtonColors(iconNormal: Colors.white),
-        ),
-        CloseWindowButton(
-          colors: WindowButtonColors(
-            iconNormal: Colors.white,
-            mouseOver: Colors.red,
+            colors: WindowButtonColors(iconNormal: Colors.white),
           ),
-          onPressed: () => appWindow.close(),
+        CloseWindowButton(
+            colors: WindowButtonColors(
+              iconNormal: Colors.white,
+              mouseOver: Colors.red,
+            ),
+            onPressed: () => appWindow.close(),
         ),
       ],
     ),
