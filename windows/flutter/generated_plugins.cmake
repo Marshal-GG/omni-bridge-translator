@@ -9,6 +9,8 @@ list(APPEND FLUTTER_PLUGIN_LIST
   desktop_webview_auth
   firebase_auth
   firebase_core
+  firebase_database
+  firebase_storage
   flutter_acrylic
   flutter_secure_storage_windows
   protocol_handler_windows

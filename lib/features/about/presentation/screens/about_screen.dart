@@ -390,7 +390,18 @@ class _AboutScreenState extends State<AboutScreen> {
                                                     Icons.help_outline_rounded,
                                                 title: 'Support & Feedback',
                                                 content:
-                                                    'For issues, feature requests, or general feedback, please reach out via the project repository or contact the developer directly.',
+                                                    'For issues, feature requests, or general feedback, please reach out via the Help Center or submit a feedback ticket with system diagnostics.',
+                                                child: Row(
+                                                  children: [
+                                                    _LinkButton(
+                                                      icon: Icons.support_agent_rounded,
+                                                      label: 'Get Support',
+                                                      url: '',
+                                                      color: Colors.lightBlueAccent,
+                                                      onTap: () => Navigator.pushNamed(context, '/support'),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
                                               const Spacer(), // Pushes Links to bottom
                                               const SizedBox(height: 12),

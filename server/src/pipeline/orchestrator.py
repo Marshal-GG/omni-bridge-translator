@@ -108,6 +108,7 @@ class InferenceOrchestrator:
             self.google_credentials = google_credentials
         self.riva_translation_id = riva_translation_id or self.riva_translation_id
         self.riva_asr_parakeet_id = riva_asr_parakeet_id or self.riva_asr_parakeet_id
+        self.riva_asr_canary_id = riva_asr_canary_id or self.riva_asr_canary_id
 
         logging.info("[Orchestrator] Starting background model reload...")
 

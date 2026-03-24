@@ -38,11 +38,9 @@ jobs:
         working-directory: server
         run: |
           pip install pyinstaller
-          pip install fastapi "uvicorn[standard]" websockets structlog pysbd openai deep-translator speechrecognition psutil sounddevice numpy requests httpx python-multipart pyaudio openai-whisper resampy google-cloud-translate
-          # Note: pyaudiowpatch and nvidia-riva-client are Windows/hardware-specific.
-          # They are installed separately below.
-          pip install pyaudiowpatch || echo "pyaudiowpatch install failed (may need PortAudio headers)"
-          pip install nvidia-riva-client || echo "nvidia-riva-client install failed (optional - Riva support)"
+          pip install .
+          # Hardware-specific packages (may fail on generic runners)
+          pip install ".[hardware]" || echo "Optional hardware dependencies skipped"
 
       - name: Build Python server with PyInstaller
         working-directory: server

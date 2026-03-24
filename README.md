@@ -59,6 +59,7 @@ Auto-detect source language, or manually select from: English, Spanish, French, 
 ### 🪟 Transparent Always-on-Top Overlay
 - Fully **draggable, resizable** transparent overlay — stays above all windows
 - **Collapse to Mini Mode** — single caption line that takes up minimal screen space
+- **Uncensored Mode** — bypass profanity filters and safety guardrails for raw, faithful translation
 - **Adjustable opacity** and font size from Settings
 - **Bold text** toggle for better readability
 
@@ -71,16 +72,16 @@ Auto-detect source language, or manually select from: English, Spanish, French, 
 - **Seamless onboarding** flow for new users (Splash -> Onboarding -> Login).
 - **Proactive update checks** on startup to ensure you're always on the latest version.
 
-### ℹ️ About & Updates
+### ℹ️ About & Support
 - Dedicated **About Panel** showing version info, licensing, and credits.
+- **Secure Support Chat**: Integrated WhatsApp-style help desk with Firebase-backed security rules for private ticket management.
 - **Manual update check** button with real-time status feedback.
 
 ### 👤 Account & Sync
 - Sign in with **Google**, **Email/Password**, or use as **Guest**
 - Settings sync to the cloud — your preferences follow you
 - **Remote Device Management**: Revoke sessions or sign out of all devices from your account settings
-- **Weekly Usage Tracking**: Monitor your token consumption across daily, weekly, and monthly periods
-- Session activity and translation usage are tracked securely per session
+- **Real-time Usage Dashboard**: Monitor your token consumption and session activity across daily, weekly, and monthly periods.
 
 ### 💳 Subscription Tiers
 
@@ -117,7 +118,13 @@ Pro unlocks caption history, microphone audio, and all AI engines. Clear visual 
 
 ### Option 2 — Run from Source
 
-See [Developer Setup →](docs/07_developer_setup.md)
+See [08 — Developer Setup →](docs/03_guides/08_developer_setup.md)
+
+---
+
+## 📚 Documentation Index
+
+For detailed architectural diagrams, feature guides, and maintenance playbooks, see the [**Master Documentation Index →**](docs/00_doc_index.md)
 
 ---
 
@@ -148,8 +155,8 @@ For NVIDIA Riva ASR / NMT or Llama translation:
 OmniBridge follows **Clean Architecture** principles across both its components:
 
 ### 📱 Flutter Client
-- **Feature-Driven Structure**: 100% organized by vertical slices: `auth`, `translation`, `settings`, `history`, `subscription`, `startup`, and `about`.
-- **Domain Layer**: Pure business logic with Entities, abstract Repositories, and **UseCases** (22+ specialized logic blocks).
+- **Feature-Driven Structure**: 100% organized by vertical slices: `auth`, `translation`, `settings`, `history`, `subscription`, `startup`, `about`, `usage`, and `support`.
+- **Domain Layer**: Pure business logic with Entities, abstract Repositories, and **UseCases** (28+ specialized logic blocks).
 - **Data Layer**: Feature-specific **RemoteDataSources** (Firebase, WebSocket, REST) and Repository implementations. Legacy `lib/data` has been consolidated.
 - **Presentation Layer**: UI screens and widgets using the **BLoC pattern** with route-scoped injection for optimized memory management.
 - **Dependency Injection**: Centralized `injection.dart` using `get_it`, following the `DataSource -> Repository -> UseCase -> Bloc` hierarchy.

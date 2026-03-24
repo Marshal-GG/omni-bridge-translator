@@ -5,6 +5,19 @@ import 'package:omni_bridge/features/auth/presentation/blocs/auth_bloc.dart';
 import 'package:omni_bridge/features/history/presentation/blocs/history_bloc.dart';
 import 'package:omni_bridge/features/subscription/presentation/bloc/subscription_bloc.dart';
 import 'package:omni_bridge/features/settings/data/repositories/settings_repository_impl.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:omni_bridge/features/support/presentation/blocs/support_bloc.dart';
+import 'package:omni_bridge/features/support/domain/repositories/i_support_repository.dart';
+import 'package:omni_bridge/features/support/data/repositories/support_repository_impl.dart';
+import 'package:omni_bridge/features/support/data/datasources/support_local_datasource.dart';
+import 'package:omni_bridge/features/support/data/datasources/support_remote_datasource.dart';
+import 'package:omni_bridge/features/support/domain/usecases/get_support_links_use_case.dart';
+import 'package:omni_bridge/features/support/domain/usecases/get_system_snapshot_use_case.dart';
+import 'package:omni_bridge/features/support/domain/usecases/submit_feedback_use_case.dart';
+import 'package:omni_bridge/features/support/domain/usecases/get_ticket_history_use_case.dart';
+import 'package:omni_bridge/features/support/domain/usecases/get_ticket_messages_use_case.dart';
+import 'package:omni_bridge/features/support/domain/usecases/send_support_message_use_case.dart';
 import 'package:get_it/get_it.dart';
 import 'package:omni_bridge/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:omni_bridge/features/translation/data/repositories/translation_repository_impl.dart';
@@ -139,6 +152,17 @@ Future<void> setupInjection() async {
     ),
   );
 
+  sl.registerFactory(
+    () => SupportBloc(
+      getSupportLinks: sl(),
+      getSystemSnapshot: sl(),
+      submitFeedback: sl(),
+      getTicketHistory: sl(),
+      getTicketMessages: sl(),
+      sendSupportMessage: sl(),
+    ),
+  );
+
   // Repositories
   sl.registerLazySingleton<IAuthRepository>(() => AuthRepositoryImpl(sl()));
   // Features - Settings
@@ -165,6 +189,16 @@ Future<void> setupInjection() async {
   );
   sl.registerLazySingleton<UsageRepository>(
     () => UsageRepositoryImpl(subscriptionRepository: sl()),
+  );
+
+  sl.registerLazySingleton<ISupportRepository>(
+    () => SupportRepositoryImpl(
+      localDataSource: sl(),
+      remoteDataSource: sl(),
+      subscriptionRepository: sl(),
+      firebaseAuth: sl(),
+      deviceInfo: sl(),
+    ),
   );
 
   // Use Cases
@@ -213,6 +247,13 @@ Future<void> setupInjection() async {
   // About
   sl.registerLazySingleton(() => CheckForUpdate(sl()));
 
+  sl.registerLazySingleton(() => GetSupportLinksUseCase(sl()));
+  sl.registerLazySingleton(() => GetSystemSnapshotUseCase(sl()));
+  sl.registerLazySingleton(() => SubmitFeedbackUseCase(sl()));
+  sl.registerLazySingleton(() => GetTicketHistoryUseCase(sl()));
+  sl.registerLazySingleton(() => GetTicketMessagesUseCase(sl()));
+  sl.registerLazySingleton(() => SendSupportMessageUseCase(sl()));
+
   // Services / Datasources
   sl.registerLazySingleton(() => AuthRemoteDataSource.instance);
   sl.registerLazySingleton(
@@ -225,4 +266,15 @@ Future<void> setupInjection() async {
   sl.registerLazySingleton(() => UsageMetricsRemoteDataSource.instance);
   sl.registerLazySingleton(() => DataMaintenanceRemoteDataSource.instance);
   sl.registerLazySingleton(() => LiveCaptionSyncDataSource.instance);
+
+  sl.registerLazySingleton<ISupportLocalDataSource>(() => SupportLocalDataSourceImpl());
+  sl.registerLazySingleton<ISupportRemoteDataSource>(
+    () => SupportRemoteDataSourceImpl(firestore: sl(), storage: sl()),
+  );
+
+  // External
+  sl.registerLazySingleton(() => FirebaseStorage.instance);
+  sl.registerLazySingleton(() => AuthRemoteDataSource.instance.auth);
+  sl.registerLazySingleton(() => AuthRemoteDataSource.instance.firestore);
+  sl.registerLazySingleton(() => DeviceInfoPlugin());
 }

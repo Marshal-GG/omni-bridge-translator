@@ -17,7 +17,16 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
     child: Row(
       children: [
         const SizedBox(width: 10),
-        Image.asset('assets/icon.png', width: 14, height: 14),
+        GestureDetector(
+          onTap: () => Navigator.pushNamed(context, '/support'),
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: Tooltip(
+              message: 'Support & Feedback',
+              child: Image.asset('assets/icon.png', width: 14, height: 14),
+            ),
+          ),
+        ),
         const SizedBox(width: 8),
         const Flexible(
           child: Text(
@@ -237,6 +246,32 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                       Icons.manage_accounts_rounded,
                                       size: 18,
                                       color: Colors.purpleAccent,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const VerticalDivider(
+                                width: 1,
+                                thickness: 1,
+                                color: Colors.white12,
+                              ),
+                              // Support icon
+                              Tooltip(
+                                message: 'Support & Feedback',
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    Navigator.pushNamed(context, '/support');
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 10,
+                                    ),
+                                    child: Icon(
+                                      Icons.help_outline_rounded,
+                                      size: 18,
+                                      color: Colors.cyanAccent,
                                     ),
                                   ),
                                 ),

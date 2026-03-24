@@ -8,7 +8,6 @@ authors = [
 dependencies = [
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.23.0",
-    "pyaudiowpatch>=0.2.12.1",
     "websockets>=11.0.0",
     "structlog>=23.1.0",
     "pysbd>=0.3.4",
@@ -22,11 +21,16 @@ dependencies = [
     "httpx",
     "python-multipart",
     "PyAudio",
-    "nvidia-riva-client",
     "openai-whisper",
     "resampy",
     "pyarmor",
     "google-cloud-translate",
+]
+
+[project.optional-dependencies]
+hardware = [
+    "pyaudiowpatch>=0.2.12.1",
+    "nvidia-riva-client",
 ]
 
 [build-system]

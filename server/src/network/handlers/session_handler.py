@@ -39,6 +39,13 @@ class SessionHandler(BaseHandler):
             if value is not None:
                 self.ctx.config[key] = value
         
+        logging.info(
+            f"[Handler] Start requested with Riva IDs: "
+            f"NMT={self.ctx.config['riva_translation_function_id']}, "
+            f"Parakeet={self.ctx.config['riva_asr_parakeet_function_id']}, "
+            f"Canary={self.ctx.config['riva_asr_canary_function_id']}"
+        )
+        
         # Validations
         tl_model = str(self.ctx.config.get("translation_model") or "unknown")
         if self.ctx.config.get("translation_model") in ("riva", "llama") and not self.ctx.config.get("api_key"):

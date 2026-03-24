@@ -13,6 +13,7 @@ import 'package:omni_bridge/features/history/presentation/screens/history/histor
 import 'package:omni_bridge/features/auth/presentation/screens/account/account_screen.dart';
 import 'package:omni_bridge/features/about/presentation/screens/about_screen.dart';
 import 'package:omni_bridge/features/subscription/presentation/screens/subscription_screen.dart';
+import 'package:omni_bridge/features/support/presentation/screens/support_screen.dart';
 
 // Blocs
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
@@ -36,6 +37,7 @@ class AppRouter {
   static const String about = '/about';
   static const String subscription = '/subscription';
   static const String usage = '/usage';
+  static const String support = '/support';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -120,6 +122,11 @@ class AppRouter {
       case subscription:
         return MaterialPageRoute(
           builder: (_) => const SubscriptionScreen(),
+          settings: settings,
+        );
+      case support:
+        return MaterialPageRoute(
+          builder: (_) => const SupportScreen(),
           settings: settings,
         );
       default:

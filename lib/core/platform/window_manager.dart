@@ -153,6 +153,17 @@ Future<void> setToUsagePosition() async {
   await windowManager.setAlwaysOnTop(false);
 }
 
+/// Sets the window to a centered panel for the Support & Feedback screen
+Future<void> setToSupportPosition() async {
+  await windowManager.setResizable(true);
+  appWindow.minSize = const Size(1000, 500);
+  await windowManager.setMinimumSize(const Size(1000, 500));
+  await windowManager.setSize(const Size(1140, 850));
+  appWindow.alignment = Alignment.center;
+  await windowManager.center();
+  await windowManager.setAlwaysOnTop(false);
+}
+
 class _AppWindowListener extends WindowListener {
   @override
   void onWindowClose() async {

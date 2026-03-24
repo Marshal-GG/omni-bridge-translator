@@ -16,7 +16,7 @@ Widget buildSubscriptionFooter(BuildContext context) {
         Navigator.pushNamed(context, '/about');
       }),
       _buildFooterLink(context, 'Support', Colors.lightBlue, () {
-        // Open support link
+        Navigator.pushNamed(context, '/support');
       }),
     ],
   );

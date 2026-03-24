@@ -23,7 +23,12 @@ class RivaASRModel:
         self._is_loading = True
         try:
             if not self.api_key:
+                logging.warning("[RivaASR] No API key provided, skipping setup.")
                 return
+            
+            # Redact API key for logs
+            redacted_key = f"{self.api_key[:6]}...{self.api_key[-4:]}" if len(self.api_key) > 10 else "***"
+            logging.info(f"[RivaASR] Setting up with IDs: Parakeet='{self.parakeet_fid}', Canary='{self.canary_fid}' (Key: {redacted_key})")
             
             # Parakeet Multilingual
             auth_parakeet = riva.client.Auth(
@@ -98,7 +103,10 @@ class RivaASRModel:
                     return None, None
 
                 confidence = getattr(alt, "confidence", None)
-                if confidence is not None and confidence < 0.5:
+                # Adjust confidence threshold for Riva (specifically Canary).
+                # Sometimes Canary returns 0.00 even for valid transcripts.
+                # We allow literal 0.0 (possibly "not reported") or anything >= 0.3.
+                if confidence is not None and 0.0 < confidence < 0.3:
                     logging.debug(f"[RivaASR] Low confidence ({confidence:.2f}) filtered: {raw_transcript!r}")
                     return None, None
 

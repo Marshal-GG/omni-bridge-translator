@@ -100,6 +100,7 @@ firebase.json
 .firebaserc
 firestore.indexes.json
 firestore.rules
+storage.rules
 
 # Additional ignores
 task.md
