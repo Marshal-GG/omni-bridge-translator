@@ -1,50 +1,82 @@
-# Omni Bridge — Live AI Translator
+<div align="center">
+  <img src="./assets/docs/images/banner.svg" width="100%" alt="Omni Bridge Banner"/>
+</div>
 
-> **Real-time speech translation, right on your desktop.**  
-> Capture any audio from your PC or mic, translate it instantly, and see it as a live transparent overlay — no extra hardware required.
+<p align="center">
+  Real-time speech translation, right on your desktop.<br/>
+  Capture any audio from your PC or mic, translate it instantly, and see it as a live transparent overlay — no extra hardware required.
+</p>
+
+<br/>
+
+<p align="center">
+  <a href="https://github.com/Marshal-GG/omni-bridge-translator/releases/latest">
+    <img src="https://img.shields.io/github/v/release/Marshal-GG/omni-bridge-translator?label=Download&style=for-the-badge&color=0D9488&labelColor=001A2E&logoColor=white" alt="Download Latest"/>
+  </a>
+  &nbsp;&nbsp;
+  <img src="https://img.shields.io/badge/Platform-Windows_10%2B-0284C7?style=for-the-badge&logo=windows&logoColor=white&labelColor=001A2E" alt="Platform"/>
+  &nbsp;&nbsp;
+  <img src="https://img.shields.io/badge/License-Restricted_Study_Only-0369A1?style=for-the-badge&labelColor=001A2E" alt="License"/>
+</p>
+
+<br/>
+
+<h3 align="center">
+  <sub><img src="./assets/docs/icons/icon-stack.svg" width="22" height="22"/></sub>&#160; Tech Stack
+</h3>
+
+<img src="./assets/docs/images/teal-divider.svg" width="100%"/>
+
+<br/>
+
+<p align="center">
+  <img src="https://go-skill-icons.vercel.app/api/icons?i=flutter,dart,python,firebase,websocket,github&theme=dark&titles=true&perline=6" alt="Tech Stack"/>
+</p>
+
+<p align="center">
+  <sub>Flutter · Dart &nbsp;—&nbsp; Python backend &nbsp;—&nbsp; Firebase Auth/Firestore &nbsp;—&nbsp; WebSocket real-time bridge &nbsp;—&nbsp; GitHub Actions CI</sub>
+</p>
+
+<br/>
+
+<h3 align="center">
+  <sub><img src="./assets/docs/icons/icon-features.svg" width="22" height="22"/></sub>&#160; Features
+</h3>
+
+<img src="./assets/docs/images/teal-divider.svg" width="100%"/>
+
+<br/>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Universal%20Audio%20Capture-System%20%26%20Mic-0D9488?style=flat-square&labelColor=001A2E"/>
+  &nbsp;
+  <img src="https://img.shields.io/badge/20%2B%20Languages-Auto%20Detect-0284C7?style=flat-square&labelColor=001A2E"/>
+  &nbsp;
+  <img src="https://img.shields.io/badge/Transparent%20Overlay-Always%20On%20Top-0369A1?style=flat-square&labelColor=001A2E"/>
+  &nbsp;
+  <img src="https://img.shields.io/badge/Caption%20History-Searchable-0D9488?style=flat-square&labelColor=001A2E"/>
+  &nbsp;
+  <img src="https://img.shields.io/badge/Uncensored%20Mode-Raw%20Output-0284C7?style=flat-square&labelColor=001A2E"/>
+</p>
+
+<br/>
 
 <div align="center">
 
-[![Download Latest](https://img.shields.io/github/v/release/Marshal-GG/omni-bridge-translator?label=Download&style=for-the-badge&color=teal)](https://github.com/Marshal-GG/omni-bridge-translator/releases/latest)
-[![Platform](https://img.shields.io/badge/Platform-Windows-blue?style=for-the-badge&logo=windows)](https://github.com/Marshal-GG/omni-bridge-translator/releases)
-[![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/Marshal-GG/omni-bridge-translator/actions)
-[![License](https://img.shields.io/badge/License-Restricted_Study_Only-black.svg)](LICENSE)
+**🎙️ Universal Audio Capture** — Translates any audio playing on your PC (videos, calls, streams, meetings). Switch between system audio and microphone with one toggle. Fine-grained volume controls for each source independently.
 
-</div>
+**🌐 Multiple Speech Recognition Engines**
 
----
-
-<div align="center">
-
-| Translator Overlay | Mini Mode |
-| :---: | :---: |
-| <img src="assets/screenshots/image3.png" width="420"/> | <img src="assets/screenshots/image2.png" width="420"/> |
-
-| Settings Panel |
-| :---: |
-| <img src="assets/screenshots/image1.png" width="380"/> |
-
-</div>
-
----
-
-## ✨ Features
-
-### 🎙️ Universal Audio Capture
-- Translates **any audio playing on your PC** — videos, calls, streams, meetings
-- Switch between **system audio** and **microphone** with one toggle
-- Fine-grained **volume controls** for desktop and mic independently
-
-### 🌐 Multiple Speech Recognition Engines
 | Engine | Best For |
 |--------|----------|
 | **Google Online** | Fast, no setup required |
 | **NVIDIA Riva** | High-accuracy multilingual (API key needed) |
 | **Whisper Offline** | Privacy-first, works without internet |
 
-Whisper comes in 4 sizes — **Tiny, Base, Small, and Medium** — downloadable directly from the Settings panel.
+<sub>Whisper comes in 4 sizes — **Tiny, Base, Small, and Medium** — downloadable directly from the Settings panel.</sub>
 
-### 🔤 Multiple Translation Engines
+**🔤 Multiple Translation Engines**
+
 | Engine | Notes |
 |--------|-------|
 | **Google Translate** | Recommended — free, fast, 100+ languages |
@@ -53,131 +85,208 @@ Whisper comes in 4 sizes — **Tiny, Base, Small, and Medium** — downloadable 
 | **NVIDIA Riva NMT** | High-quality neural translation |
 | **Llama 3.1 8B** | AI-powered, great for context-aware translations |
 
-### 🗣️ 20+ Languages Supported
-Auto-detect source language, or manually select from: English, Spanish, French, German, Chinese, Japanese, Korean, Russian, Portuguese, Italian, Arabic, Hindi, Dutch, Turkish, Vietnamese, Polish, Indonesian, Thai, Bengali, and more.
+**🪟 Transparent Always-on-Top Overlay** — Fully draggable and resizable. Collapse to **Mini Mode** for a single caption line. Adjustable opacity, font size, **bold toggle**, and **Uncensored Mode** to bypass profanity filters.
 
-### 🪟 Transparent Always-on-Top Overlay
-- Fully **draggable, resizable** transparent overlay — stays above all windows
-- **Collapse to Mini Mode** — single caption line that takes up minimal screen space
-- **Uncensored Mode** — bypass profanity filters and safety guardrails for raw, faithful translation
-- **Adjustable opacity** and font size from Settings
-- **Bold text** toggle for better readability
+**📜 Caption History** — Every translated caption is saved to a searchable, premium History Panel with a glassy dark aesthetic. Contextual upgrade prompts guide free-tier users to premium.
 
-### 📜 Caption History
-- Every translated caption is saved to a searchable, premium **History Panel** with a glassy dark aesthetic.
-- Standardized window controls (Minimize, Close, Drag) and a dedicated "Clear History" action.
-- **Contextual Upgrades**: Free-tier users are automatically presented with the `UpgradeSheet` upon entering the history view, providing a seamless path to premium features.
+**👤 Account & Sync** — Sign in with Google, Email/Password, or as Guest. Settings sync to the cloud. Remote device management, real-time usage dashboard, and Razorpay-powered subscriptions.
 
-### 🚀 Startup & Onboarding
-- **Seamless onboarding** flow for new users (Splash -> Onboarding -> Login).
-- **Proactive update checks** on startup to ensure you're always on the latest version.
+</div>
 
-### ℹ️ About & Support
-- Dedicated **About Panel** showing version info, licensing, and credits.
-- **Secure Support Chat**: Integrated WhatsApp-style help desk with Firebase-backed security rules for private ticket management.
-- **Manual update check** button with real-time status feedback.
+<br/>
 
-### 👤 Account & Sync
-- Sign in with **Google**, **Email/Password**, or use as **Guest**
-- Settings sync to the cloud — your preferences follow you
-- **Remote Device Management**: Revoke sessions or sign out of all devices from your account settings
-- **Real-time Usage Dashboard**: Monitor your token consumption and session activity across daily, weekly, and monthly periods.
+<h3 align="center">
+  <sub><img src="./assets/docs/icons/icon-howitworks.svg" width="22" height="22"/></sub>&#160; How It Works
+</h3>
 
-### 💳 Subscription Tiers
+<img src="./assets/docs/images/teal-divider.svg" width="100%"/>
 
-| Feature | **Free** | **Pro** (₹799/mo) | **Enterprise** (₹2,499/mo) |
-|---------|----------|-------------------|---------------------------|
-| **Daily Quota** | 5,000 tokens | 25,000 tokens | 75,000 tokens |
-| **Monthly Quota** | 50,000 tokens | 250,000 tokens | 750,000 tokens |
-| **Translation Engines** | Google, MyMemory | All (+ Google Cloud, Riva, Llama) | All |
-| **Transcription** | Google Online | + Whisper (tiny–small) | + Whisper medium, Riva |
-| **Microphone Audio** | — | Yes | Yes |
-| **Caption History** | — | 7-day retention | 30-day retention |
-| **Session Duration** | 15 min | 2 hours | 8 hours |
-| **Concurrent Sessions** | 1 | 2 | 5 |
-| **Per-Engine Limits** | — | google_api: 100k, riva: 100k, llama: 150k | google_api: 300k, riva: 300k, llama: 500k |
+<br/>
 
-> Usage is calculated as the sum of input (source) and output (translated) tokens across all engines. A one-time **Trial** tier is also available for new users to test Pro-level features before committing.
+<div align="center">
+  <img src="./assets/docs/diagrams/how-it-works.svg" width="100%" alt="How Omni Bridge works — pipeline flow diagram"/>
+</div>
 
-Pro unlocks caption history, microphone audio, and all AI engines. Clear visual indicators (teal highlights) and real-time usage tracking in the Account screen help you manage your plan. Upgrade from within the app via Razorpay.
+<br/>
 
-> Users with their own NVIDIA API Key bypass the daily quota for NVIDIA-backed engines.
 
----
+<h3 align="center">
+  <sub><img src="./assets/docs/icons/icon-download.svg" width="22" height="22"/></sub>&#160; Download &amp; Install
+</h3>
 
-## ⬇️ Download & Install
+<img src="./assets/docs/images/teal-divider.svg" width="100%"/>
 
-### Option 1 — Installer (Recommended)
-
-1. Go to the [**Releases page**](https://github.com/Marshal-GG/omni-bridge-translator/releases/latest)
-2. Download **`OmniBridge_Setup.exe`**
-3. Run the installer — it bundles everything (Python server + UI)
-4. Launch **Omni Bridge** from your Start Menu or Desktop
-
-> No Python or Flutter installation required when using the installer.
-
-### Option 2 — Run from Source
-
-See [08 — Developer Setup →](docs/03_guides/08_developer_setup.md)
-
----
-
-## 📚 Documentation Index
-
-For detailed architectural diagrams, feature guides, and maintenance playbooks, see the [**Master Documentation Index →**](docs/00_doc_index.md)
-
----
-
-## 🚀 Quick Start
-
-1. **Launch** Omni Bridge from Start Menu (or run `start_server.bat` if running from source)
-2. **Sign in** with Google, Email, or continue as Guest
-3. **Open Settings** (gear icon or click the `auto → en` language badge in the header)
-4. Choose your **Speech Recognition** and **Translation Engine**
-5. Select your **Target Language**
-6. **Close Settings** — captions appear live as audio plays on your PC
-
-That's it. No complex configuration needed for the default Google setup.
-
----
-
-## ⚙️ Using an NVIDIA API Key
-
-For NVIDIA Riva ASR / NMT or Llama translation:
-1. Get a free API key at [build.nvidia.com](https://build.nvidia.com)
-2. Open **Settings → Translation Engine** and paste your key
-3. Select **NVIDIA Riva** or **Llama** as your engine
-
----
-
----
-
-OmniBridge follows **Clean Architecture** principles across both its components:
-
-### 📱 Flutter Client
-- **Feature-Driven Structure**: 100% organized by vertical slices: `auth`, `translation`, `settings`, `history`, `subscription`, `startup`, `about`, `usage`, and `support`.
-- **Domain Layer**: Pure business logic with Entities, abstract Repositories, and **UseCases** (28+ specialized logic blocks).
-- **Data Layer**: Feature-specific **RemoteDataSources** (Firebase, WebSocket, REST) and Repository implementations. Legacy `lib/data` has been consolidated.
-- **Presentation Layer**: UI screens and widgets using the **BLoC pattern** with route-scoped injection for optimized memory management.
-- **Dependency Injection**: Centralized `injection.dart` using `get_it`, following the `DataSource -> Repository -> UseCase -> Bloc` hierarchy.
-
-### 🐍 Python Server
-- **Orchestration Layer**: Coordinates session lifecycles and manages asynchronous task queues for low-latency processing.
-- **Inference Pipeline**: A modular system for ASR and Translation that supports model-specific loading states and robust fallback mechanisms.
-- **Model Layer**: Standardized interfaces for diverse AI engines (NVIDIA Riva, OpenAI Whisper, Llama 3.1, Google Cloud).
-- **Communication Layer**: High-performance WebSocket handlers for real-time bidirectional data flow with the Flutter client.
-- **Verification**: Covered by a comprehensive `pytest` suite with extensive mocking for AI engine testing.
-
----
-
-## 📄 License
-
-Personal Study & Learning License (Restricted) — see [LICENSE](LICENSE) for details. **No commercial use or mod distribution.**
-
----
+<br/>
 
 <div align="center">
 
-Made with ❤️ · [Report a Bug](https://github.com/Marshal-GG/omni-bridge-translator/issues) · [Request a Feature](https://github.com/Marshal-GG/omni-bridge-translator/issues)
 
+<ol align="left">
+  <li>Go to the <a href="https://github.com/Marshal-GG/omni-bridge-translator/releases/latest"><strong>Releases page</strong></a></li>
+  <li>Download <code>OmniBridge_Setup.exe</code></li>
+  <li>Run the installer — it bundles everything (Python server + UI)</li>
+  <li>Launch <strong>Omni Bridge</strong> from your Start Menu or Desktop</li>
+</ol>
+
+<details>
+<summary><b>System Requirements</b></summary>
+<br/>
+
+| Component | Minimum |
+|-----------|---------|
+| **OS** | Windows 10 64-bit or higher |
+| **RAM** | 4 GB minimum · 8 GB recommended |
+| **Storage** | ~200 MB + optional Whisper models (75 MB – 1.5 GB each) |
+| **Internet** | Required for Google Translate & NVIDIA cloud engines |
+| **GPU** | Optional — NVIDIA GPU unlocks Riva engine acceleration |
+
+</details>
+
+</div>
+
+<br/>
+
+<h3 align="center">
+  <sub><img src="./assets/docs/icons/icon-quick-start.svg" width="22" height="22"/></sub>&#160; Quick Start
+</h3>
+
+<img src="./assets/docs/images/teal-divider.svg" width="100%"/>
+
+<br/>
+
+```bash
+# 1. Launch   →  Omni Bridge from Start Menu (or run start_server.bat from source)
+# 2. Sign In  →  Google, Email, or continue as Guest
+# 3. Settings →  Choose Speech Recognition & Translation Engine + Target Language
+# 4. Done     →  Captions appear live as audio plays on your PC
+```
+
+<div align="center">
+
+> That's it. No complex configuration needed for the default Google setup.
+
+**Using NVIDIA API Key** — Get a free key at [build.nvidia.com](https://build.nvidia.com), open Settings → Translation Engine, paste your key, then select NVIDIA Riva or Llama.
+
+</div>
+
+<br/>
+
+<h3 align="center">
+  <sub><img src="./assets/docs/icons/icon-arch.svg" width="22" height="22"/></sub>&#160; Architecture
+</h3>
+
+<img src="./assets/docs/images/teal-divider.svg" width="100%"/>
+
+<br/>
+
+<div align="center">
+  <img src="./assets/docs/diagrams/arch-overview.svg" width="100%" alt="System architecture — Flutter client, WebSocket bridge, Python backend"/>
+</div>
+
+<br/>
+
+<div align="center">
+  <img src="./assets/docs/diagrams/arch-flutter.svg" width="100%" alt="Flutter clean architecture — Presentation, Domain, Data layers"/>
+</div>
+
+<br/>
+
+<details>
+<summary><b>View full project tree</b></summary>
+<br/>
+
+```
+Flutter Client (Clean Architecture)
+  ├── Feature slices    — auth, translation, settings, history, subscription,
+  │                       startup, about, usage, support
+  ├── Domain Layer      — Entities, abstract Repositories, 28+ UseCases
+  ├── Data Layer        — RemoteDataSources (Firebase, WebSocket, REST)
+  ├── Presentation      — BLoC pattern, route-scoped injection
+  └── DI                — get_it: DataSource → Repository → UseCase → Bloc
+
+Python Backend
+  ├── Orchestration     — session lifecycles, async task queues
+  ├── Inference Pipeline — modular ASR + Translation with fallback
+  ├── Model Layer       — NVIDIA Riva, Whisper, Llama 3.1, Google Cloud
+  ├── Communication     — high-performance WebSocket bidirectional data flow
+  └── Verification      — pytest suite with AI engine mocking
+```
+
+</details>
+
+<br/>
+
+<h3 align="center">
+  <sub><img src="./assets/docs/icons/icon-tiers.svg" width="22" height="22"/></sub>&#160; Subscription Tiers
+</h3>
+
+<img src="./assets/docs/images/teal-divider.svg" width="100%"/>
+
+<br/>
+
+<details>
+<summary><b>View full tier comparison</b></summary>
+<br/>
+
+| Feature | **Free** | **Pro** ₹799/mo | **Enterprise** ₹2,499/mo |
+|---------|:--------:|:--------------:|:------------------------:|
+| Daily Quota | 5,000 tokens | 25,000 tokens | 75,000 tokens |
+| Monthly Quota | 50,000 tokens | 250,000 tokens | 750,000 tokens |
+| Translation Engines | Google, MyMemory | All | All |
+| Transcription | Google Online | + Whisper tiny–small | + Whisper medium, Riva |
+| Microphone Audio | — | ✓ | ✓ |
+| Caption History | — | 7-day | 30-day |
+| Session Duration | 15 min | 2 hours | 8 hours |
+| Concurrent Sessions | 1 | 2 | 5 |
+
+<p><sub>Usage counts input + output tokens across all engines. A one-time <strong>Trial</strong> tier is available for new users to test Pro-level features. Users with their own <strong>NVIDIA API Key</strong> bypass the daily quota for NVIDIA-backed engines.</sub></p>
+
+</details>
+
+<br/>
+
+<h3 align="center">
+  <sub><img src="./assets/docs/icons/icon-docs.svg" width="22" height="22"/></sub>&#160; Documentation
+</h3>
+
+<img src="./assets/docs/images/teal-divider.svg" width="100%"/>
+
+<br/>
+
+<p align="center">
+  Full architecture diagrams, feature guides, and maintenance playbooks in <code>docs/</code> — start with the <a href="docs/00_doc_index.md">Master Documentation Index →</a>
+</p>
+
+<br/>
+
+<div align="center">
+  <img src="https://img.shields.io/badge/License-Restricted_Study_Only-0369A1?style=flat-square&labelColor=001A2E" alt="License"/>
+  &nbsp;&nbsp;
+  <a href="https://github.com/Marshal-GG/omni-bridge-translator/releases">
+    <img src="https://img.shields.io/badge/Changelog-Releases-0D9488?style=flat-square&labelColor=001A2E&logo=github&logoColor=white" alt="Changelog"/>
+  </a>
+  &nbsp;&nbsp;
+  <a href="docs/00_doc_index.md">
+    <img src="https://img.shields.io/badge/Docs-Index-0284C7?style=flat-square&labelColor=001A2E" alt="Docs"/>
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://github.com/Marshal-GG/omni-bridge-translator/issues/new?labels=bug">
+    <img src="https://img.shields.io/badge/Report-Bug-0369A1?style=flat-square&labelColor=001A2E" alt="Report Bug"/>
+  </a>
+</div>
+
+<br/>
+
+<div align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0_000D1A,50_001A2E,100_000D1A&height=120&section=footer" width="100%"/>
+</div>
+
+<div align="center">
+  Made with ❤️ by <a href="https://github.com/Marshal-GG">Marshal-GG</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/Marshal-GG/omni-bridge-translator/issues">Report a Bug</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/Marshal-GG/omni-bridge-translator/issues">Request a Feature</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/Marshal-GG/omni-bridge-translator/releases">Changelog</a>
 </div>

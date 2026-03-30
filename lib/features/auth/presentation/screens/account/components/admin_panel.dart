@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:omni_bridge/core/widgets/omni_tinted_button.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/core/widgets/omni_search_bar.dart';
 
 class AdminPanel extends StatefulWidget {
   const AdminPanel({super.key});
@@ -76,15 +78,10 @@ class _AdminPanelState extends State<AdminPanel> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                OmniSearchBar(
+                  hintText: 'Search by Name or Email...',
                   onChanged: (val) =>
                       setState(() => _adminUserSearch = val.trim()),
-                  decoration: const InputDecoration(
-                    hintText: 'Search by Name or Email...',
-                    prefixIcon: Icon(Icons.search, size: 16),
-                    isDense: true,
-                  ),
-                  style: const TextStyle(fontSize: 13),
                 ),
                 const SizedBox(height: 12),
                 Container(
@@ -693,23 +690,12 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                ElevatedButton.icon(
+                OmniTintedButton(
                   onPressed: _updatingPoll ? null : _updatePollingRate,
-                  icon: _updatingPoll
-                      ? const SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.sync_rounded, size: 14),
-                  label: const Text(
-                    'Update Rate',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.tealAccent.withValues(alpha: 0.1),
-                    foregroundColor: Colors.tealAccent,
-                  ),
+                  isLoading: _updatingPoll,
+                  icon: Icons.sync_rounded,
+                  label: 'Update Rate',
+                  color: Colors.tealAccent,
                 ),
               ],
             ),
@@ -725,30 +711,14 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
             const SizedBox(height: 8),
             Row(
               children: [
-                ElevatedButton.icon(
+                OmniTintedButton(
                   onPressed: _seeding ? null : _seedMonetization,
-                  icon: _seeding
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          _lastResult == 'success'
-                              ? Icons.check_circle_outline
-                              : Icons.cloud_upload_outlined,
-                          size: 16,
-                        ),
-                  label: Text(
-                    _seeding ? 'Seeding...' : 'Seed Monetization Config',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orangeAccent.withValues(
-                      alpha: 0.15,
-                    ),
-                    foregroundColor: Colors.orangeAccent,
-                  ),
+                  isLoading: _seeding,
+                  icon: _lastResult == 'success'
+                      ? Icons.check_circle_outline
+                      : Icons.cloud_upload_outlined,
+                  label: _seeding ? 'Seeding...' : 'Seed Monetization Config',
+                  color: Colors.orangeAccent,
                 ),
                 if (_lastResult == 'success') ...[
                   const SizedBox(width: 8),

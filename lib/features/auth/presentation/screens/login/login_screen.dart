@@ -286,7 +286,7 @@ class _GoogleSignInButtonState extends State<_GoogleSignInButton> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset('assets/google-logo.png', width: 20, height: 20),
+              Image.asset('assets/app/images/google-logo.png', width: 20, height: 20),
               const SizedBox(width: 10),
               const Text(
                 'Continue with Google',

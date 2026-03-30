@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_theme.dart';
 
-Widget buildSupportBranding() {
+Widget buildSupportBranding(BuildContext context) {
   return Row(
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
       ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppShapes.xl,
         child: Image.asset(
-          'assets/icon.png',
+          'assets/app/icons/icon.png',
           width: 56,
           height: 56,
           fit: BoxFit.cover,
@@ -15,10 +16,10 @@ Widget buildSupportBranding() {
             return Container(
               width: 56,
               height: 56,
-              color: Colors.white10,
+              color: AppColors.white10,
               child: const Icon(
                 Icons.help_outline_rounded,
-                color: Colors.cyanAccent,
+                color: AppColors.accentCyan,
                 size: 32,
               ),
             );
@@ -26,23 +27,20 @@ Widget buildSupportBranding() {
         ),
       ),
       const SizedBox(width: 16),
-      const Column(
+      Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Omni Bridge',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w700,
               letterSpacing: -0.2,
             ),
           ),
           Text(
             'SUPPORT & FEEDBACK',
-            style: TextStyle(
-              color: Colors.cyanAccent,
-              fontSize: 11,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.accentCyan,
               fontWeight: FontWeight.w600,
               letterSpacing: 1.2,
             ),

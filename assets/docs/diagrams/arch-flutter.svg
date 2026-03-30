@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 195" width="900" height="195">
+  <defs>
+    <style>
+      @keyframes cGlow { 0%,100%{opacity:.85} 50%{opacity:1} }
+      @keyframes dash   { to { stroke-dashoffset: -14; } }
+      .gl { animation:cGlow 2.5s ease-in-out infinite; }
+      .da { animation:dash  1.4s linear infinite; }
+    </style>
+    <pattern id="cgr" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0L0 0 0 24" fill="none" stroke="#001A2E" stroke-width="0.6"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="195" fill="#000D1A" rx="10"/>
+  <rect width="900" height="195" fill="url(#cgr)" rx="10"/>
+
+  <!-- Header -->
+  <text x="450" y="22" text-anchor="middle" font-family="Courier New,monospace" font-size="10" fill="#00FFDD" letter-spacing="3" opacity="0.7">FLUTTER CLEAN ARCHITECTURE</text>
+
+  <!-- ── Presentation Card ─────────────────────── -->
+  <rect x="10" y="30" width="262" height="132" rx="8" fill="#001A2E" stroke="#00FFDD" stroke-width="1.2" class="gl"/>
+  <rect x="10" y="30" width="262" height="28"  rx="8" fill="#003040"/>
+  <rect x="10" y="48" width="262" height="10"       fill="#003040"/>
+  <text x="141" y="48" text-anchor="middle" font-family="Courier New,monospace" font-size="9.5" fill="#00FFDD" font-weight="bold" letter-spacing="1.5">PRESENTATION</text>
+  <text x="141" y="61" text-anchor="middle" font-family="Courier New,monospace" font-size="7"   fill="#00FFDD" opacity="0.55" letter-spacing="1">BLoC · Widgets · Routes</text>
+  <text x="26" y="80"  font-family="Courier New,monospace" font-size="8" fill="#7DD3FC">▸  BLoC + Cubit state management</text>
+  <text x="26" y="95"  font-family="Courier New,monospace" font-size="8" fill="#7DD3FC">▸  Route-scoped DI via get_it</text>
+  <text x="26" y="110" font-family="Courier New,monospace" font-size="8" fill="#7DD3FC">▸  Overlay · Mini Mode · History UI</text>
+  <text x="26" y="125" font-family="Courier New,monospace" font-size="8" fill="#7DD3FC">▸  9 feature slices (auth, translation,</text>
+  <text x="35" y="139" font-family="Courier New,monospace" font-size="8" fill="#7DD3FC">   settings, history, subscription…)</text>
+  <text x="141" y="155" text-anchor="middle" font-family="Courier New,monospace" font-size="7.5" fill="#0D9488" letter-spacing="1.5">UI LAYER · DART · FLUTTER</text>
+
+  <!-- Arrow: Presentation → Domain -->
+  <line x1="272" y1="88" x2="314" y2="88" stroke="#00FFDD" stroke-width="1.2" stroke-dasharray="4,3" class="da"/>
+  <polygon points="314,84 322,88 314,92" fill="#00FFDD"/>
+  <text x="297" y="82" text-anchor="middle" font-family="Courier New,monospace" font-size="6.5" fill="#00FFDD" opacity="0.7">uses</text>
+
+  <!-- ── Domain Card ───────────────────────────── -->
+  <rect x="320" y="30" width="260" height="132" rx="8" fill="#001830" stroke="#F59E0B" stroke-width="1.4" class="gl"/>
+  <rect x="320" y="30" width="260" height="28"  rx="8" fill="#1A1000"/>
+  <rect x="320" y="48" width="260" height="10"       fill="#1A1000"/>
+  <text x="450" y="48" text-anchor="middle" font-family="Courier New,monospace" font-size="9.5" fill="#F59E0B" font-weight="bold" letter-spacing="1.5">DOMAIN</text>
+  <text x="450" y="61" text-anchor="middle" font-family="Courier New,monospace" font-size="7"   fill="#F59E0B" opacity="0.55" letter-spacing="1">Pure Dart · No Framework</text>
+  <text x="336" y="80"  font-family="Courier New,monospace" font-size="8" fill="#FCD34D">▸  28+ UseCases (single-responsibility)</text>
+  <text x="336" y="95"  font-family="Courier New,monospace" font-size="8" fill="#FCD34D">▸  Abstract Repository interfaces</text>
+  <text x="336" y="110" font-family="Courier New,monospace" font-size="8" fill="#FCD34D">▸  Entities (pure Dart models)</text>
+  <text x="336" y="125" font-family="Courier New,monospace" font-size="8" fill="#FCD34D">▸  Zero external dependencies</text>
+  <text x="336" y="140" font-family="Courier New,monospace" font-size="8" fill="#FCD34D">▸  Business logic · Validation rules</text>
+  <text x="450" y="155" text-anchor="middle" font-family="Courier New,monospace" font-size="7.5" fill="#B45309" letter-spacing="1.5">INNERMOST · STABLE CORE</text>
+
+  <!-- Arrow: Data → Domain -->
+  <line x1="628" y1="88" x2="586" y2="88" stroke="#38BDF8" stroke-width="1.2" stroke-dasharray="4,3" class="da"/>
+  <polygon points="586,84 578,88 586,92" fill="#38BDF8"/>
+  <text x="607" y="82" text-anchor="middle" font-family="Courier New,monospace" font-size="6.5" fill="#38BDF8" opacity="0.7">uses</text>
+
+  <!-- ── Data Card ─────────────────────────────── -->
+  <rect x="635" y="30" width="255" height="132" rx="8" fill="#001A2E" stroke="#38BDF8" stroke-width="1.2" class="gl"/>
+  <rect x="635" y="30" width="255" height="28"  rx="8" fill="#002233"/>
+  <rect x="635" y="48" width="255" height="10"       fill="#002233"/>
+  <text x="763" y="48" text-anchor="middle" font-family="Courier New,monospace" font-size="9.5" fill="#38BDF8" font-weight="bold" letter-spacing="1.5">DATA</text>
+  <text x="763" y="61" text-anchor="middle" font-family="Courier New,monospace" font-size="7"   fill="#38BDF8" opacity="0.55" letter-spacing="1">Repositories · DataSources</text>
+  <text x="651" y="80"  font-family="Courier New,monospace" font-size="8" fill="#7DD3FC">▸  Firebase (Auth + Firestore)</text>
+  <text x="651" y="95"  font-family="Courier New,monospace" font-size="8" fill="#7DD3FC">▸  WebSocket client (audio stream)</text>
+  <text x="651" y="110" font-family="Courier New,monospace" font-size="8" fill="#7DD3FC">▸  REST (NVIDIA, Google, MyMemory)</text>
+  <text x="651" y="125" font-family="Courier New,monospace" font-size="8" fill="#7DD3FC">▸  Impl of Domain repo interfaces</text>
+  <text x="651" y="140" font-family="Courier New,monospace" font-size="8" fill="#7DD3FC">▸  Local cache (Hive / SharedPrefs)</text>
+  <text x="763" y="155" text-anchor="middle" font-family="Courier New,monospace" font-size="7.5" fill="#0284C7" letter-spacing="1.5">OUTER LAYER · INFRA</text>
+
+  <!-- ── DI strip at bottom ────────────────────── -->
+  <rect x="10" y="172" width="880" height="18" rx="5" fill="#001220" stroke="#0D9488" stroke-width="0.8" opacity="0.9"/>
+  <text x="450" y="184" text-anchor="middle" font-family="Courier New,monospace" font-size="8" fill="#00FFDD" letter-spacing="1.5">get_it — DataSource  →  Repository  →  UseCase  →  Bloc  (scoped dependency injection)</text>
+</svg>

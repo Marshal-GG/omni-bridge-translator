@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../blocs/support_bloc.dart';
 import '../../domain/entities/feedback_ticket.dart';
+import 'package:omni_bridge/core/widgets/omni_badge.dart';
+import 'package:omni_bridge/core/widgets/omni_search_bar.dart';
+import 'support_new_ticket_button.dart';
 
 class SupportSidebar extends StatelessWidget {
   const SupportSidebar({super.key});
@@ -10,38 +14,57 @@ class SupportSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 350,
+      width: AppSpacing.ticketListWidth,
       decoration: const BoxDecoration(
-        color: Color(0xFF1A1A1A),
-        border: Border(right: BorderSide(color: Colors.white10)),
+        color: Colors.transparent,
+        border: Border(
+          right: BorderSide(color: Colors.white10),
+        ),
       ),
-      child: Column(
+      child: Stack(
         children: [
-          _buildHeader(context),
-          _buildSearchField(),
-          const Divider(height: 1, color: Colors.white10),
-          Expanded(
-            child: BlocBuilder<SupportBloc, SupportState>(
-              builder: (context, state) {
-                if (state.isLoadingHistory) {
-                  return const Center(child: CircularProgressIndicator(color: Colors.cyanAccent));
-                }
+          Column(
+            children: [
+              _buildSearchHeader(context),
+              Expanded(
+                child: BlocBuilder<SupportBloc, SupportState>(
+                  builder: (context, state) {
+                    if (state.isLoadingHistory) {
+                      return const Center(child: CircularProgressIndicator(color: AppColors.accentCyan));
+                    }
 
-                if (state.tickets.isEmpty) {
-                  return _buildEmptyState(context);
-                }
+                    if (state.error != null && state.tickets.isEmpty) {
+                      return _buildErrorState(context, state.error!);
+                    }
 
-                return ListView.builder(
-                  itemCount: state.tickets.length,
-                  itemBuilder: (context, index) {
-                    final ticket = state.tickets[index];
-                    final isActive = state.activeTicketId == ticket.id;
-                    return _TicketListTile(
-                      ticket: ticket,
-                      isActive: isActive,
+                    if (state.tickets.isEmpty) {
+                      return _buildEmptyState(context);
+                    }
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: AppSpacing.xs),
+                      itemCount: state.tickets.length,
+                      itemBuilder: (context, index) {
+                        final ticket = state.tickets[index];
+                        final isActive = state.activeTicketId == ticket.id;
+                        return _TicketListTile(
+                          ticket: ticket,
+                          isActive: isActive,
+                        );
+                      },
                     );
                   },
-                );
+                ),
+              ),
+            ],
+          ),
+          // Floating New Ticket Button - Bottom Right
+          Positioned(
+            bottom: 24,
+            right: 16,
+            child: SupportNewTicketButton(
+              onTap: () {
+                // Trigger new ticket flow
               },
             ),
           ),
@@ -50,45 +73,11 @@ class SupportSidebar extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 12, 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            'Support',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          IconButton(
-            icon: const Icon(Icons.add_comment_outlined, color: Colors.cyanAccent, size: 22),
-            onPressed: () {
-              context.read<SupportBloc>().add(const CloseChat()); // This will show the "New Ticket" form
-            },
-            tooltip: 'New Request',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchField() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: TextField(
-        style: const TextStyle(fontSize: 14),
-        decoration: InputDecoration(
-          hintText: 'Search tickets...',
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-          prefixIcon: Icon(Icons.search, size: 18, color: Colors.white.withValues(alpha: 0.3)),
-          filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.03),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide.none,
-          ),
-        ),
+  Widget _buildSearchHeader(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.all(AppSpacing.sm),
+      child: OmniSearchBar(
+        hintText: 'Search tickets...',
       ),
     );
   }
@@ -100,16 +89,48 @@ class SupportSidebar extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.history, size: 48, color: Colors.white.withValues(alpha: 0.1)),
+            Icon(Icons.history_rounded, size: 48, color: AppColors.white24),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'No tickets found',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+              style: TextStyle(color: AppColors.white54, fontSize: 13),
             ),
             const SizedBox(height: 16),
-            TextButton(
+            TextButton.icon(
               onPressed: () => context.read<SupportBloc>().add(const LoadTicketHistory()),
-              child: const Text('Refresh', style: TextStyle(color: Colors.cyanAccent)),
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Refresh'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.accentRed),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load tickets',
+              style: TextStyle(color: AppColors.offWhite, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: const TextStyle(color: AppColors.white54, fontSize: 11),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => context.read<SupportBloc>().add(const LoadTicketHistory()),
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Retry'),
             ),
           ],
         ),
@@ -129,120 +150,146 @@ class _TicketListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        context.read<SupportBloc>().add(OpenChat(ticket.id!));
-      },
-      child: Container(
-        color: isActive ? Colors.white.withValues(alpha: 0.05) : Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            _buildAvatar(),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
+        onTap: () {
+          context.read<SupportBloc>().add(OpenChat(ticket.id!));
+        },
+        borderRadius: AppShapes.lg,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isActive 
+                ? Colors.tealAccent.withValues(alpha: 0.05)
+                : Colors.transparent,
+            borderRadius: AppShapes.lg,
+            border: Border.all(
+              color: isActive 
+                  ? Colors.tealAccent.withValues(alpha: 0.2)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          ticket.subject,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: isActive ? Colors.cyanAccent : Colors.white,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                  Expanded(
+                    child: Text(
+                      ticket.subject,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: isActive ? AppColors.accentCyan : AppColors.offWhite,
                       ),
-                      Text(
-                        _formatDate(ticket.updatedAt),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.white.withValues(alpha: 0.3),
-                        ),
-                      ),
-                    ],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          ticket.lastMessage.isNotEmpty ? ticket.lastMessage : ticket.message,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white.withValues(alpha: 0.5),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (ticket.status == TicketStatus.open || ticket.status == TicketStatus.inProgress)
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(ticket.status),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                    ],
+                  Text(
+                    _formatTime(ticket.updatedAt),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.white54.withValues(alpha: 0.7),
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                ticket.lastMessage.isNotEmpty ? ticket.lastMessage : ticket.message,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.white54,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _StatusTag(status: ticket.status),
+                  const _AvatarStack(),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildAvatar() {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: _getStatusColor(ticket.status).withValues(alpha: 0.1),
-        shape: BoxShape.circle,
-        border: Border.all(color: _getStatusColor(ticket.status).withValues(alpha: 0.2)),
-      ),
-      child: Icon(
-        _getStatusIcon(ticket.status),
-        size: 20,
-        color: _getStatusColor(ticket.status),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
+  String _formatTime(DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date);
-    if (diff.inDays == 0) return DateFormat('h:mm a').format(date);
-    if (diff.inDays == 1) return 'Yesterday';
-    if (diff.inDays < 7) return DateFormat('EEEE').format(date);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
     return DateFormat('MMM d').format(date);
   }
+}
 
-  Color _getStatusColor(TicketStatus status) {
+class _StatusTag extends StatelessWidget {
+  final TicketStatus status;
+  const _StatusTag({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    String label;
     switch (status) {
-      case TicketStatus.open: return Colors.blueAccent;
-      case TicketStatus.inProgress: return Colors.orangeAccent;
-      case TicketStatus.resolved: return Colors.greenAccent;
-      case TicketStatus.closed: return Colors.grey;
+      case TicketStatus.open:
+        color = AppColors.accentCyan; label = 'NEW'; break;
+      case TicketStatus.inProgress:
+        color = AppColors.translationTeal; label = 'ACTIVE'; break;
+      case TicketStatus.resolved:
+        color = Colors.greenAccent; label = 'RESOLVED'; break;
+      case TicketStatus.closed:
+        color = AppColors.white54; label = 'CLOSED'; break;
     }
+
+    return OmniBadge(text: label, color: color);
   }
+}
 
-  IconData _getStatusIcon(TicketStatus status) {
-    switch (status) {
-      case TicketStatus.open: return Icons.mark_chat_unread_outlined;
-      case TicketStatus.inProgress: return Icons.forum_outlined;
-      case TicketStatus.resolved: return Icons.check_circle_outline;
-      case TicketStatus.closed: return Icons.lock_clock_outlined;
-    }
+class _AvatarStack extends StatelessWidget {
+  const _AvatarStack();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 32,
+      height: 18,
+      child: Stack(
+        children: [
+          Positioned(
+            right: 0,
+            child: CircleAvatar(
+              radius: 9,
+              backgroundColor: AppColors.surfaceLight,
+              child: CircleAvatar(
+                radius: 8,
+                backgroundColor: AppColors.accentCyan.withValues(alpha: 0.15),
+                child: const Icon(Icons.person, size: 10, color: AppColors.accentCyan),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 12,
+            child: CircleAvatar(
+              radius: 9,
+              backgroundColor: AppColors.surfaceLight,
+              child: const CircleAvatar(
+                radius: 8,
+                backgroundColor: Colors.white12,
+                child: Icon(Icons.support_agent, size: 10, color: Colors.white70),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

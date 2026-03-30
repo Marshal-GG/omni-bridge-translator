@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/subscription_status.dart';
+import 'package:omni_bridge/core/widgets/omni_progress_bar.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:intl/intl.dart';
 
@@ -62,14 +63,10 @@ Widget buildCurrentUsageDisplay({
         ],
       ),
       const SizedBox(height: 10),
-      ClipRRect(
-        borderRadius: BorderRadius.circular(3),
-        child: LinearProgressIndicator(
-          value: status.progress,
-          backgroundColor: Colors.white10,
-          color: status.progress > 0.9 ? Colors.redAccent : Colors.tealAccent,
-          minHeight: 5,
-        ),
+      OmniProgressBar(
+        progress: status.progress,
+        height: 5.0,
+        borderRadius: 3.0,
       ),
       const SizedBox(height: 8),
       Text(

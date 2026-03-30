@@ -12,7 +12,7 @@ import 'package:omni_bridge/features/settings/presentation/widgets/settings_head
 import 'package:omni_bridge/features/settings/presentation/widgets/input_output_tab.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/languages_tab.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/display_tab.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'package:omni_bridge/core/widgets/omni_version_chip.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -24,18 +24,12 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  String _version = '1.0.0';
-
   bool _synced = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-
-    PackageInfo.fromPlatform().then((info) {
-      if (mounted) setState(() => _version = info.version);
-    });
   }
 
   @override
@@ -243,10 +237,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                                               state,
                                             ),
                                             const SizedBox(height: 40),
-                                            Center(
-                                              child: _VersionChip(
-                                                label: 'v$_version',
-                                              ),
+                                            const Center(
+                                              child: OmniVersionChip(),
                                             ),
                                           ],
                                         ),
@@ -269,7 +261,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                                           children: [
                                             buildDisplayTab(context, state),
                                             const SizedBox(height: 40),
-                                            _VersionChip(label: 'v$_version'),
+                                            const OmniVersionChip(),
                                           ],
                                         ),
                                       ),
@@ -291,7 +283,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                                           children: [
                                             buildInputOutputTab(context, state),
                                             const SizedBox(height: 40),
-                                            _VersionChip(label: 'v$_version'),
+                                            const OmniVersionChip(),
                                           ],
                                         ),
                                       ),
@@ -316,29 +308,3 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 }
 
-class _VersionChip extends StatelessWidget {
-  final String label;
-
-  const _VersionChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Text(
-        'OMNI BRIDGE $label'.toUpperCase(),
-        style: const TextStyle(
-          color: Colors.white24,
-          fontSize: 8,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
-}

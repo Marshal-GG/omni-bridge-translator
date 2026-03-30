@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../blocs/support_bloc.dart';
 import '../../domain/entities/feedback_ticket.dart';
 import '../../domain/entities/support_message.dart';
+import 'package:omni_bridge/core/widgets/omni_badge.dart';
 import 'chat_input_widget.dart';
 
 class SupportChatView extends StatelessWidget {
@@ -15,7 +17,12 @@ class SupportChatView extends StatelessWidget {
     return BlocBuilder<SupportBloc, SupportState>(
       builder: (context, state) {
         if (state.activeTicketId == null) {
-          return const Center(child: Text('Select a ticket to view conversation'));
+          return Center(
+            child: Text(
+              'Select a ticket to view conversation',
+              style: AppTextStyles.body.copyWith(color: AppColors.white54),
+            ),
+          );
         }
 
         final ticket = state.tickets.firstWhere(
@@ -38,10 +45,10 @@ class SupportChatView extends StatelessWidget {
 
   Widget _buildChatHeader(BuildContext context, FeedbackTicket ticket) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.02),
-        border: const Border(bottom: BorderSide(color: Colors.white10)),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: AppSpacing.sm),
+      decoration: const BoxDecoration(
+        color: Color(0x05FFFFFF), // Very subtle white (0.02)
+        border: Border(bottom: BorderSide(color: AppColors.white10)),
       ),
       child: Row(
         children: [
@@ -51,14 +58,14 @@ class SupportChatView extends StatelessWidget {
               children: [
                 Text(
                   ticket.subject,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                  style: Theme.of(context).textTheme.titleMedium,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'Ticket #${ticket.id?.substring(0, 8).toUpperCase() ?? ""}',
-                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.3)),
+                  style: AppTextStyles.caption.copyWith(color: AppColors.whiteOpacity(0.3)),
                 ),
               ],
             ),
@@ -72,33 +79,25 @@ class SupportChatView extends StatelessWidget {
   Widget _buildStatusTag(TicketStatus status) {
     Color color;
     switch (status) {
-      case TicketStatus.open: color = Colors.blueAccent; break;
-      case TicketStatus.inProgress: color = Colors.orangeAccent; break;
-      case TicketStatus.resolved: color = Colors.greenAccent; break;
-      case TicketStatus.closed: color = Colors.grey; break;
+      case TicketStatus.open: color = AppColors.statusOpen; break;
+      case TicketStatus.inProgress: color = AppColors.statusInProgress; break;
+      case TicketStatus.resolved: color = AppColors.statusResolved; break;
+      case TicketStatus.closed: color = AppColors.statusClosed; break;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Text(
-        status.name.toUpperCase(),
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
-      ),
+    return OmniBadge(
+      text: status.name.toUpperCase(),
+      color: color,
     );
   }
 
   Widget _buildMessagesList(SupportState state, FeedbackTicket ticket) {
     if (state.isLoadingMessages) {
-      return const Center(child: CircularProgressIndicator(color: Colors.cyanAccent));
+      return const Center(child: CircularProgressIndicator(color: AppColors.accentCyan));
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       reverse: true,
       itemCount: state.messages.length + 1,
       itemBuilder: (context, index) {
@@ -163,8 +162,8 @@ class _MessageBubble extends StatelessWidget {
               ),
               border: Border.all(
                 color: isUser 
-                    ? Colors.cyanAccent.withValues(alpha: 0.2) 
-                    : Colors.white10,
+                    ? AppColors.accentCyan.withValues(alpha: 0.2) 
+                    : AppColors.white10,
               ),
             ),
             child: Column(
@@ -175,17 +174,16 @@ class _MessageBubble extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 6),
                     child: Text(
                       'Initial Description',
-                      style: TextStyle(
-                        fontSize: 10, 
+                      style: AppTextStyles.labelTiny.copyWith(
                         fontWeight: FontWeight.bold, 
-                        color: Colors.cyanAccent.withValues(alpha: 0.6),
+                        color: AppColors.accentCyan.withValues(alpha: 0.6),
                       ),
                     ),
                   ),
                 if (text.isNotEmpty)
                   Text(
                     text,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFFE8E8E8), height: 1.4),
+                    style: AppTextStyles.chatMessage,
                   ),
                 if (attachmentUrls.isNotEmpty) ...[
                   if (text.isNotEmpty) const SizedBox(height: 12),
@@ -202,7 +200,7 @@ class _MessageBubble extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
             child: Text(
               DateFormat('h:mm a').format(timestamp),
-              style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.2)),
+              style: AppTextStyles.labelTiny.copyWith(color: AppColors.whiteOpacity(0.2)),
             ),
           ),
         ],
@@ -217,13 +215,13 @@ class _MessageBubble extends StatelessWidget {
 
     return InkWell(
       onTap: () => launchUrl(Uri.parse(url)),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: AppShapes.md,
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(AppSpacing.xs),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white10),
+          color: AppColors.whiteOpacity(0.05),
+          borderRadius: AppShapes.md,
+          border: Border.all(color: AppColors.white10),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -231,12 +229,12 @@ class _MessageBubble extends StatelessWidget {
             Icon(
               isImage ? Icons.image : Icons.insert_drive_file,
               size: 16,
-              color: Colors.cyanAccent,
+              color: AppColors.accentCyan,
             ),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'View File',
-              style: TextStyle(fontSize: 11, color: Colors.white70),
+              style: AppTextStyles.caption.copyWith(color: AppColors.white70),
             ),
           ],
         ),

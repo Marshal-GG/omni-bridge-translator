@@ -28,7 +28,7 @@ InputDecoration searchDecoration(String hint) {
     fillColor: Colors.black26,
     isDense: true,
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(6),
       borderSide: BorderSide.none,
     ),
   );
@@ -360,7 +360,7 @@ class GpuStatusIndicator extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(

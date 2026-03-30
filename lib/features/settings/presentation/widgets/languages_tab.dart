@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:dropdown_search/dropdown_search.dart';
+
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_bloc.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_event.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_state.dart';
@@ -13,6 +13,10 @@ import 'package:omni_bridge/features/subscription/data/datasources/subscription_
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/settings_helpers.dart';
+import 'package:omni_bridge/core/widgets/omni_card.dart';
+import 'package:omni_bridge/core/widgets/omni_dropdown.dart';
+
+import 'package:omni_bridge/core/widgets/omni_badge.dart';
 
 Widget buildLanguagesTab(BuildContext context, SettingsState state) {
   return Container(
@@ -106,119 +110,78 @@ Widget _langDropdown({
   required void Function(MapEntry<String, String> item) onSelect,
   Set<String> disabledKeys = const {},
 }) {
-  const dropDec = DropDownDecoratorProps(
-    baseStyle: TextStyle(color: Colors.white, fontSize: 13),
-    dropdownSearchDecoration: InputDecoration(),
-  );
-
-  return SizedBox(
-    height: 36,
-    child: DropdownSearch<MapEntry<String, String>>(
-      items: items,
-      itemAsString: (entry) => entry.value,
-      selectedItem: selected,
-      compareFn: (a, b) => a.key == b.key,
-      onChanged: (_) {}, // handled directly in itemBuilder onTap
-      dropdownButtonProps: const DropdownButtonProps(
-        padding: EdgeInsets.zero,
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        hoverColor: Colors.transparent,
-        mouseCursor: SystemMouseCursors.basic,
-        icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.white38),
-      ),
-      dropdownBuilder: (context, selectedItem) {
-        if (selectedItem == null) return const SizedBox();
-        return Text(
-          selectedItem.value,
-          style: const TextStyle(color: Colors.white, fontSize: 13),
-          overflow: TextOverflow.ellipsis,
-        );
-      },
-      popupProps: PopupProps.menu(
-        showSearchBox: true,
-        fit: FlexFit.loose,
-        constraints: const BoxConstraints(maxHeight: 300),
-        searchDelay: Duration.zero,
-        interceptCallBacks: true,
-        searchFieldProps: TextFieldProps(
-          autofocus: true,
-          decoration: searchDecoration(hint),
-        ),
-        menuProps: MenuProps(
-          backgroundColor: const Color(0xFF2C2C2C),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+  return OmniDropdown<MapEntry<String, String>>(
+    items: items,
+    itemAsString: (entry) => entry.value,
+    selectedItem: selected,
+    compareFn: (a, b) => a.key == b.key,
+    onChanged: (_) {}, // handled directly in itemBuilder onTap
+    hintText: hint,
+    showSearchBox: true,
+    dropdownBuilder: (context, selectedItem) {
+      if (selectedItem == null) return const SizedBox();
+      return Text(
+        selectedItem.value,
+        style: const TextStyle(color: Colors.white, fontSize: 13),
+        overflow: TextOverflow.ellipsis,
+      );
+    },
+    itemBuilder: (popupContext, item, isSelectedRaw) {
+      final isCurrentlySelected = item.key == selected.key;
+      final isDisabled = disabledKeys.contains(item.key);
+      return InkWell(
+        onTap: isDisabled
+            ? null
+            : () {
+                Navigator.pop(popupContext);
+                Future.delayed(Duration.zero, () {
+                  onSelect(item);
+                });
+              },
+        splashColor: Colors.tealAccent.withValues(alpha: 0.2),
+        highlightColor: Colors.white10,
+        hoverColor: Colors.white10,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          color: isCurrentlySelected
+              ? Colors.tealAccent.withValues(alpha: 0.1)
+              : Colors.transparent,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.value,
+                  style: TextStyle(
+                    color: isDisabled
+                        ? Colors.white24
+                        : isCurrentlySelected
+                            ? Colors.white
+                            : Colors.white70,
+                    fontWeight: isCurrentlySelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              if (isCurrentlySelected) ...[
+                const SizedBox(width: 8),
+                const Icon(Icons.check, color: Colors.tealAccent, size: 18),
+              ],
+            ],
           ),
         ),
-        itemBuilder: (popupContext, item, isSelectedRaw) {
-          final isCurrentlySelected = item.key == selected.key;
-          final isDisabled = disabledKeys.contains(item.key);
-          return InkWell(
-            onTap: isDisabled
-                ? null
-                : () {
-                    Navigator.pop(popupContext);
-                    Future.delayed(Duration.zero, () {
-                      onSelect(item);
-                    });
-                  },
-            splashColor: Colors.tealAccent.withValues(alpha: 0.2),
-            highlightColor: Colors.white10,
-            hoverColor: Colors.white10,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: isCurrentlySelected
-                  ? Colors.tealAccent.withValues(alpha: 0.1)
-                  : Colors.transparent,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      item.value,
-                      style: TextStyle(
-                        color: isDisabled
-                            ? Colors.white24
-                            : isCurrentlySelected
-                                ? Colors.white
-                                : Colors.white70,
-                        fontWeight: isCurrentlySelected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                  if (isCurrentlySelected) ...[
-                    const SizedBox(width: 8),
-                    const Icon(Icons.check, color: Colors.tealAccent, size: 18),
-                  ],
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-      dropdownDecoratorProps: dropDec,
-    ),
+      );
+    },
   );
 }
 
 // ─── Translation Model Selector ───────────────────────────────────────────────────────
 
 Widget _buildRecommendedBadge({required bool isActive}) {
-  final color = isActive ? Colors.greenAccent : Colors.white38;
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.15),
-      borderRadius: BorderRadius.circular(4),
-      border: Border.all(color: color.withValues(alpha: 0.4)),
-    ),
-    child: Text(
-      'Recommended',
-      style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600),
-    ),
+  return OmniBadge(
+    text: 'Recommended',
+    color: isActive ? Colors.blueAccent : Colors.blue.shade700,
   );
 }
 
@@ -264,13 +227,8 @@ Widget buildTranslationModelSelector(
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Container(
+      OmniCard(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white12),
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -280,7 +238,8 @@ Widget buildTranslationModelSelector(
               builder: (context, transState) {
           return SizedBox(
             height: 36,
-            child: DropdownSearch<MapEntry<String, String>>(
+            child: OmniDropdown<MapEntry<String, String>>(
+              showSearchBox: false,
               items: translationModels.entries.toList(),
               itemAsString: (entry) => entry.value,
               selectedItem: MapEntry(
@@ -293,18 +252,6 @@ Widget buildTranslationModelSelector(
                 return hasAccess(next.key);
               },
               compareFn: (a, b) => a.key == b.key,
-              dropdownButtonProps: const DropdownButtonProps(
-                padding: EdgeInsets.zero,
-                splashColor: Colors.transparent,
-                highlightColor: Colors.transparent,
-                hoverColor: Colors.transparent,
-                mouseCursor: SystemMouseCursors.basic,
-                icon: Icon(
-                  Icons.keyboard_arrow_down,
-                  size: 18,
-                  color: Colors.white38,
-                ),
-              ),
               onChanged: (entry) {
                 if (entry != null && hasAccess(entry.key)) {
                   // Explicitly unload current model from memory upon selection change
@@ -361,17 +308,8 @@ Widget buildTranslationModelSelector(
                   ],
                 );
               },
-              popupProps: PopupProps.menu(
-                fit: FlexFit.loose,
-                constraints: const BoxConstraints(maxHeight: 250),
-                interceptCallBacks: true,
-                menuProps: const MenuProps(
-                  backgroundColor: Color(0xFF2C2C2C),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(10)),
-                  ),
-                ),
-                itemBuilder: (popupContext, item, _) {
+              maxHeight: 250,
+              itemBuilder: (popupContext, item, _) {
                   final isCurrentlySelected =
                       item.key == state.settings.translationModel;
                   final isRecommended = item.key == 'google';
@@ -471,11 +409,6 @@ Widget buildTranslationModelSelector(
                     ),
                   );
                 },
-              ),
-              dropdownDecoratorProps: const DropDownDecoratorProps(
-                baseStyle: TextStyle(color: Colors.white, fontSize: 13),
-                dropdownSearchDecoration: InputDecoration(),
-              ),
             ),
           );
         },
@@ -486,7 +419,7 @@ Widget buildTranslationModelSelector(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.red.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
           ),
           child: Row(
@@ -535,13 +468,8 @@ Widget buildTranslationModelSelector(
       ],
 
       const SizedBox(height: 16),
-      Container(
+      OmniCard(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white12),
-        ),
         child: _buildTranscriptionModelSection(context, state),
       ),
     ],
@@ -687,7 +615,7 @@ class _TranscriptionOption extends StatelessWidget {
         value == groupValue ||
         (value.startsWith('whisper') && groupValue.startsWith('whisper'));
     return InkWell(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(6),
       onTap: locked ? null : () => onChanged(value),
       child: Opacity(
         opacity: locked ? 0.4 : 1.0,
@@ -697,7 +625,7 @@ class _TranscriptionOption extends StatelessWidget {
             color: isSelected
                 ? Colors.tealAccent.withValues(alpha: 0.1)
                 : Colors.white.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
               color: isSelected
                   ? Colors.tealAccent.withValues(alpha: 0.5)
@@ -919,7 +847,7 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: Colors.white12),
       ),
       child: Column(

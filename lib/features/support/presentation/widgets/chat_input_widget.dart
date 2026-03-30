@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
+import '../../../../core/theme/app_theme.dart';
 import '../blocs/support_bloc.dart';
 
 class ChatInputWidget extends StatefulWidget {
@@ -61,7 +62,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
             if (state.chatAttachments.isNotEmpty)
               Container(
                 height: 60,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: state.chatAttachments.length,
@@ -73,30 +74,30 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                 ),
               ),
             Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.02),
-                border: const Border(top: BorderSide(color: Colors.white10)),
-              ),
+               padding: const EdgeInsets.all(AppSpacing.sm),
+               decoration: const BoxDecoration(
+                 color: Color(0x05FFFFFF), // white 0.02
+                 border: Border(top: BorderSide(color: AppColors.white10)),
+               ),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.attach_file, size: 20, color: Colors.white38),
+                    icon: const Icon(Icons.attach_file, size: 20, color: AppColors.white38),
                     onPressed: _pickFile,
                   ),
                   Expanded(
                     child: TextField(
                       controller: _controller,
-                      style: const TextStyle(fontSize: 14),
+                       style: AppTextStyles.body,
                       decoration: InputDecoration(
                         hintText: 'Type your message...',
-                        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
+                        hintStyle: AppTextStyles.body.copyWith(color: AppColors.whiteOpacity(0.2)),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: AppShapes.round,
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.05),
+                        fillColor: AppColors.whiteOpacity(0.05),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       ),
                       onSubmitted: (_) => _handleSubmitted(),
@@ -107,7 +108,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                     icon: Icon(
                       Icons.send,
                       size: 20,
-                      color: state.isSendingMessage ? Colors.white24 : Colors.cyanAccent,
+                      color: state.isSendingMessage ? AppColors.white24 : AppColors.accentCyan,
                     ),
                     onPressed: state.isSendingMessage ? null : _handleSubmitted,
                   ),
@@ -126,9 +127,9 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
       width: 120,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white10),
+        color: AppColors.whiteOpacity(0.05),
+        borderRadius: AppShapes.md,
+        border: Border.all(color: AppColors.white10),
       ),
       child: Row(
         children: [
@@ -137,14 +138,14 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
           Expanded(
             child: Text(
               fileName,
-              style: const TextStyle(fontSize: 10),
+               style: AppTextStyles.labelTiny,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           InkWell(
             onTap: () => context.read<SupportBloc>().add(RemoveChatAttachment(index)),
-            child: const Icon(Icons.close, size: 14, color: Colors.redAccent),
+            child: const Icon(Icons.close, size: 14, color: AppColors.accentRed),
           ),
         ],
       ),

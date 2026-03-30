@@ -37,8 +37,8 @@ lib/
 │   ├── navigation/              # AppRouter (Centralized) & GlobalNavigator
 │   ├── network/                 # Global HTTP Clients (e.g., RTDBClient)
 │   ├── platform/                # Platform-specific logic (Window, Tray, AppInitializer)
-│   ├── routes/                  # MyNavObserver (navigation analytics)
-│   ├── theme/                   # AppTheme (Dark Material 3)
+│   ├── routes/                  # MyNavObserver (navigation analytics & window resizing)
+│   ├── theme/                   # AppTheme (Design System: Colors, Spacing, Text, Shapes)
 │   └── utils/                   # Shared helpers & Extensions
 │
 └── features/                    # Feature Modules (Vertical Slice)
@@ -81,6 +81,11 @@ UseCases are the brain of the feature. They encapsulate a single business logic 
 | **Subscription** | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial`, `OpenCheckout`, `HasUsedTrial` |
 | **About** | `CheckForUpdate` |
 | **Usage** | *(Delegates to `UsageRepository` which wraps `ISubscriptionRepository`)* |
+
+### Design System (AppTheme)
+
+The application uses a centralized Design System located in `lib/core/theme/app_theme.dart`.
+All cosmetic values (Colors, Spacing, text Styles, Shapes) are defined here as comprehensive tokens (`AppColors`, `AppSpacing`, `AppTextStyles`, etc). Feature modules strictly use these shared tokens instead of hardcoded metrics to ensure consistent scaling and styling across the application UI.
 
 ### Dependency Injection (DI)
 

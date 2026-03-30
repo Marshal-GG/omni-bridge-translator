@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:intl/intl.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:omni_bridge/core/di/injection.dart';
@@ -10,11 +9,12 @@ import '../bloc/subscription_state.dart';
 import '../widgets/info_card.dart';
 import '../widgets/plan_card.dart';
 import '../widgets/section_title.dart';
-import '../widgets/version_chip.dart';
+import 'package:omni_bridge/core/widgets/omni_version_chip.dart';
 import '../widgets/subscription_header.dart';
 import '../widgets/subscription_footer.dart';
-import '../widgets/subscription_branding.dart';
+import 'package:omni_bridge/core/widgets/omni_branding.dart';
 import '../widgets/current_usage_display.dart';
+import 'package:omni_bridge/core/widgets/omni_window_layout.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -26,7 +26,7 @@ class SubscriptionScreen extends StatefulWidget {
 class _SubscriptionScreenState extends State<SubscriptionScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
-  String _version = '1.0.0';
+
 
   @override
   void initState() {
@@ -35,10 +35,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-
-    PackageInfo.fromPlatform().then((info) {
-      if (mounted) setState(() => _version = info.version);
-    });
   }
 
   @override
@@ -51,21 +47,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: BlocProvider(
+    return OmniWindowLayout(
+      child: BlocProvider(
         create: (context) => sl<SubscriptionBloc>(),
-        child: WindowBorder(
-          color: Colors.white12,
-          width: 1,
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF161616), Color(0xFF0F0F0F)],
-              ),
-            ),
             child: Column(
               children: [
                 buildSubscriptionHeader(context),
@@ -98,7 +82,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
-                                        buildSubscriptionBranding(),
+                                        const OmniBranding(
+                                          subtitle: 'PREMIUM SUBSCRIPTION',
+                                          fallbackIcon: Icons.workspace_premium_rounded,
+                                        ),
                                         const SizedBox(height: 24),
                                         if (status != null) ...[
                                           Padding(
@@ -186,7 +173,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                         const SizedBox(height: 32),
                                         buildSubscriptionFooter(context),
                                         const SizedBox(height: 24),
-                                        buildVersionChip(label: 'v$_version'),
+                                        const OmniVersionChip(),
                                         const SizedBox(height: 16),
                                       ],
                                     ),
@@ -200,11 +187,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                     },
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
-      ),
     );
   }
 }

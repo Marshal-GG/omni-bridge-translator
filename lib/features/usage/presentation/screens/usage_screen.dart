@@ -9,14 +9,14 @@ import 'package:omni_bridge/features/usage/domain/entities/engine_usage.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/usage_history_chart.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/usage_donut_chart.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/model_usage_bar_chart.dart';
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/usage_header.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/engine_usage_card.dart';
 import 'package:get_it/get_it.dart';
+import 'package:omni_bridge/core/widgets/omni_window_layout.dart';
+import 'package:omni_bridge/core/widgets/omni_card.dart';
 
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:omni_bridge/features/usage/presentation/widgets/usage_branding.dart';
-import 'package:omni_bridge/features/subscription/presentation/widgets/version_chip.dart';
+import 'package:omni_bridge/core/widgets/omni_branding.dart';
+import 'package:omni_bridge/core/widgets/omni_version_chip.dart';
 
 class UsageScreen extends StatefulWidget {
   const UsageScreen({super.key});
@@ -26,14 +26,11 @@ class UsageScreen extends StatefulWidget {
 }
 
 class _UsageScreenState extends State<UsageScreen> {
-  String _version = '1.0.0';
+
 
   @override
   void initState() {
     super.initState();
-    PackageInfo.fromPlatform().then((info) {
-      if (mounted) setState(() => _version = info.version);
-    });
   }
 
   @override
@@ -42,19 +39,7 @@ class _UsageScreenState extends State<UsageScreen> {
       create: (context) => UsageBloc(
         usageRepository: GetIt.I<UsageRepository>(),
       )..add(const LoadUsageStats()),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: WindowBorder(
-          color: Colors.white12,
-          width: 1,
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF161616), Color(0xFF0F0F0F)],
-              ),
-            ),
+      child: OmniWindowLayout(
             child: Column(
               children: [
                 buildUsageHeader(context),
@@ -123,7 +108,10 @@ class _UsageScreenState extends State<UsageScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        buildUsageBranding(),
+                                        const OmniBranding(
+                                          subtitle: 'USAGE ANALYTICS',
+                                          fallbackIcon: Icons.analytics_rounded,
+                                        ),
                                         const SizedBox(height: 32),
                                         _buildDashboard(context, state, isNarrow),
                                         const SizedBox(height: 32),
@@ -181,8 +169,8 @@ class _UsageScreenState extends State<UsageScreen> {
                                           ),
                                         ),
                                         const SizedBox(height: 48),
-                                        Center(
-                                          child: buildVersionChip(label: 'v$_version'),
+                                        const Center(
+                                          child: OmniVersionChip(),
                                         ),
                                         const SizedBox(height: 16),
                                       ],
@@ -199,11 +187,9 @@ class _UsageScreenState extends State<UsageScreen> {
                     },
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
-      ),
     );
   }
 
@@ -400,22 +386,11 @@ class _UsageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
+      child: OmniCard(
+        padding: const EdgeInsets.all(20),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -440,6 +415,7 @@ class _UsageCard extends StatelessWidget {
           child,
         ],
       ),
+     ),
     );
   }
 }

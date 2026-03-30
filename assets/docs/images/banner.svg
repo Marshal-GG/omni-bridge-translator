@@ -1,0 +1,211 @@
+<svg width="900" height="240" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   style="stop-color:#000D1A"/>
+      <stop offset="50%"  style="stop-color:#001A2E"/>
+      <stop offset="100%" style="stop-color:#000D1A"/>
+    </linearGradient>
+    <!-- Teal glow gradient for scan line -->
+    <linearGradient id="scanGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   style="stop-color:#00FFDD;stop-opacity:0"/>
+      <stop offset="50%"  style="stop-color:#00FFDD;stop-opacity:0.5"/>
+      <stop offset="100%" style="stop-color:#00FFDD;stop-opacity:0"/>
+    </linearGradient>
+    <!-- Divider line gradient -->
+    <linearGradient id="divGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   style="stop-color:#00FFDD;stop-opacity:0"/>
+      <stop offset="50%"  style="stop-color:#00FFDD;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#00FFDD;stop-opacity:0"/>
+    </linearGradient>
+    <!-- Bridge glow gradient (left-right) -->
+    <linearGradient id="bridgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   style="stop-color:#00FFDD;stop-opacity:0.1"/>
+      <stop offset="40%"  style="stop-color:#00FFDD;stop-opacity:0.8"/>
+      <stop offset="60%"  style="stop-color:#38BDF8;stop-opacity:0.8"/>
+      <stop offset="100%" style="stop-color:#38BDF8;stop-opacity:0.1"/>
+    </linearGradient>
+    <!-- Glow filter -->
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Subtle glow filter -->
+    <filter id="subtleGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <style>
+      @keyframes titlePulse {
+        0%, 100% { filter: drop-shadow(0 0 6px #00FFDD) drop-shadow(0 0 14px #00FFDD); opacity: 0.95; }
+        50%       { filter: drop-shadow(0 0 16px #00FFDD) drop-shadow(0 0 32px #00FFDD) drop-shadow(0 0 50px #38BDF8); opacity: 1; }
+      }
+      @keyframes titleIn {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes subIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 0.88; transform: translateY(0); }
+      }
+      @keyframes tagIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 0.75; transform: translateY(0); }
+      }
+      @keyframes scan {
+        0%   { transform: translateX(-900px); }
+        100% { transform: translateX(900px); }
+      }
+      @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0; }
+      }
+      @keyframes cornerPulse {
+        0%, 100% { opacity: 0.5; }
+        50%       { opacity: 1.0; }
+      }
+      @keyframes dotPulse {
+        0%, 100% { opacity: 0.3; r: 3; }
+        50%       { opacity: 1.0; r: 5; }
+      }
+      @keyframes waveFlow {
+        0%   { stroke-dashoffset: 0; }
+        100% { stroke-dashoffset: -60; }
+      }
+      @keyframes orbitLeft {
+        0%   { transform: translate(150px, 120px) rotate(0deg)   translate(55px, 0); }
+        100% { transform: translate(150px, 120px) rotate(360deg) translate(55px, 0); }
+      }
+      @keyframes orbitRight {
+        0%   { transform: translate(750px, 120px) rotate(0deg)   translate(55px, 0); }
+        100% { transform: translate(750px, 120px) rotate(-360deg) translate(55px, 0); }
+      }
+      .title {
+        font-family: 'Courier New', monospace;
+        font-weight: 900;
+        font-size: 50px;
+        fill: #00FFDD;
+        letter-spacing: 16px;
+        animation: titlePulse 3s ease-in-out infinite, titleIn 0.9s ease-out forwards;
+      }
+      .subtitle {
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        fill: #38BDF8;
+        letter-spacing: 8px;
+        opacity: 0;
+        animation: subIn 0.8s ease-out 0.5s forwards;
+      }
+      .tag {
+        font-family: 'Courier New', monospace;
+        font-size: 10px;
+        fill: #7DD3FC;
+        letter-spacing: 4px;
+        opacity: 0;
+        animation: tagIn 0.8s ease-out 1.0s forwards;
+      }
+      .grid   { stroke: #00FFDD; stroke-width: 0.35; opacity: 0.06; }
+      .corner { animation: cornerPulse 3s ease-in-out infinite; }
+      .scan   { animation: scan 5s linear infinite; }
+      .cursor { animation: blink 1s step-end infinite; }
+      .dot1   { animation: dotPulse 2.2s ease-in-out infinite; }
+      .dot2   { animation: dotPulse 2.2s ease-in-out 0.7s infinite; }
+      .dot3   { animation: dotPulse 2.2s ease-in-out 1.4s infinite; }
+      .wave   { stroke-dasharray: 10 5; animation: waveFlow 2s linear infinite; }
+      .orb-l  { animation: orbitLeft  8s linear infinite; }
+      .orb-r  { animation: orbitRight 8s linear infinite; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="240" fill="url(#bg)" rx="14"/>
+
+  <!-- Grid -->
+  <line x1="0"   y1="60"  x2="900" y2="60"  class="grid"/>
+  <line x1="0"   y1="120" x2="900" y2="120" class="grid"/>
+  <line x1="0"   y1="180" x2="900" y2="180" class="grid"/>
+  <line x1="112" y1="0"   x2="112" y2="240" class="grid"/>
+  <line x1="225" y1="0"   x2="225" y2="240" class="grid"/>
+  <line x1="337" y1="0"   x2="337" y2="240" class="grid"/>
+  <line x1="450" y1="0"   x2="450" y2="240" class="grid"/>
+  <line x1="562" y1="0"   x2="562" y2="240" class="grid"/>
+  <line x1="675" y1="0"   x2="675" y2="240" class="grid"/>
+  <line x1="787" y1="0"   x2="787" y2="240" class="grid"/>
+
+  <!-- Animated scan line -->
+  <rect class="scan" x="-900" y="0" width="900" height="240" rx="14"
+        fill="url(#scanGrad)" opacity="0.05"/>
+
+  <!-- Waveform decoration (bottom) -->
+  <polyline class="wave"
+    points="80,210 120,196 145,218 170,202 200,214 230,200 260,212 290,198 320,210 350,197 380,208 410,196 440,210 470,198 500,212 530,200 560,208 590,196 620,210 650,200 680,208 710,196 730,210 760,200 790,208 820,196"
+    stroke="#00FFDD" stroke-width="1.2" fill="none" opacity="0.18"/>
+
+  <!-- Floating orbit dots left -->
+  <circle class="orb-l" r="3" fill="#00FFDD" opacity="0.7"/>
+  <!-- Floating orbit dots right -->
+  <circle class="orb-r" r="3" fill="#38BDF8" opacity="0.7"/>
+
+  <!-- Corner accents -->
+  <g class="corner" filter="url(#subtleGlow)">
+    <polyline points="20,46 20,20 46,20"   stroke="#00FFDD" stroke-width="2" fill="none"/>
+    <polyline points="854,20 880,20 880,46" stroke="#00FFDD" stroke-width="2" fill="none"/>
+    <polyline points="20,194 20,220 46,220" stroke="#00FFDD" stroke-width="2" fill="none"/>
+    <polyline points="854,220 880,220 880,194" stroke="#00FFDD" stroke-width="2" fill="none"/>
+  </g>
+
+  <!-- Accent dots sides (left) -->
+  <circle class="dot1" cx="24" cy="88"  r="3" fill="#00FFDD"/>
+  <circle class="dot2" cx="24" cy="120" r="3" fill="#38BDF8"/>
+  <circle class="dot3" cx="24" cy="152" r="3" fill="#7DD3FC"/>
+
+  <!-- Accent dots sides (right) -->
+  <circle class="dot1" cx="876" cy="88"  r="3" fill="#00FFDD"/>
+  <circle class="dot2" cx="876" cy="120" r="3" fill="#38BDF8"/>
+  <circle class="dot3" cx="876" cy="152" r="3" fill="#7DD3FC"/>
+
+  <!-- "OMNI" prefix tag (small, top-left area) -->
+  <rect x="56" y="28" width="68" height="18" rx="4" fill="#00FFDD" opacity="0.12"/>
+  <text x="90" y="41" text-anchor="middle" font-family="'Courier New', monospace" font-size="9"
+        fill="#00FFDD" letter-spacing="4" opacity="0.9">v2.0.0</text>
+
+  <!-- Bridge graphic (two pillars + cable arc) -->
+  <g opacity="0.15" filter="url(#glow)">
+    <!-- Left pillar -->
+    <rect x="130" y="70" width="8" height="100" fill="#00FFDD"/>
+    <!-- Right pillar -->
+    <rect x="762" y="70" width="8" height="100" fill="#38BDF8"/>
+    <!-- Cable arc -->
+    <path d="M 138,75 Q 450,30 762,75" stroke="url(#bridgeGrad)" stroke-width="2" fill="none"/>
+    <!-- Hangers -->
+    <line x1="220" y1="54" x2="220" y2="100" stroke="#00FFDD" stroke-width="0.8" opacity="0.6"/>
+    <line x1="310" y1="42" x2="310" y2="100" stroke="#00FFDD" stroke-width="0.8" opacity="0.6"/>
+    <line x1="400" y1="36" x2="400" y2="100" stroke="#38BDF8" stroke-width="0.8" opacity="0.6"/>
+    <line x1="500" y1="34" x2="500" y2="100" stroke="#38BDF8" stroke-width="0.8" opacity="0.6"/>
+    <line x1="590" y1="37" x2="590" y2="100" stroke="#38BDF8" stroke-width="0.8" opacity="0.6"/>
+    <line x1="680" y1="46" x2="680" y2="100" stroke="#38BDF8" stroke-width="0.8" opacity="0.6"/>
+  </g>
+
+  <!-- Divider line -->
+  <rect x="180" y="182" width="540" height="1" fill="url(#divGrad)" opacity="0.6"/>
+
+  <!-- Main title -->
+  <text x="450" y="136" text-anchor="middle" class="title" filter="url(#glow)">OMNI BRIDGE</text>
+
+  <!-- Cursor blink -->
+  <rect class="cursor" x="782" y="98" width="4" height="44" fill="#00FFDD" opacity="0.7"/>
+
+  <!-- Subtitle -->
+  <text x="450" y="163" text-anchor="middle" class="subtitle">REAL-TIME  ·  AI  ·  TRANSLATION</text>
+
+  <!-- Tag line -->
+  <text x="450" y="200" text-anchor="middle" class="tag">live speech overlay for windows</text>
+</svg>

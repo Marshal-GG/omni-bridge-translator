@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:omni_bridge/core/widgets/omni_card.dart';
 
 Widget buildInfoCard({
   required IconData icon,
   required String title,
   required Widget child,
 }) {
-  return Container(
+  return SizedBox(
     width: 360,
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.05),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-    ),
-    child: Column(
+    child: OmniCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Row(
@@ -36,5 +33,5 @@ Widget buildInfoCard({
         child,
       ],
     ),
-  );
+  ));
 }

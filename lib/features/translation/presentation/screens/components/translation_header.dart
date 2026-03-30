@@ -23,7 +23,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
             cursor: SystemMouseCursors.click,
             child: Tooltip(
               message: 'Support & Feedback',
-              child: Image.asset('assets/icon.png', width: 14, height: 14),
+              child: Image.asset('assets/app/icons/icon.png', width: 14, height: 14),
             ),
           ),
         ),
@@ -129,7 +129,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                   constraints: const BoxConstraints(),
                   menuPadding: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                     side: const BorderSide(color: Colors.white10),
                   ),
                   itemBuilder: (context) => [

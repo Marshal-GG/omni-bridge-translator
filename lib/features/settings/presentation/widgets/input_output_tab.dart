@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:dropdown_search/dropdown_search.dart';
+
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_bloc.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_event.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_state.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/settings_helpers.dart';
+import 'package:omni_bridge/core/widgets/omni_card.dart';
+import 'package:omni_bridge/core/widgets/omni_dropdown.dart';
 
 Widget buildInputOutputTab(BuildContext context, SettingsState state) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Card(
+      OmniCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -103,7 +107,9 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
       const SizedBox(height: 16),
 
       // ── Desktop Audio section ─────────────────────────────────────────
-      Card(
+      OmniCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -256,7 +262,7 @@ Widget buildDeviceDropdown({
   }
   return SizedBox(
     height: 36,
-    child: DropdownSearch<Map<String, dynamic>>(
+    child: OmniDropdown<Map<String, dynamic>>(
       items: items,
       itemAsString: (device) => device['name'] == defaultName
           ? '${device['name']} (Default)'
@@ -273,36 +279,8 @@ Widget buildDeviceDropdown({
           if (context.mounted) onChanged(device);
         });
       },
-      dropdownButtonProps: const DropdownButtonProps(
-        padding: EdgeInsets.zero,
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        hoverColor: Colors.transparent,
-        mouseCursor: SystemMouseCursors.basic,
-        icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.white38),
-      ),
-      popupProps: PopupProps.menu(
-        showSearchBox: true,
-        fit: FlexFit.loose,
-        constraints: const BoxConstraints(maxHeight: 300),
-        searchDelay: Duration.zero,
-        searchFieldProps: TextFieldProps(
-          autofocus: true,
-          decoration: searchDecoration(hintText),
-        ),
-        menuProps: MenuProps(
-          backgroundColor: const Color(0xFF2C2C2C),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      ),
-      dropdownDecoratorProps: DropDownDecoratorProps(
-        dropdownSearchDecoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: const TextStyle(color: Colors.white70),
-        ),
-      ),
+      hintText: hintText,
+      showSearchBox: true,
     ),
   );
 }

@@ -4,7 +4,7 @@ import 'package:window_manager/window_manager.dart';
 class TrayManager with TrayListener {
   Future<void> initializeTray() async {
     // Set the tray icon and tooltip
-    await trayManager.setIcon('assets/icon.ico');
+    await trayManager.setIcon('assets/app/icons/icon.ico');
     trayManager.setToolTip("Omni Bridge: Live AI Translator");
 
     // Set up the context menu

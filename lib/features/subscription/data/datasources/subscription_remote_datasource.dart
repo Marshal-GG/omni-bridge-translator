@@ -12,7 +12,8 @@ import 'package:omni_bridge/features/subscription/data/models/subscription_dto.d
 
 class SubscriptionRemoteDataSource {
   SubscriptionRemoteDataSource._();
-  static final SubscriptionRemoteDataSource instance = SubscriptionRemoteDataSource._();
+  static final SubscriptionRemoteDataSource instance =
+      SubscriptionRemoteDataSource._();
 
   static final String _appName = kDebugMode
       ? 'OmniBridge-Debug'
@@ -22,7 +23,6 @@ class SubscriptionRemoteDataSource {
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
   static const String _rtdbBaseUrl =
       'https://omni-bridge-ai-translator-default-rtdb.firebaseio.com';
-
 
   // --- Dynamic Monetization Config ---
   Map<String, dynamic>? _monetizationConfig;
@@ -222,7 +222,7 @@ class SubscriptionRemoteDataSource {
     if (_currentPollInterval == newInterval) return;
     final user = _auth.currentUser;
     if (user == null) return;
-    
+
     _currentPollInterval = newInterval;
     debugPrint(
       '[Subscription] Poll interval changed to ${newInterval}s, restarting polling.',
@@ -274,11 +274,14 @@ class SubscriptionRemoteDataSource {
         '$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken',
       );
       final totalsResp = await _httpClient.get(totalsUrl);
-      final totalsData = jsonDecode(totalsResp.body) as Map<String, dynamic>? ?? {};
+      final totalsData =
+          jsonDecode(totalsResp.body) as Map<String, dynamic>? ?? {};
 
       final lifetimeUsed = (totalsData['lifetime'] as num?)?.toInt() ?? 0;
-      final calendarUsed = (totalsData['calendar_monthly'] as num?)?.toInt() ?? 0;
-      final subUsed = (totalsData['subscription_monthly'] as num?)?.toInt() ?? 0;
+      final calendarUsed =
+          (totalsData['calendar_monthly'] as num?)?.toInt() ?? 0;
+      final subUsed =
+          (totalsData['subscription_monthly'] as num?)?.toInt() ?? 0;
       final weeklyUsed = (totalsData['weekly'] as num?)?.toInt() ?? 0;
 
       _updateCurrentStatus(
@@ -417,10 +420,6 @@ class SubscriptionRemoteDataSource {
       debugPrint('[Subscription] Rollover check failed: $e');
     }
   }
-
-
-
-
 
   void _updateCurrentStatus({
     int? dailyTokensUsed,
@@ -720,11 +719,11 @@ class SubscriptionRemoteDataSource {
   }
 
   int _getPeriodLimitForTier(String tier) {
-     final config = _tierConfig(tier);
-     if (config != null) {
-       return (config['quotas']?['period_tokens'] as num?)?.toInt() ?? 0;
-     }
-     return 0;
+    final config = _tierConfig(tier);
+    if (config != null) {
+      return (config['quotas']?['period_tokens'] as num?)?.toInt() ?? 0;
+    }
+    return 0;
   }
 
   String getPriceForTier(String tier) {
@@ -816,9 +815,19 @@ class SubscriptionRemoteDataSource {
                   ?.map((e) => e.toString())
                   .toList() ??
               [],
-          requestsPerMinute: (config['rate_limits']?['requests_per_minute'] as num?)?.toInt() ?? 0,
-          concurrentSessions: (config['rate_limits']?['concurrent_sessions'] as num?)?.toInt() ?? 1,
-          engineLimits: (config['engine_limits'] as Map<String, dynamic>?)?.map((k,v) => MapEntry(k, (v as num).toInt())) ?? {},
+          requestsPerMinute:
+              (config['rate_limits']?['requests_per_minute'] as num?)
+                  ?.toInt() ??
+              0,
+          concurrentSessions:
+              (config['rate_limits']?['concurrent_sessions'] as num?)
+                  ?.toInt() ??
+              1,
+          engineLimits:
+              (config['engine_limits'] as Map<String, dynamic>?)?.map(
+                (k, v) => MapEntry(k, (v as num).toInt()),
+              ) ??
+              {},
         );
       }).toList();
     }

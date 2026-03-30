@@ -1,0 +1,17 @@
+<svg width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @keyframes pulse { 0%,100%{opacity:.7;filter:drop-shadow(0 0 2px #00FFDD)} 50%{opacity:1;filter:drop-shadow(0 0 6px #00FFDD)} }
+      @keyframes bob   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(2px)} }
+      .ic  { animation: pulse 2.5s ease-in-out infinite; }
+      .arr { animation: bob   1.8s ease-in-out infinite; }
+    </style>
+  </defs>
+  <g class="ic" fill="none" stroke="#00FFDD" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="3" y1="19" x2="19" y2="19"/>
+  </g>
+  <g class="arr" fill="none" stroke="#00FFDD" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="11" y1="3" x2="11" y2="15"/>
+    <polyline points="6,10 11,15 16,10"/>
+  </g>
+</svg>

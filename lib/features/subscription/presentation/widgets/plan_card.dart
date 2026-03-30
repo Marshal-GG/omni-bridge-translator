@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../domain/entities/subscription_plan.dart';
 import 'package:intl/intl.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/core/widgets/omni_card.dart';
 
 Widget buildPlanCard({
   required SubscriptionPlan plan,
@@ -9,47 +10,22 @@ Widget buildPlanCard({
   bool trialUsed = false,
   required NumberFormat formatter,
 }) {
+  final isHighlighted = plan.isTrial || plan.isPopular;
   final accentColor = plan.isTrial
       ? Colors.amberAccent
       : plan.isPopular
       ? Colors.tealAccent
       : Colors.white70;
+  final cardBaseColor = plan.isTrial
+      ? Colors.amberAccent
+      : plan.isPopular
+      ? Colors.tealAccent
+      : Colors.white;
 
-  return Container(
+  return OmniCard(
+    baseColor: cardBaseColor,
+    hasGlow: isHighlighted,
     padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: plan.isTrial
-          ? Colors.amberAccent.withValues(alpha: 0.05)
-          : plan.isPopular
-          ? Colors.tealAccent.withValues(alpha: 0.05)
-          : Colors.white.withValues(alpha: 0.05),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(
-        color: plan.isTrial
-            ? Colors.amberAccent.withValues(alpha: 0.3)
-            : plan.isPopular
-            ? Colors.tealAccent.withValues(alpha: 0.3)
-            : Colors.white.withValues(alpha: 0.08),
-        width: 1,
-      ),
-      boxShadow: plan.isTrial
-          ? [
-              BoxShadow(
-                color: Colors.amberAccent.withValues(alpha: 0.08),
-                blurRadius: 25,
-                spreadRadius: 2,
-              ),
-            ]
-          : plan.isPopular
-          ? [
-              BoxShadow(
-                color: Colors.tealAccent.withValues(alpha: 0.08),
-                blurRadius: 25,
-                spreadRadius: 2,
-              ),
-            ]
-          : null,
-    ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,

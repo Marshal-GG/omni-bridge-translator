@@ -186,12 +186,22 @@ Future<void> setToMyFeaturePosition() async {
 ```
 
 ### B. Trigger Positioning on Navigation
-Call the positioning logic when the BLoC is initialized or when navigating to the screen.
+
+To ensure consistent window transitions, window resizing is handled centrally by the `MyNavigatorObserver`. You must register your route in the observer's window management logic.
 
 ```dart
-// In app_router.dart or the BLoC constructor
-setToMyFeaturePosition();
+// lib/core/routes/my_nav_observer.dart
+
+void _handleWindowState(Route<dynamic> route) {
+  final name = route.settings.name;
+  if (name == AppRouter.myFeature) {
+    setToMyFeaturePosition();
+  }
+}
 ```
+
+> [!TIP]
+> This pattern allows the app to automatically restore the previous window size when the user navigates back, without needing any manual logic in your `initState`.
 
 ---
 
@@ -328,22 +338,13 @@ Add a constant in `lib/core/navigation/app_router.dart`.
 static const String myFeature = '/my-feature';
 ```
 
-### B. Register Route
-Add a case to the `generateRoute` switch statement. 
+### C. Register Header Resizing (Required)
+Finally, add your route name to the window transition logic in `lib/core/routes/my_nav_observer.dart`:
 
-> [!IMPORTANT]
-> **Scoping**: Always wrap the screen in a `BlocProvider` here. This ensures the BLoC is localized to this route and disposed of when the user leaves.
+1.  **didPop List**: Add `AppRouter.myFeature` to the list of names that trigger a resize on pop.
+2.  **_handleWindowState**: Add a case that calls your `setToMyFeaturePosition()` method.
 
-```dart
-case myFeature:
-  return MaterialPageRoute(
-    builder: (_) => BlocProvider(
-      create: (context) => sl<MyBloc>()..add(const LoadDataEvent()),
-      child: const MyScreen(),
-    ),
-    settings: settings,
-  );
-```
+This ensures the window expands when you enter the screen and shrinks correctly when you go back.
 
 ---
 
@@ -406,8 +407,8 @@ blocTest<MyBloc, MyState>(
 Add new user-facing strings to **localization** files if the project uses internationalization. For simple screens, use a central `Constants` class or `UsageUtils` file.
 
 ### B. Assets
-- **Icons**: Place new PNG/SVG assets in `assets/`. Register them in `pubspec.yaml`.
-- **Usage**: Access them using `Image.asset('assets/image_name.png')`.
+- **Icons**: Place new PNG/SVG assets in `assets/app/icons/` or `assets/app/images/`. Register them in `pubspec.yaml`.
+- **Usage**: Access them using `Image.asset('assets/app/icons/image_name.png')`.
 
 ---
 
@@ -473,7 +474,7 @@ Always center the core content within a **1020px fixed-width container** for des
 - [ ] **BLoC**: Events, States, and Logic implemented (using specific states like `Loading`, `Loaded`, `Error`).
 - [ ] **Injection**: DataSources, Repositories, UseCases, and BLoCs registered in `injection.dart`.
 - [ ] **Router**: Constant defined and route registered (with `BlocProvider`) in `app_router.dart`.
-- [ ] **Window Management**: New position preset added to `window_manager.dart` and called on screen init.
+- [ ] **Window Management**: New position preset added to `window_manager.dart` and registered in `my_nav_observer.dart`.
 - [ ] **UI Structure**: Screen uses `WindowBorder`, `MoveWindow` (for header), and `1020px` width constraint.
 - [ ] **Design Language**: Colors match feature category (ASR: Indigo, Trans: Teal). Model names match standard nomenclature.
 - [ ] **Performance**: Vertical dead space minimized using `MainAxisSize.min` and high-density padding.

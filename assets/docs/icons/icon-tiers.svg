@@ -1,0 +1,19 @@
+<svg width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @keyframes pulse { 0%,100%{opacity:.7;filter:drop-shadow(0 0 2px #00FFDD)} 50%{opacity:1;filter:drop-shadow(0 0 6px #00FFDD)} }
+      @keyframes rise1 { 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(1.15)} }
+      @keyframes rise2 { 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(1.15)} }
+      @keyframes rise3 { 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(1.15)} }
+      .ic { animation: pulse 2.5s ease-in-out infinite; }
+      .b1 { transform-origin:4.5px 21px; animation: rise1 2.5s ease-in-out 0s   infinite; }
+      .b2 { transform-origin:11px 21px;  animation: rise2 2.5s ease-in-out 0.4s infinite; }
+      .b3 { transform-origin:17.5px 21px;animation: rise3 2.5s ease-in-out 0.8s infinite; }
+    </style>
+  </defs>
+  <g class="ic" fill="none" stroke="#00FFDD" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <rect class="b1" x="2"  y="14" width="5" height="7" rx="1"/>
+    <rect class="b2" x="8.5" y="9"  width="5" height="12" rx="1"/>
+    <rect class="b3" x="15" y="4"  width="5" height="17" rx="1"/>
+  </g>
+</svg>

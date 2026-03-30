@@ -1,0 +1,13 @@
+<svg width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @keyframes spin  { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+      @keyframes pulse { 0%,100%{opacity:.7;filter:drop-shadow(0 0 2px #00FFDD)} 50%{opacity:1;filter:drop-shadow(0 0 6px #00FFDD)} }
+      .ic { transform-origin:11px 11px; animation: spin 8s linear infinite, pulse 2.5s ease-in-out infinite; }
+    </style>
+  </defs>
+  <g class="ic" fill="none" stroke="#00FFDD" stroke-width="1.6" stroke-linecap="round">
+    <path d="M11 2v2M11 18v2M2 11h2M18 11h2M4.93 4.93l1.41 1.41M15.66 15.66l1.41 1.41M4.93 17.07l1.41-1.41M15.66 6.34l1.41-1.41"/>
+    <circle cx="11" cy="11" r="3"/>
+  </g>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <style>
+    @keyframes sGlow { 0%,100%{filter:drop-shadow(0 0 3px #00FFDD55)} 50%{filter:drop-shadow(0 0 7px #00FFDDaa)} }
+    @keyframes sFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-1.5px)} }
+    .sg { animation:sGlow 2.5s ease-in-out infinite; }
+    .sf { animation:sFloat 3s ease-in-out infinite; }
+  </style>
+  <g class="sg"><g class="sf">
+    <path d="M4 22 L16 28 L28 22 L16 16Z" fill="#0369A1" stroke="#0284C7" stroke-width="0.8" stroke-linejoin="round"/>
+    <path d="M4 16 L16 22 L28 16 L16 10Z" fill="#0284C7" stroke="#38BDF8" stroke-width="0.8" stroke-linejoin="round"/>
+    <path d="M4 10 L16 16 L28 10 L16 4Z"  fill="#0D9488" stroke="#00FFDD" stroke-width="1"   stroke-linejoin="round"/>
+  </g></g>
+</svg>

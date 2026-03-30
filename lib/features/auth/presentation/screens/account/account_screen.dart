@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:intl/intl.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'package:omni_bridge/core/widgets/omni_version_chip.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
@@ -12,6 +11,9 @@ import 'package:omni_bridge/features/auth/presentation/screens/account/component
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_email_info.dart';
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_button.dart';
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/admin_panel.dart';
+import 'package:omni_bridge/core/widgets/omni_window_layout.dart';
+import 'package:omni_bridge/core/widgets/omni_progress_bar.dart';
+import 'package:omni_bridge/core/widgets/omni_card.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -25,7 +27,6 @@ class _AccountScreenState extends State<AccountScreen> {
   bool _isSaving = false;
   String? _message;
   bool _messageIsError = false;
-  String _version = '1.0.0';
   final _formatter = NumberFormat('#,###');
 
   @override
@@ -33,10 +34,6 @@ class _AccountScreenState extends State<AccountScreen> {
     super.initState();
     final user = AuthRemoteDataSource.instance.currentUser.value;
     _nameController.text = user?.displayName ?? '';
-
-    PackageInfo.fromPlatform().then((info) {
-      if (mounted) setState(() => _version = info.version);
-    });
   }
 
   @override
@@ -155,21 +152,9 @@ class _AccountScreenState extends State<AccountScreen> {
     final user = AuthRemoteDataSource.instance.currentUser.value;
     final isAnon = user?.isAnonymous ?? false;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: WindowBorder(
-        color: Colors.white10,
-        width: 1,
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF161616), Color(0xFF0F0F0F)],
-            ),
-          ),
-          child: Column(
-            children: [
+    return OmniWindowLayout(
+      child: Column(
+        children: [
               // ── Draggable Header ──────────────────────────────────────────
               buildAccountHeader(
                 context,
@@ -200,13 +185,12 @@ class _AccountScreenState extends State<AccountScreen> {
 
                             if (!isAnon) ...[
                               // ── Profile Info Card ──────────────────────────
-                              Card(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
+                              OmniCard(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
                                       const Row(
                                         children: [
                                           Icon(
@@ -246,7 +230,6 @@ class _AccountScreenState extends State<AccountScreen> {
                                       buildAccountEmailInfo(user),
                                     ],
                                   ),
-                                ),
                               ),
                               const SizedBox(height: 12),
 
@@ -268,14 +251,13 @@ class _AccountScreenState extends State<AccountScreen> {
                                   final isUnlimited = status.isUnlimited;
                                   final progress = status.progress;
 
-                                  return Card(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
+                                  return OmniCard(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
                                             children: [
                                               Container(
                                                 padding: const EdgeInsets.all(
@@ -358,23 +340,9 @@ class _AccountScreenState extends State<AccountScreen> {
                                           ),
                                           if (!isUnlimited) ...[
                                             const SizedBox(height: 16),
-                                            ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                              child: LinearProgressIndicator(
-                                                value: progress.clamp(0.0, 1.0),
-                                                backgroundColor: Colors.white
-                                                    .withValues(alpha: 0.05),
-                                                valueColor:
-                                                    AlwaysStoppedAnimation<
-                                                      Color
-                                                    >(
-                                                      progress >= 0.9
-                                                          ? Colors.redAccent
-                                                          : Colors.tealAccent,
-                                                    ),
-                                                minHeight: 4,
-                                              ),
+                                            OmniProgressBar(
+                                              progress: progress,
+                                              backgroundColor: Colors.white.withValues(alpha: 0.05),
                                             ),
                                           ],
                                           const SizedBox(height: 16),
@@ -390,22 +358,7 @@ class _AccountScreenState extends State<AccountScreen> {
                                                         '/usage',
                                                       );
                                                     },
-                                                    style: OutlinedButton.styleFrom(
-                                                      side: BorderSide(
-                                                        color: Colors.tealAccent.withValues(alpha: 0.3),
-                                                      ),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(8),
-                                                      ),
-                                                    ),
-                                                    child: const Text(
-                                                      'Detailed Usage',
-                                                      style: TextStyle(
-                                                        color: Colors.tealAccent,
-                                                        fontSize: 11,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
-                                                    ),
+                                                    child: const Text('Detailed Usage'),
                                                   ),
                                                 ),
                                               ),
@@ -420,22 +373,7 @@ class _AccountScreenState extends State<AccountScreen> {
                                                         '/subscription',
                                                       );
                                                     },
-                                                    style: OutlinedButton.styleFrom(
-                                                      side: BorderSide(
-                                                        color: Colors.tealAccent.withValues(alpha: 0.3),
-                                                      ),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(8),
-                                                      ),
-                                                    ),
-                                                    child: const Text(
-                                                      'Manage Plan',
-                                                      style: TextStyle(
-                                                        color: Colors.tealAccent,
-                                                        fontSize: 11,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
-                                                    ),
+                                                    child: const Text('Manage Plan'),
                                                   ),
                                                 ),
                                               ),
@@ -443,7 +381,6 @@ class _AccountScreenState extends State<AccountScreen> {
                                           ),
                                         ],
                                       ),
-                                    ),
                                   );
                                 },
                               ),
@@ -452,13 +389,12 @@ class _AccountScreenState extends State<AccountScreen> {
                               const AdminPanel(),
 
                               // ── Planned Features Card (Todo) ───────────────
-                              Card(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
+                              OmniCard(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
                                       const Row(
                                         children: [
                                           Icon(
@@ -493,7 +429,6 @@ class _AccountScreenState extends State<AccountScreen> {
                                       ),
                                     ],
                                   ),
-                                ),
                               ),
                               const SizedBox(height: 24),
                             ],
@@ -514,7 +449,7 @@ class _AccountScreenState extends State<AccountScreen> {
                             ),
 
                             const SizedBox(height: 24),
-                            _VersionChip(label: 'v$_version'),
+                            const OmniVersionChip(),
                           ],
                         ),
                       ),
@@ -524,38 +459,10 @@ class _AccountScreenState extends State<AccountScreen> {
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 }
 
-class _VersionChip extends StatelessWidget {
-  final String label;
-
-  const _VersionChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Text(
-        'OMNI BRIDGE $label'.toUpperCase(),
-        style: const TextStyle(
-          color: Colors.white24,
-          fontSize: 8,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
-}
 
 class _UsageBadge extends StatelessWidget {
   final String label;

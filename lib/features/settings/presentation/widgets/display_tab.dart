@@ -4,6 +4,7 @@ import 'package:omni_bridge/features/settings/presentation/blocs/settings_bloc.d
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_event.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_state.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/settings_helpers.dart';
+import 'package:omni_bridge/core/widgets/omni_card.dart';
 
 Widget buildDisplayTab(BuildContext context, SettingsState state) {
   return Column(
@@ -11,7 +12,9 @@ Widget buildDisplayTab(BuildContext context, SettingsState state) {
     children: [
       sectionLabel('Typography'),
       const SizedBox(height: 10),
-      Card(
+      OmniCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
         child: Padding(
           padding: const EdgeInsets.only(left: 12, right: 4, top: 8, bottom: 8),
           child: Row(
@@ -46,7 +49,9 @@ Widget buildDisplayTab(BuildContext context, SettingsState state) {
         ),
       ),
       const SizedBox(height: 16),
-      Card(
+      OmniCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(

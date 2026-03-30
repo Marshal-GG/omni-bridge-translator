@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 Widget buildLoginBranding() {
   return Column(
     children: [
-      Image.asset('assets/icon.png', width: 72, height: 72),
+      Image.asset('assets/app/icons/icon.png', width: 72, height: 72),
       const SizedBox(height: 20),
       const Text(
         'Omni Bridge',

@@ -24,8 +24,8 @@ omni_bridge/
 │   │   ├── navigation/              # AppRouter & GlobalNavigator
 │   │   ├── network/                 # Global HTTP Clients (e.g., RTDBClient)
 │   │   ├── platform/                # Tray, Window, AppInitializer
-│   │   ├── routes/                  # MyNavObserver (navigation analytics)
-│   │   ├── theme/                   # AppTheme
+│   │   ├── routes/                  # MyNavObserver (navigation analytics & window resizing)
+│   │   ├── theme/                   # AppTheme (Design System: Colors, Spacing, Text, Shapes)
 │   │   └── utils/                   # Shared utilities
 │   │
 │   └── features/                    # Feature Modules (Vertical Slice Architecture)

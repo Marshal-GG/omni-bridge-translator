@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -9,6 +8,11 @@ import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_bloc.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_event.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_state.dart';
+import 'package:omni_bridge/core/widgets/omni_branding.dart';
+import 'package:omni_bridge/core/widgets/omni_copyright.dart';
+import 'package:omni_bridge/core/widgets/omni_header.dart';
+import 'package:omni_bridge/core/widgets/omni_window_layout.dart';
+import 'package:omni_bridge/core/widgets/omni_chip.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -34,23 +38,16 @@ class _AboutScreenState extends State<AboutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: WindowBorder(
-        color: Colors.white12,
-        width: 1,
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF161616), Color(0xFF0F0F0F)],
+    return OmniWindowLayout(
+      child: Column(
+          children: [
+            OmniHeader(
+              title: 'About Omni Bridge',
+              icon: Icons.info_outline_rounded,
+              onBack: () => Navigator.of(context).pop(),
+              onClose: () => Navigator.of(context).pop(),
             ),
-          ),
-          child: Column(
-            children: [
-              _buildHeader(context),
-              const Divider(height: 1, color: Colors.white10),
+                const Divider(height: 1, color: Colors.white10),
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -74,54 +71,16 @@ class _AboutScreenState extends State<AboutScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   // ── Branding ───────────────────────────────────
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      // Logo
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(14),
-                                        child: Image.asset(
-                                          'assets/icon.png',
-                                          width: 86,
-                                          height: 86,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            'Omni Bridge',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                          const Text(
-                                            'Live AI Translator',
-                                            style: TextStyle(
-                                              color: Colors.tealAccent,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              letterSpacing: 1.2,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          // Note: Version tag moved to footer
-                                          const SizedBox(height: 8),
-                                          // ── Check for Updates ──────────────────
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              // Outlined button
-                                              SizedBox(
-                                                height: 26,
+                                  OmniBranding(
+                                    subtitle: 'Live AI Translator',
+                                    fallbackIcon: Icons.info_outline_rounded,
+                                    bottomWidget: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // ── Check for Updates ──────────────────
+                                        SizedBox(
+                                          height: 26,
                                                 child: OutlinedButton(
                                                   onPressed:
                                                       state.updateStatus ==
@@ -267,12 +226,9 @@ class _AboutScreenState extends State<AboutScreen> {
                                                   ],
                                                 ),
                                               ],
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
+                                        ], // Column children
+                                      ), // Column (bottomWidget)
+                                  ), // OmniBranding
                                   const SizedBox(height: 24),
 
                                   // ── Optimized Dual-Column Layout with Bottom Alignment ──
@@ -301,16 +257,16 @@ class _AboutScreenState extends State<AboutScreen> {
                                                   spacing: 6,
                                                   runSpacing: 6,
                                                   children: [
-                                                    _Chip('Flutter'),
-                                                    _Chip('FastAPI'),
-                                                    _Chip('Firebase'),
-                                                    _Chip('NVIDIA Riva'),
-                                                    _Chip('Whisper'),
-                                                    _Chip('Llama 3.1'),
-                                                    _Chip('Google Translate'),
-                                                    _Chip('MyMemory'),
-                                                    _Chip('WebSocket'),
-                                                    _Chip('PyAudio'),
+                                                    OmniChip(label: 'Flutter'),
+                                                    OmniChip(label: 'FastAPI'),
+                                                    OmniChip(label: 'Firebase'),
+                                                    OmniChip(label: 'NVIDIA Riva'),
+                                                    OmniChip(label: 'Whisper'),
+                                                    OmniChip(label: 'Llama 3.1'),
+                                                    OmniChip(label: 'Google Translate'),
+                                                    OmniChip(label: 'MyMemory'),
+                                                    OmniChip(label: 'WebSocket'),
+                                                    OmniChip(label: 'PyAudio'),
                                                   ],
                                                 ),
                                               ),
@@ -521,14 +477,7 @@ class _AboutScreenState extends State<AboutScreen> {
                                     ),
                                     const SizedBox(height: 12),
                                   ],
-                                  const Text(
-                                    '© 2026 Omni Bridge. All rights reserved.',
-                                    style: TextStyle(
-                                      color: Colors.white24,
-                                      fontSize: 11,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
+                                  const OmniCopyright(),
                                   const SizedBox(height: 16),
                                 ],
                                 ),
@@ -544,60 +493,9 @@ class _AboutScreenState extends State<AboutScreen> {
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      height: 32,
-      color: Colors.black26,
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_back_rounded, size: 16),
-            color: Colors.white60,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-            hoverColor: Colors.white10,
-            splashRadius: 16,
-            tooltip: 'Back',
-          ),
-          const SizedBox(width: 4),
-          const Icon(
-            Icons.info_outline_rounded,
-            size: 14,
-            color: Colors.tealAccent,
-          ),
-          const SizedBox(width: 8),
-          const Text(
-            'About Omni Bridge',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.3,
-            ),
-          ),
-          Expanded(child: MoveWindow()),
-          MinimizeWindowButton(
-            colors: WindowButtonColors(iconNormal: Colors.white60),
-          ),
-          CloseWindowButton(
-            colors: WindowButtonColors(
-              iconNormal: Colors.white60,
-              mouseOver: Colors.redAccent,
-            ),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _InfoCard extends StatelessWidget {
@@ -687,32 +585,6 @@ class _FeatureRow extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  final String label;
-
-  const _Chip(this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.tealAccent.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.15)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.tealAccent,
-          fontSize: 10,
-          fontWeight: FontWeight.w500,
-        ),
       ),
     );
   }
