@@ -182,7 +182,7 @@ void main() {
               inputDeviceIndex: any(named: 'inputDeviceIndex'),
               outputDeviceIndex: any(named: 'outputDeviceIndex'),
               translationModel: any(named: 'translationModel'),
-              apiKey: any(named: 'apiKey'),
+              nvidiaNimKey: any(named: 'nvidiaNimKey'),
               googleCredentials: any(named: 'googleCredentials'),
               transcriptionModel: any(named: 'transcriptionModel'),
             )).thenReturn(null);
@@ -211,7 +211,7 @@ void main() {
               inputDeviceIndex: any(named: 'inputDeviceIndex'),
               outputDeviceIndex: any(named: 'outputDeviceIndex'),
               translationModel: any(named: 'translationModel'),
-              apiKey: any(named: 'apiKey'),
+              nvidiaNimKey: any(named: 'nvidiaNimKey'),
               googleCredentials: any(named: 'googleCredentials'),
               transcriptionModel: any(named: 'transcriptionModel'),
             )).thenReturn(null);
@@ -248,7 +248,7 @@ void main() {
               inputDeviceIndex: any(named: 'inputDeviceIndex'),
               outputDeviceIndex: any(named: 'outputDeviceIndex'),
               translationModel: any(named: 'translationModel'),
-              apiKey: any(named: 'apiKey'),
+              nvidiaNimKey: any(named: 'nvidiaNimKey'),
               googleCredentials: any(named: 'googleCredentials'),
               transcriptionModel: any(named: 'transcriptionModel'),
             ));
@@ -308,7 +308,7 @@ void main() {
               desktopVolume: any(named: 'desktopVolume'),
               micVolume: any(named: 'micVolume'),
               translationModel: any(named: 'translationModel'),
-              apiKey: any(named: 'apiKey'),
+              nvidiaNimKey: any(named: 'nvidiaNimKey'),
               googleCredentials: any(named: 'googleCredentials'),
               transcriptionModel: any(named: 'transcriptionModel'),
             )).thenReturn(null);
@@ -371,7 +371,7 @@ void main() {
           desktopVolume: any(named: 'desktopVolume'),
           micVolume: any(named: 'micVolume'),
           translationModel: 'google',
-          apiKey: any(named: 'apiKey'),
+          nvidiaNimKey: any(named: 'nvidiaNimKey'),
           googleCredentials: '',
           transcriptionModel: 'online',
         )).called(2);

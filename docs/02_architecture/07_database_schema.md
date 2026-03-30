@@ -118,7 +118,7 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
       "description": "Free one-time 24-hour pass — full engine access",
       "is_trial": true,
       "trial_duration_hours": 24,
-      "display_features": ["All translation & transcription engines", "Microphone + desktop audio", "15,000 tokens for 24 hours", "One-time per account"],
+      "display_features": ["All translation & transcription engines", "Microphone + desktop audio", "50,000 tokens for 24 hours", "One-time per account"],
       "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small", "whisper-medium", "riva"],
       "allowed_translation_models": ["google", "mymemory", "google_api", "riva", "llama"],
       "features": {
@@ -128,8 +128,8 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
         "simultaneous_sessions": 1,
         "session_duration_hours": 24
       },
-      "quotas": { "daily_tokens": -1, "monthly_tokens": 15000 },
-      "engine_limits": { "google_api": 6000, "riva": 6000, "llama": 6000 },
+      "quotas": { "daily_tokens": 50000, "monthly_tokens": 50000 },
+      "engine_limits": {},
       "rate_limits": { "requests_per_minute": 60, "concurrent_sessions": 1 }
     },
     "pro": {
@@ -354,7 +354,7 @@ Created automatically on first login by `SubscriptionService._initializeUserDoc(
 | Tier | Daily | Monthly | Engine Limits (per month) | Sessions | Duration |
 |---|---|---|---|---|---|
 | `free` | 20,000 | 300,000 | None (Google Translate only) | 1 | 1 hour |
-| `trial` | Unlimited | 15,000 (one-time) | google_api/riva/llama: 6k each | 1 | 24 hours |
+| `trial` | 50,000 | 50,000 (one-time) | None | 1 | 24 hours |
 | `pro` | 100,000 | 1,500,000 | google_api/riva/llama: 500k each | 2 | 4 hours |
 | `enterprise` | 500,000 | 10,000,000 | google_api/riva/llama: 3.3M each | 5 | 12 hours |
 

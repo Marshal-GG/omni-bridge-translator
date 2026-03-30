@@ -212,7 +212,7 @@ Widget buildTranslationModelSelector(
     'google': 'Google Translate (Free)',
     'google_api': 'Google Cloud (Official API)',
     'mymemory': 'MyMemory',
-    'riva': 'NVIDIA Riva (Fast, High Quality)',
+    'riva-nmt': 'NVIDIA Riva (Fast, High Quality)',
     'llama': 'Llama 3.1 8B (Accurate, Slower)',
   };
 
@@ -221,8 +221,8 @@ Widget buildTranslationModelSelector(
   }
 
   final needsNvidiaKey =
-      ['riva', 'llama'].contains(state.settings.translationModel) ||
-      state.settings.transcriptionModel == 'riva';
+      ['riva-nmt', 'llama'].contains(state.settings.translationModel) ||
+      state.settings.transcriptionModel == 'riva-asr';
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,7 +273,7 @@ Widget buildTranslationModelSelector(
                   'google': 'google_translate',
                   'google_api': 'google_api',
                   'mymemory': 'mymemory',
-                  'riva': 'riva-nmt',
+                  'riva-nmt': 'riva-nmt',
                   'llama': 'llama',
                 }[selectedItem.key];
 
@@ -318,7 +318,7 @@ Widget buildTranslationModelSelector(
                     'google': 'google_translate',
                     'google_api': 'google_api',
                     'mymemory': 'mymemory',
-                    'riva': 'riva-nmt',
+                    'riva-nmt': 'riva-nmt',
                     'llama': 'llama',
                   }[item.key];
 
@@ -513,12 +513,12 @@ Widget _buildTranscriptionModelSection(
                   const SizedBox(width: 8),
                   Expanded(
                     child: _TranscriptionOption(
-                      value: 'riva',
+                      value: 'riva-asr',
                       groupValue: state.settings.transcriptionModel,
                       label: 'NVIDIA Riva',
                       status: transState.modelStatuses['riva-asr'],
                       isRecommended: true,
-                      locked: !SubscriptionRemoteDataSource.instance.canUseModel('riva'),
+                      locked: !SubscriptionRemoteDataSource.instance.canUseModel('riva-asr'),
                       icon: Icons.bolt_rounded,
                       onChanged: (v) {
                         // Explicitly unload current model from memory upon selection change
@@ -1145,7 +1145,7 @@ class _NvidiaApiKeySectionState extends State<_NvidiaApiKeySection> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.state.settings.apiKey);
+    _controller = TextEditingController(text: widget.state.settings.nvidiaNimKey);
 
     // Eagerly set assumed valid state to prevent UI flash before validation completes
     final key = _controller.text.trim();
@@ -1163,9 +1163,9 @@ class _NvidiaApiKeySectionState extends State<_NvidiaApiKeySection> {
   @override
   void didUpdateWidget(_NvidiaApiKeySection old) {
     super.didUpdateWidget(old);
-    if (old.state.settings.apiKey != widget.state.settings.apiKey &&
-        _controller.text != widget.state.settings.apiKey) {
-      _controller.text = widget.state.settings.apiKey;
+    if (old.state.settings.nvidiaNimKey != widget.state.settings.nvidiaNimKey &&
+        _controller.text != widget.state.settings.nvidiaNimKey) {
+      _controller.text = widget.state.settings.nvidiaNimKey;
 
       final key = _controller.text.trim();
       if (key.startsWith('nvapi-') && key.length >= 50) {
@@ -1408,7 +1408,7 @@ class _NvidiaApiKeySectionState extends State<_NvidiaApiKeySection> {
             obscureText: _obscure,
             onChanged: (val) {
               context.read<SettingsBloc>().add(
-                UpdateTempSettingEvent(apiKey: val),
+                UpdateTempSettingEvent(nvidiaNimKey: val),
               );
               _validateKey(val);
             },
@@ -1454,8 +1454,8 @@ _ApiKeyInstructions _nvidiaApiKeyInstructions(
   String translationEngine,
   String transcriptionEngine,
 ) {
-  if (translationEngine == 'riva' ||
-      transcriptionEngine == 'riva' ||
+  if (translationEngine == 'riva-nmt' ||
+      transcriptionEngine == 'riva-asr' ||
       translationEngine == 'llama') {
     return const _ApiKeyInstructions(
       description: 'Generate a free NVIDIA NIM API key.',

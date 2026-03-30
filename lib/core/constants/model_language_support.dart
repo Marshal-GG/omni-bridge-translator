@@ -76,7 +76,7 @@ const Set<String>? googleSrLangs = null;
 /// or null if the model is unrestricted.
 Set<String>? translationLangsFor(String model) {
   switch (model) {
-    case 'riva':
+    case 'riva-nmt':
       return rivaTranslationLangs;
     case 'google':
       return googleFreeLangs;
@@ -130,7 +130,7 @@ String? translationCompatibilityError(
 }
 
 String _modelLabel(String model) => switch (model) {
-  'riva' => 'Riva NMT',
+  'riva-nmt' => 'Riva NMT',
   'google' => 'Google Translate',
   'google_api' => 'Google Cloud',
   'mymemory' => 'MyMemory',

@@ -16,8 +16,9 @@ class EngineUsageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat.compact();
+    final effective = usage.effectiveTokens;
     final progress = maxTokens != null && maxTokens! > 0
-        ? (usage.totalTokens / maxTokens!).clamp(0.0, 1.0)
+        ? (effective / maxTokens!).clamp(0.0, 1.0)
         : 0.0;
     
     final isAsr = usage.type == UsageType.asr;
@@ -86,7 +87,7 @@ class EngineUsageCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  formatter.format(usage.totalTokens),
+                  formatter.format(effective),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -123,6 +124,54 @@ class EngineUsageCard extends StatelessWidget {
                 ),
               ],
             ),
+            // ── Monthly usage vs limit (only if engine has a per-engine cap) ──
+            if (usage.monthlyTokensUsed >= 0) ...[
+              const SizedBox(height: 4),
+              const Divider(color: Colors.white10, height: 1),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'THIS MONTH',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.35),
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  Text(
+                    usage.hasMonthlyLimit
+                        ? '${formatter.format(usage.monthlyTokensUsed)} / ${formatter.format(usage.monthlyTokensLimit)}'
+                        : formatter.format(usage.monthlyTokensUsed),
+                    style: TextStyle(
+                      color: usage.isMonthlyLimitExceeded
+                          ? const Color(0xFFEF4444)
+                          : Colors.white70,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+              if (usage.hasMonthlyLimit) ...[
+                const SizedBox(height: 2),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: usage.monthlyProgress,
+                    backgroundColor: Colors.white.withValues(alpha: 0.05),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      usage.isMonthlyLimitExceeded
+                          ? const Color(0xFFEF4444)
+                          : themeColor.withValues(alpha: 0.7),
+                    ),
+                    minHeight: 2,
+                  ),
+                ),
+              ],
+            ],
           ],
         ),
     );

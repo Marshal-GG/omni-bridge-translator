@@ -12,6 +12,14 @@ class EngineUsage extends Equatable {
   final DateTime? lastUsed;
   final UsageType type;
 
+  /// Monthly usage for this engine (aggregated from daily_usage this month).
+  /// -1 = not yet computed.
+  final int monthlyTokensUsed;
+
+  /// Monthly per-engine cap from engine_limits in the tier config.
+  /// -1 = no per-engine cap (follows overall quota only).
+  final int monthlyTokensLimit;
+
   const EngineUsage({
     required this.engine,
     required this.totalTokens,
@@ -21,9 +29,55 @@ class EngineUsage extends Equatable {
     required this.totalLatencyMs,
     required this.type,
     this.lastUsed,
+    this.monthlyTokensUsed = -1,
+    this.monthlyTokensLimit = -1,
   });
 
   double get averageLatencyMs => totalCalls > 0 ? totalLatencyMs / totalCalls : 0;
+
+  /// Tokens to use for display and sorting.
+  /// Many engines (e.g. google, riva, mymemory) write to total_input_tokens /
+  /// total_output_tokens and leave total_tokens = 0. Fall back to their sum.
+  int get effectiveTokens =>
+      totalTokens > 0 ? totalTokens : totalInputTokens + totalOutputTokens;
+
+  /// Whether this engine has a per-engine monthly cap.
+  bool get hasMonthlyLimit => monthlyTokensLimit > 0;
+
+  /// Monthly usage progress (0.0–1.0), or 0.0 if no limit.
+  double get monthlyProgress => hasMonthlyLimit
+      ? (monthlyTokensUsed / monthlyTokensLimit).clamp(0.0, 1.0)
+      : 0.0;
+
+  /// Whether the monthly per-engine cap has been reached.
+  bool get isMonthlyLimitExceeded =>
+      hasMonthlyLimit && monthlyTokensUsed >= monthlyTokensLimit;
+
+  EngineUsage copyWith({
+    String? engine,
+    int? totalTokens,
+    int? totalCalls,
+    int? totalInputTokens,
+    int? totalOutputTokens,
+    int? totalLatencyMs,
+    DateTime? lastUsed,
+    UsageType? type,
+    int? monthlyTokensUsed,
+    int? monthlyTokensLimit,
+  }) {
+    return EngineUsage(
+      engine: engine ?? this.engine,
+      totalTokens: totalTokens ?? this.totalTokens,
+      totalCalls: totalCalls ?? this.totalCalls,
+      totalInputTokens: totalInputTokens ?? this.totalInputTokens,
+      totalOutputTokens: totalOutputTokens ?? this.totalOutputTokens,
+      totalLatencyMs: totalLatencyMs ?? this.totalLatencyMs,
+      lastUsed: lastUsed ?? this.lastUsed,
+      type: type ?? this.type,
+      monthlyTokensUsed: monthlyTokensUsed ?? this.monthlyTokensUsed,
+      monthlyTokensLimit: monthlyTokensLimit ?? this.monthlyTokensLimit,
+    );
+  }
 
   @override
   List<Object?> get props => [
@@ -35,5 +89,7 @@ class EngineUsage extends Equatable {
         totalLatencyMs,
         lastUsed,
         type,
+        monthlyTokensUsed,
+        monthlyTokensLimit,
       ];
 }

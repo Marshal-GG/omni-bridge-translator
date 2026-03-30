@@ -109,7 +109,7 @@ class _UsageScreenState extends State<UsageScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         const OmniBranding(
-                                          subtitle: 'USAGE ANALYTICS',
+                                          subtitle: 'USAGE DASHBOARD',
                                           fallbackIcon: Icons.analytics_rounded,
                                         ),
                                         const SizedBox(height: 32),
@@ -315,7 +315,7 @@ class _UsageScreenState extends State<UsageScreen> {
     if (engines.isEmpty) return const SizedBox.shrink();
 
     final maxTokens = allEngines
-        .map((e) => e.totalTokens)
+        .map((e) => e.effectiveTokens)
         .fold(0.0, (a, b) => a > b ? a : b.toDouble());
 
     // Column count based on available width

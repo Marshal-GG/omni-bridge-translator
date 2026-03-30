@@ -19,7 +19,7 @@ class UpdateTempSettingEvent extends SettingsEvent {
   final double? desktopVolume;
   final double? micVolume;
   final String? translationModel;
-  final String? apiKey;
+  final String? nvidiaNimKey;
   final String? transcriptionModel;
   final bool clearInputDevice;
   final bool clearOutputDevice;
@@ -36,7 +36,7 @@ class UpdateTempSettingEvent extends SettingsEvent {
     this.desktopVolume,
     this.micVolume,
     this.translationModel,
-    this.apiKey,
+    this.nvidiaNimKey,
     this.transcriptionModel,
     this.clearInputDevice = false,
     this.clearOutputDevice = false,
@@ -55,7 +55,7 @@ class UpdateTempSettingEvent extends SettingsEvent {
     desktopVolume,
     micVolume,
     translationModel,
-    apiKey,
+    nvidiaNimKey,
     transcriptionModel,
     clearInputDevice,
     clearOutputDevice,
@@ -76,7 +76,7 @@ class SyncTempSettingsEvent extends SettingsEvent {
   final double desktopVolume;
   final double micVolume;
   final String translationModel;
-  final String? apiKey;
+  final String? nvidiaNimKey;
   final String? transcriptionModel;
 
   const SyncTempSettingsEvent({
@@ -91,7 +91,7 @@ class SyncTempSettingsEvent extends SettingsEvent {
     required this.desktopVolume,
     required this.micVolume,
     required this.translationModel,
-    this.apiKey,
+    this.nvidiaNimKey,
     this.transcriptionModel,
   });
 
@@ -108,7 +108,7 @@ class SyncTempSettingsEvent extends SettingsEvent {
     desktopVolume,
     micVolume,
     translationModel,
-    apiKey,
+    nvidiaNimKey,
     transcriptionModel,
   ];
 }

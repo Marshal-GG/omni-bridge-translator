@@ -185,6 +185,20 @@ class SubscriptionRemoteDataSource {
     return limits[engineId] ?? -1;
   }
 
+  /// Current month's per-engine token usage (populated during polling).
+  Map<String, int> get engineMonthlyUsage => Map.unmodifiable(_engineMonthlyUsages);
+
+  /// Returns this month's tokens used for a given engine, or 0 if unknown.
+  int getEngineMonthlyUsed(String engineId) =>
+      _engineMonthlyUsages[engineId] ?? 0;
+
+  /// Whether a specific engine has exceeded its monthly per-engine cap.
+  bool isEngineOverLimit(String engineId, [String? tier]) {
+    final limit = engineMonthlyLimit(engineId, tier);
+    if (limit <= 0) return false; // no cap
+    return getEngineMonthlyUsed(engineId) >= limit;
+  }
+
   /// Returns the fallback engine for when a paid engine's limit is exceeded.
   /// Reads from system/monetization → fallback_engine, defaults to 'google'.
   String get fallbackEngine =>
@@ -197,6 +211,23 @@ class SubscriptionRemoteDataSource {
         _monetizationConfig?['model_overrides'] as Map<String, dynamic>?;
     final entry = overrides?[engineId] as Map<String, dynamic>?;
     return entry?['display_name'] as String? ?? engineId;
+  }
+
+  /// Returns the configured type ('asr' or 'translation') for an engine ID.
+  /// Reads from system/monetization → model_overrides → {id} → type.
+  /// Returns `null` if config is not loaded or the engine has no entry.
+  String? getModelType(String engineId) {
+    final overrides =
+        _monetizationConfig?['model_overrides'] as Map<String, dynamic>?;
+    final entry = overrides?[engineId] as Map<String, dynamic>?;
+    return entry?['type'] as String?;
+  }
+
+  /// Returns a set of all engine IDs explicitly configured in model_overrides.
+  Set<String> getConfiguredEngines() {
+    final overrides =
+        _monetizationConfig?['model_overrides'] as Map<String, dynamic>?;
+    return overrides?.keys.toSet() ?? {};
   }
 
   /// Returns the features map for the current tier.
@@ -293,6 +324,23 @@ class SubscriptionRemoteDataSource {
       final subUsed =
           (totalsData['subscription_monthly'] as num?)?.toInt() ?? 0;
       final weeklyUsed = (totalsData['weekly'] as num?)?.toInt() ?? 0;
+
+      // 3. Fetch per-engine monthly totals from usage/totals/models
+      _engineMonthlyUsages.clear();
+      final modelsUrl = Uri.parse(
+        '$_rtdbBaseUrl/users/$uid/usage/totals/models.json?auth=$idToken',
+      );
+      final modelsResp = await _httpClient.get(modelsUrl);
+      final modelsData =
+          jsonDecode(modelsResp.body) as Map<String, dynamic>? ?? {};
+      modelsData.forEach((engine, val) {
+        if (val is Map<String, dynamic>) {
+          _engineMonthlyUsages[engine] =
+              (val['tokens'] as num?)?.toInt() ?? 0;
+        } else if (val is num) {
+          _engineMonthlyUsages[engine] = val.toInt();
+        }
+      });
 
       _updateCurrentStatus(
         dailyTokensUsed: dailyUsed,

@@ -18,7 +18,7 @@ class StatusHandler(BaseHandler):
         """Physical model health and capabilities."""
         if not self.ctx.orchestrator:
             self.ctx.orchestrator = InferenceOrchestrator(
-                nvidia_api_key=self.ctx.config.get("api_key", ""),
+                nvidia_api_key=self.ctx.config.get("nvidia_nim_key", ""),
                 google_credentials=self.ctx.config.get("google_credentials", {})
             )
         

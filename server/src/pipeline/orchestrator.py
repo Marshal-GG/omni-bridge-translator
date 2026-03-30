@@ -151,7 +151,7 @@ class InferenceOrchestrator:
             translation_model = {
                 "google": "google",
                 "llama":  "llama",
-                "riva":   "riva",
+                "riva-nmt":   "riva-nmt",
             }.get(ai_engine, "google")
 
         # Sync Dispatcher Config
@@ -209,7 +209,7 @@ class InferenceOrchestrator:
             trans_id = self.translation_dispatcher.translation_model.lower().strip()
             
             # 1. Riva ASR Check
-            if asr_id == "riva":
+            if asr_id == "riva-asr":
                 if self.riva_asr and self.riva_asr._is_loading:
                     self._emit_error("Riva ASR is still initializing. Please wait.")
                     return False
@@ -229,7 +229,7 @@ class InferenceOrchestrator:
                 self.whisper.unload_model()
 
             # 3. Translation Checks
-            if trans_id == "riva":
+            if trans_id == "riva-nmt":
                 if self.riva_nmt and self.riva_nmt._is_loading:
                     self._emit_error("Riva NMT is still initializing. Please wait.")
                     return False
@@ -267,7 +267,7 @@ class InferenceOrchestrator:
         asr_lang = "multi" if use_auto else _LANG_MAP.get(self.asr_dispatcher.source_lang, "en-US")
         
         # Prepare model-specific config (like Riva gRPC config)
-        config = self.riva_asr.make_config(self._sample_rate, asr_lang) if self.asr_dispatcher.transcription_model == "riva" else None
+        config = self.riva_asr.make_config(self._sample_rate, asr_lang) if self.asr_dispatcher.transcription_model == "riva-asr" else None
 
         while self.is_running:
             try:

@@ -25,7 +25,7 @@ class ServerContext:
             "ai_engine": "google",
             "transcription_model": "online",
             "translation_model": "google",
-            "api_key": "",
+            "nvidia_nim_key": "",
             "google_credentials": {},
             "riva_translation_function_id": "",
             "riva_asr_parakeet_function_id": "",
@@ -40,7 +40,7 @@ class ServerContext:
     def reset(self):
         """Clears user-specific configuration and the orchestrator to ensure a fresh session."""
         self.orchestrator = None
-        self.config["api_key"] = ""
+        self.config["nvidia_nim_key"] = ""
         self.config["google_credentials"] = {}
         self.config["riva_translation_function_id"] = ""
         self.config["riva_asr_parakeet_function_id"] = ""

@@ -34,7 +34,7 @@ class TranslationWebsocketClient {
   int? _inputDeviceIndex;
   int? _outputDeviceIndex;
   String _translationModel = 'google';
-  String _apiKey = '';
+  String _nvidiaNimKey = '';
   dynamic _googleCredentials = '';
   String _transcriptionModel = 'online';
   String _rivaTranslationFunctionId = '';
@@ -66,7 +66,7 @@ class TranslationWebsocketClient {
     int? inputDeviceIndex,
     int? outputDeviceIndex,
     String translationModel = 'google',
-    String apiKey = '',
+    String nvidiaNimKey = '',
     dynamic googleCredentials = '',
     String transcriptionModel = 'online',
     String rivaTranslationFunctionId = '',
@@ -81,7 +81,7 @@ class TranslationWebsocketClient {
     _inputDeviceIndex = inputDeviceIndex;
     _outputDeviceIndex = outputDeviceIndex;
     _translationModel = translationModel;
-    _apiKey = apiKey;
+    _nvidiaNimKey = nvidiaNimKey;
     _googleCredentials = googleCredentials;
     _transcriptionModel = transcriptionModel;
     _rivaTranslationFunctionId = rivaTranslationFunctionId;
@@ -213,7 +213,7 @@ class TranslationWebsocketClient {
       'use_mic': _useMic,
       'translation_model': _translationModel,
       'transcription_model': _transcriptionModel,
-      'api_key': _apiKey,
+      'nvidia_nim_key': _nvidiaNimKey,
       'google_credentials': _googleCredentials,
       'riva_translation_function_id': _rivaTranslationFunctionId,
       'riva_asr_parakeet_function_id': _rivaAsrParakeetFunctionId,
@@ -238,7 +238,7 @@ class TranslationWebsocketClient {
     double desktopVolume = 1.0,
     double micVolume = 1.0,
     required String translationModel,
-    String apiKey = '',
+    String nvidiaNimKey = '',
     dynamic googleCredentials = '',
     String transcriptionModel = 'online',
     String rivaTranslationFunctionId = '',
@@ -251,7 +251,7 @@ class TranslationWebsocketClient {
     _inputDeviceIndex = inputDeviceIndex;
     _outputDeviceIndex = outputDeviceIndex;
     _translationModel = translationModel;
-    _apiKey = apiKey;
+    _nvidiaNimKey = nvidiaNimKey;
     _googleCredentials = googleCredentials;
     _transcriptionModel = transcriptionModel;
     _rivaTranslationFunctionId = rivaTranslationFunctionId;
@@ -268,7 +268,7 @@ class TranslationWebsocketClient {
         'mic_volume': micVolume,
         'translation_model': translationModel,
         'transcription_model': transcriptionModel,
-        'api_key': apiKey,
+        'nvidia_nim_key': nvidiaNimKey,
         'google_credentials': googleCredentials,
         'riva_translation_function_id': rivaTranslationFunctionId,
         'riva_asr_parakeet_function_id': rivaAsrParakeetFunctionId,

@@ -77,7 +77,7 @@ class ASRDispatcher:
         model = self.transcription_model
         audio_bytes = chunk.tobytes()
         try:
-            if model == "riva":
+            if model == "riva-asr":
                 return self.riva.transcribe(audio_bytes, config)
             
             if model.startswith("whisper"):

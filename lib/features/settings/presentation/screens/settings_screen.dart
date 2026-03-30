@@ -60,7 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             desktopVolume: translationState.activeDesktopVolume,
             micVolume: translationState.activeMicVolume,
             translationModel: translationState.activeTranslationModel,
-            apiKey: translationState.activeApiKey,
+            nvidiaNimKey: translationState.activeNvidiaNimKey,
             transcriptionModel: translationState.activeTranscriptionModel,
           ),
         );
@@ -96,7 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 desktopVolume: translationState.activeDesktopVolume,
                 micVolume: translationState.activeMicVolume,
                 translationModel: translationState.activeTranslationModel,
-                apiKey: translationState.activeApiKey,
+                nvidiaNimKey: translationState.activeNvidiaNimKey,
                 transcriptionModel: translationState.activeTranscriptionModel,
               ),
             );
@@ -120,7 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 desktopVolume: translationState.activeDesktopVolume,
                 micVolume: translationState.activeMicVolume,
                 translationModel: translationState.activeTranslationModel,
-                apiKey: translationState.activeApiKey,
+                nvidiaNimKey: translationState.activeNvidiaNimKey,
                 transcriptionModel: translationState.activeTranscriptionModel,
               ),
             );

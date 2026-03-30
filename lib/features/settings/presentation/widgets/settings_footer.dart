@@ -69,7 +69,7 @@ Widget buildSettingsFooter(BuildContext context, SettingsState state) {
                               desktopVolume: state.settings.desktopVolume,
                               micVolume: state.settings.micVolume,
                               translationModel: state.settings.translationModel,
-                              apiKey: state.settings.apiKey,
+                              nvidiaNimKey: state.settings.nvidiaNimKey,
                               transcriptionModel:
                                   state.settings.transcriptionModel,
                               isUserInitiated: true,

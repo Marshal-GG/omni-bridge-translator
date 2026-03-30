@@ -73,7 +73,7 @@ class TranslationDispatcher:
             if model == "llama":
                 return self.llama.translate(text, target)
 
-            if model == "riva":
+            if model == "riva-nmt":
                 if source != "auto" and not self.riva_nmt.supports_translation_pair(source, target):
                     logging.info(f"[Translation] Skipping Riva for {source}->{target}; using Llama fallback.")
                     return self._llama_fallback(text, "riva")

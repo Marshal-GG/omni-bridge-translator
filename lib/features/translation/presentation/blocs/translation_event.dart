@@ -61,7 +61,7 @@ class ApplySettingsEvent extends TranslationEvent {
   final double desktopVolume;
   final double micVolume;
   final String translationModel;
-  final String apiKey;
+  final String nvidiaNimKey;
   final String transcriptionModel;
   final String rivaTranslationFunctionId;
   final String rivaAsrParakeetFunctionId;
@@ -80,7 +80,7 @@ class ApplySettingsEvent extends TranslationEvent {
     required this.desktopVolume,
     required this.micVolume,
     required this.translationModel,
-    this.apiKey = '',
+    this.nvidiaNimKey = '',
     this.transcriptionModel = 'online',
     this.rivaTranslationFunctionId = '',
     this.rivaAsrParakeetFunctionId = '',
@@ -101,7 +101,7 @@ class ApplySettingsEvent extends TranslationEvent {
     desktopVolume,
     micVolume,
     translationModel,
-    apiKey,
+    nvidiaNimKey,
     transcriptionModel,
     rivaTranslationFunctionId,
     rivaAsrParakeetFunctionId,

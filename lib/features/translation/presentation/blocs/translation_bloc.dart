@@ -265,7 +265,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         inputDeviceIndex: state.activeInputDeviceIndex,
         outputDeviceIndex: state.activeOutputDeviceIndex,
         translationModel: state.activeTranslationModel,
-        apiKey: state.activeApiKey,
+        nvidiaNimKey: state.activeNvidiaNimKey,
         googleCredentials: googleCredentials,
         transcriptionModel: state.activeTranscriptionModel,
         rivaTranslationFunctionId: systemConfig.rivaTranslationFunctionId,
@@ -362,7 +362,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
             desktopVolume: state.activeDesktopVolume,
             micVolume: state.activeMicVolume,
             translationModel: newState.activeTranslationModel,
-            apiKey: state.activeApiKey,
+            nvidiaNimKey: state.activeNvidiaNimKey,
             transcriptionModel: newState.activeTranscriptionModel,
           ),
         );
@@ -434,7 +434,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         desktopVolume: state.activeDesktopVolume,
         micVolume: state.activeMicVolume,
         translationModel: 'google',
-        apiKey: state.activeApiKey,
+        nvidiaNimKey: state.activeNvidiaNimKey,
         transcriptionModel: state.activeTranscriptionModel,
       ),
     );
@@ -476,7 +476,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
                 activeDesktopVolume: settings.desktopVolume,
                 activeMicVolume: settings.micVolume,
                 activeTranslationModel: settings.translationModel,
-                activeApiKey: settings.apiKey,
+                activeNvidiaNimKey: settings.nvidiaNimKey,
                 activeTranscriptionModel: settings.transcriptionModel,
               );
             emit(loadedState);
@@ -495,7 +495,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
                 desktopVolume: settings.desktopVolume,
                 micVolume: settings.micVolume,
                 translationModel: settings.translationModel,
-                apiKey: settings.apiKey,
+                nvidiaNimKey: settings.nvidiaNimKey,
                 transcriptionModel: settings.transcriptionModel,
               ),
             );
@@ -513,7 +513,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
                 activeDesktopVolume: defaults.desktopVolume,
                 activeMicVolume: defaults.micVolume,
                 activeTranslationModel: defaults.translationModel,
-                activeApiKey: defaults.apiKey,
+                activeNvidiaNimKey: defaults.nvidiaNimKey,
                 activeTranscriptionModel: defaults.transcriptionModel,
               );
             if (defaultState != state) {
@@ -621,7 +621,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         activeDesktopVolume: event.desktopVolume,
         activeMicVolume: event.micVolume,
         activeTranslationModel: event.translationModel,
-        activeApiKey: event.apiKey,
+        activeNvidiaNimKey: event.nvidiaNimKey,
         activeTranscriptionModel: event.transcriptionModel,
         isSettingsSaving: event.isUserInitiated,
       ),
@@ -652,7 +652,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         desktopVolume: event.desktopVolume,
         micVolume: event.micVolume,
         translationModel: event.translationModel,
-        apiKey: event.apiKey,
+        nvidiaNimKey: event.nvidiaNimKey,
         googleCredentials: googleCredentialsOnApply,
         transcriptionModel: event.transcriptionModel,
         rivaTranslationFunctionId: systemConfig.rivaTranslationFunctionId,
@@ -668,7 +668,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         'isBold': event.isBold,
         'opacity': event.opacity,
         'translationModel': event.translationModel,
-        'apiKey': event.apiKey,
+        'nvidia_nim_key': event.nvidiaNimKey,
         'transcriptionModel': event.transcriptionModel,
       });
     } finally {

@@ -399,7 +399,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
         'display_features': [
           'All translation & transcription engines',
           'Microphone + desktop audio',
-          '15,000 tokens for 24 hours',
+          '50,000 tokens for 24 hours',
           'One-time per account',
         ],
         'allowed_transcription_models': [
@@ -408,13 +408,13 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'whisper-base',
           'whisper-small',
           'whisper-medium',
-          'riva',
+          'riva-asr',
         ],
         'allowed_translation_models': [
           'google',
           'mymemory',
           'google_api',
-          'riva',
+          'riva-nmt',
           'llama',
         ],
         'features': {
@@ -424,8 +424,8 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'simultaneous_sessions': 1,
           'session_duration_hours': 24,
         },
-        'quotas': {'daily_tokens': -1, 'monthly_tokens': 15000},
-        'engine_limits': {'google_api': 6000, 'riva': 6000, 'llama': 6000},
+        'quotas': {'daily_tokens': 50000, 'monthly_tokens': 50000},
+        'engine_limits': {},
         'rate_limits': {'requests_per_minute': 60, 'concurrent_sessions': 1},
       },
       'pro': {
@@ -446,13 +446,13 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'whisper-base',
           'whisper-small',
           'whisper-medium',
-          'riva',
+          'riva-asr',
         ],
         'allowed_translation_models': [
           'google',
           'mymemory',
           'google_api',
-          'riva',
+          'riva-nmt',
           'llama',
         ],
         'features': {
@@ -465,7 +465,8 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
         'quotas': {'daily_tokens': 100000, 'monthly_tokens': 1500000},
         'engine_limits': {
           'google_api': 500000,
-          'riva': 500000,
+          'riva-nmt': 500000,
+          'riva-asr': 500000,
           'llama': 500000,
         },
         'rate_limits': {'requests_per_minute': 60, 'concurrent_sessions': 2},
@@ -488,13 +489,13 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'whisper-base',
           'whisper-small',
           'whisper-medium',
-          'riva',
+          'riva-asr',
         ],
         'allowed_translation_models': [
           'google',
           'mymemory',
           'google_api',
-          'riva',
+          'riva-nmt',
           'llama',
         ],
         'features': {
@@ -507,7 +508,8 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
         'quotas': {'daily_tokens': 500000, 'monthly_tokens': 10000000},
         'engine_limits': {
           'google_api': 3300000,
-          'riva': 3300000,
+          'riva-nmt': 3300000,
+          'riva-asr': 3300000,
           'llama': 3300000,
         },
         'rate_limits': {'requests_per_minute': 120, 'concurrent_sessions': 5},
@@ -521,18 +523,33 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
     'usage_poll_interval_seconds': 30,
     'fallback_engine': 'google',
 
-    // ── Model Kill Switches + Display Names ───────────────────────────
+    // ── Model Kill Switches, Display Names & Type (SSOT) ────────────
+    // The 'type' field is the single source of truth for classifying
+    // engines as 'asr' or 'translation' on the Usage screen.
+    // Both config keys (used by subscription tiers) and RTDB keys
+    // (written by the backend) are listed here.
     'model_overrides': {
-      'online': {'enabled': true, 'display_name': 'Google Speech'},
-      'google': {'enabled': true, 'display_name': 'Google Translate'},
-      'mymemory': {'enabled': true, 'display_name': 'MyMemory'},
-      'google_api': {'enabled': true, 'display_name': 'Google Cloud'},
-      'riva': {'enabled': true, 'display_name': 'NVIDIA Riva'},
-      'llama': {'enabled': true, 'display_name': 'Llama 3.1'},
-      'whisper-tiny': {'enabled': true, 'display_name': 'Whisper Tiny'},
-      'whisper-base': {'enabled': true, 'display_name': 'Whisper Base'},
-      'whisper-small': {'enabled': true, 'display_name': 'Whisper Small'},
-      'whisper-medium': {'enabled': true, 'display_name': 'Whisper Medium'},
+      // ── Config keys (used by allowed_*_models in tiers) ──────────
+      'online':         {'enabled': true, 'display_name': 'Google Speech',    'type': 'asr'},
+      'google':         {'enabled': true, 'display_name': 'Google Translate', 'type': 'translation'},
+      'mymemory':       {'enabled': true, 'display_name': 'MyMemory',         'type': 'translation'},
+      'google_api':     {'enabled': true, 'display_name': 'Google Cloud',     'type': 'translation'},
+      'riva-nmt':       {'enabled': true, 'display_name': 'NVIDIA Riva NMT',  'type': 'translation'},
+      'riva-asr':       {'enabled': true, 'display_name': 'NVIDIA Riva ASR',  'type': 'asr'},
+      'llama':          {'enabled': true, 'display_name': 'Llama 3.1',        'type': 'translation'},
+      'whisper-tiny':   {'enabled': true, 'display_name': 'Whisper Tiny',     'type': 'asr'},
+      'whisper-base':   {'enabled': true, 'display_name': 'Whisper Base',     'type': 'asr'},
+      'whisper-small':  {'enabled': true, 'display_name': 'Whisper Small',    'type': 'asr'},
+      'whisper-medium': {'enabled': true, 'display_name': 'Whisper Medium',   'type': 'asr'},
+      // ── Backend RTDB keys (written by the server to model_stats/) ─
+      'google-translate':      {'enabled': true, 'display_name': 'Google Translate', 'type': 'translation'},
+      'google-cloud-v3-grpc':  {'enabled': true, 'display_name': 'Google Cloud',     'type': 'translation'},
+      'mymemory-translate':    {'enabled': true, 'display_name': 'MyMemory',         'type': 'translation'},
+      'llama-translate':       {'enabled': true, 'display_name': 'Llama 3.1',        'type': 'translation'},
+      'riva-grpc-mt':          {'enabled': true, 'display_name': 'NVIDIA Riva NMT',  'type': 'translation'},
+      'google-asr':            {'enabled': true, 'display_name': 'Google Speech',    'type': 'asr'},
+      'whisper-asr':           {'enabled': true, 'display_name': 'Whisper',          'type': 'asr'},
+      // riva-asr RTDB key matches config key above — no duplicate needed
     },
 
     // ── In-App Announcements ──────────────────────────────────────────

@@ -151,9 +151,9 @@ Widget buildPlanCard({
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.check_circle_rounded,
-                  color: Colors.tealAccent,
+                  color: plan.isTrial ? Colors.amberAccent : Colors.tealAccent,
                   size: 14,
                 ),
                 const SizedBox(width: 8),

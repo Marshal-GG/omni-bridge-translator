@@ -10,7 +10,7 @@ class ConfigHandler(BaseHandler):
         new_target = msg.get("target", self.ctx.config["target_lang"])
         new_engine = msg.get("ai_engine", self.ctx.config["ai_engine"])
         new_mic = msg.get("use_mic", self.ctx.config["use_mic"])
-        new_key = msg.get("api_key", self.ctx.config["api_key"])
+        new_key = msg.get("nvidia_nim_key", self.ctx.config["nvidia_nim_key"])
         new_trans = msg.get("transcription_model", self.ctx.config["transcription_model"])
         new_tl = msg.get("translation_model", self.ctx.config["translation_model"])
         new_google_creds = msg.get("google_credentials", self.ctx.config["google_credentials"])
@@ -23,7 +23,7 @@ class ConfigHandler(BaseHandler):
             self.ctx.config["target_lang"] != new_target or
             self.ctx.config["ai_engine"] != new_engine or
             self.ctx.config["use_mic"] != new_mic or
-            self.ctx.config["api_key"] != new_key or
+            self.ctx.config["nvidia_nim_key"] != new_key or
             self.ctx.config["transcription_model"] != new_trans or
             self.ctx.config["translation_model"] != new_tl or
             self.ctx.config["google_credentials"] != new_google_creds or
@@ -37,7 +37,7 @@ class ConfigHandler(BaseHandler):
             "target_lang": new_target,
             "ai_engine": new_engine,
             "use_mic": new_mic,
-            "api_key": new_key,
+            "nvidia_nim_key": new_key,
             "transcription_model": new_trans,
             "translation_model": new_tl,
             "google_credentials": new_google_creds,

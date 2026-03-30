@@ -29,7 +29,7 @@ class TranslationState extends Equatable {
   final double activeDesktopVolume;
   final double activeMicVolume;
   final String activeTranslationModel;
-  final String activeApiKey;
+  final String activeNvidiaNimKey;
   final String activeTranscriptionModel;
 
   // Auto-detect warning – set when server overrides 'auto' with a detected lang
@@ -52,7 +52,7 @@ class TranslationState extends Equatable {
     required this.activeDesktopVolume,
     required this.activeMicVolume,
     required this.activeTranslationModel,
-    this.activeApiKey = '',
+    this.activeNvidiaNimKey = '',
     this.activeTranscriptionModel = 'online',
     this.autoDetectWarning,
     this.quotaStatus,
@@ -82,7 +82,7 @@ class TranslationState extends Equatable {
       activeDesktopVolume: 1.0,
       activeMicVolume: 1.0,
       activeTranslationModel: 'google',
-      activeApiKey: '',
+      activeNvidiaNimKey: '',
       activeTranscriptionModel: 'online',
       autoDetectWarning: null,
       quotaStatus: null,
@@ -111,7 +111,7 @@ class TranslationState extends Equatable {
     double? activeDesktopVolume,
     double? activeMicVolume,
     String? activeTranslationModel,
-    String? activeApiKey,
+    String? activeNvidiaNimKey,
     String? activeTranscriptionModel,
     Object? autoDetectWarning = _sentinel,
     SubscriptionStatus? quotaStatus,
@@ -141,7 +141,7 @@ class TranslationState extends Equatable {
       activeMicVolume: activeMicVolume ?? this.activeMicVolume,
       activeTranslationModel:
           activeTranslationModel ?? this.activeTranslationModel,
-      activeApiKey: activeApiKey ?? this.activeApiKey,
+      activeNvidiaNimKey: activeNvidiaNimKey ?? this.activeNvidiaNimKey,
       activeTranscriptionModel:
           activeTranscriptionModel ?? this.activeTranscriptionModel,
       autoDetectWarning: autoDetectWarning == _sentinel
@@ -177,7 +177,7 @@ class TranslationState extends Equatable {
     activeDesktopVolume,
     activeMicVolume,
     activeTranslationModel,
-    activeApiKey,
+    activeNvidiaNimKey,
     activeTranscriptionModel,
     autoDetectWarning,
     quotaStatus,
@@ -196,7 +196,7 @@ class TranslationState extends Equatable {
           'google': 'google_translate',
           'google_api': 'google_api',
           'mymemory': 'mymemory',
-          'riva': 'riva-nmt',
+          'riva-nmt': 'riva-nmt',
           'llama': 'llama',
         }[activeTranslationModel] ??
         activeTranslationModel;
@@ -204,7 +204,7 @@ class TranslationState extends Equatable {
 
   String get activeTranscriptionModelStatusKey {
     if (activeTranscriptionModel == 'online') return 'google_asr';
-    if (activeTranscriptionModel == 'riva') return 'riva-asr';
+    if (activeTranscriptionModel == 'riva-asr') return 'riva-asr';
     return activeTranscriptionModel;
   }
 }

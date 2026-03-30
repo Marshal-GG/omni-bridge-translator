@@ -6,6 +6,7 @@ import 'package:omni_bridge/features/usage/domain/entities/engine_usage.dart';
 import 'package:omni_bridge/features/usage/domain/repositories/usage_repository.dart';
 import 'package:omni_bridge/features/subscription/domain/entities/subscription_status.dart';
 import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 
 class UsageRepositoryImpl implements UsageRepository {
   final RTDBClient _rtdbClient;
@@ -57,30 +58,65 @@ class UsageRepositoryImpl implements UsageRepository {
     }
   }
 
+  /// Resolves engine type using `model_overrides.{engine}.type` from
+  /// monetization config (the **single source of truth**).
+  ///
+  /// Falls back to `_resolveTypeByName` only when:
+  ///   • config hasn't loaded yet (cold start), or
+  ///   • the engine key is missing from `model_overrides`.
   UsageType _resolveType(String engine) {
+    final src = SubscriptionRemoteDataSource.instance;
+    final configType = src.getModelType(engine);
+
+    if (configType != null) {
+      switch (configType) {
+        case 'asr':
+          return UsageType.asr;
+        case 'translation':
+          return UsageType.translation;
+      }
+    }
+
+    // Fallback: config not loaded or engine not in model_overrides.
+    return _resolveTypeByName(engine);
+  }
+
+  /// Startup / unknown-engine fallback.  Deterministic type resolution by
+  /// engine key name patterns — only reached when config is unavailable.
+  ///
+  /// **Order matters**: ASR-specific patterns are checked first so that keys
+  /// like `riva-asr` are correctly classified as ASR before
+  /// the `riva-nmt` match hits the translation branch.
+  UsageType _resolveTypeByName(String engine) {
     final name = engine.toLowerCase();
 
-    // ASR / Transcription Engines
-    if (name.contains('whisper') ||
-        name.contains('riva') ||
-        name.contains('deepgram') ||
+    // Skip no-op / same-language placeholder entries.
+    if (name == 'no-op' || name == 'noop') return UsageType.unknown;
+
+    // ── ASR-specific patterns (checked first for priority) ──────────
+    if (name == 'online' ||
+        name.contains('whisper') ||
+        name.contains('asr') ||
         name.contains('parakeet') ||
         name.contains('canary') ||
         name.contains('stt') ||
-        name == 'asr') {
+        name == 'deepgram') {
       return UsageType.asr;
     }
 
-    // Translation Engines
-    if (name.contains('openai') ||
-        name.contains('anthropic') ||
-        name.contains('google') ||
-        name.contains('groq') ||
-        name.contains('together') ||
-        name.contains('claude') ||
-        name.contains('gpt') ||
-        name == 'translation' ||
-        name == 'translator') {
+    // ── Translation-specific patterns ───────────────────────────────
+    if (name == 'google' ||
+        name == 'google_api' ||
+        name.contains('google-cloud') ||
+        name.contains('v3-grpc') ||
+        name.contains('translate') ||
+        name == 'mymemory' ||
+        name.contains('mymemory') ||
+        name == 'llama' ||
+        name.contains('llama') ||
+        name == 'riva-nmt' ||
+        name.contains('nmt') ||
+        name.contains('grpc-mt')) {
       return UsageType.translation;
     }
 

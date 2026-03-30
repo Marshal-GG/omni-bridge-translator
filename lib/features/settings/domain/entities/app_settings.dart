@@ -12,7 +12,7 @@ class AppSettings extends Equatable {
   final double desktopVolume;
   final double micVolume;
   final String translationModel;
-  final String apiKey;
+  final String nvidiaNimKey;
   final String transcriptionModel;
 
   const AppSettings({
@@ -27,7 +27,7 @@ class AppSettings extends Equatable {
     required this.desktopVolume,
     required this.micVolume,
     required this.translationModel,
-    required this.apiKey,
+    required this.nvidiaNimKey,
     required this.transcriptionModel,
   });
 
@@ -44,9 +44,9 @@ class AppSettings extends Equatable {
       desktopVolume: 1.0,
       micVolume: 1.0,
 
-      /// The translation model to use (e.g., 'google', 'google_api', 'mymemory', 'riva', 'llama')
+      /// The translation model to use (e.g., 'google', 'google_api', 'mymemory', 'riva-nmt', 'llama')
       translationModel: 'google',
-      apiKey: '',
+      nvidiaNimKey: '',
       transcriptionModel: 'online',
     );
   }
@@ -65,7 +65,7 @@ class AppSettings extends Equatable {
     double? desktopVolume,
     double? micVolume,
     String? translationModel,
-    String? apiKey,
+    String? nvidiaNimKey,
     String? transcriptionModel,
   }) {
     return AppSettings(
@@ -84,7 +84,7 @@ class AppSettings extends Equatable {
       desktopVolume: desktopVolume ?? this.desktopVolume,
       micVolume: micVolume ?? this.micVolume,
       translationModel: translationModel ?? this.translationModel,
-      apiKey: apiKey ?? this.apiKey,
+      nvidiaNimKey: nvidiaNimKey ?? this.nvidiaNimKey,
       transcriptionModel: transcriptionModel ?? this.transcriptionModel,
     );
   }
@@ -102,7 +102,7 @@ class AppSettings extends Equatable {
       desktopVolume: (json['desktopVolume'] as num?)?.toDouble() ?? 1.0,
       micVolume: (json['micVolume'] as num?)?.toDouble() ?? 1.0,
       translationModel: json['translationModel'] as String? ?? 'google',
-      apiKey: json['apiKey'] as String? ?? '',
+      nvidiaNimKey: json['nvidiaNimKey'] as String? ?? '',
       transcriptionModel: json['transcriptionModel'] as String? ?? 'online',
     );
   }
@@ -120,7 +120,7 @@ class AppSettings extends Equatable {
       'desktopVolume': desktopVolume,
       'micVolume': micVolume,
       'translationModel': translationModel,
-      'apiKey': apiKey,
+      'nvidiaNimKey': nvidiaNimKey,
       'transcriptionModel': transcriptionModel,
     };
   }
@@ -138,7 +138,7 @@ class AppSettings extends Equatable {
         desktopVolume,
         micVolume,
         translationModel,
-        apiKey,
+        nvidiaNimKey,
         transcriptionModel,
       ];
 
