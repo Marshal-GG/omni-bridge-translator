@@ -9,6 +9,7 @@ class SubscriptionStatusModel extends SubscriptionStatus {
     required super.lifetimeTokensUsed,
     required super.dailyLimit,
     required super.dailyResetAt,
+    super.monthlyLimit = 0,
     super.periodLimit = 0,
   });
 
@@ -20,6 +21,7 @@ class SubscriptionStatusModel extends SubscriptionStatus {
       monthlyTokensUsed: (json['monthlyTokensUsed'] as num?)?.toInt() ?? 0,
       lifetimeTokensUsed: (json['lifetimeTokensUsed'] as num?)?.toInt() ?? 0,
       dailyLimit: (json['dailyLimit'] as num?)?.toInt() ?? 0,
+      monthlyLimit: (json['monthlyLimit'] as num?)?.toInt() ?? 0,
       dailyResetAt: json['dailyResetAt'] != null
           ? DateTime.parse(json['dailyResetAt'] as String)
           : DateTime.now(),
@@ -35,6 +37,7 @@ class SubscriptionStatusModel extends SubscriptionStatus {
       'monthlyTokensUsed': monthlyTokensUsed,
       'lifetimeTokensUsed': lifetimeTokensUsed,
       'dailyLimit': dailyLimit,
+      'monthlyLimit': monthlyLimit,
       'dailyResetAt': dailyResetAt.toIso8601String(),
       'periodLimit': periodLimit,
     };

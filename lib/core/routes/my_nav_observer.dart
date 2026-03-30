@@ -71,7 +71,7 @@ class MyNavigatorObserver extends NavigatorObserver {
       setToUsagePosition();
     } else if (name == AppRouter.support) {
       setToSupportPosition();
-    } else if (name == AppRouter.onboarding || name == AppRouter.splash) {
+    } else if (name == AppRouter.onboarding || name == AppRouter.splash || name == AppRouter.forceUpdate) {
       setToStartupPosition();
     }
   }

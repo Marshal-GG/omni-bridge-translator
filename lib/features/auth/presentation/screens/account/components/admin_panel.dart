@@ -372,32 +372,34 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
         'price': '₹0',
         'description': 'Basic translation for casual use',
         'display_features': [
-          'Google & MyMemory translation',
+          'Google Translate only',
+          'Google Online ASR',
           'Desktop audio capture',
-          '5,000 tokens/day',
+          '20,000 tokens/day · 300K/month',
         ],
         'allowed_transcription_models': ['online'],
-        'allowed_translation_models': ['google', 'mymemory'],
+        'allowed_translation_models': ['google'],
         'features': {
           'mic_audio': false,
           'history_enabled': false,
           'caption_retention_days': 0,
           'simultaneous_sessions': 1,
+          'session_duration_hours': 1,
         },
-        'quotas': {'daily_tokens': 5000, 'monthly_tokens': 0},
+        'quotas': {'daily_tokens': 20000, 'monthly_tokens': 300000},
         'engine_limits': {},
         'rate_limits': {'requests_per_minute': 20, 'concurrent_sessions': 1},
       },
       'trial': {
         'name': 'Trial',
-        'price': '₹49',
-        'description': 'One-time 3-hour pass — full engine access',
+        'price': '₹0',
+        'description': 'Free one-time 24-hour pass — full engine access',
         'is_trial': true,
-        'trial_duration_hours': 3,
+        'trial_duration_hours': 24,
         'display_features': [
           'All translation & transcription engines',
           'Microphone + desktop audio',
-          '15,000 tokens for 3 hours',
+          '15,000 tokens for 24 hours',
           'One-time per account',
         ],
         'allowed_transcription_models': [
@@ -420,6 +422,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'history_enabled': false,
           'caption_retention_days': 0,
           'simultaneous_sessions': 1,
+          'session_duration_hours': 24,
         },
         'quotas': {'daily_tokens': -1, 'monthly_tokens': 15000},
         'engine_limits': {'google_api': 6000, 'riva': 6000, 'llama': 6000},
@@ -431,16 +434,19 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
         'description': 'All engines with generous limits',
         'display_features': [
           'All translation engines',
-          'Whisper transcription (tiny–small)',
+          'Whisper transcription (tiny–medium)',
           'Microphone + desktop audio',
           'Caption history (7 days)',
-          '25,000 tokens/day',
+          '100,000 tokens/day · 1.5M/month',
+          '500K tokens/month per paid engine',
         ],
         'allowed_transcription_models': [
           'online',
           'whisper-tiny',
           'whisper-base',
           'whisper-small',
+          'whisper-medium',
+          'riva',
         ],
         'allowed_translation_models': [
           'google',
@@ -454,12 +460,13 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'history_enabled': true,
           'caption_retention_days': 7,
           'simultaneous_sessions': 2,
+          'session_duration_hours': 4,
         },
-        'quotas': {'daily_tokens': 25000, 'monthly_tokens': 250000},
+        'quotas': {'daily_tokens': 100000, 'monthly_tokens': 1500000},
         'engine_limits': {
-          'google_api': 100000,
-          'riva': 100000,
-          'llama': 150000,
+          'google_api': 500000,
+          'riva': 500000,
+          'llama': 500000,
         },
         'rate_limits': {'requests_per_minute': 60, 'concurrent_sessions': 2},
       },
@@ -472,7 +479,8 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'Whisper medium + Riva transcription',
           'Caption history (30 days)',
           'Up to 5 simultaneous sessions',
-          '75,000 tokens/day',
+          '500,000 tokens/day · 10M/month',
+          '3.3M tokens/month per paid engine',
         ],
         'allowed_transcription_models': [
           'online',
@@ -494,12 +502,13 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'history_enabled': true,
           'caption_retention_days': 30,
           'simultaneous_sessions': 5,
+          'session_duration_hours': 12,
         },
-        'quotas': {'daily_tokens': 75000, 'monthly_tokens': 750000},
+        'quotas': {'daily_tokens': 500000, 'monthly_tokens': 10000000},
         'engine_limits': {
-          'google_api': 300000,
-          'riva': 300000,
-          'llama': 500000,
+          'google_api': 3300000,
+          'riva': 3300000,
+          'llama': 3300000,
         },
         'rate_limits': {'requests_per_minute': 120, 'concurrent_sessions': 5},
       },
@@ -549,14 +558,16 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
       },
     },
 
-    // ── App Version Control ───────────────────────────────────────────
-    'app_version': {
-      'min_supported': '1.0.0',
-      'latest': '1.0.0',
-      'update_url': '',
-      'force_update_message':
-          'A new version of Omni Bridge is available. Please update to continue.',
-    },
+  };
+
+  /// Seeded into a **separate** `system/app_version` document
+  /// (read by [UpdateRemoteDataSource]).
+  static const Map<String, dynamic> _appVersionData = {
+    'min_supported': '1.0.0',
+    'latest': '1.0.0',
+    'update_url': '',
+    'force_update_message':
+        'A new version of Omni Bridge is available. Please update to continue.',
   };
 
   Future<void> _updatePollingRate() async {
@@ -601,10 +612,19 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
       _lastResult = null;
     });
     try {
-      await AuthRemoteDataSource.instance.firestore
+      final firestore = AuthRemoteDataSource.instance.firestore;
+
+      // Seed monetization config
+      await firestore
           .collection('system')
           .doc('monetization')
           .set({..._seedData, 'last_seeded_at': FieldValue.serverTimestamp()});
+
+      // Seed app version control into its own document
+      await firestore
+          .collection('system')
+          .doc('app_version')
+          .set({..._appVersionData, 'last_seeded_at': FieldValue.serverTimestamp()});
 
       if (mounted) {
         setState(() {

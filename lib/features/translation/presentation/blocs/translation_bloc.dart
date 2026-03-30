@@ -96,6 +96,8 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     on<ResetSettingsEvent>(_onResetSettings);
     on<LangErrorEvent>(_onLangError);
     on<UpdateServerConnectionEvent>(_onUpdateServerConnection);
+    on<EngineLimitReachedEvent>(_onEngineLimitReached);
+    on<SwitchToFallbackEngineEvent>(_onSwitchToFallbackEngine);
 
     // Initial load of model statuses
     _fetchInitialModelStatuses();
@@ -373,6 +375,69 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     Emitter<TranslationState> emit,
   ) {
     // Handled by UI layers/listeners
+  }
+
+  // ── Per-Engine Limit Handlers ─────────────────────────────────────────────
+
+  void _onEngineLimitReached(
+    EngineLimitReachedEvent event,
+    Emitter<TranslationState> emit,
+  ) {
+    final shouldShowDialog =
+        subscriptionDataSource.shouldShowEngineLimitNotice(event.engineId);
+
+    if (shouldShowDialog) {
+      // First time this engine is exceeded in this session → show dialog
+      debugPrint(
+        '[TranslationBloc] Engine "${event.engineId}" limit reached (first time), showing dialog.',
+      );
+      if (state.isRunning) {
+        stopTranslationUseCase();
+      }
+      emit(
+        state.copyWith(
+          isRunning: false,
+          engineLimitReachedFor: event.engineId,
+        ),
+      );
+    } else {
+      // Repeat occurrence → silent fallback to google
+      debugPrint(
+        '[TranslationBloc] Engine "${event.engineId}" limit reached again, silent fallback to google.',
+      );
+      add(SwitchToFallbackEngineEvent());
+    }
+  }
+
+  void _onSwitchToFallbackEngine(
+    SwitchToFallbackEngineEvent event,
+    Emitter<TranslationState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        activeTranslationModel: 'google',
+        engineLimitReachedFor: null,
+        isUsingFallbackEngine: true,
+      ),
+    );
+    // Re-apply settings with the fallback engine
+    add(
+      ApplySettingsEvent(
+        targetLang: state.activeTargetLang,
+        sourceLang: state.activeSourceLang,
+        useMic: state.activeUseMic,
+        fontSize: state.activeFontSize,
+        isBold: state.activeIsBold,
+        opacity: state.activeOpacity,
+        inputDeviceIndex: state.activeInputDeviceIndex,
+        outputDeviceIndex: state.activeOutputDeviceIndex,
+        desktopVolume: state.activeDesktopVolume,
+        micVolume: state.activeMicVolume,
+        translationModel: 'google',
+        apiKey: state.activeApiKey,
+        transcriptionModel: state.activeTranscriptionModel,
+      ),
+    );
   }
 
   void _onLangError(LangErrorEvent event, Emitter<TranslationState> emit) {

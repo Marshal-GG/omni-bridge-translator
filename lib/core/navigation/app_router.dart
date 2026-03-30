@@ -6,6 +6,7 @@ import 'package:omni_bridge/features/usage/presentation/screens/usage_screen.dar
 // Feature Screens
 import 'package:omni_bridge/features/startup/presentation/screens/splash_screen.dart';
 import 'package:omni_bridge/features/startup/presentation/screens/onboarding_screen.dart';
+import 'package:omni_bridge/features/startup/presentation/screens/force_update_screen.dart';
 import 'package:omni_bridge/features/auth/presentation/screens/login/login_screen.dart';
 import 'package:omni_bridge/features/translation/presentation/screens/translation_screen.dart';
 import 'package:omni_bridge/features/settings/presentation/screens/settings_screen.dart';
@@ -38,6 +39,7 @@ class AppRouter {
   static const String subscription = '/subscription';
   static const String usage = '/usage';
   static const String support = '/support';
+  static const String forceUpdate = '/force_update';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -52,6 +54,11 @@ class AppRouter {
       case onboarding:
         return MaterialPageRoute(
           builder: (_) => const OnboardingScreen(),
+          settings: settings,
+        );
+      case forceUpdate:
+        return MaterialPageRoute(
+          builder: (_) => const ForceUpdateScreen(),
           settings: settings,
         );
       case login:

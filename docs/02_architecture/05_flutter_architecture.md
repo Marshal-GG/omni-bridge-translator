@@ -175,6 +175,9 @@ All model language support is centralised in `lib/core/constants/model_language_
 ```text
 Launch
  └─ AppInitializer: Firebase init, single-instance check, protocol registration
+     ├─ Version Update Check (via UpdateRemoteDataSource -> system/app_version)
+     │   ├─ If Forced Update  → Routes directly to Force Update screen (Blocks app access)
+     │   └─ If Optional Update → Sets visual badge via UpdateNotifier, continues boot sequence
      ├─ Deep links (OAuth redirects) routed to AuthService
       ├─ New user (Logged out) → AppInitializer → Splash → Onboarding → Login
       └─ Return user (Logged in) → AppInitializer → Translation Overlay (Direct)

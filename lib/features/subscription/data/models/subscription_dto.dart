@@ -7,6 +7,7 @@ class SubscriptionStatus extends Equatable {
   final int monthlyTokensUsed;
   final int lifetimeTokensUsed;
   final int dailyLimit;
+  final int monthlyLimit;
   final DateTime dailyResetAt;
 
   /// For time-limited tiers (e.g. trial): total token pool for the whole period.
@@ -21,6 +22,7 @@ class SubscriptionStatus extends Equatable {
     required this.lifetimeTokensUsed,
     required this.dailyLimit,
     required this.dailyResetAt,
+    this.monthlyLimit = 0,
     this.periodLimit = 0,
   });
 
@@ -32,18 +34,39 @@ class SubscriptionStatus extends Equatable {
         monthlyTokensUsed,
         lifetimeTokensUsed,
         dailyLimit,
+        monthlyLimit,
         dailyResetAt,
         periodLimit,
       ];
 
   bool get hasPeriodLimit => periodLimit > 0;
-  bool get isUnlimited => dailyLimit < 0 && !hasPeriodLimit;
+  bool get hasMonthlyLimit => monthlyLimit > 0;
+  bool get isUnlimited => dailyLimit < 0 && !hasPeriodLimit && !hasMonthlyLimit;
+
   double get progress => hasPeriodLimit
       ? (periodLimit <= 0 ? 0 : monthlyTokensUsed / periodLimit)
-      : (dailyLimit <= 0 ? 0 : dailyTokensUsed / dailyLimit);
+      : hasMonthlyLimit
+          ? (monthlyLimit <= 0 ? 0 : monthlyTokensUsed / monthlyLimit)
+          : (dailyLimit <= 0 ? 0 : dailyTokensUsed / dailyLimit);
+
+  bool get isDailyExceeded =>
+      !isUnlimited && !hasPeriodLimit && dailyLimit > 0 && dailyTokensUsed >= dailyLimit;
+
+  bool get isMonthlyExceeded =>
+      hasMonthlyLimit && monthlyTokensUsed >= monthlyLimit;
+
   bool get isExceeded =>
       (hasPeriodLimit && monthlyTokensUsed >= periodLimit) ||
-      (!isUnlimited && !hasPeriodLimit && dailyTokensUsed >= dailyLimit);
+      isDailyExceeded ||
+      isMonthlyExceeded;
+
+  /// Remaining daily tokens (0 if exceeded or unlimited).
+  int get dailyRemaining =>
+      dailyLimit > 0 ? (dailyLimit - dailyTokensUsed).clamp(0, dailyLimit) : 0;
+
+  /// Remaining monthly tokens (0 if exceeded or no monthly limit).
+  int get monthlyRemaining =>
+      monthlyLimit > 0 ? (monthlyLimit - monthlyTokensUsed).clamp(0, monthlyLimit) : 0;
 
   factory SubscriptionStatus.fromJson(Map<String, dynamic> json) {
     return SubscriptionStatus(
@@ -53,6 +76,7 @@ class SubscriptionStatus extends Equatable {
       monthlyTokensUsed: json['monthlyTokensUsed'] as int? ?? 0,
       lifetimeTokensUsed: json['lifetimeTokensUsed'] as int? ?? 0,
       dailyLimit: json['dailyLimit'] as int? ?? 0,
+      monthlyLimit: json['monthlyLimit'] as int? ?? 0,
       dailyResetAt: json['dailyResetAt'] != null
           ? DateTime.parse(json['dailyResetAt'] as String)
           : DateTime.now(),
@@ -67,8 +91,33 @@ class SubscriptionStatus extends Equatable {
       'monthlyTokensUsed': monthlyTokensUsed,
       'lifetimeTokensUsed': lifetimeTokensUsed,
       'dailyLimit': dailyLimit,
+      'monthlyLimit': monthlyLimit,
       'dailyResetAt': dailyResetAt.toIso8601String(),
     };
+  }
+
+  SubscriptionStatus copyWith({
+    String? tier,
+    int? dailyTokensUsed,
+    int? weeklyTokensUsed,
+    int? monthlyTokensUsed,
+    int? lifetimeTokensUsed,
+    int? dailyLimit,
+    int? monthlyLimit,
+    DateTime? dailyResetAt,
+    int? periodLimit,
+  }) {
+    return SubscriptionStatus(
+      tier: tier ?? this.tier,
+      dailyTokensUsed: dailyTokensUsed ?? this.dailyTokensUsed,
+      weeklyTokensUsed: weeklyTokensUsed ?? this.weeklyTokensUsed,
+      monthlyTokensUsed: monthlyTokensUsed ?? this.monthlyTokensUsed,
+      lifetimeTokensUsed: lifetimeTokensUsed ?? this.lifetimeTokensUsed,
+      dailyLimit: dailyLimit ?? this.dailyLimit,
+      monthlyLimit: monthlyLimit ?? this.monthlyLimit,
+      dailyResetAt: dailyResetAt ?? this.dailyResetAt,
+      periodLimit: periodLimit ?? this.periodLimit,
+    );
   }
 }
 

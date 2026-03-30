@@ -11,6 +11,12 @@ class TranslationState extends Equatable {
   final bool isSettingsSaving;
   final bool isServerConnected;
 
+  // Per-engine limit state (hybrid fallback)
+  /// Non-null when a specific engine's monthly limit was just hit (show dialog).
+  final String? engineLimitReachedFor;
+  /// True when translation is using a fallback engine due to model limit.
+  final bool isUsingFallbackEngine;
+
   // Active Settings (Applied to WebSocket)
   final String activeTargetLang;
   final String activeSourceLang;
@@ -56,6 +62,8 @@ class TranslationState extends Equatable {
     this.navToSubscriptionTrigger = 0,
     this.modelStatuses = const {},
     this.isServerConnected = true,
+    this.engineLimitReachedFor,
+    this.isUsingFallbackEngine = false,
   });
 
   factory TranslationState.initial() {
@@ -84,6 +92,8 @@ class TranslationState extends Equatable {
       navToSubscriptionTrigger: 0,
       modelStatuses: {},
       isServerConnected: true,
+      engineLimitReachedFor: null,
+      isUsingFallbackEngine: false,
     );
   }
 
@@ -111,6 +121,8 @@ class TranslationState extends Equatable {
     int? navToSubscriptionTrigger,
     Map<String, dynamic>? modelStatuses,
     bool? isServerConnected,
+    Object? engineLimitReachedFor = _sentinel,
+    bool? isUsingFallbackEngine,
   }) {
     return TranslationState(
       isShrunk: isShrunk ?? this.isShrunk,
@@ -143,6 +155,10 @@ class TranslationState extends Equatable {
           navToSubscriptionTrigger ?? this.navToSubscriptionTrigger,
       modelStatuses: modelStatuses ?? this.modelStatuses,
       isServerConnected: isServerConnected ?? this.isServerConnected,
+      engineLimitReachedFor: engineLimitReachedFor == _sentinel
+          ? this.engineLimitReachedFor
+          : engineLimitReachedFor as String?,
+      isUsingFallbackEngine: isUsingFallbackEngine ?? this.isUsingFallbackEngine,
     );
   }
 
@@ -171,6 +187,8 @@ class TranslationState extends Equatable {
     navToSubscriptionTrigger,
     modelStatuses,
     isServerConnected,
+    engineLimitReachedFor,
+    isUsingFallbackEngine,
   ];
 
   String get activeTranslationModelStatusKey {

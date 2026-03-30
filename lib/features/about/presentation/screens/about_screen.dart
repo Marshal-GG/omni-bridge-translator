@@ -13,6 +13,7 @@ import 'package:omni_bridge/core/widgets/omni_copyright.dart';
 import 'package:omni_bridge/core/widgets/omni_header.dart';
 import 'package:omni_bridge/core/widgets/omni_window_layout.dart';
 import 'package:omni_bridge/core/widgets/omni_chip.dart';
+import 'package:omni_bridge/core/navigation/app_router.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -436,6 +437,13 @@ class _AboutScreenState extends State<AboutScreen> {
                                                               context,
                                                               'privacy_policy',
                                                             ),
+                                                      ),
+                                                      _LinkButton(
+                                                        icon: Icons.system_update_alt_rounded,
+                                                        label: 'Test Update',
+                                                        url: '',
+                                                        color: Colors.redAccent,
+                                                        onTap: () => Navigator.pushNamed(context, AppRouter.forceUpdate),
                                                       ),
                                                     ],
                                                   ),

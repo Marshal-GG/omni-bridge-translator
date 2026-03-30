@@ -27,7 +27,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
 
-
   @override
   void initState() {
     super.initState();
@@ -156,11 +155,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                                             ),
                                                         child: buildPlanCard(
                                                           plan: plan,
-                                                          isCurrent:
-                                                              status?.tier ==
-                                                              plan.id,
-                                                          trialUsed:
-                                                              state.trialUsed,
+                                                          isCurrent: status?.tier == plan.id,
+                                                          trialUsed: state.trialUsed,
                                                           formatter: _formatter,
                                                         ),
                                                       ),

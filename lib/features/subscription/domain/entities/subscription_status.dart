@@ -5,6 +5,7 @@ class SubscriptionStatus {
   final int monthlyTokensUsed;
   final int lifetimeTokensUsed;
   final int dailyLimit;
+  final int monthlyLimit;
   final DateTime dailyResetAt;
 
   /// For time-limited tiers (e.g. trial): total token pool for the whole period.
@@ -19,17 +20,38 @@ class SubscriptionStatus {
     required this.lifetimeTokensUsed,
     required this.dailyLimit,
     required this.dailyResetAt,
+    this.monthlyLimit = 0,
     this.periodLimit = 0,
   });
 
   bool get hasPeriodLimit => periodLimit > 0;
-  bool get isUnlimited => dailyLimit < 0 && !hasPeriodLimit;
+  bool get hasMonthlyLimit => monthlyLimit > 0;
+  bool get isUnlimited => dailyLimit < 0 && !hasPeriodLimit && !hasMonthlyLimit;
+
   double get progress => hasPeriodLimit
       ? (periodLimit <= 0 ? 0 : monthlyTokensUsed / periodLimit)
-      : (dailyLimit <= 0 ? 0 : dailyTokensUsed / dailyLimit);
+      : hasMonthlyLimit
+          ? (monthlyLimit <= 0 ? 0 : monthlyTokensUsed / monthlyLimit)
+          : (dailyLimit <= 0 ? 0 : dailyTokensUsed / dailyLimit);
+
+  bool get isDailyExceeded =>
+      !isUnlimited && !hasPeriodLimit && dailyLimit > 0 && dailyTokensUsed >= dailyLimit;
+
+  bool get isMonthlyExceeded =>
+      hasMonthlyLimit && monthlyTokensUsed >= monthlyLimit;
+
   bool get isExceeded =>
       (hasPeriodLimit && monthlyTokensUsed >= periodLimit) ||
-      (!isUnlimited && !hasPeriodLimit && dailyTokensUsed >= dailyLimit);
+      isDailyExceeded ||
+      isMonthlyExceeded;
+
+  /// Remaining daily tokens (0 if exceeded or unlimited).
+  int get dailyRemaining =>
+      dailyLimit > 0 ? (dailyLimit - dailyTokensUsed).clamp(0, dailyLimit) : 0;
+
+  /// Remaining monthly tokens (0 if exceeded or no monthly limit).
+  int get monthlyRemaining =>
+      monthlyLimit > 0 ? (monthlyLimit - monthlyTokensUsed).clamp(0, monthlyLimit) : 0;
 
   SubscriptionStatus copyWith({
     String? tier,
@@ -38,6 +60,7 @@ class SubscriptionStatus {
     int? monthlyTokensUsed,
     int? lifetimeTokensUsed,
     int? dailyLimit,
+    int? monthlyLimit,
     DateTime? dailyResetAt,
     int? periodLimit,
   }) {
@@ -48,6 +71,7 @@ class SubscriptionStatus {
       monthlyTokensUsed: monthlyTokensUsed ?? this.monthlyTokensUsed,
       lifetimeTokensUsed: lifetimeTokensUsed ?? this.lifetimeTokensUsed,
       dailyLimit: dailyLimit ?? this.dailyLimit,
+      monthlyLimit: monthlyLimit ?? this.monthlyLimit,
       dailyResetAt: dailyResetAt ?? this.dailyResetAt,
       periodLimit: periodLimit ?? this.periodLimit,
     );

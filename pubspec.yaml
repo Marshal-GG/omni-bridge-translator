@@ -40,6 +40,7 @@ dependencies:
   file_picker: ^10.3.10
   device_info_plus: ^11.3.0
   network_info_plus: ^7.0.0
+  connectivity_plus: ^6.1.1
   flutter_secure_storage: ^9.2.2
   package_info_plus: ^9.0.0
   flutter_markdown: ^0.7.7+1

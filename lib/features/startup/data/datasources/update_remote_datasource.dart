@@ -1,17 +1,11 @@
-import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 
 class UpdateRemoteDataSource {
   UpdateRemoteDataSource._();
   static final UpdateRemoteDataSource instance = UpdateRemoteDataSource._();
-
-  static const _owner = 'Marshal-GG';
-  static const _repo = 'omni-bridge-translator';
-  static const _apiUrl =
-      'https://api.github.com/repos/$_owner/$_repo/releases/latest';
 
   /// Compares semver strings. Returns true if [latest] is newer than [current].
   bool _isNewer(String current, String latest) {
@@ -36,42 +30,61 @@ class UpdateRemoteDataSource {
       final info = await PackageInfo.fromPlatform();
       final current = info.version;
 
-      final response = await http
-          .get(Uri.parse(_apiUrl), headers: {'Accept': 'application/json'})
+      final docStr = await FirebaseFirestore.instance
+          .collection('system')
+          .doc('app_version')
+          .get()
           .timeout(const Duration(seconds: 10));
 
-      if (response.statusCode == 404) {
+      if (!docStr.exists) {
         return const UpdateResult(
           status: UpdateStatus.error,
-          errorMessage: 'No releases published yet.',
-        );
-      }
-      if (response.statusCode != 200) {
-        return UpdateResult(
-          status: UpdateStatus.error,
-          errorMessage: 'GitHub returned ${response.statusCode}.',
+          errorMessage: 'Update configuration not found.',
         );
       }
 
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final tagName = (data['tag_name'] as String? ?? '').replaceAll('v', '');
-      final htmlUrl = data['html_url'] as String? ?? _apiUrl;
+      final data = docStr.data()!;
+      final latest = data['latest'] as String? ?? '1.0.0';
+      final minSupported = data['min_supported'] as String? ?? '1.0.0';
+      final updateUrl = data['update_url'] as String? ?? '';
+      final forceUpdateMessage = data['force_update_message'] as String?;
 
-      if (_isNewer(current, tagName)) {
-        return UpdateResult(
+      UpdateResult result;
+
+      if (_isNewer(current, minSupported)) {
+        result = UpdateResult(
+          status: UpdateStatus.forced,
+          latestVersion: latest,
+          releaseUrl: updateUrl,
+          forceUpdateMessage: forceUpdateMessage,
+        );
+      } else if (_isNewer(current, latest)) {
+        result = UpdateResult(
           status: UpdateStatus.available,
-          latestVersion: tagName,
-          releaseUrl: htmlUrl,
+          latestVersion: latest,
+          releaseUrl: updateUrl,
+        );
+      } else {
+        result = UpdateResult(
+          status: UpdateStatus.upToDate,
+          latestVersion: current,
         );
       }
 
-      return UpdateResult(
-        status: UpdateStatus.upToDate,
-        latestVersion: current,
-      );
+      // Automatically update the global notifier if an update is found
+      if (result.status == UpdateStatus.forced || result.status == UpdateStatus.available) {
+        UpdateNotifier.instance.setAvailable(
+          result.latestVersion ?? '',
+          result.releaseUrl ?? '',
+          forced: result.status == UpdateStatus.forced,
+          message: result.forceUpdateMessage,
+        );
+      }
+
+      return result;
     } catch (e) {
       debugPrint('[UpdateRemoteDataSource] Error: $e');
-      return UpdateResult(
+      return const UpdateResult(
         status: UpdateStatus.error,
         errorMessage: 'Check failed. Verify your internet connection.',
       );
@@ -79,19 +92,27 @@ class UpdateRemoteDataSource {
   }
 }
 
-/// Lightweight notifier so the overlay header can show a badge dot.
+/// Lightweight notifier so the overlay header can show a badge dot or forced UI.
 class UpdateNotifier extends ValueNotifier<bool> {
   UpdateNotifier._() : super(false);
   static final UpdateNotifier instance = UpdateNotifier._();
 
   String? latestVersion;
   String? releaseUrl;
+  String? forceUpdateMessage;
+  bool isForced = false;
 
-  void setAvailable(String version, String url) {
+  void setAvailable(String version, String url, {bool forced = false, String? message}) {
     latestVersion = version;
     releaseUrl = url;
+    isForced = forced;
+    forceUpdateMessage = message;
     value = true;
   }
 
-  void dismiss() => value = false;
+  void dismiss() {
+    if (!isForced) {
+      value = false;
+    }
+  }
 }

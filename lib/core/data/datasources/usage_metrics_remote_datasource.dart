@@ -127,6 +127,12 @@ class UsageMetricsRemoteDataSource {
           updates['daily_usage/$todayStr/models/$engine/tokens'] = (dailyModel['tokens'] ?? 0) + data['total_tokens'];
           updates['daily_usage/$todayStr/models/$engine/calls'] = (dailyModel['calls'] ?? 0) + data['calls'];
           updates['daily_usage/$todayStr/models/$engine/last_updated'] = {".sv": "timestamp"};
+
+          final totalsBase = currentData['usage']?['totals'] as Map<String, dynamic>? ?? {};
+          final subModelsBase = totalsBase['subscription_monthly_models'] as Map<String, dynamic>? ?? {};
+          final currentEngineMonth = (subModelsBase[engine] as num?)?.toInt() ?? 0;
+          updates['usage/totals/subscription_monthly_models/$engine'] = currentEngineMonth + data['total_tokens'];
+
           totalDailyTokens += data['total_tokens'] as int;
         }
 

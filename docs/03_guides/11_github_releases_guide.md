@@ -34,7 +34,25 @@ The executable (`omni_bridge.exe`) requires several DLLs and the `data` folder t
 
 ## How the Update Checker Works
 
-The app's `UpdateService` hits the GitHub API:
-`https://api.github.com/repos/Marshal-GG/omni-bridge-translator/releases/latest`
+The app's `UpdateRemoteDataSource` now checks a specific document in your Firebase **Cloud Firestore** database instead of hitting the GitHub API directly. This allows you to force critical updates and provide custom update messages without publishing a new release immediately.
 
-It compares the `tag_name` from GitHub with the local version fetched via `package_info_plus`. If the GitHub tag is "newer" (based on semantic versioning), the app shows the "Update available" prompt.
+### How to Configure Updates in the Database
+
+To manage app versions, you do **not** need to add any new code. Follow these steps:
+
+1. Open your **Firebase Console** and navigate to your project.
+2. Go to **Cloud Firestore**.
+3. Create a collection called `system` (if it doesn't exist).
+4. Inside the `system` collection, create a document named exactly `app_version`.
+5. Add the following **4 String fields** to the `app_version` document:
+
+| Field Name | Type | Value (Example) | What it does |
+| :--- | :--- | :--- | :--- |
+| `min_supported` | String | `1.0.0` | If the user's app version is **lower** than this, they get permanently blocked on the **Force Update** screen. |
+| `latest` | String | `1.1.0` | If the user's version is lower than this (but higher than `min_supported`), they get the **optional orange badge** on the settings icon. |
+| `update_url` | String | `https://github.com/omni-bridge/releases` | The link that opens in their web browser when they click the "Download Update" button. |
+| `force_update_message` | String | `A critical security patch is available.` | A custom message shown specifically on the Force Update screen explaining why they must update. |
+
+Whenever you release a new version of Omni Bridge via GitHub Releases (Step 3), simply update the `latest` field in Firebase, and all online clients will immediately display the new update badge on their next launch! 
+
+If you introduce a breaking change to the Python server requiring a client update, simply change `min_supported` to the new version, which will instantly force-block all outdated clients until they upgrade.

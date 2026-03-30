@@ -46,6 +46,11 @@ class SubscriptionRemoteDataSource {
   Timer? _usagePollTimer;
   int? _currentPollInterval;
 
+  // Track the notified engines for the current session to avoid spamming the user
+  final Set<String> _notifiedEngines = {};
+  final activeEngineFallbacks = ValueNotifier<Set<String>>({});
+  final Map<String, int> _engineMonthlyUsages = {};
+
   void init() {
     _listenToMonetizationConfig();
     _auth.authStateChanges().listen((user) {
@@ -67,6 +72,11 @@ class SubscriptionRemoteDataSource {
     _usagePollTimer = null;
     _lastKnownTier = null;
     _currentStatus = null;
+    
+    _notifiedEngines.clear();
+    activeEngineFallbacks.value = {};
+    _engineMonthlyUsages.clear();
+    
     _statusController.add(_getDefaultStatus());
     debugPrint('[Subscription] SubscriptionRemoteDataSource state reset');
   }
@@ -833,6 +843,18 @@ class SubscriptionRemoteDataSource {
     }
 
     return [];
+  }
+
+  bool shouldShowEngineLimitNotice(String engineId) {
+    if (_notifiedEngines.contains(engineId)) return false;
+    _notifiedEngines.add(engineId);
+    activeEngineFallbacks.value = {...activeEngineFallbacks.value, engineId};
+    return true;
+  }
+
+  void clearEngineLimitNotices() {
+    _notifiedEngines.clear();
+    activeEngineFallbacks.value = {};
   }
 
   void dispose() {

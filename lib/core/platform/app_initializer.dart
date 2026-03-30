@@ -12,13 +12,17 @@ import 'package:omni_bridge/core/platform/window_manager.dart';
 import 'package:protocol_handler/protocol_handler.dart';
 import 'package:app_links/app_links.dart';
 import 'package:windows_single_instance/windows_single_instance.dart';
+import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
+import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
 import 'dart:io' show Platform;
 import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/core/network/connectivity_service.dart';
 
 class AppInitializer {
   /// Initializes all required services and returns the calculated initial route
   static Future<String> init(List<String> args) async {
     await setupInjection();
+    ConnectivityService.instance.init();
     if (Platform.isWindows) {
       await WindowsSingleInstance.ensureSingleInstance(
         args,
@@ -192,6 +196,16 @@ class AppInitializer {
     String initialRoute = '/splash';
     if (isLoggedIn) {
       initialRoute = '/translation-overlay';
+    }
+
+    // Check for forced update before allowing the user into the app
+    try {
+      final updateResult = await UpdateRemoteDataSource.instance.checkForUpdate();
+      if (updateResult.status == UpdateStatus.forced) {
+        initialRoute = '/force_update';
+      }
+    } catch (e) {
+      debugPrint('[AppInitializer] Failed to check for forced updates: $e');
     }
 
     return initialRoute;

@@ -13,34 +13,39 @@ All values below are the defaults seeded via the Admin Panel's **System Config**
 | Feature | **Free** | **Pro** | **Enterprise** |
 | :--- | :--- | :--- | :--- |
 | **Price** | Free | ₹799/mo | ₹2,499/mo |
-| **Daily Quota** | 5,000 tokens | 25,000 tokens | 75,000 tokens |
-| **Monthly Quota** | 50,000 tokens | 250,000 tokens | 750,000 tokens |
-| **Transcription Models** | Google Online | Google, Whisper (tiny–small) | All (+ Whisper medium, Riva) |
-| **Translation Models** | Google, MyMemory | All (Google, MyMemory, Google Cloud gRPC, Riva, Llama) | All |
+| **Daily Quota** | 20,000 tokens | 100,000 tokens | 500,000 tokens |
+| **Monthly Quota** | 300,000 tokens | 1,500,000 tokens | 10,000,000 tokens |
+| **Transcription Models** | Google Online only | All (Google, Whisper tiny–medium, Riva) | All (Google, Whisper tiny–medium, Riva) |
+| **Translation Models** | Google Translate only | All (Google, MyMemory, Google Cloud gRPC, Riva, Llama) | All |
+| **Google Translate & ASR** | ✅ (only available engines) | ✅ Unlimited (no per-model cap) | ✅ Unlimited (no per-model cap) |
 | **Microphone Audio** | No | Yes | Yes |
 | **History Access** | None | 7-day retention | 30-day retention |
-| **Session Duration** | 15 min | 2 hours | 8 hours |
+| **Session Duration** | 1 hour | 4 hours | 12 hours |
 | **Concurrent Sessions** | 1 | 2 | 5 |
 | **Requests/min** | 20 | 60 | 120 |
 
+> **Token-to-time estimate**: ~20,000 tokens ≈ 30 minutes of active translation usage.
+
 ### Per-Engine Monthly Limits
 
-Paid tiers have per-engine monthly token caps. When exceeded, the client automatically falls back to `google` (free engine) and shows a toast notification.
+Paid tiers have per-engine monthly token caps. `google` (Translate) and `online` (ASR) are **exempt** from per-engine caps — they follow only the global daily/monthly quotas. When a paid engine's cap is exceeded, the client uses a **hybrid fallback behaviour** (see [Quota Exceeded Behaviour](#quota-exceeded-behaviour)).
 
 | Engine | Pro | Enterprise |
 |---|---|---|
-| `google_api` | 100,000 | 300,000 |
-| `riva` | 100,000 | 300,000 |
-| `llama` | 150,000 | 500,000 |
+| `google_api` | 500,000 | 3,300,000 |
+| `riva` | 500,000 | 3,300,000 |
+| `llama` | 500,000 | 3,300,000 |
+| All other paid models | 500,000 / model | 3,300,000 / model |
 
 Per-engine usage is tracked in RTDB at `daily_usage/{date}/models/{engine}/tokens`.
 
 ### Trial Tier
 
-A one-time **Trial** tier allows new users to test Pro-level features before committing:
+A **free, one-time 24-hour Trial** tier allows new users to test Pro-level features before committing:
 
 - **Activation**: `SubscriptionService.activateTrial()` — sets `tier: 'trial'`, records `trial_used: true` and `trialExpiresAt` on the user doc.
-- **Duration**: Configurable via `tiers.trial.trial_duration_hours` (default: 24 hours).
+- **Price**: Free (₹0).
+- **Duration**: 24 hours. Configurable via `tiers.trial.trial_duration_hours`.
 - **One-time only**: `hasUsedTrial()` checks the `trial_used` flag — once used, it cannot be re-activated.
 - **Auto-expiry**: `_checkTrialExpiry()` runs on every user doc snapshot while `tier == 'trial'`. When `trialExpiresAt` is passed, the user is automatically downgraded to the free tier.
 
@@ -71,11 +76,26 @@ All counters use **atomic increments** (ServerValue logic in RTDB, `FieldValue.i
 
 ### Quota Exceeded Behaviour
 
-When a user's daily tokens cross their tier's `dailyLimit`:
+#### Global (Daily / Monthly) Quota Exceeded
+
+When a user's daily tokens cross their tier's `dailyLimit` or their monthly tokens cross the `monthlyLimit`:
 1. `lastQuotaExceededAt` is written to Firestore (timestamp of first breach).
-2. The UI displays the contextual `UpgradeSheet` for free-tier users to encourage conversion.
+2. Translation is paused — `TranslationBloc` checks `SubscriptionStatus.isExceeded`.
+3. The UI displays the contextual `UpgradeSheet` for free-tier users to encourage conversion.
 
 > The quota-exceeded event fires **only once per crossing**, not on every subsequent call, to avoid log spam.
+
+#### Per-Engine Monthly Limit Exceeded (Hybrid Approach)
+
+When a specific paid engine's monthly token cap is reached:
+
+1. **First occurrence in the session**: Translation is paused and a dialog appears:
+   - Title: "Model Token Limit Reached"
+   - Body: "You've used all your {ModelDisplayName} tokens for this billing cycle."
+   - CTA 1: **"Switch to Google Translate"** → switches the active engine to `google` and resumes.
+   - CTA 2: **"Upgrade Plan"** → navigates to Settings (subscription section).
+2. **Subsequent calls in the same session**: The app **silently falls back** to `google` (free engine) to avoid repeatedly blocking the user. A persistent indicator appears in the translation header: *"Using Google Translate — {OriginalModel} limit reached"*.
+3. **Session tracking**: An in-memory `Set<String> _notifiedEngines` tracks which engines have already shown the dialog. This resets on app restart.
 
 ---
 
@@ -138,7 +158,7 @@ The Python server sends token counts for both **Input** (from ASR) and **Output*
 ### Enforcement
 - **Client-Side Polling**: `SubscriptionService` polls RTDB `daily_usage/tokens` and `usage/totals` at an interval sourced from `system/monetization → usage_poll_interval_seconds` (default **30s**). An initial fetch runs immediately on sign-in. If the interval is updated in Firestore, the timer restarts automatically.
 - **Gatekeeping**: `TranslationBloc` checks `SubscriptionStatus.isExceeded` before starting sessions. If exceeded, the app prevents audio capture and displays the `UpgradeSheet`.
-- **Per-Engine Enforcement**: `SubscriptionService.engineLimits()` and `engineMonthlyLimit(engineId)` expose per-engine monthly caps from `tiers.{tier}.engine_limits`. When exceeded, the client falls back to the free `google` engine.
+- **Per-Engine Enforcement**: `SubscriptionService.engineLimits()` and `engineMonthlyLimit(engineId)` expose per-engine monthly caps from `tiers.{tier}.engine_limits`. When exceeded, the client uses the hybrid fallback approach (dialog once, then silent switch to `google`).
 - **Backend Rules**: Firestore security rules block unauthorized writes to `tier` and other sensitive fields.
 
 ---
@@ -155,11 +175,11 @@ Both must pass. All config is fetched dynamically from `system/monetization` —
 
 | Engine | Model ID | Free | Pro | Enterprise |
 |---|---|---|---|---|
-| Google Translate | `google` | Yes | Yes | Yes |
-| MyMemory | `mymemory` | Yes | Yes | Yes |
-| Google Cloud (gRPC) | `google_api` | - | Yes | Yes |
-| NVIDIA Riva | `riva` | - | Yes | Yes |
-| Llama 3.1 8B | `llama` | - | Yes | Yes |
+| Google Translate | `google` | Yes | Yes (unlimited) | Yes (unlimited) |
+| MyMemory | `mymemory` | - | Yes | Yes |
+| Google Cloud (gRPC) | `google_api` | - | Yes (500K/mo cap) | Yes (3.3M/mo cap) |
+| NVIDIA Riva | `riva` | - | Yes (500K/mo cap) | Yes (3.3M/mo cap) |
+| Llama 3.1 8B | `llama` | - | Yes (500K/mo cap) | Yes (3.3M/mo cap) |
 
 Locked engines are blocked via `onBeforeChange` in the dropdown — `canUseModel()` returns `false`, preventing selection.
 
@@ -167,12 +187,12 @@ Locked engines are blocked via `onBeforeChange` in the dropdown — `canUseModel
 
 | Model | Model ID | Free | Pro | Enterprise |
 |---|---|---|---|---|
-| Google Online | `online` | Yes | Yes | Yes |
+| Google Online | `online` | Yes | Yes (unlimited) | Yes (unlimited) |
 | Whisper Tiny | `whisper-tiny` | - | Yes | Yes |
 | Whisper Base | `whisper-base` | - | Yes | Yes |
 | Whisper Small | `whisper-small` | - | Yes | Yes |
-| Whisper Medium | `whisper-medium` | - | - | Yes |
-| NVIDIA Riva | `riva` | - | - | Yes |
+| Whisper Medium | `whisper-medium` | - | Yes | Yes |
+| NVIDIA Riva | `riva` | - | Yes | Yes |
 
 Locked transcription options render with reduced opacity and a lock icon. The `_TranscriptionOption` widget accepts a `locked` parameter that disables tap interaction.
 

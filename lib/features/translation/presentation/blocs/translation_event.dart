@@ -135,3 +135,17 @@ class UpdateServerConnectionEvent extends TranslationEvent {
   @override
   List<Object?> get props => [isConnected];
 }
+
+/// Fired when a specific paid engine's monthly limit is exceeded.
+class EngineLimitReachedEvent extends TranslationEvent {
+  /// The engine ID that hit its cap (e.g. `google_api`, `riva`, `llama`).
+  final String engineId;
+  const EngineLimitReachedEvent(this.engineId);
+
+  @override
+  List<Object?> get props => [engineId];
+}
+
+/// User chose to switch to the free fallback engine after seeing the dialog,
+/// or the system is performing a silent fallback on repeat occurrences.
+class SwitchToFallbackEngineEvent extends TranslationEvent {}

@@ -66,6 +66,10 @@ class GoogleCloudTranslationModel:
             if not self._project_id:
                 raise ValueError("Credentials missing required 'project_id' field")
 
+            # Sanitize private_key (handles common double-escaping of newlines)
+            if "private_key" in info and isinstance(info["private_key"], str):
+                info["private_key"] = info["private_key"].replace("\\n", "\n")
+
             credentials = service_account.Credentials.from_service_account_info(
                 info,
                 scopes=["https://www.googleapis.com/auth/cloud-translation"],

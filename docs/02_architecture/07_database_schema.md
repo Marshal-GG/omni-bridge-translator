@@ -54,6 +54,7 @@ There are three main root paths in Firestore:
 users/{uid}/
 system/admins
 system/monetization
+system/app_version
 system/translation_config
 legal/{documentId}
 ```
@@ -88,96 +89,117 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
 
 ```json
 {
-  "order": ["free", "pro", "enterprise"],
+  "order": ["free", "trial", "pro", "enterprise"],
   "popular": "pro",
   "usage_poll_interval_seconds": 30,
+  "fallback_engine": "google",
   "tiers": {
     "free": {
       "name": "Free",
-      "price": "Free",
+      "price": "₹0",
       "description": "Basic translation for casual use",
-      "display_features": ["Google & MyMemory translation", "Desktop audio capture", "5,000 tokens/day", "15 min sessions"],
+      "display_features": ["Google Translate only", "Google Online ASR", "Desktop audio capture", "20,000 tokens/day · 300K/month"],
       "allowed_transcription_models": ["online"],
-      "allowed_translation_models": ["google", "mymemory"],
+      "allowed_translation_models": ["google"],
       "features": {
         "mic_audio": false,
         "history_enabled": false,
-        "max_session_duration_minutes": 15,
         "caption_retention_days": 0,
-        "simultaneous_sessions": 1
+        "simultaneous_sessions": 1,
+        "session_duration_hours": 1
       },
-      "quotas": { "daily_tokens": 5000, "monthly_tokens": 50000 },
+      "quotas": { "daily_tokens": 20000, "monthly_tokens": 300000 },
       "engine_limits": {},
-      "rate_limits": { "requests_per_minute": 20 }
+      "rate_limits": { "requests_per_minute": 20, "concurrent_sessions": 1 }
+    },
+    "trial": {
+      "name": "Trial",
+      "price": "₹0",
+      "description": "Free one-time 24-hour pass — full engine access",
+      "is_trial": true,
+      "trial_duration_hours": 24,
+      "display_features": ["All translation & transcription engines", "Microphone + desktop audio", "15,000 tokens for 24 hours", "One-time per account"],
+      "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small", "whisper-medium", "riva"],
+      "allowed_translation_models": ["google", "mymemory", "google_api", "riva", "llama"],
+      "features": {
+        "mic_audio": true,
+        "history_enabled": false,
+        "caption_retention_days": 0,
+        "simultaneous_sessions": 1,
+        "session_duration_hours": 24
+      },
+      "quotas": { "daily_tokens": -1, "monthly_tokens": 15000 },
+      "engine_limits": { "google_api": 6000, "riva": 6000, "llama": 6000 },
+      "rate_limits": { "requests_per_minute": 60, "concurrent_sessions": 1 }
     },
     "pro": {
       "name": "Pro",
       "price": "₹799/mo",
       "description": "All engines with generous limits",
-      "display_features": ["All translation engines", "Whisper transcription (tiny–small)", "Microphone + desktop audio", "Caption history (7 days)", "25,000 tokens/day", "2 hr sessions"],
-      "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small"],
-      "allowed_translation_models": ["google", "mymemory", "google_api", "riva", "llama"],
-      "features": {
-        "mic_audio": true,
-        "history_enabled": true,
-        "max_session_duration_minutes": 120,
-        "caption_retention_days": 7,
-        "simultaneous_sessions": 2
-      },
-      "quotas": { "daily_tokens": 25000, "monthly_tokens": 250000 },
-      "engine_limits": { "google_api": 100000, "riva": 100000, "llama": 150000 },
-      "rate_limits": { "requests_per_minute": 60 }
-    },
-    "enterprise": {
-      "name": "Enterprise",
-      "price": "₹2,499/mo",
-      "description": "Maximum capacity for power users",
-      "display_features": ["Everything in Pro", "Whisper medium + Riva transcription", "Caption history (30 days)", "Up to 5 simultaneous sessions", "75,000 tokens/day", "8 hr sessions"],
+      "display_features": ["All translation engines", "Whisper transcription (tiny–medium)", "Microphone + desktop audio", "Caption history (7 days)", "100,000 tokens/day · 1.5M/month", "500K tokens/month per paid engine"],
       "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small", "whisper-medium", "riva"],
       "allowed_translation_models": ["google", "mymemory", "google_api", "riva", "llama"],
       "features": {
         "mic_audio": true,
         "history_enabled": true,
-        "max_session_duration_minutes": 480,
-        "caption_retention_days": 30,
-        "simultaneous_sessions": 5
+        "caption_retention_days": 7,
+        "simultaneous_sessions": 2,
+        "session_duration_hours": 4
       },
-      "quotas": { "daily_tokens": 75000, "monthly_tokens": 750000 },
-      "engine_limits": { "google_api": 300000, "riva": 300000, "llama": 500000 },
-      "rate_limits": { "requests_per_minute": 120 }
+      "quotas": { "daily_tokens": 100000, "monthly_tokens": 1500000 },
+      "engine_limits": { "google_api": 500000, "riva": 500000, "llama": 500000 },
+      "rate_limits": { "requests_per_minute": 60, "concurrent_sessions": 2 }
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "price": "₹2,499/mo",
+      "description": "Maximum capacity for power users",
+      "display_features": ["Everything in Pro", "Whisper medium + Riva transcription", "Caption history (30 days)", "Up to 5 simultaneous sessions", "500,000 tokens/day · 10M/month", "3.3M tokens/month per paid engine"],
+      "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small", "whisper-medium", "riva"],
+      "allowed_translation_models": ["google", "mymemory", "google_api", "riva", "llama"],
+      "features": {
+        "mic_audio": true,
+        "history_enabled": true,
+        "caption_retention_days": 30,
+        "simultaneous_sessions": 5,
+        "session_duration_hours": 12
+      },
+      "quotas": { "daily_tokens": 500000, "monthly_tokens": 10000000 },
+      "engine_limits": { "google_api": 3300000, "riva": 3300000, "llama": 3300000 },
+      "rate_limits": { "requests_per_minute": 120, "concurrent_sessions": 5 }
     }
   },
   "model_overrides": {
-    "online":         { "enabled": true },
-    "google":         { "enabled": true },
-    "mymemory":       { "enabled": true },
-    "google_api":     { "enabled": true },
-    "riva":           { "enabled": true },
-    "llama":          { "enabled": true },
-    "whisper-tiny":   { "enabled": true },
-    "whisper-base":   { "enabled": true },
-    "whisper-small":  { "enabled": true },
-    "whisper-medium": { "enabled": true }
+    "online":         { "enabled": true, "display_name": "Google Speech" },
+    "google":         { "enabled": true, "display_name": "Google Translate" },
+    "mymemory":       { "enabled": true, "display_name": "MyMemory" },
+    "google_api":     { "enabled": true, "display_name": "Google Cloud" },
+    "riva":           { "enabled": true, "display_name": "NVIDIA Riva" },
+    "llama":          { "enabled": true, "display_name": "Llama 3.1" },
+    "whisper-tiny":   { "enabled": true, "display_name": "Whisper Tiny" },
+    "whisper-base":   { "enabled": true, "display_name": "Whisper Base" },
+    "whisper-small":  { "enabled": true, "display_name": "Whisper Small" },
+    "whisper-medium": { "enabled": true, "display_name": "Whisper Medium" }
   },
   "announcements": {
     "active": false,
     "message": "",
     "type": "info",
     "dismiss_key": "",
-    "target_tiers": ["free", "pro", "enterprise"]
+    "target_tiers": ["free", "trial", "pro", "enterprise"]
   },
   "upgrade_prompts": {
     "show_at_usage_percent": 80,
     "free_trial_days": 7,
     "promo_code_enabled": false,
-    "promo_message": ""
+    "promo_message": "",
+    "feature_locked": {
+      "title": "Upgrade Your Plan",
+      "message": "Get more daily tokens and unlock exclusive features like premium translation engines.",
+      "highlights": ["Priority Support"]
+    }
   },
-  "app_version": {
-    "min_supported": "1.0.0",
-    "latest": "1.0.0",
-    "update_url": "",
-    "force_update_message": "A new version of Omni Bridge is available. Please update to continue."
-  }
+  "payment_links": { "trial": "", "pro": "", "enterprise": "" }
 }
 ```
 
@@ -190,7 +212,6 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
 | `model_overrides` | `map` | Global kill switches per model (`enabled: false` disables for all tiers) |
 | `announcements` | `map` | Banner config: `active`, `message`, `type`, `dismiss_key`, `target_tiers` |
 | `upgrade_prompts` | `map` | Upgrade prompt config: `show_at_usage_percent`, `free_trial_days`, `promo_code_enabled` |
-| `app_version` | `map` | Version control: `min_supported`, `latest`, `update_url`, `force_update_message` |
 | `payment_links` | `map?` | Razorpay payment URLs keyed by tier ID (e.g., `{"pro": "https://razorpay.me/...", "enterprise": "https://..."}`) |
 
 **Per-Tier Fields** (`tiers.{tierId}`):
@@ -203,16 +224,42 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
 | `display_features` | `array` | Feature bullet points for subscription UI |
 | `allowed_transcription_models` | `array` | Model IDs allowed for ASR (e.g., `["online", "whisper-tiny"]`) |
 | `allowed_translation_models` | `array` | Model IDs allowed for translation (e.g., `["google", "mymemory", "google_api"]`) |
-| `features` | `map` | Feature flags: `mic_audio`, `history_enabled`, `max_session_duration_minutes`, `caption_retention_days`, `simultaneous_sessions` |
+| `features` | `map` | Feature flags: `mic_audio`, `history_enabled`, `caption_retention_days`, `simultaneous_sessions`, `session_duration_hours` |
 | `quotas` | `map` | Token limits: `daily_tokens`, `monthly_tokens` |
-| `engine_limits` | `map` | Per-engine monthly token caps (e.g., `{"google_api": 100000}`). Engines not listed follow overall quotas only. When exceeded, client auto-falls back to `google` (free engine). |
-| `rate_limits` | `map` | Rate limiting: `requests_per_minute` |
+| `engine_limits` | `map` | Per-engine monthly token caps (e.g., `{"google_api": 500000}`). Engines not listed (`google`, `online`) are exempt. When exceeded, hybrid fallback is triggered. |
+| `rate_limits` | `map` | Rate limiting: `requests_per_minute`, `concurrent_sessions` |
 | `is_trial` | `bool?` | `true` if this tier is a one-time trial |
 | `trial_duration_hours` | `number?` | Duration in hours (only relevant when `is_trial` is `true`, default: 24) |
 
 > **Model Access Control**: `SubscriptionService.canUseModel(modelId)` combines two checks: (1) Is the model in the user's tier's `allowed_translation_models` or `allowed_transcription_models`? (2) Is `model_overrides.{modelId}.enabled` set to `true`? Both must pass.
 >
-> **Engine Limit Enforcement**: When a paid engine (e.g., `google_api`) exceeds its per-engine monthly cap, the client falls back to `google` (free) and shows a toast notification. The user keeps translating — just on a cheaper engine. Per-engine usage is tracked in RTDB `daily_usage/{date}/models/{engine}/tokens`.
+> **Engine Limit Enforcement (Hybrid)**: When a paid engine exceeds its per-engine monthly cap:
+> 1. **First occurrence**: Translation pauses and a dialog appears offering "Switch to Google Translate" or "Upgrade Plan".
+> 2. **Subsequent occurrences** (same session): Silent fallback to `google` engine with a persistent UI chip showing "Using Google Translate (model limit reached)".
+>
+> Per-engine usage is tracked in RTDB `daily_usage/{date}/models/{engine}/tokens`. Free engines (`google`, `online`) are exempt from per-engine caps.
+
+---
+
+### App Version — `system/app_version`
+
+A singleton document used to manage application updates and forced upgrades.
+
+```json
+{
+  "min_supported": "1.0.0",
+  "latest": "1.0.0",
+  "update_url": "",
+  "force_update_message": "A new version of Omni Bridge is available. Please update to continue."
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `min_supported` | `string` | The minimum semver required to run the app. If client version is lower, force update screen is shown. |
+| `latest` | `string` | The latest available version. Triggers a soft update prompt if client is lower but above `min_supported`. |
+| `update_url` | `string` | The URL to open for downloading the new version (e.g. GitHub releases page). |
+| `force_update_message` | `string` | Custom message shown on the force update screen. |
 
 ---
 
@@ -304,11 +351,14 @@ Created automatically on first login by `SubscriptionService._initializeUserDoc(
 
 **Token limits by tier (defaults; dynamically overridden by `system/monetization`):**
 
-| Tier | Daily | Monthly | Engine Limits | Session Duration |
-|---|---|---|---|---|
-| `free` | 5,000 | 50,000 | None (free engines only) | 15 min |
-| `pro` | 25,000 | 250,000 | google_api: 100k, riva: 100k, llama: 150k | 2 hours |
-| `enterprise` | 75,000 | 750,000 | google_api: 300k, riva: 300k, llama: 500k | 8 hours |
+| Tier | Daily | Monthly | Engine Limits (per month) | Sessions | Duration |
+|---|---|---|---|---|---|
+| `free` | 20,000 | 300,000 | None (Google Translate only) | 1 | 1 hour |
+| `trial` | Unlimited | 15,000 (one-time) | google_api/riva/llama: 6k each | 1 | 24 hours |
+| `pro` | 100,000 | 1,500,000 | google_api/riva/llama: 500k each | 2 | 4 hours |
+| `enterprise` | 500,000 | 10,000,000 | google_api/riva/llama: 3.3M each | 5 | 12 hours |
+
+> **Token-to-time estimate**: ~20,000 tokens ≈ 30 minutes of active translation usage.
  
 > Quota limits, pricing, and feature gate requirements are fetched dynamically from `system/monetization`. Payment links are handled via Razorpay (see `SubscriptionService.openCheckout()`). Setting the `tier` field directly in Firestore (or via a backend function) upgrades the user; the Firestore listener in `_listenToUserDoc()` detects the change and fires a `subscription_events` log automatically.
 
@@ -724,6 +774,7 @@ users/{uid}                              ← root user doc (tier, billing anchor
     └── settings/app_preferences         ← single settings doc
 system/admins                            ← admin email whitelist
 system/monetization                      ← tiers, model access, kill switches, announcements
+system/app_version                       ← application update and version controls
 system/translation_config                ← Google Cloud service account credentials
 legal/{documentId}                       ← terms of service, privacy policy
 
