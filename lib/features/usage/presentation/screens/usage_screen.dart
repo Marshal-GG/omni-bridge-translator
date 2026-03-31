@@ -12,9 +12,10 @@ import 'package:omni_bridge/features/usage/presentation/widgets/model_usage_bar_
 import 'package:omni_bridge/features/usage/presentation/widgets/usage_header.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/engine_usage_card.dart';
 import 'package:get_it/get_it.dart';
-import 'package:omni_bridge/core/widgets/omni_window_layout.dart';
 import 'package:omni_bridge/core/widgets/omni_card.dart';
 
+import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
+import 'package:omni_bridge/core/navigation/app_router.dart';
 import 'package:omni_bridge/core/widgets/omni_branding.dart';
 import 'package:omni_bridge/core/widgets/omni_version_chip.dart';
 
@@ -39,7 +40,8 @@ class _UsageScreenState extends State<UsageScreen> {
       create: (context) => UsageBloc(
         usageRepository: GetIt.I<UsageRepository>(),
       )..add(const LoadUsageStats()),
-      child: OmniWindowLayout(
+      child: AppDashboardShell(
+            currentRoute: AppRouter.usage,
             child: Column(
               children: [
                 buildUsageHeader(context),

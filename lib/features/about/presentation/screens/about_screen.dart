@@ -11,7 +11,7 @@ import 'package:omni_bridge/features/about/presentation/blocs/about_state.dart';
 import 'package:omni_bridge/core/widgets/omni_branding.dart';
 import 'package:omni_bridge/core/widgets/omni_copyright.dart';
 import 'package:omni_bridge/core/widgets/omni_header.dart';
-import 'package:omni_bridge/core/widgets/omni_window_layout.dart';
+import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
 import 'package:omni_bridge/core/widgets/omni_chip.dart';
 import 'package:omni_bridge/core/navigation/app_router.dart';
 
@@ -39,7 +39,8 @@ class _AboutScreenState extends State<AboutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return OmniWindowLayout(
+    return AppDashboardShell(
+      currentRoute: AppRouter.about,
       child: Column(
           children: [
             OmniHeader(

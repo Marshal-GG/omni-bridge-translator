@@ -11,7 +11,8 @@ import '../widgets/support_chat_view.dart';
 import '../widgets/feedback_form.dart';
 import '../widgets/support_footer.dart';
 import '../widgets/support_header.dart';
-import 'package:omni_bridge/core/widgets/omni_window_layout.dart';
+import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
+import 'package:omni_bridge/core/navigation/app_router.dart';
 import 'package:omni_bridge/core/widgets/omni_card.dart';
 import 'package:omni_bridge/core/widgets/omni_version_chip.dart';
 import 'package:omni_bridge/core/widgets/omni_badge.dart';
@@ -42,7 +43,8 @@ class _SupportScreenState extends State<SupportScreen> {
         ..add(const LoadSupportLinks())
         ..add(const CaptureSystemSnapshot())
         ..add(const LoadTicketHistory()),
-      child: OmniWindowLayout(
+      child: AppDashboardShell(
+        currentRoute: AppRouter.support,
         child: Column(
           children: [
             buildSupportHeader(context),

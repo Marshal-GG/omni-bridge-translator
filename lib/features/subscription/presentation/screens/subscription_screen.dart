@@ -14,7 +14,8 @@ import '../widgets/subscription_header.dart';
 import '../widgets/subscription_footer.dart';
 import 'package:omni_bridge/core/widgets/omni_branding.dart';
 import '../widgets/current_usage_display.dart';
-import 'package:omni_bridge/core/widgets/omni_window_layout.dart';
+import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
+import 'package:omni_bridge/core/navigation/app_router.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -46,7 +47,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
 
   @override
   Widget build(BuildContext context) {
-    return OmniWindowLayout(
+    return AppDashboardShell(
+      currentRoute: AppRouter.subscription,
       child: BlocProvider(
         create: (context) => sl<SubscriptionBloc>(),
             child: Column(

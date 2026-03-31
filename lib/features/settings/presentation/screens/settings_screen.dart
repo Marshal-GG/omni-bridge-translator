@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_bloc.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_event.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_state.dart';
@@ -13,6 +12,8 @@ import 'package:omni_bridge/features/settings/presentation/widgets/input_output_
 import 'package:omni_bridge/features/settings/presentation/widgets/languages_tab.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/display_tab.dart';
 import 'package:omni_bridge/core/widgets/omni_version_chip.dart';
+import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
+import 'package:omni_bridge/core/navigation/app_router.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -133,14 +134,11 @@ class _SettingsScreenState extends State<SettingsScreen>
       ],
       child: BlocBuilder<SettingsBloc, SettingsState>(
         builder: (context, state) {
-          return Scaffold(
-            backgroundColor: Colors.transparent,
-            body: WindowBorder(
-              color: Colors.white12,
-              width: 1,
-              child: Container(
-                color: const Color(0xFF121212),
-                child: LayoutBuilder(
+          return AppDashboardShell(
+            currentRoute: AppRouter.settingsOverlay,
+            child: Container(
+              color: const Color(0xFF121212),
+              child: LayoutBuilder(
                   builder: (context, constraints) {
                     // Hide content while the window is transitioning to a larger size
                     // to prevent RenderFlex overflow errors during the animation.
@@ -300,7 +298,6 @@ class _SettingsScreenState extends State<SettingsScreen>
                   },
                 ),
               ),
-            ),
           );
         },
       ),
