@@ -36,18 +36,24 @@ class UsageRepositoryImpl implements UsageRepository {
 
       data.forEach((engine, value) {
         if (value is Map<String, dynamic>) {
-          stats.add(EngineUsage(
-            engine: engine,
-            totalTokens: (value['total_tokens'] as num?)?.toInt() ?? 0,
-            totalCalls: (value['total_calls'] as num?)?.toInt() ?? 0,
-            totalInputTokens: (value['total_input_tokens'] as num?)?.toInt() ?? 0,
-            totalOutputTokens: (value['total_output_tokens'] as num?)?.toInt() ?? 0,
-            totalLatencyMs: (value['total_latency_ms'] as num?)?.toInt() ?? 0,
-            type: _resolveType(engine),
-            lastUsed: value['last_used'] != null
-                ? DateTime.fromMillisecondsSinceEpoch(value['last_used'] as int)
-                : null,
-          ));
+          stats.add(
+            EngineUsage(
+              engine: engine,
+              totalTokens: (value['total_tokens'] as num?)?.toInt() ?? 0,
+              totalCalls: (value['total_calls'] as num?)?.toInt() ?? 0,
+              totalInputTokens:
+                  (value['total_input_tokens'] as num?)?.toInt() ?? 0,
+              totalOutputTokens:
+                  (value['total_output_tokens'] as num?)?.toInt() ?? 0,
+              totalLatencyMs: (value['total_latency_ms'] as num?)?.toInt() ?? 0,
+              type: _resolveType(engine),
+              lastUsed: value['last_used'] != null
+                  ? DateTime.fromMillisecondsSinceEpoch(
+                      value['last_used'] as int,
+                    )
+                  : null,
+            ),
+          );
         }
       });
 
@@ -154,11 +160,13 @@ class UsageRepositoryImpl implements UsageRepository {
           }
         });
 
-        history.add(DailyUsageRecord(
-          date: DateTime.parse(dateStr),
-          totalTokens: (dayData['tokens'] as num?)?.toInt() ?? 0,
-          engineTokens: engineTokens,
-        ));
+        history.add(
+          DailyUsageRecord(
+            date: DateTime.parse(dateStr),
+            totalTokens: (dayData['tokens'] as num?)?.toInt() ?? 0,
+            engineTokens: engineTokens,
+          ),
+        );
       }
 
       return history.reversed.toList();

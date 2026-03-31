@@ -20,6 +20,10 @@ class EngineUsage extends Equatable {
   /// -1 = no per-engine cap (follows overall quota only).
   final int monthlyTokensLimit;
 
+  /// Whether this engine is included in the user's current subscription plan.
+  /// Computed at load time by the bloc; used by the UI for enabled/disabled state.
+  final bool isInPlan;
+
   const EngineUsage({
     required this.engine,
     required this.totalTokens,
@@ -31,6 +35,7 @@ class EngineUsage extends Equatable {
     this.lastUsed,
     this.monthlyTokensUsed = -1,
     this.monthlyTokensLimit = -1,
+    this.isInPlan = false,
   });
 
   double get averageLatencyMs => totalCalls > 0 ? totalLatencyMs / totalCalls : 0;
@@ -64,6 +69,7 @@ class EngineUsage extends Equatable {
     UsageType? type,
     int? monthlyTokensUsed,
     int? monthlyTokensLimit,
+    bool? isInPlan,
   }) {
     return EngineUsage(
       engine: engine ?? this.engine,
@@ -76,6 +82,7 @@ class EngineUsage extends Equatable {
       type: type ?? this.type,
       monthlyTokensUsed: monthlyTokensUsed ?? this.monthlyTokensUsed,
       monthlyTokensLimit: monthlyTokensLimit ?? this.monthlyTokensLimit,
+      isInPlan: isInPlan ?? this.isInPlan,
     );
   }
 
@@ -91,5 +98,6 @@ class EngineUsage extends Equatable {
         type,
         monthlyTokensUsed,
         monthlyTokensLimit,
+        isInPlan,
       ];
 }

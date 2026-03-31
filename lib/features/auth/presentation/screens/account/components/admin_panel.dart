@@ -256,7 +256,8 @@ class _AdminPanelState extends State<AdminPanel> {
                     valueListenable:
                         SubscriptionRemoteDataSource.instance.configNotifier,
                     builder: (context, _, _) {
-                      final plans = SubscriptionRemoteDataSource.instance.availablePlans;
+                      final plans =
+                          SubscriptionRemoteDataSource.instance.availablePlans;
                       if (plans.isEmpty) {
                         return const Text(
                           'No plans loaded – seed config first',
@@ -340,12 +341,15 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
   @override
   void initState() {
     super.initState();
-    SubscriptionRemoteDataSource.instance.configNotifier.addListener(_onConfigChanged);
+    SubscriptionRemoteDataSource.instance.configNotifier.addListener(
+      _onConfigChanged,
+    );
   }
 
   void _onConfigChanged() {
     if (!mounted) return;
-    final newValue = SubscriptionRemoteDataSource.instance.pollIntervalSeconds.toString();
+    final newValue = SubscriptionRemoteDataSource.instance.pollIntervalSeconds
+        .toString();
     if (_pollController.text != newValue && !_updatingPoll) {
       setState(() {
         _pollController.text = newValue;
@@ -355,7 +359,9 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
 
   @override
   void dispose() {
-    SubscriptionRemoteDataSource.instance.configNotifier.removeListener(_onConfigChanged);
+    SubscriptionRemoteDataSource.instance.configNotifier.removeListener(
+      _onConfigChanged,
+    );
     _pollController.dispose();
     super.dispose();
   }
@@ -530,25 +536,97 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
     // (written by the backend) are listed here.
     'model_overrides': {
       // ── Config keys (used by allowed_*_models in tiers) ──────────
-      'online':         {'enabled': true, 'display_name': 'Google Speech',    'type': 'asr'},
-      'google':         {'enabled': true, 'display_name': 'Google Translate', 'type': 'translation'},
-      'mymemory':       {'enabled': true, 'display_name': 'MyMemory',         'type': 'translation'},
-      'google_api':     {'enabled': true, 'display_name': 'Google Cloud',     'type': 'translation'},
-      'riva-nmt':       {'enabled': true, 'display_name': 'NVIDIA Riva NMT',  'type': 'translation'},
-      'riva-asr':       {'enabled': true, 'display_name': 'NVIDIA Riva ASR',  'type': 'asr'},
-      'llama':          {'enabled': true, 'display_name': 'Llama 3.1',        'type': 'translation'},
-      'whisper-tiny':   {'enabled': true, 'display_name': 'Whisper Tiny',     'type': 'asr'},
-      'whisper-base':   {'enabled': true, 'display_name': 'Whisper Base',     'type': 'asr'},
-      'whisper-small':  {'enabled': true, 'display_name': 'Whisper Small',    'type': 'asr'},
-      'whisper-medium': {'enabled': true, 'display_name': 'Whisper Medium',   'type': 'asr'},
+      'online': {
+        'enabled': true,
+        'display_name': 'Google Speech',
+        'type': 'asr',
+      },
+      'google': {
+        'enabled': true,
+        'display_name': 'Google Translate',
+        'type': 'translation',
+      },
+      'mymemory': {
+        'enabled': true,
+        'display_name': 'MyMemory',
+        'type': 'translation',
+      },
+      'google_api': {
+        'enabled': true,
+        'display_name': 'Google Cloud',
+        'type': 'translation',
+      },
+      'riva-nmt': {
+        'enabled': true,
+        'display_name': 'NVIDIA Riva NMT',
+        'type': 'translation',
+      },
+      'riva-asr': {
+        'enabled': true,
+        'display_name': 'NVIDIA Riva ASR',
+        'type': 'asr',
+      },
+      'llama': {
+        'enabled': true,
+        'display_name': 'Llama 3.1',
+        'type': 'translation',
+      },
+      'whisper-tiny': {
+        'enabled': true,
+        'display_name': 'Whisper Tiny',
+        'type': 'asr',
+      },
+      'whisper-base': {
+        'enabled': true,
+        'display_name': 'Whisper Base',
+        'type': 'asr',
+      },
+      'whisper-small': {
+        'enabled': true,
+        'display_name': 'Whisper Small',
+        'type': 'asr',
+      },
+      'whisper-medium': {
+        'enabled': true,
+        'display_name': 'Whisper Medium',
+        'type': 'asr',
+      },
       // ── Backend RTDB keys (written by the server to model_stats/) ─
-      'google-translate':      {'enabled': true, 'display_name': 'Google Translate', 'type': 'translation'},
-      'google-cloud-v3-grpc':  {'enabled': true, 'display_name': 'Google Cloud',     'type': 'translation'},
-      'mymemory-translate':    {'enabled': true, 'display_name': 'MyMemory',         'type': 'translation'},
-      'llama-translate':       {'enabled': true, 'display_name': 'Llama 3.1',        'type': 'translation'},
-      'riva-grpc-mt':          {'enabled': true, 'display_name': 'NVIDIA Riva NMT',  'type': 'translation'},
-      'google-asr':            {'enabled': true, 'display_name': 'Google Speech',    'type': 'asr'},
-      'whisper-asr':           {'enabled': true, 'display_name': 'Whisper',          'type': 'asr'},
+      'google-translate': {
+        'enabled': true,
+        'display_name': 'Google Translate',
+        'type': 'translation',
+      },
+      'google-cloud-v3-grpc': {
+        'enabled': true,
+        'display_name': 'Google Cloud',
+        'type': 'translation',
+      },
+      'mymemory-translate': {
+        'enabled': true,
+        'display_name': 'MyMemory',
+        'type': 'translation',
+      },
+      'llama-translate': {
+        'enabled': true,
+        'display_name': 'Llama 3.1',
+        'type': 'translation',
+      },
+      'riva-grpc-mt': {
+        'enabled': true,
+        'display_name': 'NVIDIA Riva NMT',
+        'type': 'translation',
+      },
+      'google-asr': {
+        'enabled': true,
+        'display_name': 'Google Speech',
+        'type': 'asr',
+      },
+      'whisper-asr': {
+        'enabled': true,
+        'display_name': 'Whisper',
+        'type': 'asr',
+      },
       // riva-asr RTDB key matches config key above — no duplicate needed
     },
 
@@ -574,7 +652,6 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
         'highlights': ['Priority Support'],
       },
     },
-
   };
 
   /// Seeded into a **separate** `system/app_version` document
@@ -603,10 +680,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
       await AuthRemoteDataSource.instance.firestore
           .collection('system')
           .doc('monetization')
-          .set(
-        {'usage_poll_interval_seconds': val},
-        SetOptions(merge: true),
-      );
+          .set({'usage_poll_interval_seconds': val}, SetOptions(merge: true));
       if (mounted) {
         setState(() => _updatingPoll = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -616,9 +690,9 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
     } catch (e) {
       if (mounted) {
         setState(() => _updatingPoll = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Update failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Update failed: $e')));
       }
     }
   }
@@ -632,16 +706,16 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
       final firestore = AuthRemoteDataSource.instance.firestore;
 
       // Seed monetization config
-      await firestore
-          .collection('system')
-          .doc('monetization')
-          .set({..._seedData, 'last_seeded_at': FieldValue.serverTimestamp()});
+      await firestore.collection('system').doc('monetization').set({
+        ..._seedData,
+        'last_seeded_at': FieldValue.serverTimestamp(),
+      });
 
       // Seed app version control into its own document
-      await firestore
-          .collection('system')
-          .doc('app_version')
-          .set({..._appVersionData, 'last_seeded_at': FieldValue.serverTimestamp()});
+      await firestore.collection('system').doc('app_version').set({
+        ..._appVersionData,
+        'last_seeded_at': FieldValue.serverTimestamp(),
+      });
 
       if (mounted) {
         setState(() {
@@ -988,4 +1062,3 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
     );
   }
 }
-

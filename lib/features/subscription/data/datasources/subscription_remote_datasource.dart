@@ -325,10 +325,10 @@ class SubscriptionRemoteDataSource {
           (totalsData['subscription_monthly'] as num?)?.toInt() ?? 0;
       final weeklyUsed = (totalsData['weekly'] as num?)?.toInt() ?? 0;
 
-      // 3. Fetch per-engine monthly totals from usage/totals/models
+      // 3. Fetch per-engine monthly totals from usage/totals/subscription_monthly_models
       _engineMonthlyUsages.clear();
       final modelsUrl = Uri.parse(
-        '$_rtdbBaseUrl/users/$uid/usage/totals/models.json?auth=$idToken',
+        '$_rtdbBaseUrl/users/$uid/usage/totals/subscription_monthly_models.json?auth=$idToken',
       );
       final modelsResp = await _httpClient.get(modelsUrl);
       final modelsData =
@@ -463,7 +463,10 @@ class SubscriptionRemoteDataSource {
               Uri.parse(
                 '$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken',
               ),
-              body: jsonEncode({'subscription_monthly': 0}),
+              body: jsonEncode({
+                'subscription_monthly': 0,
+                'subscription_monthly_models': null,
+              }),
             ),
             _firestore.collection('users').doc(uid).update({
               'monthlyResetAt': Timestamp.fromDate(monthlyResetAt),

@@ -116,19 +116,6 @@ class _UsageScreenState extends State<UsageScreen> {
                                         _buildDashboard(context, state, isNarrow),
                                         const SizedBox(height: 32),
 
-                                        // ── Model Distribution ───────────────
-                                        _UsageCard(
-                                          icon: Icons.bar_chart_rounded,
-                                          title: 'Model Distribution',
-                                          child: SizedBox(
-                                            height: 240,
-                                            child: ModelUsageBarChart(
-                                              engineUsage: state.engineUsage,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 32),
-
                                         // ── Engine Performance ───────────────
                                         const _SectionTitle(
                                           icon: Icons.model_training_rounded,
@@ -157,6 +144,16 @@ class _UsageScreenState extends State<UsageScreen> {
                                               .toList(),
                                           state.engineUsage,
                                           constraints.maxWidth,
+                                        ),
+                                        const SizedBox(height: 32),
+
+                                        // ── Model Distribution ───────────────
+                                        _UsageCard(
+                                          icon: Icons.bar_chart_rounded,
+                                          title: 'Model Distribution',
+                                          child: ModelUsageBarChart(
+                                            engineUsage: state.engineUsage,
+                                          ),
                                         ),
                                         const SizedBox(height: 32),
 
@@ -318,14 +315,14 @@ class _UsageScreenState extends State<UsageScreen> {
         .map((e) => e.effectiveTokens)
         .fold(0.0, (a, b) => a > b ? a : b.toDouble());
 
-    // Column count based on available width
-    int cols = 5;
+    // Column count based on available width (cards are larger now)
+    int cols = 4;
     if (maxWidth < 500) {
-      cols = 2;
+      cols = 1;
     } else if (maxWidth < 750) {
-      cols = 3;
+      cols = 2;
     } else if (maxWidth < 950) {
-      cols = 4;
+      cols = 3;
     }
 
     return Column(
@@ -333,24 +330,24 @@ class _UsageScreenState extends State<UsageScreen> {
       children: [
         Row(
           children: [
-            Icon(icon, size: 13, color: accentColor.withValues(alpha: 0.8)),
-            const SizedBox(width: 6),
+            Icon(icon, size: 14, color: accentColor.withValues(alpha: 0.8)),
+            const SizedBox(width: 8),
             Text(
               title,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
-                fontSize: 11,
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         // LayoutBuilder+Wrap: cards get equal width, height is content-driven
         LayoutBuilder(
           builder: (context, constraints) {
-            const spacing = 8.0;
+            const spacing = 10.0;
             final cardWidth = (constraints.maxWidth - spacing * (cols - 1)) / cols;
             return Wrap(
               spacing: spacing,

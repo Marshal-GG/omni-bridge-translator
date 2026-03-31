@@ -1,8 +1,11 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:omni_bridge/core/theme/app_theme.dart';
 import 'package:omni_bridge/features/usage/domain/entities/engine_usage.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/usage_utils.dart';
 
+/// A clean, custom-drawn horizontal bar chart showing token distribution
+/// across models. No external charting dependency needed.
 class ModelUsageBarChart extends StatelessWidget {
   final List<EngineUsage> engineUsage;
 
@@ -22,122 +25,165 @@ class ModelUsageBarChart extends StatelessWidget {
       );
     }
 
-    // Sort by effectiveTokens (handles engines where total_tokens = 0)
-    final sortedUsage = List<EngineUsage>.from(engineUsage)
+    // Sort by effectiveTokens descending, take top models
+    final sorted = List<EngineUsage>.from(engineUsage)
       ..sort((a, b) => b.effectiveTokens.compareTo(a.effectiveTokens));
-    final displayUsage = sortedUsage.take(6).toList();
-
-    // Use effectiveTokens for maxY; ensure at least 100 to avoid flat lines.
-    final maxTokens =
-        displayUsage.map((e) => e.effectiveTokens).fold(0, (a, b) => a > b ? a : b);
-    final maxY = maxTokens == 0 ? 100.0 : maxTokens.toDouble() * 1.2;
-
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: maxY,
-        barTouchData: BarTouchData(
-          enabled: true,
-          touchTooltipData: BarTouchTooltipData(
-            getTooltipColor: (_) => Colors.black87,
-            tooltipBorder: const BorderSide(color: Colors.white24),
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              final usage = displayUsage[groupIndex];
-              final displayName = UsageUtils.getDisplayName(usage.engine, usage.type);
-              return BarTooltipItem(
-                '$displayName\n',
-                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                children: [
-                  TextSpan(
-                    text: '${rod.toY.toInt()} tokens',
-                    style: TextStyle(
-                      color: usage.type == UsageType.asr ? const Color(0xFF6366F1) : const Color(0xFF10B981),
-                      fontWeight: FontWeight.w500,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+    // Filter out zero-usage unless there are very few models
+    final display = sorted.where((e) => e.effectiveTokens > 0).toList();
+    if (display.isEmpty) {
+      return const Center(
+        child: Text(
+          'No usage recorded yet',
+          style: TextStyle(color: Colors.white38, fontSize: 12),
         ),
-        titlesData: FlTitlesData(
-          show: true,
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                final index = value.toInt();
-                if (index < 0 || index >= displayUsage.length) return const SizedBox.shrink();
+      );
+    }
 
-                // Use the resolved display name (first word, uppercased) as the label.
-                final usage = displayUsage[index];
-                final displayName = UsageUtils.getDisplayName(usage.engine, usage.type);
-                final label = displayName.split(' ').first.toUpperCase();
+    final maxTokens = display.first.effectiveTokens.toDouble();
+    final totalTokens = display.fold<int>(0, (s, e) => s + e.effectiveTokens);
+    final formatter = NumberFormat.compact();
 
-                return Padding(
-                  padding: const EdgeInsets.only(top: 12.0),
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white38,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                );
-              },
-              reservedSize: 32,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Legend row ──
+        Row(
+          children: [
+            _legendDot(UsageColors.asrAccent, 'ASR'),
+            const SizedBox(width: 14),
+            _legendDot(UsageColors.translationAccent, 'Translation'),
+            const Spacer(),
+            Text(
+              '${formatter.format(totalTokens)} total tokens',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.3),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 40,
-              getTitlesWidget: (value, meta) {
-                if (value == 0) return const SizedBox.shrink();
-                return Text(
-                  value.toInt().toString(),
-                  style: const TextStyle(color: Colors.white24, fontSize: 9),
-                );
-              },
-            ),
-          ),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ],
         ),
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: maxY / 4,
-          getDrawingHorizontalLine: (value) => const FlLine(
-            color: Colors.white10,
-            strokeWidth: 1,
-          ),
-        ),
-        borderData: FlBorderData(show: false),
-        barGroups: displayUsage.asMap().entries.map((entry) {
-          final index = entry.key;
-          final usage = entry.value;
-          final isAsr = usage.type == UsageType.asr;
+        const SizedBox(height: 16),
+        // ── Bar rows ──
+        ...display.map((e) => _buildBarRow(e, maxTokens, formatter)),
+      ],
+    );
+  }
 
-          return BarChartGroupData(
-            x: index,
-            barRods: [
-              BarChartRodData(
-                toY: usage.effectiveTokens.toDouble(),
-                color: isAsr ? const Color(0xFF6366F1) : const Color(0xFF10B981),
-                width: 14,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                backDrawRodData: BackgroundBarChartRodData(
-                  show: true,
-                  toY: maxY,
-                  color: Colors.white.withValues(alpha: 0.02),
+  Widget _legendDot(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.45),
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBarRow(
+    EngineUsage usage,
+    double maxTokens,
+    NumberFormat formatter,
+  ) {
+    final isAsr = usage.type == UsageType.asr;
+    final barColor =
+        isAsr ? UsageColors.asrAccent : UsageColors.translationAccent;
+    final displayName = UsageUtils.getDisplayName(usage.engine, usage.type);
+    final fraction =
+        maxTokens > 0 ? (usage.effectiveTokens / maxTokens).clamp(0.0, 1.0) : 0.0;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Label row: name + value ──
+          Row(
+            children: [
+              Icon(
+                isAsr ? Icons.mic_rounded : Icons.translate_rounded,
+                size: 11,
+                color: barColor.withValues(alpha: 0.6),
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  displayName,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                formatter.format(usage.effectiveTokens),
+                style: TextStyle(
+                  color: barColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
-          );
-        }).toList(),
+          ),
+          const SizedBox(height: 4),
+          // ── Bar ──
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: SizedBox(
+              height: 6,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Stack(
+                    children: [
+                      // Background track
+                      Container(
+                        width: constraints.maxWidth,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      // Filled bar
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeOutCubic,
+                        width: constraints.maxWidth * fraction,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              barColor.withValues(alpha: 0.8),
+                              barColor.withValues(alpha: 0.5),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

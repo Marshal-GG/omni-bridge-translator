@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:omni_bridge/core/theme/app_theme.dart';
 import 'package:omni_bridge/features/usage/domain/entities/engine_usage.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/usage_utils.dart';
 
@@ -16,203 +17,295 @@ class EngineUsageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat.compact();
-    final effective = usage.effectiveTokens;
-    final progress = maxTokens != null && maxTokens! > 0
-        ? (effective / maxTokens!).clamp(0.0, 1.0)
-        : 0.0;
-    
+    final hasAccess = usage.isInPlan;
     final isAsr = usage.type == UsageType.asr;
-    final themeColor = isAsr ? const Color(0xFF6366F1) : const Color(0xFF2DD4BF);
+    final themeColor = UsageColors.accentFor(isAsr: isAsr, isInPlan: hasAccess);
     final displayName = UsageUtils.getDisplayName(usage.engine, usage.type);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        themeColor.withValues(alpha: 0.2),
-                        themeColor.withValues(alpha: 0.05),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Icon(
-                    isAsr ? Icons.mic_rounded : Icons.translate_rounded,
-                    color: themeColor,
-                    size: 11,
+    return Opacity(
+      opacity: hasAccess ? 1.0 : 0.4,
+      child: Container(
+        decoration: BoxDecoration(
+          color: UsageColors.cardBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: themeColor.withValues(alpha: 0.15),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              // ── Colored accent bar ──
+              Container(
+                width: 3.5,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      themeColor.withValues(alpha: 0.9),
+                      themeColor.withValues(alpha: 0.3),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
                   ),
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    displayName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11,
-                      letterSpacing: 0.2,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'TOKENS',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.35),
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-                Text(
-                  formatter.format(effective),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(
-                value: progress,
-                backgroundColor: Colors.white.withValues(alpha: 0.05),
-                valueColor: AlwaysStoppedAnimation<Color>(themeColor.withValues(alpha: 0.5)),
-                minHeight: 2,
               ),
-            ),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                Expanded(
-                  child: _MiniStat(
-                    label: 'CALLS',
-                    value: formatter.format(usage.totalCalls),
+              // ── Card content ──
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // ── Header: Icon + Name ──
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: themeColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(
+                              isAsr
+                                  ? Icons.mic_rounded
+                                  : Icons.translate_rounded,
+                              color: themeColor,
+                              size: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              displayName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                letterSpacing: 0.1,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (!hasAccess)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: UsageColors.statBackground,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'LOCKED',
+                                style: TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // ── Monthly Usage (primary metric) ──
+                      _buildMonthlySection(formatter, themeColor),
+
+                      const SizedBox(height: 10),
+
+                      // ── Secondary stats row ──
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: UsageColors.statBackground,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          children: [
+                            _StatChip(
+                              label: 'Lifetime',
+                              value: formatter.format(usage.effectiveTokens),
+                              icon: Icons.all_inclusive_rounded,
+                              iconColor: themeColor,
+                            ),
+                            _buildDot(),
+                            _StatChip(
+                              label: 'Calls',
+                              value: formatter.format(usage.totalCalls),
+                              icon: Icons.touch_app_rounded,
+                              iconColor: themeColor,
+                            ),
+                            _buildDot(),
+                            _StatChip(
+                              label: 'Avg',
+                              value: '${usage.averageLatencyMs.toInt()}ms',
+                              icon: Icons.speed_rounded,
+                              iconColor: themeColor,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Expanded(
-                  child: _MiniStat(
-                    label: 'LATENCY',
-                    value: '${usage.averageLatencyMs.toInt()}ms',
-                    isRightAligned: true,
-                  ),
-                ),
-              ],
-            ),
-            // ── Monthly usage vs limit (only if engine has a per-engine cap) ──
-            if (usage.monthlyTokensUsed >= 0) ...[
-              const SizedBox(height: 4),
-              const Divider(color: Colors.white10, height: 1),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'THIS MONTH',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.35),
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  Text(
-                    usage.hasMonthlyLimit
-                        ? '${formatter.format(usage.monthlyTokensUsed)} / ${formatter.format(usage.monthlyTokensLimit)}'
-                        : formatter.format(usage.monthlyTokensUsed),
-                    style: TextStyle(
-                      color: usage.isMonthlyLimitExceeded
-                          ? const Color(0xFFEF4444)
-                          : Colors.white70,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
               ),
-              if (usage.hasMonthlyLimit) ...[
-                const SizedBox(height: 2),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: usage.monthlyProgress,
-                    backgroundColor: Colors.white.withValues(alpha: 0.05),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      usage.isMonthlyLimitExceeded
-                          ? const Color(0xFFEF4444)
-                          : themeColor.withValues(alpha: 0.7),
-                    ),
-                    minHeight: 2,
-                  ),
-                ),
-              ],
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMonthlySection(NumberFormat formatter, Color themeColor) {
+    final monthlyUsed = usage.monthlyTokensUsed >= 0
+        ? usage.monthlyTokensUsed
+        : 0;
+    final hasLimit = usage.hasMonthlyLimit;
+    final isExceeded = usage.isMonthlyLimitExceeded;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              formatter.format(monthlyUsed),
+              style: TextStyle(
+                color: isExceeded ? UsageColors.errorRed : Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 17,
+                height: 1,
+              ),
+            ),
+            if (hasLimit) ...[
+              const SizedBox(width: 2),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 1),
+                child: Text(
+                  ' / ${formatter.format(usage.monthlyTokensLimit)}',
+                  style: const TextStyle(
+                    color: UsageColors.limitText,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+            const Spacer(),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 2),
+              child: Text(
+                'THIS MONTH',
+                style: TextStyle(
+                  color: UsageColors.monthLabel,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
           ],
         ),
+        const SizedBox(height: 7),
+        // Progress bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(2.5),
+          child: LinearProgressIndicator(
+            value: hasLimit
+                ? usage.monthlyProgress
+                : (maxTokens != null && maxTokens! > 0
+                    ? (monthlyUsed / maxTokens!).clamp(0.0, 1.0)
+                    : 0.0),
+            backgroundColor: UsageColors.barTrack,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              UsageColors.barColor(isExceeded: isExceeded, accent: themeColor),
+            ),
+            minHeight: 4,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDot() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Container(
+        width: 3,
+        height: 3,
+        decoration: const BoxDecoration(
+          color: UsageColors.barTrack,
+          shape: BoxShape.circle,
+        ),
+      ),
     );
   }
 }
 
-class _MiniStat extends StatelessWidget {
+class _StatChip extends StatelessWidget {
   final String label;
   final String value;
-  final bool isRightAligned;
+  final IconData icon;
+  final Color iconColor;
 
-  const _MiniStat({
+  const _StatChip({
     required this.label,
     required this.value,
-    this.isRightAligned = false,
+    required this.icon,
+    required this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: isRightAligned ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.35),
-            fontSize: 9,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.3,
+    return Expanded(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: iconColor.withValues(alpha: 0.5)),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: UsageColors.statValue,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    height: 1,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: UsageColors.statLabel,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-            fontSize: 11,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

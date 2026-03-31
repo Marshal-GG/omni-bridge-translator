@@ -129,6 +129,41 @@ class AppColors {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+//  USAGE SCREEN COLORS
+// ─────────────────────────────────────────────────────────────────────────
+
+class UsageColors {
+  // Card
+  static const Color cardBackground = Color(0xFF1A1D2E);
+  static const Color statBackground = Color(0x08FFFFFF); // ~3% white
+
+  // Engine type accents
+  static const Color asrAccent = Color(0xFF818CF8);          // Lighter indigo
+  static const Color translationAccent = Color(0xFF2DD4BF);  // Teal
+  static const Color disabledAccent = Color(0xFF64748B);     // Slate grey
+
+  // Progress / status
+  static const Color errorRed = Color(0xFFEF4444);
+  static const Color barTrack = Color(0x0FFFFFFF);           // ~6% white
+
+  // Text
+  static const Color monthLabel = Color(0x40FFFFFF);         // ~25% white
+  static const Color limitText = Color(0x4DFFFFFF);          // ~30% white
+  static const Color statValue = Colors.white70;
+  static const Color statLabel = Color(0x4DFFFFFF);          // ~30% white
+
+  // Helpers
+  static Color accentFor({required bool isAsr, required bool isInPlan}) {
+    if (!isInPlan) return disabledAccent;
+    return isAsr ? asrAccent : translationAccent;
+  }
+
+  static Color barColor({required bool isExceeded, required Color accent}) {
+    return isExceeded ? errorRed : accent.withValues(alpha: 0.6);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 //  SPACING & SHAPES
 // ─────────────────────────────────────────────────────────────────────────
 
