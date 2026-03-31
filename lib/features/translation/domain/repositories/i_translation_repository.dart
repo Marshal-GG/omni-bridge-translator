@@ -1,13 +1,13 @@
 import '../entities/caption_message.dart';
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
 abstract class ITranslationRepository {
   Stream<CaptionMessage>? get captions;
   void Function(double inputLevel, double outputLevel)? onAudioLevel;
 
-  // Subscription / Quota support
-  SubscriptionStatus? get currentQuotaStatus;
-  Stream<SubscriptionStatus> get quotaStatusStream;
+  // Quota support
+  QuotaStatus? get currentQuotaStatus;
+  Stream<QuotaStatus> get quotaStatusStream;
   String get defaultTier;
 
   void start({

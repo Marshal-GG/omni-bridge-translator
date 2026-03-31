@@ -1,11 +1,12 @@
-
-import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:omni_bridge/core/network/rtdb_client.dart';
 import 'package:omni_bridge/core/data/datasources/usage_metrics_remote_datasource.dart';
 import 'package:omni_bridge/features/settings/domain/entities/system_config.dart';
+import 'package:omni_bridge/core/constants/firebase_paths.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 
 abstract class ISettingsRemoteDataSource {
   Future<Map<String, dynamic>> getSystemConfig();
@@ -15,26 +16,33 @@ abstract class ISettingsRemoteDataSource {
   Future<void> logEvent(String name, {Map<String, dynamic>? parameters});
 }
 
-class SettingsRemoteDataSourceImpl implements ISettingsRemoteDataSource {
-  static final String _appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
-  FirebaseApp get _app => Firebase.app(_appName);
+class SettingsRemoteDataSourceImpl implements ISettingsRemoteDataSource, IResettable {
+  FirebaseApp get _app => Firebase.app(RTDBClient.appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
 
+  static const String _tag = 'SettingsRemoteDataSource';
+
   String? get uid => _auth.currentUser?.uid;
+
+  @override
+  void reset() {
+    // No local state to reset yet, but satisfying the interface.
+    AppLogger.d('Reset called', tag: _tag);
+  }
 
   @override
   Future<Map<String, dynamic>> getSystemConfig() async {
     try {
       final doc = await _firestore
-          .collection('system')
-          .doc('translation_config')
+          .collection(FirebasePaths.system)
+          .doc(FirebasePaths.translationConfig)
           .get();
       final data = doc.data() ?? {};
       
       return data;
     } catch (e) {
-      debugPrint('[Settings] Failed to fetch system config: $e');
+      AppLogger.e('Failed to fetch system config', tag: _tag, error: e);
       return {};
     }
   }
@@ -49,24 +57,24 @@ class SettingsRemoteDataSourceImpl implements ISettingsRemoteDataSource {
   @override
   Future<void> syncSettings(Map<String, dynamic> settingsData) async {
     if (uid == null) {
-      debugPrint('[Settings] Cannot sync settings: UID is null.');
+      AppLogger.w('Cannot sync settings: UID is null.', tag: _tag);
       return;
     }
     try {
-      debugPrint('[Settings] Attempting to sync settings for UID: $uid');
+      AppLogger.d('Attempting to sync settings for UID: $uid', tag: _tag);
       
       await _firestore
-          .collection('users')
+          .collection(FirebasePaths.users)
           .doc(uid)
-          .collection('settings')
-          .doc('app_preferences')
+          .collection(FirebasePaths.settings)
+          .doc(FirebasePaths.appPreferences)
           .set({
             ...settingsData,
             'lastUpdated': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
-      debugPrint('[Settings] User settings successfully synced to Firestore.');
+      AppLogger.i('User settings successfully synced to Firestore.', tag: _tag);
     } catch (e) {
-      debugPrint('[Settings] Critical error syncing user settings: $e');
+      AppLogger.e('Critical error syncing user settings', tag: _tag, error: e);
       UsageMetricsRemoteDataSource.instance.logEvent('Failed to sync user settings', {'error': e.toString()});
     }
   }
@@ -74,27 +82,25 @@ class SettingsRemoteDataSourceImpl implements ISettingsRemoteDataSource {
   @override
   Future<Map<String, dynamic>?> getSettings() async {
     if (uid == null) {
-      debugPrint('[Settings] Cannot fetch settings: UID is null.');
+      AppLogger.w('Cannot fetch settings: UID is null.', tag: _tag);
       return null;
     }
     try {
-      debugPrint('[Settings] Fetching settings for UID: $uid');
+      AppLogger.d('Fetching settings for UID: $uid', tag: _tag);
       final doc = await _firestore
-          .collection('users')
+          .collection(FirebasePaths.users)
           .doc(uid)
-          .collection('settings')
-          .doc('app_preferences')
+          .collection(FirebasePaths.settings)
+          .doc(FirebasePaths.appPreferences)
           .get();
       if (doc.exists) {
-        debugPrint(
-          '[Settings] Successfully fetched user settings from Firestore.',
-        );
+        AppLogger.i('Successfully fetched user settings from Firestore.', tag: _tag);
         return doc.data();
       } else {
-        debugPrint('[Settings] No settings found in Firestore for UID: $uid');
+        AppLogger.i('No settings found in Firestore for UID: $uid', tag: _tag);
       }
     } catch (e) {
-      debugPrint('[Settings] Critical error fetching user settings: $e');
+      AppLogger.e('Critical error fetching user settings', tag: _tag, error: e);
       UsageMetricsRemoteDataSource.instance.logEvent('Failed to fetch user settings', {'error': e.toString()});
     }
     return null;

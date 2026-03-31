@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:omni_bridge/features/usage/domain/repositories/usage_repository.dart';
 import 'package:omni_bridge/features/usage/presentation/bloc/usage_bloc.dart';
 import 'package:omni_bridge/features/usage/presentation/bloc/usage_event.dart';
 import 'package:omni_bridge/features/usage/presentation/bloc/usage_state.dart';
@@ -11,8 +10,12 @@ import 'package:omni_bridge/features/usage/presentation/widgets/usage_donut_char
 import 'package:omni_bridge/features/usage/presentation/widgets/model_usage_bar_chart.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/usage_header.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/engine_usage_card.dart';
-import 'package:get_it/get_it.dart';
+import 'package:omni_bridge/core/di/injection.dart';
 import 'package:omni_bridge/core/widgets/omni_card.dart';
+
+
+import 'package:omni_bridge/features/subscription/presentation/widgets/info_card.dart';
+import 'package:omni_bridge/features/subscription/presentation/widgets/current_usage_display.dart';
 
 import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
 import 'package:omni_bridge/core/navigation/app_router.dart';
@@ -37,9 +40,7 @@ class _UsageScreenState extends State<UsageScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => UsageBloc(
-        usageRepository: GetIt.I<UsageRepository>(),
-      )..add(const LoadUsageStats()),
+      create: (context) => sl<UsageBloc>()..add(const LoadUsageStats()),
       child: AppDashboardShell(
             currentRoute: AppRouter.usage,
             header: buildUsageHeader(context),
@@ -167,6 +168,25 @@ class _UsageScreenState extends State<UsageScreen> {
                                           ),
                                         ),
                                         const SizedBox(height: 48),
+
+                                        // ── Current Quota ──────────────────────────
+                                        if (state.quotaStatus != null) ...[
+                                          Center(
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(bottom: 32.0),
+                                              child: buildInfoCard(
+                                                icon: Icons.data_usage_rounded,
+                                                title: 'Current Daily Usage',
+                                                child: buildCurrentUsageDisplay(
+                                                  status: state.quotaStatus!,
+                                                  formatter: NumberFormat('#,###'),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 16),
+                                        
                                         const Center(
                                           child: OmniVersionChip(),
                                         ),

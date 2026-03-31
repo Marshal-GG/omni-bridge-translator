@@ -1,4 +1,6 @@
-class SubscriptionStatus {
+import 'package:equatable/equatable.dart';
+
+class QuotaStatus extends Equatable {
   final String tier;
   final int dailyTokensUsed;
   final int weeklyTokensUsed;
@@ -12,7 +14,7 @@ class SubscriptionStatus {
   /// 0 = not applicable (use daily limit instead).
   final int periodLimit;
 
-  const SubscriptionStatus({
+  const QuotaStatus({
     required this.tier,
     required this.dailyTokensUsed,
     required this.weeklyTokensUsed,
@@ -20,9 +22,13 @@ class SubscriptionStatus {
     required this.lifetimeTokensUsed,
     required this.dailyLimit,
     required this.dailyResetAt,
+    this.monthlyResetAt,
     this.monthlyLimit = 0,
     this.periodLimit = 0,
   });
+
+  /// The next date/time the monthly subscription quota will reset (paid only).
+  final DateTime? monthlyResetAt;
 
   bool get hasPeriodLimit => periodLimit > 0;
   bool get hasMonthlyLimit => monthlyLimit > 0;
@@ -53,7 +59,7 @@ class SubscriptionStatus {
   int get monthlyRemaining =>
       monthlyLimit > 0 ? (monthlyLimit - monthlyTokensUsed).clamp(0, monthlyLimit) : 0;
 
-  SubscriptionStatus copyWith({
+  QuotaStatus copyWith({
     String? tier,
     int? dailyTokensUsed,
     int? weeklyTokensUsed,
@@ -64,7 +70,7 @@ class SubscriptionStatus {
     DateTime? dailyResetAt,
     int? periodLimit,
   }) {
-    return SubscriptionStatus(
+    return QuotaStatus(
       tier: tier ?? this.tier,
       dailyTokensUsed: dailyTokensUsed ?? this.dailyTokensUsed,
       weeklyTokensUsed: weeklyTokensUsed ?? this.weeklyTokensUsed,
@@ -76,4 +82,18 @@ class SubscriptionStatus {
       periodLimit: periodLimit ?? this.periodLimit,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        tier,
+        dailyTokensUsed,
+        weeklyTokensUsed,
+        monthlyTokensUsed,
+        lifetimeTokensUsed,
+        dailyLimit,
+        monthlyLimit,
+        dailyResetAt,
+        monthlyResetAt,
+        periodLimit,
+      ];
 }

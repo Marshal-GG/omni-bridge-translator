@@ -5,7 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/error/failures.dart';
-import '../../../subscription/domain/repositories/i_subscription_repository.dart';
+import '../../../usage/domain/repositories/usage_repository.dart';
 import '../datasources/support_local_datasource.dart';
 import '../datasources/support_remote_datasource.dart';
 import '../../domain/entities/feedback_ticket.dart';
@@ -17,14 +17,14 @@ import '../../domain/repositories/i_support_repository.dart';
 class SupportRepositoryImpl implements ISupportRepository {
   final ISupportLocalDataSource localDataSource;
   final ISupportRemoteDataSource remoteDataSource;
-  final ISubscriptionRepository subscriptionRepository;
+  final UsageRepository usageRepository;
   final FirebaseAuth firebaseAuth;
   final DeviceInfoPlugin deviceInfo;
 
   SupportRepositoryImpl({
     required this.localDataSource,
     required this.remoteDataSource,
-    required this.subscriptionRepository,
+    required this.usageRepository,
     required this.firebaseAuth,
     required this.deviceInfo,
   });
@@ -44,7 +44,7 @@ class SupportRepositoryImpl implements ISupportRepository {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final user = firebaseAuth.currentUser;
-      final subStatus = subscriptionRepository.currentStatus;
+      final quotaStatus = usageRepository.currentQuotaStatus;
 
       String osInfo = 'Unknown';
       if (Platform.isWindows) {
@@ -55,12 +55,12 @@ class SupportRepositoryImpl implements ISupportRepository {
         osInfo = 'macOS ${macInfo.osRelease}';
       }
 
-      final remainingQuota = subStatus == null ? 0 : subStatus.dailyLimit - subStatus.dailyTokensUsed;
+      final remainingQuota = quotaStatus == null ? 0 : quotaStatus.dailyLimit - quotaStatus.dailyTokensUsed;
 
       return Right(SystemSnapshot(
         osVersion: osInfo,
         appVersion: packageInfo.version,
-        subscriptionTier: subStatus?.tier ?? 'Free',
+        subscriptionTier: quotaStatus?.tier ?? 'Free',
         remainingQuota: remainingQuota,
         userEmail: user?.email ?? 'anonymous',
       ));

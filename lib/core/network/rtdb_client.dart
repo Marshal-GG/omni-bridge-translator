@@ -4,22 +4,24 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:omni_bridge/core/constants/firebase_paths.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
 
-class RTDBClient {
+class RTDBClient implements IResettable {
   RTDBClient._();
   static final RTDBClient instance = RTDBClient._();
 
-  static final String _appName = kDebugMode
-      ? 'OmniBridge-Debug'
-      : 'OmniBridge-Release';
-  FirebaseApp get _app => Firebase.app(_appName);
+  static const String appName =
+      kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
+
+  FirebaseApp get _app => Firebase.app(appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
 
   http.Client get _httpClient => _clientInstance ??= http.Client();
   http.Client? _clientInstance;
 
-  static const String _rtdbBaseUrl =
-      'https://omni-bridge-ai-translator-default-rtdb.firebaseio.com';
+  static const String rtdbBaseUrl = FirebasePaths.rtdbBaseUrl;
 
   String? get uid => _auth.currentUser?.uid;
 
@@ -28,7 +30,7 @@ class RTDBClient {
     final user = _auth.currentUser;
     if (user == null || uid == null) return null;
     final idToken = await user.getIdToken();
-    return Uri.parse('$_rtdbBaseUrl/users/$uid/$path.json?auth=$idToken');
+    return Uri.parse('$rtdbBaseUrl/users/$uid/$path.json?auth=$idToken');
   }
 
   /// Gets a full RTDB URL for a non-user-scoped path (advanced).
@@ -36,7 +38,7 @@ class RTDBClient {
     final user = _auth.currentUser;
     if (user == null) return null;
     final idToken = await user.getIdToken();
-    return Uri.parse('$_rtdbBaseUrl/$path.json?auth=$idToken');
+    return Uri.parse('$rtdbBaseUrl/$path.json?auth=$idToken');
   }
 
   /// Makes an RTDB request with transient error retries.
@@ -48,15 +50,15 @@ class RTDBClient {
     int attempts = 0;
     while (attempts < maxRetries) {
       try {
-        final response = await requestFunc(_httpClient).timeout(const Duration(seconds: 5));
+        final response =
+            await requestFunc(_httpClient).timeout(const Duration(seconds: 5));
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return response;
         }
         return response;
       } catch (e) {
         attempts++;
-        final isTransient =
-            e is HandshakeException ||
+        final isTransient = e is HandshakeException ||
             e is SocketException ||
             e is http.ClientException ||
             e is TimeoutException;
@@ -64,14 +66,22 @@ class RTDBClient {
           await Future.delayed(Duration(milliseconds: 500 * attempts));
           continue;
         }
-        debugPrint('[RTDBClient] RTDB ($context) error: $e');
+        AppLogger.e('[RTDBClient] RTDB ($context) error: $e',
+            tag: 'RTDB', error: e);
         return null;
       }
     }
     return null;
   }
 
+  @override
+  void reset() {
+    dispose();
+    AppLogger.i('[RTDBClient] Resetting HTTP client.', tag: 'RTDB');
+  }
+
   void dispose() {
-    _httpClient.close();
+    _clientInstance?.close();
+    _clientInstance = null;
   }
 }

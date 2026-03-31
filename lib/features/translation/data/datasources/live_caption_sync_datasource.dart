@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:omni_bridge/core/constants/firebase_paths.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:omni_bridge/core/network/rtdb_client.dart';
 import 'package:omni_bridge/core/data/datasources/session_remote_datasource.dart';
 
@@ -20,6 +21,8 @@ abstract class ILiveCaptionSyncDataSource {
 class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
   LiveCaptionSyncDataSource._();
   static final LiveCaptionSyncDataSource instance = LiveCaptionSyncDataSource._();
+
+  static const String _tag = 'LiveCaptionSyncDataSource';
 
   final RTDBClient _rtdbClient = RTDBClient.instance;
 
@@ -46,7 +49,7 @@ class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
     try {
       if (isFinal) {
         // 1. Permanent Log (Append)
-        final url = await _rtdbClient.getRTDBUrl('captions');
+        final url = await _rtdbClient.getRTDBUrl(FirebasePaths.captions);
         if (url != null) {
           await _rtdbClient.request(
             (client) => client.post(
@@ -66,7 +69,7 @@ class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
           );
         }
         // 2. Clear interim node
-        final interimUrl = await _rtdbClient.getRTDBUrl('current_caption');
+        final interimUrl = await _rtdbClient.getRTDBUrl(FirebasePaths.currentCaption);
         if (interimUrl != null) {
           // Fire and forget delete so we don't block
           http.delete(interimUrl).catchError((_) => http.Response('', 500));
@@ -96,7 +99,7 @@ class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
         await _syncInterimSequentially(data);
       }
     } catch (e) {
-      debugPrint('[LiveCaptionSync] Error pushing live caption to RTDB: $e');
+      AppLogger.e('Error pushing live caption to RTDB', tag: _tag, error: e);
     }
   }
 
@@ -105,7 +108,7 @@ class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
     _pendingInterim = null;
 
     try {
-      final url = await _rtdbClient.getRTDBUrl('current_caption');
+      final url = await _rtdbClient.getRTDBUrl(FirebasePaths.currentCaption);
       if (url != null) {
         await _rtdbClient.request(
           (client) => client.put(url, body: jsonEncode(data)),
@@ -126,5 +129,6 @@ class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
   @override
   void dispose() {
     _pendingInterim = null;
+    AppLogger.d('Disposed', tag: _tag);
   }
 }

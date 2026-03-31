@@ -1,5 +1,5 @@
 import '../../domain/entities/caption_message.dart';
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import '../datasources/asr_websocket_datasource.dart';
 import '../datasources/translation_rest_datasource.dart';
@@ -20,11 +20,11 @@ class TranslationRepositoryImpl implements ITranslationRepository {
   Stream<CaptionMessage>? get captions => _asrClient.captions;
 
   @override
-  SubscriptionStatus? get currentQuotaStatus =>
+  QuotaStatus? get currentQuotaStatus =>
       _subscriptionService.currentStatus;
 
   @override
-  Stream<SubscriptionStatus> get quotaStatusStream =>
+  Stream<QuotaStatus> get quotaStatusStream =>
       _subscriptionService.statusStream;
 
   @override

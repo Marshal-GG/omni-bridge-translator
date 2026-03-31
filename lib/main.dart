@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:omni_bridge/app.dart';
 import 'package:omni_bridge/core/platform/app_initializer.dart';
 import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
+import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
 import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 import 'package:omni_bridge/core/platform/window_manager.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
@@ -33,8 +34,8 @@ void main(List<String> args) async {
   UpdateRemoteDataSource.instance.checkForUpdate().then((result) {
     if (result.status == UpdateStatus.available) {
       UpdateNotifier.instance.setAvailable(
-        result.latestVersion!,
-        result.releaseUrl!,
+        result.latestVersion ?? '',
+        result.releaseUrl ?? '',
       );
     }
   });

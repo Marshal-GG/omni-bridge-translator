@@ -2,9 +2,9 @@ import 'dart:convert';
 import '../../domain/entities/caption_message.dart';
 import 'package:http/http.dart' as http;
 import 'package:omni_bridge/core/config/server_config.dart';
-import 'package:flutter/foundation.dart';
 import 'package:omni_bridge/core/device/asr_text_controller.dart';
 import 'package:omni_bridge/core/data/datasources/usage_metrics_remote_datasource.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
 import './translation_websocket_client.dart';
 import 'package:omni_bridge/features/history/domain/usecases/add_history_entry_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/configure_history_usecase.dart';
@@ -16,6 +16,7 @@ import 'package:omni_bridge/features/history/domain/usecases/configure_history_u
 /// the WASAPI cold-start delay on every toggle. Only [dispose] fully tears down
 /// the connection (called on app shutdown).
 class AsrWebSocketClient {
+  static const String _tag = 'AsrWebSocketClient';
   TranslationWebsocketClient? _service;
 
   Stream<CaptionMessage>? get captions => _service?.captions;
@@ -36,7 +37,7 @@ class AsrWebSocketClient {
   /// so the connection is ready before the user presses play.
   void _ensureService() {
     if (_service != null) return;
-    debugPrint('ASR WS pre-connecting to: ${ServerConfig.wsUrl}/captions');
+    AppLogger.d('ASR WS pre-connecting to: ${ServerConfig.wsUrl}/captions', tag: _tag);
     _service = TranslationWebsocketClient(
       serverHost: ServerConfig.host,
       serverPort: ServerConfig.port,
@@ -193,7 +194,7 @@ class AsrWebSocketClient {
         };
       }
     } catch (e) {
-      debugPrint('Failed to load devices: $e');
+      AppLogger.e('Failed to load devices', tag: _tag, error: e);
     }
     return {
       'input': <Map<String, dynamic>>[],

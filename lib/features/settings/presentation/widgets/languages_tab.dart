@@ -142,33 +142,30 @@ Widget _langDropdown({
         highlightColor: Colors.white10,
         hoverColor: Colors.white10,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          color: isCurrentlySelected
-              ? Colors.tealAccent.withValues(alpha: 0.1)
-              : Colors.transparent,
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  item.value,
-                  style: TextStyle(
-                    color: isDisabled
-                        ? Colors.white24
-                        : isCurrentlySelected
-                            ? Colors.white
-                            : Colors.white70,
-                    fontWeight: isCurrentlySelected
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                    fontSize: 14,
-                  ),
-                ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: isCurrentlySelected
+                ? Colors.tealAccent.withValues(alpha: 0.12)
+                : Colors.transparent,
+            border: Border(
+              left: BorderSide(
+                color: isCurrentlySelected
+                    ? Colors.tealAccent
+                    : Colors.transparent,
+                width: 3,
               ),
-              if (isCurrentlySelected) ...[
-                const SizedBox(width: 8),
-                const Icon(Icons.check, color: Colors.tealAccent, size: 18),
-              ],
-            ],
+            ),
+          ),
+          child: Text(
+            item.value,
+            style: TextStyle(
+              color: isDisabled
+                  ? Colors.white24
+                  : isCurrentlySelected
+                      ? Colors.tealAccent
+                      : Colors.white70,
+              fontSize: 14,
+            ),
           ),
         ),
       );
@@ -349,11 +346,21 @@ Widget buildTranslationModelSelector(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 12,
+                        vertical: 6,
                       ),
-                      color: isCurrentlySelected
-                          ? Colors.tealAccent.withValues(alpha: 0.1)
-                          : Colors.transparent,
+                      decoration: BoxDecoration(
+                        color: isCurrentlySelected
+                            ? Colors.tealAccent.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        border: Border(
+                          left: BorderSide(
+                            color: isCurrentlySelected
+                                ? Colors.tealAccent
+                                : Colors.transparent,
+                            width: 3,
+                          ),
+                        ),
+                      ),
                       child: Row(
                         children: [
                           Expanded(
@@ -362,12 +369,9 @@ Widget buildTranslationModelSelector(
                               style: TextStyle(
                                 color: itemHasAccess
                                     ? (isCurrentlySelected
-                                          ? Colors.white
+                                          ? Colors.tealAccent
                                           : Colors.white70)
                                     : Colors.white30,
-                                fontWeight: isCurrentlySelected
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
                                 fontSize: 14,
                               ),
                             ),
@@ -388,14 +392,6 @@ Widget buildTranslationModelSelector(
                             const SizedBox(width: 8),
                             _buildTierLockBadge(
                               '${SubscriptionRemoteDataSource.instance.getNameForTier(SubscriptionRemoteDataSource.instance.getRequirement('engines', item.key, SubscriptionRemoteDataSource.instance.getTierAt(1)))}+',
-                            ),
-                          ],
-                          if (isCurrentlySelected) ...[
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.check,
-                              color: Colors.tealAccent,
-                              size: 18,
                             ),
                           ],
                           if (isRecommended && itemHasAccess) ...[

@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/subscription_status.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
 abstract class SubscriptionEvent extends Equatable {
   const SubscriptionEvent();
@@ -11,7 +11,7 @@ abstract class SubscriptionEvent extends Equatable {
 class SubscriptionLoaded extends SubscriptionEvent {}
 
 class SubscriptionStatusUpdated extends SubscriptionEvent {
-  final SubscriptionStatus status;
+  final QuotaStatus status;
 
   const SubscriptionStatusUpdated(this.status);
 

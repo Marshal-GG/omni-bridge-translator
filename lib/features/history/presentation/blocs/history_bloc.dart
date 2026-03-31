@@ -5,7 +5,7 @@ import 'package:omni_bridge/features/history/domain/usecases/get_live_history_us
 import 'package:omni_bridge/features/history/domain/usecases/get_chunked_history_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/clear_history_usecase.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/features/history/domain/entities/history_entry.dart';
 import 'history_event.dart';
 import 'history_state.dart';
@@ -18,11 +18,11 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
 
   late final ValueListenable<List<HistoryEntry>> _liveHistoryListenable;
   late final ValueListenable<List<HistoryEntry>> _chunkedHistoryListenable;
-  late final StreamSubscription<SubscriptionStatus> _subscriptionStreamSub;
+  late final StreamSubscription<QuotaStatus> _subscriptionStreamSub;
 
   List<HistoryEntry> _currentLive = [];
   List<HistoryEntry> _currentChunked = [];
-  SubscriptionStatus? _currentSubStatus;
+  QuotaStatus? _currentSubStatus;
 
   HistoryBloc({
     required GetLiveHistoryUseCase getLiveHistoryUseCase,
@@ -53,6 +53,8 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
     _currentLive = _liveHistoryListenable.value;
     _currentChunked = _chunkedHistoryListenable.value;
     _currentSubStatus = _subscriptionDataSource.currentStatus;
+
+    if (_currentSubStatus == null) return;
 
     emit(HistoryLoaded(
       liveEntries: _currentLive,

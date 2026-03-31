@@ -1,19 +1,20 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:omni_bridge/core/constants/firebase_paths.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:omni_bridge/core/data/datasources/data_maintenance_remote_datasource.dart';
 import 'package:omni_bridge/core/network/rtdb_client.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 
-class UsageMetricsRemoteDataSource {
+class UsageMetricsRemoteDataSource implements IResettable {
   UsageMetricsRemoteDataSource._();
   static final UsageMetricsRemoteDataSource instance = UsageMetricsRemoteDataSource._();
 
-  static final String _appName = kDebugMode
-      ? 'OmniBridge-Debug'
-      : 'OmniBridge-Release';
-  FirebaseApp get _app => Firebase.app(_appName);
+  static const String _tag = 'UsageMetricsRemoteDataSource';
+
+  FirebaseApp get _app => Firebase.app(RTDBClient.appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
 
   final RTDBClient _rtdbClient = RTDBClient.instance;
@@ -33,7 +34,7 @@ class UsageMetricsRemoteDataSource {
 
   /// Log a general app event
   Future<void> logEvent(String eventName, [Map<String, dynamic>? data]) async {
-    debugPrint('[UsageMetrics] Event: $eventName${data != null ? ' $data' : ''}');
+    AppLogger.d('Event: $eventName${data != null ? ' $data' : ''}', tag: _tag);
   }
 
   /// Buffers usage stats and aggregates them to reduce RTDB writes.
@@ -65,11 +66,12 @@ class UsageMetricsRemoteDataSource {
 
       _usageFlushTimer ??= Timer(const Duration(seconds: 3), () => flushUsage());
 
-      debugPrint(
-        '[UsageMetrics] Buffered model usage: $engine (+$inputTokens/+$outputTokens tokens)',
+      AppLogger.d(
+        'Buffered model usage: $engine (+$inputTokens/+$outputTokens tokens)',
+        tag: _tag,
       );
     } catch (e) {
-      debugPrint('[UsageMetrics] Error buffering model usage: $e');
+      AppLogger.e('Error buffering model usage', tag: _tag, error: e);
     }
   }
 
@@ -112,48 +114,48 @@ class UsageMetricsRemoteDataSource {
         final data = entry.value;
 
         // Model Stats Base
-        final modelStats = currentData['model_stats']?[engine] as Map<String, dynamic>? ?? {};
+        final modelStats = currentData[FirebasePaths.modelStats]?[engine] as Map<String, dynamic>? ?? {};
         
-        updates['model_stats/$engine/total_calls'] = (modelStats['total_calls'] ?? 0) + data['calls'];
-        updates['model_stats/$engine/total_tokens'] = (modelStats['total_tokens'] ?? 0) + data['total_tokens'];
-        updates['model_stats/$engine/total_input_tokens'] = (modelStats['total_input_tokens'] ?? 0) + data['input_tokens'];
-        updates['model_stats/$engine/total_output_tokens'] = (modelStats['total_output_tokens'] ?? 0) + data['output_tokens'];
-        updates['model_stats/$engine/total_latency_ms'] = (modelStats['total_latency_ms'] ?? 0) + data['latency_ms'];
-        updates['model_stats/$engine/last_used'] = {".sv": "timestamp"};
-        updates['model_stats/$engine/engine'] = engine;
+        updates['${FirebasePaths.modelStats}/$engine/total_calls'] = (modelStats['total_calls'] ?? 0) + data['calls'];
+        updates['${FirebasePaths.modelStats}/$engine/total_tokens'] = (modelStats['total_tokens'] ?? 0) + data['total_tokens'];
+        updates['${FirebasePaths.modelStats}/$engine/total_input_tokens'] = (modelStats['total_input_tokens'] ?? 0) + data['input_tokens'];
+        updates['${FirebasePaths.modelStats}/$engine/total_output_tokens'] = (modelStats['total_output_tokens'] ?? 0) + data['output_tokens'];
+        updates['${FirebasePaths.modelStats}/$engine/total_latency_ms'] = (modelStats['total_latency_ms'] ?? 0) + data['latency_ms'];
+        updates['${FirebasePaths.modelStats}/$engine/last_used'] = {".sv": "timestamp"};
+        updates['${FirebasePaths.modelStats}/$engine/engine'] = engine;
 
         if (data['total_tokens'] > 0) {
-          final dailyModel = currentData['daily_usage']?[todayStr]?['models']?[engine] as Map<String, dynamic>? ?? {};
-          updates['daily_usage/$todayStr/models/$engine/tokens'] = (dailyModel['tokens'] ?? 0) + data['total_tokens'];
-          updates['daily_usage/$todayStr/models/$engine/calls'] = (dailyModel['calls'] ?? 0) + data['calls'];
-          updates['daily_usage/$todayStr/models/$engine/last_updated'] = {".sv": "timestamp"};
+          final dailyModel = currentData[FirebasePaths.dailyUsage]?[todayStr]?['models']?[engine] as Map<String, dynamic>? ?? {};
+          updates['${FirebasePaths.dailyUsage}/$todayStr/models/$engine/tokens'] = (dailyModel['tokens'] ?? 0) + data['total_tokens'];
+          updates['${FirebasePaths.dailyUsage}/$todayStr/models/$engine/calls'] = (dailyModel['calls'] ?? 0) + data['calls'];
+          updates['${FirebasePaths.dailyUsage}/$todayStr/models/$engine/last_updated'] = {".sv": "timestamp"};
 
           final totalsBase = currentData['usage']?['totals'] as Map<String, dynamic>? ?? {};
           final subModelsBase = totalsBase['subscription_monthly_models'] as Map<String, dynamic>? ?? {};
           final currentEngineMonth = (subModelsBase[engine] as num?)?.toInt() ?? 0;
-          updates['usage/totals/subscription_monthly_models/$engine'] = currentEngineMonth + data['total_tokens'];
+          updates['${FirebasePaths.usageTotals}/subscription_monthly_models/$engine'] = currentEngineMonth + data['total_tokens'];
 
           totalDailyTokens += data['total_tokens'] as int;
         }
 
         if (data['last_error'] != null) {
-          final dailyError = currentData['daily_usage']?[todayStr]?['errors']?[engine] as Map<String, dynamic>? ?? {};
-          updates['daily_usage/$todayStr/errors/$engine/failed_calls'] = (dailyError['failed_calls'] ?? 0) + data['calls'];
-          updates['daily_usage/$todayStr/errors/$engine/last_error'] = data['last_error'];
-          updates['daily_usage/$todayStr/errors/$engine/last_error_time'] = {".sv": "timestamp"};
+          final dailyError = currentData[FirebasePaths.dailyUsage]?[todayStr]?['errors']?[engine] as Map<String, dynamic>? ?? {};
+          updates['${FirebasePaths.dailyUsage}/$todayStr/errors/$engine/failed_calls'] = (dailyError['failed_calls'] ?? 0) + data['calls'];
+          updates['${FirebasePaths.dailyUsage}/$todayStr/errors/$engine/last_error'] = data['last_error'];
+          updates['${FirebasePaths.dailyUsage}/$todayStr/errors/$engine/last_error_time'] = {".sv": "timestamp"};
         }
       }
 
       if (totalDailyTokens > 0) {
-        final dailyBase = currentData['daily_usage']?[todayStr] as Map<String, dynamic>? ?? {};
+        final dailyBase = currentData[FirebasePaths.dailyUsage]?[todayStr] as Map<String, dynamic>? ?? {};
         final totalsBase = currentData['usage']?['totals'] as Map<String, dynamic>? ?? {};
 
-        updates['daily_usage/$todayStr/tokens'] = (dailyBase['tokens'] ?? 0) + totalDailyTokens;
-        updates['daily_usage/$todayStr/last_updated'] = {".sv": "timestamp"};
-        updates['usage/totals/lifetime'] = (totalsBase['lifetime'] ?? 0) + totalDailyTokens;
-        updates['usage/totals/calendar_monthly'] = (totalsBase['calendar_monthly'] ?? 0) + totalDailyTokens;
-        updates['usage/totals/subscription_monthly'] = (totalsBase['subscription_monthly'] ?? 0) + totalDailyTokens;
-        updates['usage/totals/weekly'] = (totalsBase['weekly'] ?? 0) + totalDailyTokens;
+        updates['${FirebasePaths.dailyUsage}/$todayStr/tokens'] = (dailyBase['tokens'] ?? 0) + totalDailyTokens;
+        updates['${FirebasePaths.dailyUsage}/$todayStr/last_updated'] = {".sv": "timestamp"};
+        updates['${FirebasePaths.usageTotals}/lifetime'] = (totalsBase['lifetime'] ?? 0) + totalDailyTokens;
+        updates['${FirebasePaths.usageTotals}/calendar_monthly'] = (totalsBase['calendar_monthly'] ?? 0) + totalDailyTokens;
+        updates['${FirebasePaths.usageTotals}/subscription_monthly'] = (totalsBase['subscription_monthly'] ?? 0) + totalDailyTokens;
+        updates['${FirebasePaths.usageTotals}/weekly'] = (totalsBase['weekly'] ?? 0) + totalDailyTokens;
       }
 
       if (updates.isNotEmpty) {
@@ -164,20 +166,19 @@ class UsageMetricsRemoteDataSource {
           (client) => client.patch(patchUrl, body: jsonEncode(updates)),
           context: 'flushUsage:patch',
         );
-        debugPrint(
-          '[UsageMetrics] Flushed usage stats to RTDB (+$totalDailyTokens tokens) via REST.',
-        );
+        AppLogger.i('Flushed usage stats to RTDB (+$totalDailyTokens tokens) via REST.', tag: _tag);
       }
     } catch (e) {
-      debugPrint('[UsageMetrics] Failed to flush usage to RTDB (REST): $e');
+      AppLogger.e('Failed to flush usage to RTDB', tag: _tag, error: e);
     }
   }
 
   /// Resets the singleton state. Called on logout.
-  Future<void> reset() async {
+  @override
+  void reset() {
     _usageFlushTimer?.cancel();
     _usageFlushTimer = null;
     _usageBuffer.clear();
-    debugPrint('[UsageMetrics] state reset');
+    AppLogger.d('State reset', tag: _tag);
   }
 }

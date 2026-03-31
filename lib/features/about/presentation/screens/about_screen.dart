@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:omni_bridge/core/constants/firebase_paths.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -750,7 +751,7 @@ class _LegalDialog extends StatelessWidget {
   Widget _buildBody() {
     return FutureBuilder<DocumentSnapshot>(
       future: AuthRemoteDataSource.instance.firestore
-          .collection('legal')
+          .collection(FirebasePaths.legal)
           .doc(documentId)
           .get(),
       builder: (context, snapshot) {

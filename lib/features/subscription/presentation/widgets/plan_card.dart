@@ -3,6 +3,7 @@ import '../../domain/entities/subscription_plan.dart';
 import 'package:intl/intl.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:omni_bridge/core/widgets/omni_card.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
 
 Widget buildPlanCard({
   required SubscriptionPlan plan,
@@ -232,7 +233,7 @@ Widget buildPlanCard({
                     final err = await SubscriptionRemoteDataSource.instance
                         .activateTrial();
                     if (err != null) {
-                      debugPrint('[Trial] $err');
+                      AppLogger.e('Trial activation failed', error: err, tag: 'Trial');
                     }
                   }
                 : () => SubscriptionRemoteDataSource.instance.openCheckout(plan.id),

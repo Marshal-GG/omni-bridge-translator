@@ -1,10 +1,11 @@
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 import '../../domain/entities/support_link.dart';
 
 abstract class ISupportLocalDataSource {
   Future<List<SupportLink>> getSupportLinks();
 }
 
-class SupportLocalDataSourceImpl implements ISupportLocalDataSource {
+class SupportLocalDataSourceImpl implements ISupportLocalDataSource, IResettable {
   @override
   Future<List<SupportLink>> getSupportLinks() async {
     return const [
@@ -33,5 +34,11 @@ class SupportLocalDataSourceImpl implements ISupportLocalDataSource {
         icon: 'twitter',
       ),
     ];
+  }
+
+  @override
+  void reset() {
+    // No state to reset currently, but interface implementation is required
+    // for future local caching of support tickets.
   }
 }

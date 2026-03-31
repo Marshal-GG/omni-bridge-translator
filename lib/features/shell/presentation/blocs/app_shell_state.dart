@@ -1,10 +1,10 @@
 import 'package:equatable/equatable.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:omni_bridge/features/subscription/domain/entities/subscription_status.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
 class AppShellState extends Equatable {
   final User? currentUser;
-  final SubscriptionStatus? currentSubscriptionStatus;
+  final QuotaStatus? currentSubscriptionStatus;
   final bool isSettingsExpanded;
   final bool isSupportExpanded;
 
@@ -17,7 +17,7 @@ class AppShellState extends Equatable {
 
   AppShellState copyWith({
     User? Function()? currentUser,
-    SubscriptionStatus? Function()? currentSubscriptionStatus,
+    QuotaStatus? Function()? currentSubscriptionStatus,
     bool? isSettingsExpanded,
     bool? isSupportExpanded,
   }) {

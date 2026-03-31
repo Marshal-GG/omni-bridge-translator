@@ -1,12 +1,12 @@
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
-import 'package:omni_bridge/features/translation/domain/repositories/i_translation_repository.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
+import 'package:omni_bridge/features/usage/domain/repositories/usage_repository.dart';
 
 class ObserveQuotaStatusUseCase {
-  final ITranslationRepository repository;
+  final UsageRepository repository;
 
   ObserveQuotaStatusUseCase(this.repository);
 
-  Stream<SubscriptionStatus> call() {
+  Stream<QuotaStatus> call() {
     return repository.quotaStatusStream;
   }
 }

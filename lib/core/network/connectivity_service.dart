@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
+import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
 import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 
 /// Monitors internet connectivity and triggers background tasks (like update checks)

@@ -40,6 +40,7 @@ import 'package:omni_bridge/features/settings/domain/usecases/get_system_config_
 import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.dart';
 import 'package:omni_bridge/features/settings/data/datasources/settings_remote_datasource.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_bloc.dart';
+import 'package:omni_bridge/features/settings/presentation/blocs/audio_level_cubit.dart';
 import 'package:omni_bridge/features/translation/domain/repositories/i_translation_repository.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/start_translation_usecase.dart';
@@ -78,8 +79,17 @@ import 'package:omni_bridge/features/about/domain/usecases/check_for_update.dart
 import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
 import 'package:omni_bridge/features/usage/domain/repositories/usage_repository.dart';
 import 'package:omni_bridge/features/usage/data/repositories/usage_repository_impl.dart';
+import 'package:omni_bridge/features/usage/data/datasources/usage_remote_datasource.dart';
+import 'package:omni_bridge/features/usage/domain/usecases/get_usage_stats.dart';
+import 'package:omni_bridge/features/usage/domain/usecases/get_usage_history.dart';
+import 'package:omni_bridge/features/usage/domain/usecases/get_quota_status.dart';
+import 'package:omni_bridge/features/usage/domain/usecases/check_usage_rollover.dart';
+import 'package:omni_bridge/features/usage/presentation/bloc/usage_bloc.dart';
 import 'package:omni_bridge/core/routes/my_nav_observer.dart';
 import 'package:omni_bridge/core/navigation/route_change_notifier.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
+import 'package:omni_bridge/core/network/rtdb_client.dart';
+import 'package:omni_bridge/features/translation/data/datasources/transcription_remote_datasource.dart';
 
 final sl = GetIt.instance;
 
@@ -116,9 +126,14 @@ Future<void> setupInjection() async {
       updateAppSettingsUseCase: sl(),
       getGoogleCredentialsUseCase: sl(),
       loadDevicesUseCase: sl(),
-      observeAudioLevelsUseCase: sl(),
       logEventUseCase: sl(),
       getSubscriptionStatus: sl(),
+    ),
+  );
+
+  sl.registerFactory(
+    () => AudioLevelCubit(
+      observeAudioLevelsUseCase: sl(),
     ),
   );
 
@@ -176,6 +191,15 @@ Future<void> setupInjection() async {
       sendSupportMessage: sl(),
     ),
   );
+  
+  sl.registerFactory(
+    () => UsageBloc(
+      getUsageStats: sl(),
+      getUsageHistory: sl(),
+      getQuotaStatus: sl(),
+      checkUsageRollover: sl(),
+    ),
+  );
 
   // Repositories
   sl.registerLazySingleton<IAuthRepository>(() => AuthRepositoryImpl(sl()));
@@ -202,14 +226,14 @@ Future<void> setupInjection() async {
     () => HistoryRepositoryImpl(localDataSource: sl()),
   );
   sl.registerLazySingleton<UsageRepository>(
-    () => UsageRepositoryImpl(subscriptionRepository: sl()),
+    () => UsageRepositoryImpl(remoteDataSource: sl()),
   );
 
   sl.registerLazySingleton<ISupportRepository>(
     () => SupportRepositoryImpl(
       localDataSource: sl(),
       remoteDataSource: sl(),
-      subscriptionRepository: sl(),
+      usageRepository: sl(),
       firebaseAuth: sl(),
       deviceInfo: sl(),
     ),
@@ -268,6 +292,12 @@ Future<void> setupInjection() async {
   sl.registerLazySingleton(() => GetTicketMessagesUseCase(sl()));
   sl.registerLazySingleton(() => SendSupportMessageUseCase(sl()));
 
+  // Usage
+  sl.registerLazySingleton(() => GetUsageStats(sl(), sl<ISubscriptionRepository>()));
+  sl.registerLazySingleton(() => GetUsageHistory(sl()));
+  sl.registerLazySingleton(() => GetQuotaStatus(sl()));
+  sl.registerLazySingleton(() => CheckUsageRollover(sl(), sl()));
+
   // Services / Datasources
   sl.registerLazySingleton(() => AuthRemoteDataSource.instance);
   sl.registerLazySingleton(
@@ -278,8 +308,57 @@ Future<void> setupInjection() async {
   sl.registerLazySingleton(() => UpdateRemoteDataSource.instance);
   sl.registerLazySingleton(() => SessionRemoteDataSource.instance);
   sl.registerLazySingleton(() => UsageMetricsRemoteDataSource.instance);
+  sl.registerLazySingleton(() => UsageRemoteDataSource.instance);
   sl.registerLazySingleton(() => DataMaintenanceRemoteDataSource.instance);
   sl.registerLazySingleton(() => LiveCaptionSyncDataSource.instance);
+  sl.registerLazySingleton(() => TranscriptionRemoteDataSource.instance);
+  sl.registerLazySingleton(() => RTDBClient.instance);
+
+  // --- Resettable Components (for Logout Cleanup) ---
+  sl.registerLazySingleton<IResettable>(
+    () => AuthRemoteDataSource.instance,
+    instanceName: 'auth_reset',
+  );
+  sl.registerLazySingleton<IResettable>(
+    () => SubscriptionRemoteDataSource.instance,
+    instanceName: 'sub_reset',
+  );
+  sl.registerLazySingleton<IResettable>(
+    () => SessionRemoteDataSource.instance,
+    instanceName: 'session_reset',
+  );
+  sl.registerLazySingleton<IResettable>(
+    () => UsageMetricsRemoteDataSource.instance,
+    instanceName: 'metrics_reset',
+  );
+  sl.registerLazySingleton<IResettable>(
+    () => UsageRemoteDataSource.instance,
+    instanceName: 'usage_reset',
+  );
+  sl.registerLazySingleton<IResettable>(
+    () => sl<ISettingsRemoteDataSource>() as IResettable,
+    instanceName: 'settings_reset',
+  );
+
+  sl.registerLazySingleton<IResettable>(
+    () => TranscriptionRemoteDataSource.instance,
+    instanceName: 'transcription_reset',
+  );
+
+  sl.registerLazySingleton<IResettable>(
+    () => RTDBClient.instance,
+    instanceName: 'rtdb_reset',
+  );
+  
+  sl.registerLazySingleton<IResettable>(
+    () => sl<HistoryLocalDataSource>(),
+    instanceName: 'history_reset',
+  );
+
+  sl.registerLazySingleton<IResettable>(
+    () => sl<ISupportLocalDataSource>() as IResettable,
+    instanceName: 'support_local_reset',
+  );
 
   // Navigation Observer (singleton so its route stream persists)
   sl.registerLazySingleton(() => MyNavigatorObserver());

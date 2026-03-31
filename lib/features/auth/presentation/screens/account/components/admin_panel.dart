@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:omni_bridge/core/constants/firebase_paths.dart';
 import 'package:omni_bridge/core/widgets/omni_tinted_button.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
@@ -32,8 +33,7 @@ class _AdminPanelState extends State<AdminPanel> {
     }
     try {
       final doc = await AuthRemoteDataSource.instance.firestore
-          .collection('system')
-          .doc('admins')
+          .doc(FirebasePaths.adminEmails)
           .get();
       final emails = List<String>.from(doc.data()?['emails'] ?? []);
       if (mounted) setState(() => _isAdmin = emails.contains(user.email));
@@ -92,7 +92,7 @@ class _AdminPanelState extends State<AdminPanel> {
                   ),
                   child: FutureBuilder(
                     future: AuthRemoteDataSource.instance.firestore
-                        .collection('users')
+                        .collection(FirebasePaths.users)
                         .get(),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
@@ -678,8 +678,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
     setState(() => _updatingPoll = true);
     try {
       await AuthRemoteDataSource.instance.firestore
-          .collection('system')
-          .doc('monetization')
+          .doc(FirebasePaths.monetizationConfig)
           .set({'usage_poll_interval_seconds': val}, SetOptions(merge: true));
       if (mounted) {
         setState(() => _updatingPoll = false);
@@ -706,13 +705,13 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
       final firestore = AuthRemoteDataSource.instance.firestore;
 
       // Seed monetization config
-      await firestore.collection('system').doc('monetization').set({
+      await firestore.doc(FirebasePaths.monetizationConfig).set({
         ..._seedData,
         'last_seeded_at': FieldValue.serverTimestamp(),
       });
 
       // Seed app version control into its own document
-      await firestore.collection('system').doc('app_version').set({
+      await firestore.doc(FirebasePaths.appVersion).set({
         ..._appVersionData,
         'last_seeded_at': FieldValue.serverTimestamp(),
       });

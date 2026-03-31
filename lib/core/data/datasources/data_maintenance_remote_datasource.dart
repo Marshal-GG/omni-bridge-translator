@@ -1,8 +1,9 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:omni_bridge/core/constants/firebase_paths.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:omni_bridge/core/network/rtdb_client.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 
@@ -16,10 +17,9 @@ class DataMaintenanceRemoteDataSource implements IDataMaintenanceRemoteDataSourc
   DataMaintenanceRemoteDataSource._();
   static final DataMaintenanceRemoteDataSource instance = DataMaintenanceRemoteDataSource._();
 
-  static final String _appName = kDebugMode
-      ? 'OmniBridge-Debug'
-      : 'OmniBridge-Release';
-  FirebaseApp get _app => Firebase.app(_appName);
+  static const String _tag = 'DataMaintenanceRemoteDataSource';
+
+  FirebaseApp get _app => Firebase.app(RTDBClient.appName);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
   
   final RTDBClient _rtdbClient = RTDBClient.instance;
@@ -37,7 +37,7 @@ class DataMaintenanceRemoteDataSource implements IDataMaintenanceRemoteDataSourc
           .subtract(Duration(days: retentionDays))
           .millisecondsSinceEpoch;
 
-      final url = await _rtdbClient.getRTDBUrl('captions');
+      final url = await _rtdbClient.getRTDBUrl(FirebasePaths.captions);
       if (url == null) return;
 
       final response = await _rtdbClient.request(
@@ -63,7 +63,7 @@ class DataMaintenanceRemoteDataSource implements IDataMaintenanceRemoteDataSourc
 
       final user = FirebaseAuth.instanceFor(app: _app).currentUser;
       if (user == null) return;
-      final deleteUrl = await _rtdbClient.getAbsoluteUrl('users/$userUid/captions');
+      final deleteUrl = await _rtdbClient.getAbsoluteUrl(FirebasePaths.userCaptions(userUid));
 
       if (deleteUrl != null) {
         await _rtdbClient.request(
@@ -71,12 +71,13 @@ class DataMaintenanceRemoteDataSource implements IDataMaintenanceRemoteDataSourc
           context: 'cleanupOldCaptions:delete',
           maxRetries: 1,
         );
-        debugPrint(
-          '[DataMaintenance] Cleaned up ${deletions.length} old captions (>${retentionDays}d).',
+        AppLogger.i(
+          'Cleaned up ${deletions.length} old captions (>${retentionDays}d).',
+          tag: _tag,
         );
       }
     } catch (e) {
-      debugPrint('[DataMaintenance] Caption cleanup failed: $e');
+      AppLogger.e('Caption cleanup failed', tag: _tag, error: e);
     }
   }
 
@@ -88,7 +89,7 @@ class DataMaintenanceRemoteDataSource implements IDataMaintenanceRemoteDataSourc
     try {
       final cutoffDate = DateTime.now().subtract(const Duration(days: 90));
       
-      final url = await _rtdbClient.getAbsoluteUrl('users/$userUid/daily_usage');
+      final url = await _rtdbClient.getAbsoluteUrl(FirebasePaths.userDailyUsage(userUid));
       if (url == null) return;
 
       final shallowUrl = Uri.parse('${url.toString()}&shallow=true');
@@ -121,11 +122,12 @@ class DataMaintenanceRemoteDataSource implements IDataMaintenanceRemoteDataSourc
         context: 'cleanupOldDailyUsage:delete',
         maxRetries: 1,
       );
-      debugPrint(
-        '[DataMaintenance] Cleaned up ${deletions.length} old daily_usage entries (>=90d).',
+      AppLogger.i(
+        'Cleaned up ${deletions.length} old daily_usage entries (>=90d).',
+        tag: _tag,
       );
     } catch (e) {
-      debugPrint('[DataMaintenance] Daily usage cleanup failed: $e');
+      AppLogger.e('Daily usage cleanup failed', tag: _tag, error: e);
     }
   }
 
@@ -136,9 +138,9 @@ class DataMaintenanceRemoteDataSource implements IDataMaintenanceRemoteDataSourc
     try {
       final cutoffDate = DateTime.now().subtract(const Duration(days: 90));
       final snapshots = await _firestore
-          .collection('users')
+          .collection(FirebasePaths.users)
           .doc(userUid)
-          .collection('sessions')
+          .collection(FirebasePaths.sessions)
           .where('startTime', isLessThan: Timestamp.fromDate(cutoffDate))
           .get();
 
@@ -149,9 +151,9 @@ class DataMaintenanceRemoteDataSource implements IDataMaintenanceRemoteDataSourc
         batch.delete(doc.reference);
       }
       await batch.commit();
-      debugPrint('[DataMaintenance] Cleaned up ${snapshots.docs.length} old sessions from Firestore.');
+      AppLogger.i('Cleaned up ${snapshots.docs.length} old sessions from Firestore.', tag: _tag);
     } catch (e) {
-      debugPrint('[DataMaintenance] Session cleanup failed: $e');
+      AppLogger.e('Session cleanup failed', tag: _tag, error: e);
     }
   }
 }

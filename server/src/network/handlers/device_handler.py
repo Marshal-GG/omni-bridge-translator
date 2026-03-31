@@ -22,6 +22,21 @@ class DeviceHandler(BaseHandler):
                 if wasapi_index == -1:
                     return {"error": "WASAPI not found"}
 
+                default_input_name = "Default"
+                default_output_name = "Default"
+                wasapi_info = p.get_host_api_info_by_index(wasapi_index)
+                
+                # Get actual friendly names for defaults
+                def_in_idx = wasapi_info.get("defaultInputDevice")
+                if def_in_idx is not None and def_in_idx != -1:
+                    default_input_name = p.get_device_info_by_index(def_in_idx).get("name", "Default")
+
+                def_out_idx = wasapi_info.get("defaultOutputDevice")
+                if def_out_idx is not None and def_out_idx != -1:
+                    # For outputs, we try to match it against our loopback list later or just provide the name
+                    default_out_info = p.get_device_info_by_index(def_out_idx)
+                    default_output_name = default_out_info.get("name", "Default").replace(" [Loopback]", "").strip()
+
                 for i in range(p.get_device_count()):
                     info = p.get_device_info_by_index(i)
                     name = info.get("name", "")
@@ -36,7 +51,9 @@ class DeviceHandler(BaseHandler):
 
                 return {
                     "input": inputs,
-                    "output": outputs
+                    "output": outputs,
+                    "default_input_name": default_input_name,
+                    "default_output_name": default_output_name
                 }
             except Exception as e:
                 logging.error(f"[Handler] Device listing error: {e}")

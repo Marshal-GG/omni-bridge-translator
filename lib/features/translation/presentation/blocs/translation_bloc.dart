@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:omni_bridge/features/translation/data/datasources/translation_rest_datasource.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -29,6 +29,7 @@ import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.
 import 'package:omni_bridge/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_system_config_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/entities/system_config.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final StartTranslationUseCase startTranslationUseCase;
@@ -112,7 +113,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       final statuses = await getModelStatusUseCase();
       add(ModelStatusChangedEvent(statuses));
     } catch (e) {
-      debugPrint('Error fetching initial model statuses: $e');
+      AppLogger.e('Error fetching initial model statuses', error: e, tag: 'TranslationBloc');
     }
   }
 
@@ -124,10 +125,10 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   void _onAuthChanged() {
     final user = getCurrentUserUseCase().value;
     if (user != null && !isClosed) {
-      debugPrint('[TranslationBloc] Auth detected, reloading settings...');
+      AppLogger.i('Auth detected, reloading settings...', tag: 'TranslationBloc');
       add(LoadSettingsEvent());
     } else if (user == null && !isClosed) {
-      debugPrint('[TranslationBloc] Logout detected, resetting settings...');
+      AppLogger.i('Logout detected, resetting settings...', tag: 'TranslationBloc');
       add(ResetSettingsEvent());
     }
   }
@@ -139,7 +140,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     } else {
       add(
         UpdateQuotaEvent(
-          SubscriptionStatus(
+          QuotaStatus(
             tier: getDefaultTierUseCase(),
             dailyTokensUsed: 0,
             weeklyTokensUsed: 0,
@@ -164,7 +165,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           add(UpdateServerConnectionEvent(isConnected: false));
         }
         if (state.isRunning && !isClosed) {
-          debugPrint('[TranslationBloc] Server disconnect detected. Auto-pausing.');
+          AppLogger.i('Server disconnect detected. Auto-pausing.', tag: 'TranslationBloc');
           add(ToggleRunningEvent());
         }
       } else {
@@ -184,7 +185,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       }
 
       if (msg.usageStats != null) {
-        debugPrint('Received usageStats from ASR client: ${msg.usageStats}');
+        AppLogger.i('Received usageStats from ASR client: ${msg.usageStats}', tag: 'TranslationBloc');
       }
 
       final text = msg.text;
@@ -231,7 +232,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   ) async {
     // Prevent starting translation if server is not connected
     if (!state.isRunning && !state.isServerConnected) {
-      debugPrint('[TranslationBloc] Prevented resume: Server is not connected.');
+      AppLogger.w('Prevented resume: Server is not connected.', tag: 'TranslationBloc');
       return;
     }
 
@@ -286,13 +287,13 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
     final newState = state.copyWith(quotaStatus: event.status, isQuotaExceeded: exceeded);
     if (newState != state) {
-      debugPrint('[DEBUG-EMIT] _onUpdateQuota: emitted state with tier $newTier, exceeded: $exceeded');
+      AppLogger.i('_onUpdateQuota: emitted state with tier $newTier, exceeded: $exceeded', tag: 'TranslationBloc');
     }
     emit(newState);
 
     // Handle Quota Exhaustion
     if (exceeded && state.isRunning) {
-      debugPrint('[TranslationBloc] Quota exceeded, stopping translation.');
+      AppLogger.w('Quota exceeded, stopping translation.', tag: 'TranslationBloc');
       stopTranslationUseCase();
       emit(
         state.copyWith(
@@ -306,7 +307,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
     // Handle Tier Change (Downgrade)
     if (oldTier != null && oldTier != newTier) {
-      debugPrint('[TranslationBloc] Tier changed from $oldTier to $newTier');
+      AppLogger.i('Tier changed from $oldTier to $newTier', tag: 'TranslationBloc');
 
       final bool isTranslationAllowed = subscriptionDataSource
           .allowedTranslationModels(newTier)
@@ -323,7 +324,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         try {
           await translationRestDatasource.unloadModel();
         } catch (e) {
-          debugPrint('[TranslationBloc] Error unloading model: $e');
+          AppLogger.e('Error unloading model', error: e, tag: 'TranslationBloc');
         }
 
         // Clear model statuses for the unsupported models to update UI immediately
@@ -388,8 +389,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
     if (shouldShowDialog) {
       // First time this engine is exceeded in this session → show dialog
-      debugPrint(
-        '[TranslationBloc] Engine "${event.engineId}" limit reached (first time), showing dialog.',
+      AppLogger.i(
+        'Engine "${event.engineId}" limit reached (first time), showing dialog.',
+        tag: 'TranslationBloc',
       );
       if (state.isRunning) {
         stopTranslationUseCase();
@@ -402,8 +404,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       );
     } else {
       // Repeat occurrence → silent fallback to google
-      debugPrint(
-        '[TranslationBloc] Engine "${event.engineId}" limit reached again, silent fallback to google.',
+      AppLogger.i(
+        'Engine "${event.engineId}" limit reached again, silent fallback to google.',
+        tag: 'TranslationBloc',
       );
       add(SwitchToFallbackEngineEvent());
     }
@@ -461,7 +464,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     try {
       final result = await getAppSettingsUseCase();
       result.fold(
-        (failure) => debugPrint('Error loading settings: ${failure.message}'),
+        (failure) => AppLogger.e('Error loading settings', error: failure.message, tag: 'TranslationBloc'),
         (settings) async {
           if (settings != null) {
             final loadedState = state.copyWith(
@@ -517,14 +520,14 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
                 activeTranscriptionModel: defaults.transcriptionModel,
               );
             if (defaultState != state) {
-              debugPrint('[DEBUG-EMIT] _onLoadSettings: emitted state with default settings');
+              AppLogger.i('_onLoadSettings: emitted state with default settings', tag: 'TranslationBloc');
             }
             emit(defaultState);
           }
         },
       );
     } catch (e) {
-      debugPrint('Error loading settings: $e');
+      AppLogger.e('Error loading settings', error: e, tag: 'TranslationBloc');
     } finally {
       final finishedState = state.copyWith(isSettingsLoading: false);
       emit(finishedState);

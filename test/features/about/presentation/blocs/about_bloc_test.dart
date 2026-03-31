@@ -7,7 +7,7 @@ import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_bloc.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_event.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_state.dart';
-import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
+import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
 
 class MockCheckForUpdate extends Mock implements CheckForUpdate {}
 

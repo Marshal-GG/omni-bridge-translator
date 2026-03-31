@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:omni_bridge/features/subscription/domain/entities/subscription_status.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
 abstract class AppShellEvent extends Equatable {
   const AppShellEvent();
@@ -19,7 +19,7 @@ class AppShellUserChanged extends AppShellEvent {
 }
 
 class AppShellSubscriptionStatusChanged extends AppShellEvent {
-  final SubscriptionStatus? status;
+  final QuotaStatus? status;
 
   const AppShellSubscriptionStatusChanged(this.status);
 

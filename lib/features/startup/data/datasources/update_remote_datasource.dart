@@ -1,11 +1,30 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:omni_bridge/core/constants/firebase_paths.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
+import 'package:omni_bridge/core/network/rtdb_client.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
+import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
 
-class UpdateRemoteDataSource {
-  UpdateRemoteDataSource._();
-  static final UpdateRemoteDataSource instance = UpdateRemoteDataSource._();
+class UpdateRemoteDataSource implements IResettable {
+  final FirebaseFirestore _firestore;
+
+  UpdateRemoteDataSource({FirebaseFirestore? firestore})
+      : _firestore = firestore ??
+            FirebaseFirestore.instanceFor(
+                app: Firebase.app(RTDBClient.appName));
+
+  static final UpdateRemoteDataSource instance = UpdateRemoteDataSource();
+
+  static const String _tag = 'Update';
+
+  @override
+  Future<void> reset() async {
+    // No local state to clear in this data source, but implements interface for consistency
+    AppLogger.d('Resetting UpdateRemoteDataSource', tag: _tag);
+  }
 
   /// Compares semver strings. Returns true if [latest] is newer than [current].
   bool _isNewer(String current, String latest) {
@@ -20,7 +39,7 @@ class UpdateRemoteDataSource {
       }
       return false;
     } catch (e) {
-      debugPrint('[UpdateRemoteDataSource] Version parse error: $e');
+      AppLogger.e('Version parse error', error: e, tag: _tag);
       return false;
     }
   }
@@ -30,9 +49,9 @@ class UpdateRemoteDataSource {
       final info = await PackageInfo.fromPlatform();
       final current = info.version;
 
-      final docStr = await FirebaseFirestore.instance
-          .collection('system')
-          .doc('app_version')
+      final docStr = await _firestore
+          .collection(FirebasePaths.system)
+          .doc(FirebasePaths.appVersion.split('/').last)
           .get()
           .timeout(const Duration(seconds: 10));
 
@@ -83,36 +102,11 @@ class UpdateRemoteDataSource {
 
       return result;
     } catch (e) {
-      debugPrint('[UpdateRemoteDataSource] Error: $e');
+      AppLogger.e('Error checking for update', error: e, tag: _tag);
       return const UpdateResult(
         status: UpdateStatus.error,
         errorMessage: 'Check failed. Verify your internet connection.',
       );
-    }
-  }
-}
-
-/// Lightweight notifier so the overlay header can show a badge dot or forced UI.
-class UpdateNotifier extends ValueNotifier<bool> {
-  UpdateNotifier._() : super(false);
-  static final UpdateNotifier instance = UpdateNotifier._();
-
-  String? latestVersion;
-  String? releaseUrl;
-  String? forceUpdateMessage;
-  bool isForced = false;
-
-  void setAvailable(String version, String url, {bool forced = false, String? message}) {
-    latestVersion = version;
-    releaseUrl = url;
-    isForced = forced;
-    forceUpdateMessage = message;
-    value = true;
-  }
-
-  void dismiss() {
-    if (!isForced) {
-      value = false;
     }
   }
 }

@@ -7,7 +7,7 @@ import 'package:omni_bridge/features/history/presentation/blocs/history_bloc.dar
 import 'package:omni_bridge/features/history/presentation/blocs/history_event.dart';
 import 'package:omni_bridge/features/history/presentation/blocs/history_state.dart';
 import 'package:omni_bridge/features/history/domain/entities/history_entry.dart';
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/features/history/domain/usecases/get_live_history_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/get_chunked_history_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/clear_history_usecase.dart';
@@ -25,7 +25,7 @@ void main() {
   late MockClearHistoryUseCase mockClearHistoryUseCase;
   late MockSubscriptionRemoteDataSource mockSubscriptionDataSource;
 
-  late StreamController<SubscriptionStatus> subStreamController;
+  late StreamController<QuotaStatus> subStreamController;
   late ValueNotifier<List<HistoryEntry>> liveListenable;
   late ValueNotifier<List<HistoryEntry>> chunkedListenable;
 
@@ -37,7 +37,7 @@ void main() {
     targetLang: 'es',
   );
 
-  final testStatusFree = SubscriptionStatus(
+  final testStatusFree = QuotaStatus(
     tier: 'free',
     dailyTokensUsed: 0,
     weeklyTokensUsed: 0,
@@ -47,7 +47,7 @@ void main() {
     dailyResetAt: DateTime.now(),
   );
 
-  final testStatusPremium = SubscriptionStatus(
+  final testStatusPremium = QuotaStatus(
     tier: 'premium',
     dailyTokensUsed: 0,
     weeklyTokensUsed: 0,
@@ -63,7 +63,7 @@ void main() {
     mockClearHistoryUseCase = MockClearHistoryUseCase();
     mockSubscriptionDataSource = MockSubscriptionRemoteDataSource();
 
-    subStreamController = StreamController<SubscriptionStatus>.broadcast();
+    subStreamController = StreamController<QuotaStatus>.broadcast();
     liveListenable = ValueNotifier<List<HistoryEntry>>([]);
     chunkedListenable = ValueNotifier<List<HistoryEntry>>([]);
 

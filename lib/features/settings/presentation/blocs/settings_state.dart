@@ -7,9 +7,9 @@ class SettingsState extends Equatable {
   final AppSettings settings;
   final SystemConfig systemConfig;
 
-  // Audio Levels (live during settings open)
-  final double currentInputVolume;
-  final double currentOutputVolume;
+  // UI State
+  final int activeTabIndex;
+  final bool isInitialized;
 
   // Devices Loading
   final bool devicesLoading;
@@ -25,8 +25,8 @@ class SettingsState extends Equatable {
   const SettingsState({
     required this.settings,
     required this.systemConfig,
-    required this.currentInputVolume,
-    required this.currentOutputVolume,
+    required this.activeTabIndex,
+    required this.isInitialized,
     required this.devicesLoading,
     required this.inputDevices,
     required this.outputDevices,
@@ -39,8 +39,8 @@ class SettingsState extends Equatable {
     return SettingsState(
       settings: AppSettings.initial(),
       systemConfig: SystemConfig.initial(),
-      currentInputVolume: 0.0,
-      currentOutputVolume: 0.0,
+      activeTabIndex: 0,
+      isInitialized: false,
       devicesLoading: false,
       inputDevices: [],
       outputDevices: [],
@@ -52,8 +52,8 @@ class SettingsState extends Equatable {
   SettingsState copyWith({
     AppSettings? settings,
     SystemConfig? systemConfig,
-    double? currentInputVolume,
-    double? currentOutputVolume,
+    int? activeTabIndex,
+    bool? isInitialized,
     bool? devicesLoading,
     List<Map<String, dynamic>>? inputDevices,
     List<Map<String, dynamic>>? outputDevices,
@@ -65,8 +65,8 @@ class SettingsState extends Equatable {
     return SettingsState(
       settings: settings ?? this.settings,
       systemConfig: systemConfig ?? this.systemConfig,
-      currentInputVolume: currentInputVolume ?? this.currentInputVolume,
-      currentOutputVolume: currentOutputVolume ?? this.currentOutputVolume,
+      activeTabIndex: activeTabIndex ?? this.activeTabIndex,
+      isInitialized: isInitialized ?? this.isInitialized,
       devicesLoading: devicesLoading ?? this.devicesLoading,
       inputDevices: inputDevices ?? this.inputDevices,
       outputDevices: outputDevices ?? this.outputDevices,
@@ -85,8 +85,8 @@ class SettingsState extends Equatable {
   List<Object?> get props => [
     settings,
     systemConfig,
-    currentInputVolume,
-    currentOutputVolume,
+    activeTabIndex,
+    isInitialized,
     devicesLoading,
     inputDevices,
     outputDevices,

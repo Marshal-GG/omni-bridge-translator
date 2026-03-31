@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../../subscription/domain/entities/subscription_status.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
 abstract class SettingsEvent extends Equatable {
   const SettingsEvent();
@@ -113,24 +113,75 @@ class SyncTempSettingsEvent extends SettingsEvent {
   ];
 }
 
-class UpdateAudioLevelsEvent extends SettingsEvent {
-  final double inputVolume;
-  final double outputVolume;
-
-  const UpdateAudioLevelsEvent(this.inputVolume, this.outputVolume);
-
-  @override
-  List<Object?> get props => [inputVolume, outputVolume];
-}
-
 class ResetIODefaultsEvent extends SettingsEvent {}
 
 class SaveSettingsEvent extends SettingsEvent {}
+
 class SubscriptionStatusChangedEvent extends SettingsEvent {
-  final SubscriptionStatus status;
+  final QuotaStatus status;
 
   const SubscriptionStatusChangedEvent(this.status);
 
   @override
   List<Object?> get props => [status];
+}
+
+class InitializeSettingsEvent extends SettingsEvent {
+  final String targetLang;
+  final String sourceLang;
+  final bool useMic;
+  final double fontSize;
+  final bool isBold;
+  final double opacity;
+  final int? inputDeviceIndex;
+  final int? outputDeviceIndex;
+  final double desktopVolume;
+  final double micVolume;
+  final String translationModel;
+  final String? nvidiaNimKey;
+  final String? transcriptionModel;
+  final int initialTabIndex;
+
+  const InitializeSettingsEvent({
+    required this.targetLang,
+    required this.sourceLang,
+    required this.useMic,
+    required this.fontSize,
+    required this.isBold,
+    required this.opacity,
+    this.inputDeviceIndex,
+    this.outputDeviceIndex,
+    required this.desktopVolume,
+    required this.micVolume,
+    required this.translationModel,
+    this.nvidiaNimKey,
+    this.transcriptionModel,
+    required this.initialTabIndex,
+  });
+
+  @override
+  List<Object?> get props => [
+    targetLang,
+    sourceLang,
+    useMic,
+    fontSize,
+    isBold,
+    opacity,
+    inputDeviceIndex,
+    outputDeviceIndex,
+    desktopVolume,
+    micVolume,
+    translationModel,
+    nvidiaNimKey,
+    transcriptionModel,
+    initialTabIndex,
+  ];
+}
+
+class SettingsTabIndexChanged extends SettingsEvent {
+  final int index;
+  const SettingsTabIndexChanged(this.index);
+
+  @override
+  List<Object?> get props => [index];
 }

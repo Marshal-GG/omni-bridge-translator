@@ -1,12 +1,12 @@
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
-import 'package:omni_bridge/features/translation/domain/repositories/i_translation_repository.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
+import 'package:omni_bridge/features/usage/domain/repositories/usage_repository.dart';
 
 class GetInitialQuotaStatusUseCase {
-  final ITranslationRepository repository;
+  final UsageRepository repository;
 
   GetInitialQuotaStatusUseCase(this.repository);
 
-  SubscriptionStatus? call() {
+  QuotaStatus? call() {
     return repository.currentQuotaStatus;
   }
 }

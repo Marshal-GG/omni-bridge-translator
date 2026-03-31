@@ -1,11 +1,11 @@
 import 'package:equatable/equatable.dart';
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
 class TranslationState extends Equatable {
   // App UI State
   final bool isShrunk;
   final bool isRunning;
-  final SubscriptionStatus? quotaStatus;
+  final QuotaStatus? quotaStatus;
   final bool isQuotaExceeded;
   final bool isSettingsLoading;
   final bool isSettingsSaving;
@@ -114,7 +114,7 @@ class TranslationState extends Equatable {
     String? activeNvidiaNimKey,
     String? activeTranscriptionModel,
     Object? autoDetectWarning = _sentinel,
-    SubscriptionStatus? quotaStatus,
+    QuotaStatus? quotaStatus,
     bool? isQuotaExceeded,
     bool? isSettingsLoading,
     bool? isSettingsSaving,

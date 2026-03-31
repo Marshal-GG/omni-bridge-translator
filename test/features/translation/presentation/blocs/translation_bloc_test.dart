@@ -24,7 +24,7 @@ import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.
 import 'package:omni_bridge/features/settings/domain/entities/system_config.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:omni_bridge/features/settings/domain/entities/app_settings.dart';
@@ -55,7 +55,7 @@ class MockTranslationRestDatasource extends Mock implements TranslationRestDatas
 void main() {
   setUpAll(() {
     registerFallbackValue(<String, dynamic>{});
-    registerFallbackValue(SubscriptionStatus(
+    registerFallbackValue(QuotaStatus(
       tier: 'free',
       dailyTokensUsed: 0,
       weeklyTokensUsed: 0,
@@ -269,7 +269,7 @@ void main() {
   });
 
   group('UpdateQuotaEvent', () {
-    final proStatus = SubscriptionStatus(
+    final proStatus = QuotaStatus(
       tier: 'pro',
       dailyTokensUsed: 0,
       weeklyTokensUsed: 0,
@@ -279,7 +279,7 @@ void main() {
       dailyResetAt: DateTime(2025),
     );
 
-    final freeStatus = SubscriptionStatus(
+    final freeStatus = QuotaStatus(
       tier: 'free',
       dailyTokensUsed: 0,
       weeklyTokensUsed: 0,

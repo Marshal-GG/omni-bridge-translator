@@ -120,9 +120,18 @@ class OmniDropdown<T> extends StatelessWidget {
             ),
           ),
         ),
-        dropdownBuilder: dropdownBuilder ??
+        dropdownBuilder:
+            dropdownBuilder ??
             (context, selected) {
-              if (selected == null) return const SizedBox.shrink();
+              if (selected == null) {
+                return Text(
+                  hintText,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  softWrap: false,
+                );
+              }
               return Text(
                 itemAsString(selected),
                 style: const TextStyle(color: Colors.white, fontSize: 13),
@@ -133,12 +142,11 @@ class OmniDropdown<T> extends StatelessWidget {
             },
         popupProps: PopupProps.menu(
           showSearchBox: showSearchBox,
+          showSelectedItems: true,
           fit: FlexFit.loose,
           constraints: BoxConstraints(maxHeight: maxHeight),
           searchDelay: Duration.zero,
-          interceptCallBacks:
-              itemBuilder !=
-              null, // Usually used to manually handle tap in custom itemBuilder
+          interceptCallBacks: false,
           searchFieldProps: showSearchBox
               ? TextFieldProps(
                   autofocus: true,
@@ -151,6 +159,12 @@ class OmniDropdown<T> extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
             ),
           ),
+          containerBuilder: (context, child) {
+            return MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: child,
+            );
+          },
           itemBuilder: itemBuilder,
         ),
       ),

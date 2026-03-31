@@ -4,11 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
 import 'package:omni_bridge/core/config/server_config.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
 
 class PythonServerManager {
   static Process? _serverProcess;
   static bool _isIntentionalStop = false;
   static int _restartCount = 0;
+  static const String _tag = 'PythonManager';
 
   static Future<void> startServer() async {
     _isIntentionalStop = false;
@@ -21,9 +23,7 @@ class PythonServerManager {
             .get(Uri.parse('${ServerConfig.httpUrl}/status'))
             .timeout(const Duration(seconds: 1));
         if (checkResponse.statusCode == 200) {
-          debugPrint(
-            '[PythonManager] Python server is already running externally.',
-          );
+          AppLogger.i('Python server is already running externally.', tag: _tag);
           return;
         }
       } catch (_) {
@@ -36,9 +36,7 @@ class PythonServerManager {
       if (File(pyPath).existsSync()) {
         // Kill any stray server processes before starting fresh (only if we found the bundled one)
         if (Platform.isWindows) {
-          debugPrint(
-            '[PythonManager] Killing stale server instances before start...',
-          );
+          AppLogger.i('Killing stale server instances before start...', tag: _tag);
           Process.runSync('taskkill', [
             '/F',
             '/IM',
@@ -47,7 +45,7 @@ class PythonServerManager {
           ]);
         }
 
-        debugPrint('Starting bundled Python server: $pyPath');
+        AppLogger.i('Starting bundled Python server: $pyPath', tag: _tag);
         _serverProcess = await Process.start(
           pyPath,
           [],
@@ -56,14 +54,14 @@ class PythonServerManager {
 
         // Pipe Python stdout/stderr to Flutter console for visibility
         _serverProcess!.stdout.transform(utf8.decoder).listen((data) {
-          debugPrint('[Python Server STDOUT] ${data.trim()}');
+          AppLogger.i(data.trim(), tag: 'PythonStdout');
         });
         _serverProcess!.stderr.transform(utf8.decoder).listen((data) {
-          debugPrint('[Python Server STDERR] ${data.trim()}');
+          AppLogger.e(data.trim(), tag: 'PythonStderr');
         });
 
         // Wait for the server to be ready before allowing the app to proceed
-        debugPrint('Waiting for server boot...');
+        AppLogger.i('Waiting for server boot...', tag: _tag);
         bool isReady = false;
         // Increase timeout to 30 attempts (15 seconds)
         for (int i = 0; i < 30; i++) {
@@ -80,21 +78,22 @@ class PythonServerManager {
         }
 
         if (isReady) {
-          debugPrint('Python server is ready.');
+          AppLogger.i('Python server is ready.', tag: _tag);
           _restartCount = 0; // Reset counter on successful boot
         } else {
-          debugPrint('Warning: Python server boot timed out.');
+          AppLogger.w('Warning: Python server boot timed out.', tag: _tag);
         }
 
         // Auto-restart logic for unexpected crashes
         _serverProcess!.exitCode.then((code) {
-          debugPrint('[PythonManager] Process exited with code: $code');
+          AppLogger.i('Process exited with code: $code', tag: _tag);
           if (!_isIntentionalStop) {
             _serverProcess = null;
             _restartCount++;
             int delaySeconds = _restartCount > 3 ? 10 : 3; // Backoff
-            debugPrint(
-              '[PythonManager] Unexpected exit. Restarting in $delaySeconds seconds... (Attempt $_restartCount)',
+            AppLogger.i(
+              'Unexpected exit. Restarting in $delaySeconds seconds... (Attempt $_restartCount)',
+              tag: _tag,
             );
             Future.delayed(Duration(seconds: delaySeconds), () {
               if (!_isIntentionalStop) {
@@ -104,12 +103,13 @@ class PythonServerManager {
           }
         });
       } else {
-        debugPrint(
+        AppLogger.w(
           'Bundled server not found at $pyPath. Ensure the server is running manually in dev mode.',
+          tag: _tag,
         );
       }
     } catch (e) {
-      debugPrint('Failed to start Python server: $e');
+      AppLogger.e('Failed to start Python server', error: e, tag: _tag);
     }
   }
 
@@ -117,7 +117,7 @@ class PythonServerManager {
     _isIntentionalStop = true;
     _restartCount = 0;
     if (_serverProcess != null) {
-      debugPrint('Attempting to kill Python server process tree...');
+      AppLogger.i('Attempting to kill Python server process tree...', tag: _tag);
       try {
         // PyInstaller creates a bootloader process -> python child process.
         // Process.runSync blocks the UI thread until the kill command completes.
@@ -132,10 +132,10 @@ class PythonServerManager {
           _serverProcess!.kill();
         }
       } catch (e) {
-        debugPrint('Error killing Python server: $e');
+        AppLogger.e('Error killing Python server', error: e, tag: _tag);
       }
       _serverProcess = null;
-      debugPrint('Python server stopped.');
+      AppLogger.i('Python server stopped.', tag: _tag);
     }
   }
 }

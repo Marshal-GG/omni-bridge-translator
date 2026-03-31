@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/entities/subscription_status.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import '../../domain/usecases/get_subscription_status.dart';
 import '../../domain/usecases/get_available_plans.dart';
 import '../../domain/usecases/activate_trial.dart';
@@ -17,7 +17,7 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
   final OpenCheckout _openCheckout;
   final HasUsedTrial _hasUsedTrial;
 
-  StreamSubscription<SubscriptionStatus>? _statusSubscription;
+  StreamSubscription<QuotaStatus>? _statusSubscription;
   StreamSubscription<void>? _configSubscription;
 
   SubscriptionBloc({
@@ -59,9 +59,10 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     final status = _getStatus.current;
     final trialUsed = await _hasUsedTrial();
 
-    debugPrint(
-      '[SubscriptionBloc] _onLoaded: ${plans.length} plans, '
+    AppLogger.d(
+      '_onLoaded: ${plans.length} plans, '
       'status=${status?.tier ?? "null"}, trialUsed=$trialUsed',
+      tag: 'SubscriptionBloc',
     );
 
     emit(state.copyWith(
@@ -77,9 +78,10 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     Emitter<SubscriptionState> emit,
   ) {
     final plans = _getPlans();
-    debugPrint(
-      '[SubscriptionBloc] _onStatusUpdated: tier=${event.status.tier}, '
+    AppLogger.d(
+      '_onStatusUpdated: tier=${event.status.tier}, '
       '${plans.length} plans',
+      tag: 'SubscriptionBloc',
     );
     emit(state.copyWith(status: event.status, plans: plans));
   }

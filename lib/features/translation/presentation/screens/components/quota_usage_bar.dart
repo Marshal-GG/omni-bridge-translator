@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
-Widget buildQuotaUsageBar(SubscriptionStatus status) {
+Widget buildQuotaUsageBar(QuotaStatus status) {
   final color = status.progress > 0.9
       ? Colors.red
       : (status.progress > 0.7 ? Colors.orange : Colors.teal);

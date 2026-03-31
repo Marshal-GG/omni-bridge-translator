@@ -5,8 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_event.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
-import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/settings_helpers.dart';
 
 Widget buildTranslationHeader(BuildContext context, TranslationState state) {
@@ -368,7 +368,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
 }
 
 class _QuotaUsageText extends StatelessWidget {
-  final SubscriptionStatus? status;
+  final QuotaStatus? status;
   const _QuotaUsageText({this.status});
 
   @override

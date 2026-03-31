@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -8,21 +7,23 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
+import 'package:omni_bridge/features/subscription/domain/entities/subscription_plan.dart';
+import 'package:omni_bridge/core/network/rtdb_client.dart';
+import 'package:omni_bridge/core/constants/firebase_paths.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 
-class SubscriptionRemoteDataSource {
+class SubscriptionRemoteDataSource implements IResettable {
   SubscriptionRemoteDataSource._();
   static final SubscriptionRemoteDataSource instance =
       SubscriptionRemoteDataSource._();
 
-  static final String _appName = kDebugMode
-      ? 'OmniBridge-Debug'
-      : 'OmniBridge-Release';
-  FirebaseApp get _app => Firebase.app(_appName);
+  static const String _tag = 'SubscriptionRemoteDataSource';
+
+  FirebaseApp get _app => Firebase.app(RTDBClient.appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
-  static const String _rtdbBaseUrl =
-      'https://omni-bridge-ai-translator-default-rtdb.firebaseio.com';
 
   // --- Dynamic Monetization Config ---
   Map<String, dynamic>? _monetizationConfig;
@@ -33,31 +34,41 @@ class SubscriptionRemoteDataSource {
 
   final http.Client _httpClient = http.Client();
 
-  final _statusController = StreamController<SubscriptionStatus>.broadcast();
-  Stream<SubscriptionStatus> get statusStream => _statusController.stream;
+  final _statusController = StreamController<QuotaStatus>.broadcast();
+  Stream<QuotaStatus> get statusStream => _statusController.stream;
 
-  SubscriptionStatus? _currentStatus;
-  SubscriptionStatus? get currentStatus => _currentStatus;
+  QuotaStatus? _currentStatus;
+  QuotaStatus? get currentStatus => _currentStatus;
 
   // Tracks current tier to detect upgrade/downgrade events
   String? _lastKnownTier;
 
+  StreamSubscription? _authSub;
   StreamSubscription? _userSub;
-  Timer? _usagePollTimer;
-  int? _currentPollInterval;
 
   // Track the notified engines for the current session to avoid spamming the user
   final Set<String> _notifiedEngines = {};
   final activeEngineFallbacks = ValueNotifier<Set<String>>({});
-  final Map<String, int> _engineMonthlyUsages = {};
 
   void init() {
     _listenToMonetizationConfig();
-    _auth.authStateChanges().listen((user) {
+    _listenToAuthState();
+  }
+
+  void dispose() {
+    _monetizationSub?.cancel();
+    _authSub?.cancel();
+    _userSub?.cancel();
+    _statusController.close();
+    _httpClient.close();
+  }
+
+  void _listenToAuthState() {
+    _authSub?.cancel();
+    _authSub = _auth.authStateChanges().listen((user) {
       if (user != null) {
         _lastKnownTier = null;
         _listenToUserDoc(user.uid);
-        _listenToRTDBUsage(user.uid);
       } else {
         reset();
       }
@@ -65,33 +76,35 @@ class SubscriptionRemoteDataSource {
   }
 
   /// Resets the singleton state. Called on logout to prevent state leakage.
+  @override
   void reset() {
     _userSub?.cancel();
     _userSub = null;
-    _usagePollTimer?.cancel();
-    _usagePollTimer = null;
     _lastKnownTier = null;
     _currentStatus = null;
     
     _notifiedEngines.clear();
     activeEngineFallbacks.value = {};
-    _engineMonthlyUsages.clear();
+    
+    // Also cancel monetization sub to be safe, though it's system-wide
+    // _monetizationSub?.cancel(); 
     
     _statusController.add(_getDefaultStatus());
-    debugPrint('[Subscription] SubscriptionRemoteDataSource state reset');
+    AppLogger.d('State reset', tag: _tag);
   }
 
   void _listenToMonetizationConfig() {
     _monetizationSub?.cancel();
     _monetizationSub = _firestore
-        .collection('system')
-        .doc('monetization')
+        .collection(FirebasePaths.system)
+        .doc(FirebasePaths.monetization)
         .snapshots()
         .listen((doc) {
           if (doc.exists) {
             _monetizationConfig = doc.data();
-            debugPrint(
-              '[Subscription] Monetization config updated. Keys: ${_monetizationConfig?.keys.toList()} - Interval: $pollIntervalSeconds',
+            AppLogger.d(
+              'Monetization config updated. Keys: ${_monetizationConfig?.keys.toList()} - Interval: $pollIntervalSeconds',
+              tag: _tag,
             );
             // Always emit status so bloc/UI refreshes with the latest plans
             if (_currentStatus != null) {
@@ -101,11 +114,8 @@ class SubscriptionRemoteDataSource {
             }
             // Notify any ValueListenableBuilder widgets (e.g. admin panel)
             configNotifier.value++;
-            _maybeRestartPolling();
           } else {
-            debugPrint(
-              '[Subscription] system/monetization document does NOT exist',
-            );
+            AppLogger.w('${FirebasePaths.system}/${FirebasePaths.monetization} document does NOT exist', tag: _tag);
           }
         });
   }
@@ -185,20 +195,6 @@ class SubscriptionRemoteDataSource {
     return limits[engineId] ?? -1;
   }
 
-  /// Current month's per-engine token usage (populated during polling).
-  Map<String, int> get engineMonthlyUsage => Map.unmodifiable(_engineMonthlyUsages);
-
-  /// Returns this month's tokens used for a given engine, or 0 if unknown.
-  int getEngineMonthlyUsed(String engineId) =>
-      _engineMonthlyUsages[engineId] ?? 0;
-
-  /// Whether a specific engine has exceeded its monthly per-engine cap.
-  bool isEngineOverLimit(String engineId, [String? tier]) {
-    final limit = engineMonthlyLimit(engineId, tier);
-    if (limit <= 0) return false; // no cap
-    return getEngineMonthlyUsed(engineId) >= limit;
-  }
-
   /// Returns the fallback engine for when a paid engine's limit is exceeded.
   /// Reads from system/monetization → fallback_engine, defaults to 'google'.
   String get fallbackEngine =>
@@ -257,276 +253,31 @@ class SubscriptionRemoteDataSource {
     return _monetizationConfig?['upgrade_prompts'] as Map<String, dynamic>?;
   }
 
-  /// Restarts the polling timer if the configured interval has changed.
-  void _maybeRestartPolling() {
-    final newInterval = pollIntervalSeconds;
-    if (_currentPollInterval == newInterval) return;
-    final user = _auth.currentUser;
-    if (user == null) return;
-
-    _currentPollInterval = newInterval;
-    debugPrint(
-      '[Subscription] Poll interval changed to ${newInterval}s, restarting polling.',
-    );
-    _startUsagePolling(user.uid);
-  }
-
-  void _listenToRTDBUsage(String uid) async {
-    await _checkAndPerformRollovers(uid);
-    _startUsagePolling(uid);
-  }
-
-  void _startUsagePolling(String uid) {
-    _usagePollTimer?.cancel();
-
-    debugPrint(
-      '[Subscription] Starting usage polling for $uid every $pollIntervalSeconds seconds.',
-    );
-
-    // Initial fetch
-    _fetchUsageData(uid);
-
-    // Periodic fetch
-    _usagePollTimer = Timer.periodic(
-      Duration(seconds: pollIntervalSeconds),
-      (_) => _fetchUsageData(uid),
-    );
-  }
-
-  Future<void> _fetchUsageData(String uid) async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return;
-      final idToken = await user.getIdToken();
-
-      final now = DateTime.now();
-      final todayStr =
-          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-
-      // 1. Fetch daily usage
-      final dailyUrl = Uri.parse(
-        '$_rtdbBaseUrl/users/$uid/daily_usage/$todayStr/tokens.json?auth=$idToken',
-      );
-      final dailyResp = await _httpClient.get(dailyUrl);
-      final dailyUsed = (jsonDecode(dailyResp.body) as num?)?.toInt() ?? 0;
-
-      // 2. Fetch totals
-      final totalsUrl = Uri.parse(
-        '$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken',
-      );
-      final totalsResp = await _httpClient.get(totalsUrl);
-      final totalsData =
-          jsonDecode(totalsResp.body) as Map<String, dynamic>? ?? {};
-
-      final lifetimeUsed = (totalsData['lifetime'] as num?)?.toInt() ?? 0;
-      final calendarUsed =
-          (totalsData['calendar_monthly'] as num?)?.toInt() ?? 0;
-      final subUsed =
-          (totalsData['subscription_monthly'] as num?)?.toInt() ?? 0;
-      final weeklyUsed = (totalsData['weekly'] as num?)?.toInt() ?? 0;
-
-      // 3. Fetch per-engine monthly totals from usage/totals/subscription_monthly_models
-      _engineMonthlyUsages.clear();
-      final modelsUrl = Uri.parse(
-        '$_rtdbBaseUrl/users/$uid/usage/totals/subscription_monthly_models.json?auth=$idToken',
-      );
-      final modelsResp = await _httpClient.get(modelsUrl);
-      final modelsData =
-          jsonDecode(modelsResp.body) as Map<String, dynamic>? ?? {};
-      modelsData.forEach((engine, val) {
-        if (val is Map<String, dynamic>) {
-          _engineMonthlyUsages[engine] =
-              (val['tokens'] as num?)?.toInt() ?? 0;
-        } else if (val is num) {
-          _engineMonthlyUsages[engine] = val.toInt();
-        }
-      });
-
-      _updateCurrentStatus(
-        dailyTokensUsed: dailyUsed,
-        weeklyTokensUsed: weeklyUsed,
-        monthlyTokensUsed: subUsed > 0 ? subUsed : calendarUsed,
-        lifetimeTokensUsed: lifetimeUsed,
-      );
-    } catch (e) {
-      debugPrint('[Subscription] Error fetching usage via REST: $e');
-    }
-  }
-
-  Future<void> _checkAndPerformRollovers(String uid) async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return;
-      final idToken = await user.getIdToken();
-
-      final url = Uri.parse(
-        '$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken',
-      );
-      final resp = await _httpClient.get(url);
-      if (resp.statusCode != 200) return;
-      final totals = jsonDecode(resp.body) as Map<String, dynamic>? ?? {};
-
-      final now = DateTime.now();
-
-      // --- 1. Calendar Rollover ---
-      final currentMonthStr =
-          '${now.year}_${now.month.toString().padLeft(2, '0')}';
-      final lastCalendarMonth =
-          totals['last_calendar_month'] as String? ?? currentMonthStr;
-
-      if (currentMonthStr != lastCalendarMonth) {
-        final calendarUsed = (totals['calendar_monthly'] as num?)?.toInt() ?? 0;
-        await _firestore
-            .collection('users')
-            .doc(uid)
-            .collection('usage_history')
-            .doc('calendar_$lastCalendarMonth')
-            .set({
-              'tokens': calendarUsed,
-              'period_type': 'calendar',
-              'period': lastCalendarMonth,
-              'archivedAt': FieldValue.serverTimestamp(),
-            });
-        await _httpClient.patch(
-          Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken'),
-          body: jsonEncode({
-            'calendar_monthly': 0,
-            'last_calendar_month': currentMonthStr,
-          }),
-        );
-        debugPrint(
-          '[Subscription] Calendar rollover performed: $lastCalendarMonth',
-        );
-      }
-
-      // --- 1.5 Weekly Rollover ---
-      final currentMonday = now.subtract(Duration(days: now.weekday - 1));
-      final currentWeekStr =
-          '${currentMonday.year}_${currentMonday.month.toString().padLeft(2, '0')}_${currentMonday.day.toString().padLeft(2, '0')}';
-      final lastWeekStr = totals['last_week'] as String? ?? currentWeekStr;
-
-      if (currentWeekStr != lastWeekStr) {
-        final weeklyUsed = (totals['weekly'] as num?)?.toInt() ?? 0;
-        await _firestore
-            .collection('users')
-            .doc(uid)
-            .collection('usage_history')
-            .doc('weekly_$lastWeekStr')
-            .set({
-              'tokens': weeklyUsed,
-              'period_type': 'weekly',
-              'period': lastWeekStr,
-              'archivedAt': FieldValue.serverTimestamp(),
-            });
-        await _httpClient.patch(
-          Uri.parse('$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken'),
-          body: jsonEncode({'weekly': 0, 'last_week': currentWeekStr}),
-        );
-        debugPrint('[Subscription] Weekly rollover performed: $lastWeekStr');
-      }
-
-      // --- 2. Subscription Rollover (Paid only) ---
-      final userDoc = await _firestore.collection('users').doc(uid).get();
-      if (!userDoc.exists) return;
-      final userData = userDoc.data()!;
-      final tier = userData['tier'] as String? ?? defaultTier;
-
-      if (tier != defaultTier) {
-        DateTime monthlyResetAt =
-            (userData['monthlyResetAt'] as Timestamp?)?.toDate() ??
-            now.add(const Duration(days: 30));
-
-        if (now.isAfter(monthlyResetAt)) {
-          final subUsed =
-              (totals['subscription_monthly'] as num?)?.toInt() ?? 0;
-          final cycleLabel =
-              '${monthlyResetAt.subtract(const Duration(days: 30)).toIso8601String().split('T')[0]}__${monthlyResetAt.toIso8601String().split('T')[0]}';
-
-          await _firestore
-              .collection('users')
-              .doc(uid)
-              .collection('usage_history')
-              .doc('subscription_$cycleLabel')
-              .set({
-                'tokens': subUsed,
-                'period_type': 'subscription',
-                'period': cycleLabel,
-                'archivedAt': FieldValue.serverTimestamp(),
-              });
-
-          while (now.isAfter(monthlyResetAt)) {
-            monthlyResetAt = monthlyResetAt.add(const Duration(days: 30));
-          }
-
-          await Future.wait([
-            _httpClient.patch(
-              Uri.parse(
-                '$_rtdbBaseUrl/users/$uid/usage/totals.json?auth=$idToken',
-              ),
-              body: jsonEncode({
-                'subscription_monthly': 0,
-                'subscription_monthly_models': null,
-              }),
-            ),
-            _firestore.collection('users').doc(uid).update({
-              'monthlyResetAt': Timestamp.fromDate(monthlyResetAt),
-            }),
-          ]);
-          debugPrint(
-            '[Subscription] Subscription rollover performed for period ending $cycleLabel',
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('[Subscription] Rollover check failed: $e');
-    }
-  }
-
   void _updateCurrentStatus({
-    int? dailyTokensUsed,
-    int? weeklyTokensUsed,
-    int? monthlyTokensUsed,
-    int? lifetimeTokensUsed,
     String? tier,
     DateTime? resetAt,
   }) {
     if (_currentStatus == null && tier == null) return;
 
-    final wasExceeded = _currentStatus?.isExceeded ?? false;
     final newTier = tier ?? _currentStatus?.tier ?? defaultTier;
-    final newDailyUsed =
-        dailyTokensUsed ?? _currentStatus?.dailyTokensUsed ?? 0;
-    final newWeeklyUsed =
-        weeklyTokensUsed ?? _currentStatus?.weeklyTokensUsed ?? 0;
-    final newMonthlyUsed =
-        monthlyTokensUsed ?? _currentStatus?.monthlyTokensUsed ?? 0;
-    final newLifetimeUsed =
-        lifetimeTokensUsed ?? _currentStatus?.lifetimeTokensUsed ?? 0;
     final newReset =
         resetAt ?? _currentStatus?.dailyResetAt ?? _getNextDailyReset();
 
-    _currentStatus = SubscriptionStatus(
+    _currentStatus = QuotaStatus(
       tier: newTier,
-      dailyTokensUsed: newDailyUsed,
-      weeklyTokensUsed: newWeeklyUsed,
-      monthlyTokensUsed: newMonthlyUsed,
-      lifetimeTokensUsed: newLifetimeUsed,
-      dailyLimit: _getLimitForTier(newTier),
+      dailyTokensUsed: _currentStatus?.dailyTokensUsed ?? 0,
+      weeklyTokensUsed: _currentStatus?.weeklyTokensUsed ?? 0,
+      monthlyTokensUsed: _currentStatus?.monthlyTokensUsed ?? 0,
+      lifetimeTokensUsed: _currentStatus?.lifetimeTokensUsed ?? 0,
+      dailyLimit: getLimitForTier(newTier),
       dailyResetAt: newReset,
-      periodLimit: _getPeriodLimitForTier(newTier),
     );
     _statusController.add(_currentStatus!);
-
-    if (!wasExceeded && (_currentStatus?.isExceeded ?? false)) {
-      final uid = _auth.currentUser?.uid;
-      if (uid != null) {
-        _logQuotaExceeded(uid);
-      }
-    }
   }
 
   void _listenToUserDoc(String uid) {
-    _userSub = _firestore.collection('users').doc(uid).snapshots().listen((
+    _userSub?.cancel();
+    _userSub = _firestore.collection(FirebasePaths.users).doc(uid).snapshots().listen((
       doc,
     ) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -573,7 +324,7 @@ class SubscriptionRemoteDataSource {
   }
 
   Future<void> _initializeUserDoc(String uid) async {
-    await _firestore.collection('users').doc(uid).set({
+    await _firestore.collection(FirebasePaths.users).doc(uid).set({
       'tier': defaultTier,
       'dailyResetAt': Timestamp.fromDate(_getNextDailyReset()),
       'monthlyTokensUsed': 0,
@@ -585,19 +336,19 @@ class SubscriptionRemoteDataSource {
   }
 
   Future<void> _resetDailyQuota(String uid) async {
-    await _firestore.collection('users').doc(uid).update({
+    await _firestore.collection(FirebasePaths.users).doc(uid).update({
       'dailyResetAt': Timestamp.fromDate(_getNextDailyReset()),
     });
   }
 
   Future<void> _resetMonthlyQuota(String uid) async {
-    await _firestore.collection('users').doc(uid).update({
+    await _firestore.collection(FirebasePaths.users).doc(uid).update({
       'monthlyTokensUsed': 0,
       'monthlyResetAt': Timestamp.fromDate(
         DateTime.now().add(const Duration(days: 30)),
       ),
     });
-    debugPrint('[Subscription] Monthly quota reset for $uid');
+    AppLogger.i('Monthly quota reset for $uid', tag: _tag);
   }
 
   Future<void> _logSubscriptionEvent({
@@ -610,9 +361,9 @@ class SubscriptionRemoteDataSource {
 
     try {
       await _firestore
-          .collection('users')
+          .collection(FirebasePaths.users)
           .doc(uid)
-          .collection('subscription_events')
+          .collection(FirebasePaths.subscriptionEvents)
           .add({
             'event': event,
             'from': fromTier,
@@ -622,7 +373,7 @@ class SubscriptionRemoteDataSource {
           });
 
       if (fromTier == defaultTier && isUpgrade) {
-        await _firestore.collection('users').doc(uid).update({
+        await _firestore.collection(FirebasePaths.users).doc(uid).update({
           'subscriptionSince': FieldValue.serverTimestamp(),
           'paymentProvider': 'razorpay',
           'monthlyTokensUsed': 0,
@@ -632,20 +383,9 @@ class SubscriptionRemoteDataSource {
         });
       }
 
-      debugPrint('[Subscription] Event logged: $event ($fromTier → $toTier)');
+      AppLogger.i('Event logged: $event ($fromTier → $toTier)', tag: _tag);
     } catch (e) {
-      debugPrint('[Subscription] Failed to log subscription event: $e');
-    }
-  }
-
-  Future<void> _logQuotaExceeded(String uid) async {
-    try {
-      await _firestore.collection('users').doc(uid).update({
-        'lastQuotaExceededAt': FieldValue.serverTimestamp(),
-      });
-      debugPrint('[Subscription] Quota exceeded event logged.');
-    } catch (e) {
-      debugPrint('[Subscription] Failed to log quota exceeded: $e');
+      AppLogger.e('Failed to log subscription event', tag: _tag, error: e);
     }
   }
 
@@ -657,7 +397,7 @@ class SubscriptionRemoteDataSource {
     if (url != null && await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } else {
-      debugPrint('[Subscription] No payment link found for tier: $tierId');
+      AppLogger.w('No payment link found for tier: $tierId', tag: _tag);
     }
   }
 
@@ -665,7 +405,7 @@ class SubscriptionRemoteDataSource {
   Future<bool> hasUsedTrial() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return true; // no user = can't trial
-    final doc = await _firestore.collection('users').doc(uid).get();
+    final doc = await _firestore.collection(FirebasePaths.users).doc(uid).get();
     return doc.data()?['trial_used'] as bool? ?? false;
   }
 
@@ -676,7 +416,7 @@ class SubscriptionRemoteDataSource {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return 'Not signed in';
 
-    final doc = await _firestore.collection('users').doc(uid).get();
+    final doc = await _firestore.collection(FirebasePaths.users).doc(uid).get();
     if (doc.data()?['trial_used'] == true) {
       return 'Trial already used on this account';
     }
@@ -686,16 +426,14 @@ class SubscriptionRemoteDataSource {
     final hours = (trialConfig?['trial_duration_hours'] as num?)?.toInt() ?? 24;
     final expiresAt = DateTime.now().add(Duration(hours: hours));
 
-    await _firestore.collection('users').doc(uid).update({
+    await _firestore.collection(FirebasePaths.users).doc(uid).update({
       'tier': 'trial',
       'trial_used': true,
       'trialExpiresAt': Timestamp.fromDate(expiresAt),
       'trialActivatedAt': FieldValue.serverTimestamp(),
     });
 
-    debugPrint(
-      '[Subscription] Trial activated for $uid, expires at $expiresAt',
-    );
+    AppLogger.i('Trial activated for $uid, expires at $expiresAt', tag: _tag);
     return null; // success
   }
 
@@ -704,10 +442,10 @@ class SubscriptionRemoteDataSource {
   Future<void> _checkTrialExpiry(String uid, Map<String, dynamic> data) async {
     final expiresAt = (data['trialExpiresAt'] as Timestamp?)?.toDate();
     if (expiresAt == null || DateTime.now().isAfter(expiresAt)) {
-      await _firestore.collection('users').doc(uid).update({
+      await _firestore.collection(FirebasePaths.users).doc(uid).update({
         'tier': defaultTier.isEmpty ? 'free' : defaultTier,
       });
-      debugPrint('[Subscription] Trial expired for $uid, downgraded to free');
+      AppLogger.i('Trial expired for $uid, downgraded to free', tag: _tag);
     }
   }
 
@@ -718,8 +456,8 @@ class SubscriptionRemoteDataSource {
   }
 
   Future<void> setTierForOtherUser(String uid, String tier) async {
-    await _firestore.collection('users').doc(uid).update({'tier': tier});
-    debugPrint('[Subscription] Tier for $uid set to $tier');
+    await _firestore.collection(FirebasePaths.users).doc(uid).update({'tier': tier});
+    AppLogger.i('Tier for $uid set to $tier', tag: _tag);
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -768,7 +506,7 @@ class SubscriptionRemoteDataSource {
     return getTierRank(currentTier) >= getTierRank(requiredTier);
   }
 
-  int _getLimitForTier(String tier) {
+  int getLimitForTier(String tier) {
     final config = _tierConfig(tier);
     if (config != null) {
       return (config['quotas']?['daily_tokens'] as num?)?.toInt() ?? 10000;
@@ -779,7 +517,7 @@ class SubscriptionRemoteDataSource {
     return tier == defaultTier ? 10000 : -1;
   }
 
-  int _getPeriodLimitForTier(String tier) {
+  int getPeriodLimitForTier(String tier) {
     final config = _tierConfig(tier);
     if (config != null) {
       return (config['quotas']?['period_tokens'] as num?)?.toInt() ?? 0;
@@ -814,29 +552,29 @@ class SubscriptionRemoteDataSource {
     return names?[tier] ?? tier.toUpperCase();
   }
 
-  SubscriptionStatus _getDefaultStatus() {
-    return SubscriptionStatus(
+  QuotaStatus _getDefaultStatus() {
+    return QuotaStatus(
       tier: defaultTier,
       dailyTokensUsed: 0,
       weeklyTokensUsed: 0,
       monthlyTokensUsed: 0,
       lifetimeTokensUsed: 0,
-      dailyLimit: _getLimitForTier(defaultTier),
+      dailyLimit: 10000,
       dailyResetAt: _getNextDailyReset(),
     );
   }
 
   List<SubscriptionPlan> get availablePlans {
     if (_monetizationConfig == null) {
-      debugPrint('[Subscription] availablePlans: _monetizationConfig is NULL');
+      AppLogger.w('availablePlans: _monetizationConfig is NULL', tag: _tag);
       return [];
     }
 
     final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];
     if (order.isEmpty) {
-      debugPrint(
-        '[Subscription] availablePlans: order is EMPTY. '
-        'Config keys: ${_monetizationConfig?.keys.toList()}',
+      AppLogger.w(
+        'availablePlans: order is EMPTY. Config keys: ${_monetizationConfig?.keys.toList()}',
+        tag: _tag,
       );
       return [];
     }
@@ -906,13 +644,5 @@ class SubscriptionRemoteDataSource {
   void clearEngineLimitNotices() {
     _notifiedEngines.clear();
     activeEngineFallbacks.value = {};
-  }
-
-  void dispose() {
-    _monetizationSub?.cancel();
-    _userSub?.cancel();
-    _usagePollTimer?.cancel();
-    _statusController.close();
-    _httpClient.close();
   }
 }

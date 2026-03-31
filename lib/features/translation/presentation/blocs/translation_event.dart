@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
 abstract class TranslationEvent extends Equatable {
   const TranslationEvent();
@@ -13,7 +13,7 @@ class ToggleShrinkEvent extends TranslationEvent {}
 class ToggleRunningEvent extends TranslationEvent {}
 
 class UpdateQuotaEvent extends TranslationEvent {
-  final SubscriptionStatus? status;
+  final QuotaStatus? status;
   const UpdateQuotaEvent(this.status);
 
   @override

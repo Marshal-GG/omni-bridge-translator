@@ -10,16 +10,14 @@ import 'package:omni_bridge/features/settings/domain/usecases/get_app_settings_u
 import 'package:omni_bridge/features/settings/domain/usecases/update_app_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_google_credentials_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/load_devices_usecase.dart';
-import 'package:omni_bridge/features/settings/domain/usecases/observe_audio_levels_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.dart';
 import 'package:omni_bridge/features/subscription/domain/usecases/get_subscription_status.dart';
-import 'package:omni_bridge/features/subscription/domain/entities/subscription_status.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
 class MockGetAppSettingsUseCase extends Mock implements GetAppSettingsUseCase {}
 class MockUpdateAppSettingsUseCase extends Mock implements UpdateAppSettingsUseCase {}
 class MockGetGoogleCredentialsUseCase extends Mock implements GetGoogleCredentialsUseCase {}
 class MockLoadDevicesUseCase extends Mock implements LoadDevicesUseCase {}
-class MockObserveAudioLevelsUseCase extends Mock implements ObserveAudioLevelsUseCase {}
 class MockLogEventUseCase extends Mock implements LogEventUseCase {}
 class MockGetSubscriptionStatus extends Mock implements GetSubscriptionStatus {}
 
@@ -29,7 +27,6 @@ void main() {
   late MockUpdateAppSettingsUseCase mockUpdateAppSettingsUseCase;
   late MockGetGoogleCredentialsUseCase mockGetGoogleCredentialsUseCase;
   late MockLoadDevicesUseCase mockLoadDevicesUseCase;
-  late MockObserveAudioLevelsUseCase mockObserveAudioLevelsUseCase;
   late MockLogEventUseCase mockLogEventUseCase;
   late MockGetSubscriptionStatus mockGetSubscriptionStatus;
 
@@ -38,7 +35,6 @@ void main() {
     mockUpdateAppSettingsUseCase = MockUpdateAppSettingsUseCase();
     mockGetGoogleCredentialsUseCase = MockGetGoogleCredentialsUseCase();
     mockLoadDevicesUseCase = MockLoadDevicesUseCase();
-    mockObserveAudioLevelsUseCase = MockObserveAudioLevelsUseCase();
     mockLogEventUseCase = MockLogEventUseCase();
     mockGetSubscriptionStatus = MockGetSubscriptionStatus();
 
@@ -49,7 +45,6 @@ void main() {
       updateAppSettingsUseCase: mockUpdateAppSettingsUseCase,
       getGoogleCredentialsUseCase: mockGetGoogleCredentialsUseCase,
       loadDevicesUseCase: mockLoadDevicesUseCase,
-      observeAudioLevelsUseCase: mockObserveAudioLevelsUseCase,
       logEventUseCase: mockLogEventUseCase,
       getSubscriptionStatus: mockGetSubscriptionStatus,
     );
@@ -88,17 +83,6 @@ void main() {
       ],
     );
 
-    blocTest<SettingsBloc, SettingsState>(
-      'UpdateAudioLevelsEvent updates current volumes',
-      build: () => settingsBloc,
-      act: (bloc) => bloc.add(UpdateAudioLevelsEvent(0.5, 0.8)),
-      expect: () => [
-        SettingsState.initial().copyWith(
-          currentInputVolume: 0.5,
-          currentOutputVolume: 0.8,
-        ),
-      ],
-    );
 
     blocTest<SettingsBloc, SettingsState>(
       'UpdateTempSettingEvent emits new settings',
@@ -144,7 +128,7 @@ void main() {
         ),
       ),
       act: (bloc) => bloc.add(SubscriptionStatusChangedEvent(
-        SubscriptionStatus(
+        QuotaStatus(
           tier: 'free',
           dailyTokensUsed: 0,
           weeklyTokensUsed: 0,

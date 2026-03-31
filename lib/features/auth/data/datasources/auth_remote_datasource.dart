@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:omni_bridge/core/network/rtdb_client.dart';
 import 'package:omni_bridge/core/data/datasources/session_remote_datasource.dart';
 import 'package:omni_bridge/core/data/datasources/usage_metrics_remote_datasource.dart';
 import 'package:omni_bridge/core/navigation/global_navigator.dart';
@@ -18,15 +19,17 @@ import 'package:omni_bridge/core/di/injection.dart';
 import 'package:omni_bridge/features/history/data/datasources/history_local_datasource.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:omni_bridge/features/translation/data/datasources/asr_websocket_datasource.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
+import 'package:omni_bridge/core/constants/firebase_paths.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 
-class AuthRemoteDataSource {
+class AuthRemoteDataSource implements IResettable {
   AuthRemoteDataSource._();
   static final AuthRemoteDataSource instance = AuthRemoteDataSource._();
 
-  static final String _appName = kDebugMode
-      ? 'OmniBridge-Debug'
-      : 'OmniBridge-Release';
-  FirebaseApp get _app => Firebase.app(_appName);
+  static const String _tag = 'Auth';
+
+  FirebaseApp get _app => Firebase.app(RTDBClient.appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
 
@@ -102,6 +105,14 @@ class AuthRemoteDataSource {
     });
   }
 
+  /// Resets the datasource state (clears listeners, completers).
+  @override
+  void reset() {
+    _authCodeCompleter?.complete(null);
+    _authCodeCompleter = null;
+    AppLogger.i('auth state reset', tag: _tag);
+  }
+
   void dispose() {
     _authStateSub?.cancel();
   }
@@ -110,7 +121,7 @@ class AuthRemoteDataSource {
 
   /// Handles the incoming authentication redirect from the custom protocol.
   void handleAuthRedirect(Uri uri) {
-    debugPrint('[Auth] handleAuthRedirect: $uri');
+    AppLogger.d('handleAuthRedirect: $uri', tag: _tag);
     // The code might be in queryParameters or fragmented depending on the browser behavior
     String? code = uri.queryParameters['code'];
 
@@ -121,14 +132,15 @@ class AuthRemoteDataSource {
     }
 
     if (code != null) {
-      debugPrint(
-        '[Auth] Extracted code: ${code.substring(0, code.length > 5 ? 5 : code.length)}...',
+      AppLogger.i(
+        'Extracted code: ${code.substring(0, code.length > 5 ? 5 : code.length)}...',
+        tag: _tag,
       );
       if (_authCodeCompleter != null && !_authCodeCompleter!.isCompleted) {
         _authCodeCompleter!.complete(code);
       }
     } else {
-      debugPrint('[Auth] No code found in URI: $uri');
+      AppLogger.w('No code found in URI: $uri', tag: _tag);
     }
   }
 
@@ -137,14 +149,15 @@ class AuthRemoteDataSource {
   /// OAuth flow, which can hang when the local HTTP callback server is blocked.
   Future<User?> signInWithGoogle() async {
     try {
-      debugPrint('[Auth] Step 1: Trying silentSignIn...');
+      AppLogger.i('Step 1: Trying silentSignIn...', tag: _tag);
       GoogleSignInCredentials? result = await _googleSignIn.silentSignIn();
 
       if (result != null) {
-        debugPrint('[Auth] Got cached credentials.');
+        AppLogger.i('Got cached credentials.', tag: _tag);
       } else {
-        debugPrint(
-          '[Auth] No cache, performing manual OAuth flow with custom redirect...',
+        AppLogger.i(
+          'No cache, performing manual OAuth flow with custom redirect...',
+          tag: _tag,
         );
 
         final clientId = AppConfig.googleClientId;
@@ -170,7 +183,7 @@ class AuthRemoteDataSource {
           'scope': scopes,
         });
 
-        debugPrint('[Auth] Launching Auth URL: $authUri');
+        AppLogger.i('Launching Auth URL: $authUri', tag: _tag);
 
         if (await canLaunchUrl(authUri)) {
           await launchUrl(authUri, mode: LaunchMode.externalApplication);
@@ -182,11 +195,11 @@ class AuthRemoteDataSource {
         _authCodeCompleter = null;
 
         if (code == null) {
-          debugPrint('[Auth] Auth failed or canceled.');
+          AppLogger.w('Auth failed or canceled.', tag: _tag);
           return null;
         }
 
-        debugPrint('[Auth] Exchange code for tokens...');
+        AppLogger.i('Exchange code for tokens...', tag: _tag);
         // Note: For Windows desktop apps with custom schemes, we use the loopback server or
         // a manual exchange. In this case, we use the google_sign_in_all_platforms' internal
         // machinery if possible, but since we are doing it manually, we need to hit the token endpoint.
@@ -209,7 +222,7 @@ class AuthRemoteDataSource {
         );
 
         if (response.statusCode != 200) {
-          debugPrint('[Auth] Token exchange failed: ${response.body}');
+          AppLogger.e('Token exchange failed: ${response.body}', tag: _tag);
           return null;
         }
 
@@ -220,7 +233,7 @@ class AuthRemoteDataSource {
         );
       }
 
-      debugPrint('[Auth] Step 4: Signing into Firebase...');
+      AppLogger.i('Step 4: Signing into Firebase...', tag: _tag);
       final credential = GoogleAuthProvider.credential(
         accessToken: result.accessToken,
         idToken: result.idToken,
@@ -230,10 +243,10 @@ class AuthRemoteDataSource {
         await _saveUserToFirestore(userCredential.user!);
         await UsageMetricsRemoteDataSource.instance.logEvent('Sign In With Google');
       }
-      debugPrint('[Auth] Step 5: Done → ${userCredential.user?.email}');
+      AppLogger.i('Step 5: Done → ${userCredential.user?.email}', tag: _tag);
       return userCredential.user;
     } catch (e) {
-      debugPrint('[Auth] Google Sign-In EXCEPTION: $e');
+      AppLogger.e('Google Sign-In EXCEPTION', error: e, tag: _tag);
       return null;
     }
   }
@@ -311,7 +324,7 @@ class AuthRemoteDataSource {
 
   Future<void> _saveUserToFirestore(User user) async {
     try {
-      final userRef = _firestore.collection('users').doc(user.uid);
+      final userRef = _firestore.collection(FirebasePaths.users).doc(user.uid);
       final docSnapshot = await userRef.get();
 
       final Map<String, dynamic> data = {
@@ -331,9 +344,9 @@ class AuthRemoteDataSource {
       data['lastLoginAt'] = FieldValue.serverTimestamp();
 
       await userRef.set(data, SetOptions(merge: true));
-      debugPrint('[Auth] Saved user data to Firestore');
+      AppLogger.i('Saved user data to Firestore', tag: _tag);
     } catch (e) {
-      debugPrint('[Auth] Error saving user to Firestore: $e');
+      AppLogger.e('Error saving user to Firestore', error: e, tag: _tag);
     }
   }
 }

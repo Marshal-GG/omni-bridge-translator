@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:omni_bridge/features/history/domain/entities/history_entry.dart';
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
 abstract class HistoryEvent extends Equatable {
   const HistoryEvent();
@@ -14,7 +14,7 @@ class LoadHistoryEvent extends HistoryEvent {}
 class HistoryUpdatedEvent extends HistoryEvent {
   final List<HistoryEntry>? liveEntries;
   final List<HistoryEntry>? chunkedEntries;
-  final SubscriptionStatus? subscriptionStatus;
+  final QuotaStatus? subscriptionStatus;
 
   const HistoryUpdatedEvent({
     this.liveEntries,

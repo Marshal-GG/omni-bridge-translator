@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:omni_bridge/core/theme/app_theme.dart';
-import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
+import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
 
 class ForceUpdateScreen extends StatelessWidget {
   const ForceUpdateScreen({super.key});

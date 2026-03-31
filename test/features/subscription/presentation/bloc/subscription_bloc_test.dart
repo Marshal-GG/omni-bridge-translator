@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:omni_bridge/features/subscription/domain/entities/subscription_plan.dart';
-import 'package:omni_bridge/features/subscription/domain/entities/subscription_status.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import 'package:omni_bridge/features/subscription/domain/usecases/activate_trial.dart';
 import 'package:omni_bridge/features/subscription/domain/usecases/get_available_plans.dart';
@@ -38,7 +38,7 @@ const _fakePlan = SubscriptionPlan(
   features: ['Feature 1'],
 );
 
-final _fakeStatus = SubscriptionStatus(
+final _fakeStatus = QuotaStatus(
   tier: 'free',
   dailyTokensUsed: 10,
   weeklyTokensUsed: 50,
@@ -55,7 +55,7 @@ void main() {
   late MockOpenCheckout mockOpenCheckout;
   late MockHasUsedTrial mockHasUsedTrial;
 
-  late StreamController<SubscriptionStatus> statusController;
+  late StreamController<QuotaStatus> statusController;
   late StreamController<void> configController;
 
   setUp(() {
@@ -64,7 +64,7 @@ void main() {
     mockActivateTrial = MockActivateTrial();
     mockOpenCheckout = MockOpenCheckout();
     mockHasUsedTrial = MockHasUsedTrial();
-    statusController = StreamController<SubscriptionStatus>.broadcast();
+    statusController = StreamController<QuotaStatus>.broadcast();
     configController = StreamController<void>.broadcast();
 
     when(() => mockGetStatus()).thenAnswer((_) => statusController.stream);

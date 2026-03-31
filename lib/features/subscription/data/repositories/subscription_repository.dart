@@ -1,9 +1,8 @@
 import 'dart:async';
-import '../../domain/entities/subscription_plan.dart' as entity;
-import '../../domain/entities/subscription_status.dart' as entity;
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
+import '../../domain/entities/subscription_plan.dart';
 import '../../domain/repositories/i_subscription_repository.dart';
 import '../../../../features/subscription/data/datasources/subscription_remote_datasource.dart';
-import '../../../../features/subscription/data/models/subscription_dto.dart' as old;
 
 class SubscriptionRepositoryImpl implements ISubscriptionRepository {
   final SubscriptionRemoteDataSource _service;
@@ -12,16 +11,13 @@ class SubscriptionRepositoryImpl implements ISubscriptionRepository {
       : _service = service ?? SubscriptionRemoteDataSource.instance;
 
   @override
-  Stream<entity.SubscriptionStatus> get statusStream =>
-      _service.statusStream.map(_mapStatus);
+  Stream<QuotaStatus> get statusStream => _service.statusStream;
 
   @override
-  entity.SubscriptionStatus? get currentStatus =>
-      _service.currentStatus != null ? _mapStatus(_service.currentStatus!) : null;
+  QuotaStatus? get currentStatus => _service.currentStatus;
 
   @override
-  List<entity.SubscriptionPlan> get availablePlans =>
-      _service.availablePlans.map(_mapPlan).toList();
+  List<SubscriptionPlan> get availablePlans => _service.availablePlans;
 
   @override
   Stream<void> get configChangeStream {
@@ -41,8 +37,7 @@ class SubscriptionRepositoryImpl implements ISubscriptionRepository {
 
   @override
   Future<void> refreshStatus() async {
-    // Current service doesn't have a public refreshStatus that is simple,
-    // but we can trigger a fetch if we have a user.
+    // Service handles updates via listeners
   }
 
   @override
@@ -61,40 +56,31 @@ class SubscriptionRepositoryImpl implements ISubscriptionRepository {
   }
 
   @override
+  int getLimitForTier(String tier) => _service.getLimitForTier(tier);
+
+  @override
+  int getPeriodLimitForTier(String tier) => _service.getPeriodLimitForTier(tier);
+
+  @override
+  bool canUseModel(String engineId) => _service.canUseModel(engineId);
+
+  @override
+  bool isModelEnabled(String engineId) => _service.isModelEnabled(engineId);
+
+  @override
+  Map<String, int> engineLimits() => _service.engineLimits();
+
+  @override
+  String getPriceForTier(String tier) => _service.getPriceForTier(tier);
+
+  @override
+  String getNameForTier(String tier) => _service.getNameForTier(tier);
+
+  @override
+  String get defaultTier => _service.defaultTier;
+
+  @override
   void dispose() {
-    // Service is a singleton and managed elsewhere usually.
-  }
-
-  entity.SubscriptionStatus _mapStatus(old.SubscriptionStatus s) {
-    return entity.SubscriptionStatus(
-      tier: s.tier,
-      dailyTokensUsed: s.dailyTokensUsed,
-      weeklyTokensUsed: s.weeklyTokensUsed,
-      monthlyTokensUsed: s.monthlyTokensUsed,
-      lifetimeTokensUsed: s.lifetimeTokensUsed,
-      dailyLimit: s.dailyLimit,
-      dailyResetAt: s.dailyResetAt,
-      periodLimit: s.periodLimit,
-    );
-  }
-
-  entity.SubscriptionPlan _mapPlan(old.SubscriptionPlan p) {
-    return entity.SubscriptionPlan(
-      id: p.id,
-      name: p.name,
-      price: p.price,
-      description: p.description,
-      features: p.features,
-      isPopular: p.isPopular,
-      isTrial: p.isTrial,
-      trialDurationHours: p.trialDurationHours,
-      dailyTokens: p.dailyTokens,
-      monthlyTokens: p.monthlyTokens,
-      allowedTranslationModels: p.allowedTranslationModels,
-      allowedTranscriptionModels: p.allowedTranscriptionModels,
-      requestsPerMinute: p.requestsPerMinute,
-      concurrentSessions: p.concurrentSessions,
-      engineLimits: p.engineLimits,
-    );
+    // Managed externally
   }
 }

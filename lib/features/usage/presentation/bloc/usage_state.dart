@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:omni_bridge/features/usage/domain/entities/daily_usage_record.dart';
 import 'package:omni_bridge/features/usage/domain/entities/engine_usage.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
 abstract class UsageState extends Equatable {
   const UsageState();
@@ -21,6 +22,7 @@ class UsageLoaded extends UsageState {
   final int asrTokens;
   final int translationTokens;
   final String tier;
+  final QuotaStatus? quotaStatus;
 
   const UsageLoaded({
     required this.engineUsage,
@@ -30,18 +32,20 @@ class UsageLoaded extends UsageState {
     required this.asrTokens,
     required this.translationTokens,
     required this.tier,
+    this.quotaStatus,
   });
 
   @override
   List<Object?> get props => [
-        engineUsage,
-        dailyHistory,
-        lifetimeTokens,
-        monthlyTokens,
-        asrTokens,
-        translationTokens,
-        tier,
-      ];
+    engineUsage,
+    dailyHistory,
+    lifetimeTokens,
+    monthlyTokens,
+    asrTokens,
+    translationTokens,
+    tier,
+    quotaStatus,
+  ];
 }
 
 class UsageError extends UsageState {

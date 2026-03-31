@@ -9,15 +9,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:omni_bridge/core/navigation/global_navigator.dart';
 import 'package:omni_bridge/core/network/rtdb_client.dart';
 import 'package:omni_bridge/core/utils/device_info_util.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
+import 'package:omni_bridge/core/constants/firebase_paths.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 
-class SessionRemoteDataSource {
+class SessionRemoteDataSource implements IResettable {
   SessionRemoteDataSource._();
   static final SessionRemoteDataSource instance = SessionRemoteDataSource._();
 
-  static final String _appName = kDebugMode
-      ? 'OmniBridge-Debug'
-      : 'OmniBridge-Release';
-  FirebaseApp get _app => Firebase.app(_appName);
+  static const String _tag = 'SessionRemoteDataSource';
+
+  FirebaseApp get _app => Firebase.app(RTDBClient.appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
 
@@ -47,12 +49,12 @@ class SessionRemoteDataSource {
   /// Start an app session
   Future<void> startSession() async {
     if (uid == null) {
-      debugPrint('[SessionRemoteDataSource] Cannot start session: UID is null.');
+      AppLogger.w('Cannot start session: UID is null.', tag: _tag);
       return;
     }
 
     if (_currentSessionId != null) {
-      debugPrint('[SessionRemoteDataSource] Session $_currentSessionId already running.');
+      AppLogger.i('Session $_currentSessionId already running.', tag: _tag);
       return;
     }
 
@@ -67,9 +69,9 @@ class SessionRemoteDataSource {
 
     if (cachedSessionId != null) {
       sessionRef = _firestore
-          .collection('users')
+          .collection(FirebasePaths.users)
           .doc(uid)
-          .collection('sessions')
+          .collection(FirebasePaths.sessions)
           .doc(cachedSessionId);
 
       try {
@@ -82,21 +84,19 @@ class SessionRemoteDataSource {
             await sessionRef.set({
               'appReopenedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
-            debugPrint(
-              '[SessionRemoteDataSource] Resumed existing session $_currentSessionId',
-            );
+            AppLogger.i('Resumed existing session $_currentSessionId', tag: _tag);
           }
         }
       } catch (e) {
-        debugPrint('[SessionRemoteDataSource] Failed to check existing session: $e');
+        AppLogger.e('Failed to check existing session', error: e, tag: _tag);
       }
     }
 
     if (isNewSession) {
       sessionRef = _firestore
-          .collection('users')
+          .collection(FirebasePaths.users)
           .doc(uid)
-          .collection('sessions')
+          .collection(FirebasePaths.sessions)
           .doc();
       _currentSessionId = sessionRef.id;
       await _secureStorage.write(
@@ -111,9 +111,9 @@ class SessionRemoteDataSource {
           'forceLogout': false,
           'device': deviceInfo,
         });
-        debugPrint('[SessionRemoteDataSource] Session $_currentSessionId started');
+        AppLogger.i('Session $_currentSessionId started', tag: _tag);
       } catch (e) {
-        logError('Failed to start session', e);
+        AppLogger.e('Failed to start session', error: e, tag: _tag);
       }
     }
 
@@ -128,9 +128,7 @@ class SessionRemoteDataSource {
         if (snapshot.exists) {
           final data = snapshot.data();
           if (data is Map<String, dynamic> && data['forceLogout'] == true) {
-            debugPrint(
-              '[SessionRemoteDataSource] Remote forceLogout for session $_currentSessionId',
-            );
+            AppLogger.w('Remote forceLogout for session $_currentSessionId', tag: _tag);
             _handleRemoteLogout();
           }
         }
@@ -138,14 +136,14 @@ class SessionRemoteDataSource {
     });
 
     _userSub?.cancel();
-    _userSub = _firestore.collection('users').doc(uid).snapshots().listen((
+    _userSub = _firestore.collection(FirebasePaths.users).doc(uid).snapshots().listen((
       snapshot,
     ) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (snapshot.exists) {
           final data = snapshot.data();
           if (data is Map<String, dynamic> && data['forceLogout'] == true) {
-            debugPrint('[SessionRemoteDataSource] Remote forceLogout for user $uid');
+            AppLogger.w('Remote forceLogout for user $uid', tag: _tag);
             _handleRemoteLogout();
           }
         }
@@ -153,7 +151,7 @@ class SessionRemoteDataSource {
     });
 
     try {
-      final url = await _rtdbClient.getRTDBUrl('sessions/$_currentSessionId');
+      final url = await _rtdbClient.getRTDBUrl('${FirebasePaths.activeSessions}/$_currentSessionId');
       if (url != null) {
         await _rtdbClient.request(
           (client) => client.patch(
@@ -166,7 +164,7 @@ class SessionRemoteDataSource {
         );
       }
     } catch (e) {
-      debugPrint('[SessionRemoteDataSource] Failed to sync session start to RTDB: $e');
+      AppLogger.e('Failed to sync session start to RTDB', error: e, tag: _tag);
     }
   }
 
@@ -178,19 +176,19 @@ class SessionRemoteDataSource {
       );
 
       try {
-        await _firestore.collection('users').doc(userUid).update({
+        await _firestore.collection(FirebasePaths.users).doc(userUid).update({
           'forceLogout': false,
         });
         if (_currentSessionId != null) {
           await _firestore
-              .collection('users')
+              .collection(FirebasePaths.users)
               .doc(userUid)
-              .collection('sessions')
+              .collection(FirebasePaths.sessions)
               .doc(_currentSessionId)
               .update({'forceLogout': false});
         }
       } catch (e) {
-        debugPrint('[SessionRemoteDataSource] Failed to reset forceLogout: $e');
+        AppLogger.e('Failed to reset forceLogout', error: e, tag: _tag);
       }
     }
     
@@ -199,7 +197,8 @@ class SessionRemoteDataSource {
   }
 
   /// Resets the singleton state. Called on logout to prevent session leakage.
-  Future<void> reset() async {
+  @override
+  void reset() {
     _currentSessionId = null;
     _sessionStartTime = null;
     _heartbeatTimer?.cancel();
@@ -209,15 +208,15 @@ class SessionRemoteDataSource {
     _userSub?.cancel();
     _userSub = null;
     
-    debugPrint('[SessionRemoteDataSource] state reset');
+    AppLogger.i('state reset', tag: _tag);
   }
 
   /// End an app session and clear user-specific local state.
   Future<void> endSession() async {
     final userUid = uid;
     if (userUid == null || _currentSessionId == null) {
-      debugPrint('[SessionRemoteDataSource] Cannot end session: UID or SessionID is null.');
-      await reset();
+      AppLogger.w('Cannot end session: UID or SessionID is null.', tag: _tag);
+      reset();
       return;
     }
 
@@ -227,9 +226,9 @@ class SessionRemoteDataSource {
       );
 
       final sessionRef = _firestore
-          .collection('users')
+          .collection(FirebasePaths.users)
           .doc(userUid)
-          .collection('sessions')
+          .collection(FirebasePaths.sessions)
           .doc(_currentSessionId);
 
       final duration = _sessionStartTime != null
@@ -243,7 +242,7 @@ class SessionRemoteDataSource {
       }, SetOptions(merge: true));
 
       try {
-        final url = await _rtdbClient.getRTDBUrl('sessions/$_currentSessionId');
+        final url = await _rtdbClient.getRTDBUrl('${FirebasePaths.activeSessions}/$_currentSessionId');
         if (url != null) {
           await _rtdbClient.request(
             (client) => client.patch(
@@ -257,14 +256,14 @@ class SessionRemoteDataSource {
           );
         }
       } catch (e) {
-        debugPrint('[SessionRemoteDataSource] Failed to sync session end to RTDB: $e');
+        AppLogger.e('Failed to sync session end to RTDB', error: e, tag: _tag);
       }
 
-      debugPrint('[SessionRemoteDataSource] Session $_currentSessionId ended');
+      AppLogger.i('Session $_currentSessionId ended', tag: _tag);
     } catch (e) {
-      logError('Failed to end session', e);
+      AppLogger.e('Failed to end session', error: e, tag: _tag);
     } finally {
-      await reset();
+      reset();
     }
   }
 
@@ -273,7 +272,7 @@ class SessionRemoteDataSource {
     try {
       final diff = _sessionStartTime != null ? DateTime.now().difference(_sessionStartTime!) : Duration.zero;
       final duration = diff.inSeconds;
-      final url = await _rtdbClient.getRTDBUrl('sessions/$_currentSessionId');
+      final url = await _rtdbClient.getRTDBUrl('${FirebasePaths.activeSessions}/$_currentSessionId');
       if (url != null) {
         await _rtdbClient.request(
           (client) => client.patch(
@@ -286,22 +285,20 @@ class SessionRemoteDataSource {
           context: 'pingSession',
         );
       }
-      debugPrint('[SessionRemoteDataSource] Heartbeat ping sent.');
+      AppLogger.d('Heartbeat ping sent.', tag: _tag);
     } catch (e) {
-      debugPrint('[SessionRemoteDataSource] Failed to send heartbeat ping: $e');
+      AppLogger.e('Failed to send heartbeat ping', error: e, tag: _tag);
     }
   }
 
   /// Log an error
-  Future<void> logError(String message, [Object? error]) async {
+  void logError(String message, [Object? error]) {
     final errorStr = error?.toString() ?? '';
     if (message.contains('setState() called after dispose()') ||
         errorStr.contains('setState() called after dispose()')) {
       return;
     }
-    debugPrint(
-      '[SessionRemoteDataSource] Error: $message${errorStr.isNotEmpty ? ' — $errorStr' : ''}',
-    );
+    AppLogger.e('$message${errorStr.isNotEmpty ? ' — $errorStr' : ''}', tag: _tag);
   }
 
   void dispose() {

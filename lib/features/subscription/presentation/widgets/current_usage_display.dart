@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../domain/entities/subscription_status.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/core/widgets/omni_progress_bar.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:intl/intl.dart';
 
 Widget buildCurrentUsageDisplay({
-  required SubscriptionStatus status,
+  required QuotaStatus status,
   required NumberFormat formatter,
 }) {
   final tierName = SubscriptionRemoteDataSource.instance

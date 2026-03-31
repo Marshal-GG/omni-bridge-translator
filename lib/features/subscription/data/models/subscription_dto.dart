@@ -1,127 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-class SubscriptionStatus extends Equatable {
-  final String tier;
-  final int dailyTokensUsed;
-  final int weeklyTokensUsed;
-  final int monthlyTokensUsed;
-  final int lifetimeTokensUsed;
-  final int dailyLimit;
-  final int monthlyLimit;
-  final DateTime dailyResetAt;
-
-  /// For time-limited tiers (e.g. trial): total token pool for the whole period.
-  /// 0 = not applicable (use daily limit instead).
-  final int periodLimit;
-
-  const SubscriptionStatus({
-    required this.tier,
-    required this.dailyTokensUsed,
-    required this.weeklyTokensUsed,
-    required this.monthlyTokensUsed,
-    required this.lifetimeTokensUsed,
-    required this.dailyLimit,
-    required this.dailyResetAt,
-    this.monthlyLimit = 0,
-    this.periodLimit = 0,
-  });
-
-  @override
-  List<Object?> get props => [
-        tier,
-        dailyTokensUsed,
-        weeklyTokensUsed,
-        monthlyTokensUsed,
-        lifetimeTokensUsed,
-        dailyLimit,
-        monthlyLimit,
-        dailyResetAt,
-        periodLimit,
-      ];
-
-  bool get hasPeriodLimit => periodLimit > 0;
-  bool get hasMonthlyLimit => monthlyLimit > 0;
-  bool get isUnlimited => dailyLimit < 0 && !hasPeriodLimit && !hasMonthlyLimit;
-
-  double get progress => hasPeriodLimit
-      ? (periodLimit <= 0 ? 0 : monthlyTokensUsed / periodLimit)
-      : hasMonthlyLimit
-          ? (monthlyLimit <= 0 ? 0 : monthlyTokensUsed / monthlyLimit)
-          : (dailyLimit <= 0 ? 0 : dailyTokensUsed / dailyLimit);
-
-  bool get isDailyExceeded =>
-      !isUnlimited && !hasPeriodLimit && dailyLimit > 0 && dailyTokensUsed >= dailyLimit;
-
-  bool get isMonthlyExceeded =>
-      hasMonthlyLimit && monthlyTokensUsed >= monthlyLimit;
-
-  bool get isExceeded =>
-      (hasPeriodLimit && monthlyTokensUsed >= periodLimit) ||
-      isDailyExceeded ||
-      isMonthlyExceeded;
-
-  /// Remaining daily tokens (0 if exceeded or unlimited).
-  int get dailyRemaining =>
-      dailyLimit > 0 ? (dailyLimit - dailyTokensUsed).clamp(0, dailyLimit) : 0;
-
-  /// Remaining monthly tokens (0 if exceeded or no monthly limit).
-  int get monthlyRemaining =>
-      monthlyLimit > 0 ? (monthlyLimit - monthlyTokensUsed).clamp(0, monthlyLimit) : 0;
-
-  factory SubscriptionStatus.fromJson(Map<String, dynamic> json) {
-    return SubscriptionStatus(
-      tier: json['tier'] as String? ?? '',
-      dailyTokensUsed: json['dailyTokensUsed'] as int? ?? 0,
-      weeklyTokensUsed: json['weeklyTokensUsed'] as int? ?? 0,
-      monthlyTokensUsed: json['monthlyTokensUsed'] as int? ?? 0,
-      lifetimeTokensUsed: json['lifetimeTokensUsed'] as int? ?? 0,
-      dailyLimit: json['dailyLimit'] as int? ?? 0,
-      monthlyLimit: json['monthlyLimit'] as int? ?? 0,
-      dailyResetAt: json['dailyResetAt'] != null
-          ? DateTime.parse(json['dailyResetAt'] as String)
-          : DateTime.now(),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'tier': tier,
-      'dailyTokensUsed': dailyTokensUsed,
-      'weeklyTokensUsed': weeklyTokensUsed,
-      'monthlyTokensUsed': monthlyTokensUsed,
-      'lifetimeTokensUsed': lifetimeTokensUsed,
-      'dailyLimit': dailyLimit,
-      'monthlyLimit': monthlyLimit,
-      'dailyResetAt': dailyResetAt.toIso8601String(),
-    };
-  }
-
-  SubscriptionStatus copyWith({
-    String? tier,
-    int? dailyTokensUsed,
-    int? weeklyTokensUsed,
-    int? monthlyTokensUsed,
-    int? lifetimeTokensUsed,
-    int? dailyLimit,
-    int? monthlyLimit,
-    DateTime? dailyResetAt,
-    int? periodLimit,
-  }) {
-    return SubscriptionStatus(
-      tier: tier ?? this.tier,
-      dailyTokensUsed: dailyTokensUsed ?? this.dailyTokensUsed,
-      weeklyTokensUsed: weeklyTokensUsed ?? this.weeklyTokensUsed,
-      monthlyTokensUsed: monthlyTokensUsed ?? this.monthlyTokensUsed,
-      lifetimeTokensUsed: lifetimeTokensUsed ?? this.lifetimeTokensUsed,
-      dailyLimit: dailyLimit ?? this.dailyLimit,
-      monthlyLimit: monthlyLimit ?? this.monthlyLimit,
-      dailyResetAt: dailyResetAt ?? this.dailyResetAt,
-      periodLimit: periodLimit ?? this.periodLimit,
-    );
-  }
-}
-
-class SubscriptionPlan {
+class SubscriptionPlan extends Equatable {
   final String id;
   final String name;
   final String price;
@@ -167,24 +46,24 @@ class SubscriptionPlan {
 
   factory SubscriptionPlan.fromJson(Map<String, dynamic> json) {
     return SubscriptionPlan(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      price: json['price'] as String,
-      description: json['description'] as String,
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      price: json['price'] as String? ?? '',
+      description: json['description'] as String? ?? '',
       features: List<String>.from(json['features'] ?? []),
       isPopular: json['isPopular'] as bool? ?? false,
       isTrial: json['isTrial'] as bool? ?? false,
       trialDurationHours: json['trialDurationHours'] as int? ?? 24,
-      dailyTokens: json['dailyTokens'] as int? ?? 0,
-      monthlyTokens: json['monthlyTokens'] as int? ?? 0,
+      dailyTokens: (json['dailyTokens'] as num?)?.toInt() ?? 0,
+      monthlyTokens: (json['monthlyTokens'] as num?)?.toInt() ?? 0,
       allowedTranslationModels: List<String>.from(
         json['allowedTranslationModels'] ?? [],
       ),
       allowedTranscriptionModels: List<String>.from(
         json['allowedTranscriptionModels'] ?? [],
       ),
-      requestsPerMinute: json['requestsPerMinute'] as int? ?? 0,
-      concurrentSessions: json['concurrentSessions'] as int? ?? 1,
+      requestsPerMinute: (json['requestsPerMinute'] as num?)?.toInt() ?? 0,
+      concurrentSessions: (json['concurrentSessions'] as num?)?.toInt() ?? 1,
       engineLimits:
           (json['engineLimits'] as Map<String, dynamic>?)?.map(
             (k, v) => MapEntry(k, (v as num).toInt()),
@@ -212,4 +91,23 @@ class SubscriptionPlan {
       'engineLimits': engineLimits,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        id,
+        name,
+        price,
+        description,
+        features,
+        isPopular,
+        isTrial,
+        trialDurationHours,
+        dailyTokens,
+        monthlyTokens,
+        allowedTranslationModels,
+        allowedTranscriptionModels,
+        requestsPerMinute,
+        concurrentSessions,
+        engineLimits,
+      ];
 }

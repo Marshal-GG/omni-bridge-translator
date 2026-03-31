@@ -3,7 +3,10 @@ import 'package:intl/intl.dart';
 import 'package:omni_bridge/core/widgets/omni_version_chip.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
-import 'package:omni_bridge/features/subscription/data/models/subscription_dto.dart';
+
+import 'package:omni_bridge/features/usage/domain/repositories/usage_repository.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
+import 'package:omni_bridge/core/di/injection.dart';
 
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_header.dart';
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_avatar.dart';
@@ -234,11 +237,9 @@ class _AccountScreenState extends State<AccountScreen> {
                               const SizedBox(height: 12),
 
                               // ── Plan Details Card ──────────────────────────
-                              StreamBuilder<SubscriptionStatus>(
-                                stream:
-                                    SubscriptionRemoteDataSource.instance.statusStream,
-                                initialData:
-                                    SubscriptionRemoteDataSource.instance.currentStatus,
+                              StreamBuilder<QuotaStatus>(
+                                stream: sl<UsageRepository>().quotaStatusStream,
+                                initialData: sl<UsageRepository>().currentQuotaStatus,
                                 builder: (context, snapshot) {
                                   final status = snapshot.data;
                                   if (status == null) {

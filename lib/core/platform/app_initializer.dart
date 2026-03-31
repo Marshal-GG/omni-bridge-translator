@@ -8,6 +8,8 @@ import 'package:omni_bridge/core/data/datasources/usage_metrics_remote_datasourc
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:omni_bridge/core/platform/tray_manager.dart';
 import 'package:omni_bridge/core/platform/window_manager.dart';
+import 'package:omni_bridge/features/usage/data/datasources/usage_remote_datasource.dart';
+import 'package:omni_bridge/core/network/rtdb_client.dart';
 
 import 'package:protocol_handler/protocol_handler.dart';
 import 'package:app_links/app_links.dart';
@@ -67,7 +69,7 @@ class AppInitializer {
       );
 
       // 2. Initialize Named App (provides true session isolation for Windows)
-      final appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
+      final appName = RTDBClient.appName;
       await Firebase.initializeApp(
         name: appName,
         options: DefaultFirebaseOptions.currentPlatform,
@@ -98,6 +100,17 @@ class AppInitializer {
 
     // Initialize Subscription/Quota Service
     SubscriptionRemoteDataSource.instance.init();
+
+    // Initialize Usage Service
+    UsageRemoteDataSource.instance.init(
+      tierStream: SubscriptionRemoteDataSource.instance.statusStream,
+      limitProvider: SubscriptionRemoteDataSource.instance.engineMonthlyLimit,
+      periodLimitProvider:
+          SubscriptionRemoteDataSource.instance.getPeriodLimitForTier,
+      defaultTierProvider: () => SubscriptionRemoteDataSource.instance.defaultTier,
+      pollIntervalProvider: () =>
+          SubscriptionRemoteDataSource.instance.pollIntervalSeconds,
+    );
 
     // Initialize the window and tray manager
     await initializeWindow();
@@ -161,8 +174,7 @@ class AppInitializer {
     // Determine initial route
 
     // Use the named app instance for Auth (session isolation)
-    final appName = kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
-    final auth = FirebaseAuth.instanceFor(app: Firebase.app(appName));
+    final auth = FirebaseAuth.instanceFor(app: Firebase.app(RTDBClient.appName));
 
     // Wait for initial auth state to be resolved (useful for desktop where it might take a moment to load from storage)
     try {

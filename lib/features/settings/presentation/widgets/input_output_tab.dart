@@ -5,6 +5,8 @@ import 'package:omni_bridge/features/translation/presentation/blocs/translation_
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_bloc.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_event.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_state.dart';
+import 'package:omni_bridge/features/settings/presentation/blocs/audio_level_cubit.dart';
+import 'package:omni_bridge/features/settings/presentation/blocs/audio_level_state.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/settings_helpers.dart';
 import 'package:omni_bridge/core/widgets/omni_card.dart';
 import 'package:omni_bridge/core/widgets/omni_dropdown.dart';
@@ -91,12 +93,14 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                     ),
                   ],
                 ),
-                buildDbMeter(
-                  level: (state.currentInputVolume * state.settings.micVolume)
-                      .clamp(0.0, 1.0),
-                  label: 'Mic',
-                  color: Colors.tealAccent,
-                  active: true,
+                BlocBuilder<AudioLevelCubit, AudioLevelState>(
+                  builder: (context, audioState) => buildDbMeter(
+                    level: (audioState.inputLevel * state.settings.micVolume)
+                        .clamp(0.0, 1.0),
+                    label: 'Mic',
+                    color: Colors.tealAccent,
+                    active: true,
+                  ),
                 ),
               ],
             ],
@@ -166,13 +170,14 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                   ),
                 ],
               ),
-              buildDbMeter(
-                level:
-                    (state.currentOutputVolume * state.settings.desktopVolume)
-                        .clamp(0.0, 1.0),
-                label: 'Desktop',
-                color: Colors.purpleAccent,
-                active: true,
+              BlocBuilder<AudioLevelCubit, AudioLevelState>(
+                builder: (context, audioState) => buildDbMeter(
+                  level: (audioState.outputLevel * state.settings.desktopVolume)
+                      .clamp(0.0, 1.0),
+                  label: 'Desktop',
+                  color: Colors.purpleAccent,
+                  active: true,
+                ),
               ),
             ],
           ),
@@ -260,24 +265,100 @@ Widget buildDeviceDropdown({
       child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
     );
   }
+
+  // Create a virtual item for the system default
+  final systemDefaultItem = {
+    'name': 'System Default',
+    'fullName': defaultName,
+    'index': null,
+    'isSystem': true,
+  };
+
+  // Combine items, avoiding duplication if the specific default device is also in the list
+  final List<Map<String, dynamic>> allItems = [systemDefaultItem, ...items];
+
   return SizedBox(
     height: 36,
     child: OmniDropdown<Map<String, dynamic>>(
-      items: items,
-      itemAsString: (device) => device['name'] == defaultName
-          ? '${device['name']} (Default)'
-          : device['name'] as String,
-      selectedItem: selectedIndex != null
-          ? items.firstWhere(
+      items: allItems,
+      itemAsString: (device) {
+        if (device['isSystem'] == true) return 'System Default';
+        return device['name'] as String;
+      },
+      selectedItem: selectedIndex == null
+          ? systemDefaultItem
+          : allItems.firstWhere(
               (d) => d['index'] == selectedIndex,
-              orElse: () => {'name': defaultName, 'index': -1},
-            )
-          : null,
-      compareFn: (item, selectedItem) => item['index'] == selectedItem['index'],
+              orElse: () => systemDefaultItem,
+            ),
+      compareFn: (a, b) =>
+          a['index'] == b['index'] && a['isSystem'] == b['isSystem'],
       onChanged: (device) {
         Future.delayed(Duration.zero, () {
-          if (context.mounted) onChanged(device);
+          if (context.mounted) {
+            // If selecting system default, pass null to the backend
+            if (device?['isSystem'] == true) {
+              onChanged(null);
+            } else {
+              onChanged(device);
+            }
+          }
         });
+      },
+      itemBuilder: (context, device, isSelected) {
+        final bool isSystem = device['isSystem'] == true;
+        return Container(
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Colors.tealAccent.withValues(alpha: 0.12)
+                : Colors.transparent,
+            border: Border(
+              left: BorderSide(
+                color: isSelected
+                    ? Colors.tealAccent
+                    : Colors.transparent,
+                width: 3,
+              ),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      isSystem
+                          ? 'System Default'
+                          : device['name'] as String,
+                      style: TextStyle(
+                        color: isSelected
+                            ? Colors.tealAccent
+                            : Colors.white.withValues(alpha: 0.9),
+                        fontSize: 13,
+                      ),
+                    ),
+                    if (isSystem)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          device['fullName'] as String,
+                          style: TextStyle(
+                            color: isSelected
+                                ? Colors.white70
+                                : Colors.white38,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
       },
       hintText: hintText,
       showSearchBox: true,

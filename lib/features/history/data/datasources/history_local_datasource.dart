@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 import 'package:omni_bridge/features/history/domain/entities/history_entry.dart';
 
 /// Collects live transcription + translation pairs into two buckets:
 ///  - [liveEntries]: every final transcript (one per utterance)
 ///  - [chunkedEntries]: 5-second re-translations (longer context, cleaner output)
-class HistoryLocalDataSource {
+class HistoryLocalDataSource implements IResettable {
   HistoryLocalDataSource();
 
   final ValueNotifier<List<HistoryEntry>> liveEntries = ValueNotifier([]);
@@ -73,7 +74,14 @@ class HistoryLocalDataSource {
     _chunkBuffer.clear();
   }
 
-  void dispose() {
+  @override
+  void reset() {
+    clear();
     _chunkTimer?.cancel();
+    _chunkTimer = null;
+  }
+
+  void dispose() {
+    reset();
   }
 }

@@ -2,7 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:omni_bridge/features/about/domain/usecases/check_for_update.dart';
 import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
-import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
+import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
 import 'about_event.dart';
 import 'about_state.dart';
 

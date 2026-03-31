@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:http/http.dart' as http;
 import 'package:omni_bridge/core/config/server_config.dart';
 
@@ -19,7 +19,7 @@ class TranslationRestDatasource {
         return jsonDecode(resp.body) as Map<String, dynamic>;
       }
     } catch (e) {
-      debugPrint('[TranslationRestDatasource] getStatus error: $e');
+      AppLogger.e('getStatus error', error: e, tag: 'TranslationRest');
     }
     return {
       'downloaded': false,
@@ -43,7 +43,7 @@ class TranslationRestDatasource {
         return jsonDecode(resp.body) as Map<String, dynamic>;
       }
     } catch (e) {
-      debugPrint('[TranslationRestDatasource] startDownload error: $e');
+      AppLogger.e('startDownload error', error: e, tag: 'TranslationRest');
     }
     return {'status': 'error'};
   }
@@ -58,7 +58,7 @@ class TranslationRestDatasource {
         return jsonDecode(resp.body) as Map<String, dynamic>;
       }
     } catch (e) {
-      debugPrint('[TranslationRestDatasource] getProgress error: $e');
+      AppLogger.e('getProgress error', error: e, tag: 'TranslationRest');
     }
     return {'downloaded': false, 'progress': 0.0, 'status': 'idle'};
   }
@@ -74,7 +74,7 @@ class TranslationRestDatasource {
         return data['status'] == 'deleted';
       }
     } catch (e) {
-      debugPrint('[TranslationRestDatasource] deleteModel error: $e');
+      AppLogger.e('deleteModel error', error: e, tag: 'TranslationRest');
     }
     return false;
   }
@@ -90,8 +90,7 @@ class TranslationRestDatasource {
         return data['models'] as List<dynamic>;
       }
     } catch (e) {
-      // ignore: avoid_print
-      print('TranslationRestDatasource.getModelStatuses error: $e');
+      AppLogger.e('getModelStatuses error', error: e, tag: 'TranslationRest');
     }
     return [];
   }
@@ -107,7 +106,7 @@ class TranslationRestDatasource {
         return data['status'] == 'unloaded';
       }
     } catch (e) {
-      debugPrint('[TranslationRestDatasource] unloadModel error: $e');
+      AppLogger.e('unloadModel error', error: e, tag: 'TranslationRest');
     }
     return false;
   }

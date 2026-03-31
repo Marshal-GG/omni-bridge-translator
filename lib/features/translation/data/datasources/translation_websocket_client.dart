@@ -5,7 +5,7 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'package:omni_bridge/features/translation/domain/entities/caption_message.dart';
@@ -92,7 +92,7 @@ class TranslationWebsocketClient {
     if (_channel != null) {
       if (_isConnected) {
         // Already connected and ready — skip handshake, just send the payload immediately.
-        debugPrint('[WS] Already connected — sending start payload directly.');
+        AppLogger.d('Already connected — sending start payload directly.', tag: 'WS');
         _sendStartPayload();
       }
     } else {
@@ -104,7 +104,7 @@ class TranslationWebsocketClient {
     if (_intentionallyStopped) return;
 
     try {
-      debugPrint('[WS] Attempting to connect to $_wsUrl...');
+      AppLogger.d('Attempting to connect to $_wsUrl...', tag: 'WS');
       _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
 
       // Wait for the handshake to complete (throws if server is down)
@@ -115,7 +115,7 @@ class TranslationWebsocketClient {
       _wasConnected = true;
       _isConnected = true;
       _reconnectAttempt = 0;
-      debugPrint('[WS] Connection established to $_wsUrl');
+      AppLogger.d('Connection established to $_wsUrl', tag: 'WS');
 
       if (isReconnect) {
         _captionController.add(
@@ -135,11 +135,11 @@ class TranslationWebsocketClient {
             final jsonMap = jsonDecode(data as String) as Map<String, dynamic>;
             _captionController.add(CaptionDto.fromJson(jsonMap));
           } catch (e, st) {
-            debugPrint('[TranslationWebsocketClient] Failed to parse message: $e\n$st');
+            AppLogger.e('Failed to parse message', error: e, stack: st, tag: 'WS');
           }
         },
         onDone: () {
-          debugPrint('[WS] Connection closed.');
+          AppLogger.d('Connection closed.', tag: 'WS');
           _isConnected = false;
           if (!_intentionallyStopped) {
             _captionController.add(
@@ -156,7 +156,7 @@ class TranslationWebsocketClient {
           }
         },
         onError: (e) {
-          debugPrint('[WS] Error: $e');
+          AppLogger.e('Error', error: e, tag: 'WS');
           _isConnected = false;
           if (!_intentionallyStopped) _scheduleReconnect();
         },
@@ -168,7 +168,7 @@ class TranslationWebsocketClient {
         _sendStartPayload();
       }
     } catch (e) {
-      debugPrint('[WS] Connect failed: $e');
+      AppLogger.e('Connect failed', error: e, tag: 'WS');
       _isConnected = false;
       if (!_intentionallyStopped) {
         if (_reconnectAttempt == 0) {
@@ -197,8 +197,9 @@ class TranslationWebsocketClient {
     _reconnectAttempt++;
     // Exponential backoff: 2s, 4s, 8s … capped at 15s
     final delay = Duration(seconds: (_reconnectAttempt * 2).clamp(2, 15));
-    debugPrint(
-      '[WS] Reconnecting to $_wsUrl in ${delay.inSeconds}s (attempt $_reconnectAttempt)…',
+    AppLogger.d(
+      'Reconnecting to $_wsUrl in ${delay.inSeconds}s (attempt $_reconnectAttempt)…',
+      tag: 'WS',
     );
 
     _reconnectTimer?.cancel();

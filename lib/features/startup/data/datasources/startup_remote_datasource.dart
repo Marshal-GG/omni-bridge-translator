@@ -1,39 +1,25 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
-import 'package:omni_bridge/core/data/datasources/session_remote_datasource.dart';
 import 'package:omni_bridge/features/translation/data/datasources/transcription_remote_datasource.dart';
 
 class StartupRemoteDataSource {
   StartupRemoteDataSource._();
   static final StartupRemoteDataSource instance = StartupRemoteDataSource._();
 
-  static final String _appName = kDebugMode
-      ? 'OmniBridge-Debug'
-      : 'OmniBridge-Release';
-  FirebaseApp get _app => Firebase.app(_appName);
-  FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
-
   Future<void> initializeServices() async {
-    debugPrint('[Startup] Initializing remote services...');
-    
-    // Auth-independent services
-    TranscriptionRemoteDataSource.instance.init();
-    SubscriptionRemoteDataSource.instance.init();
+    AppLogger.i('[Startup] Initializing remote services...', tag: 'Startup');
 
-    // Session tracking (requires auth)
-    _auth.authStateChanges().listen((user) {
-      if (user != null) {
-        SessionRemoteDataSource.instance.startSession();
-      } else {
-        SessionRemoteDataSource.instance.endSession();
-      }
-    });
+    // Auth-independent services via DI
+    sl<TranscriptionRemoteDataSource>().init();
+    sl<SubscriptionRemoteDataSource>().init();
+
+    // Session tracking moved to AuthRepositoryImpl
 
     final info = await PackageInfo.fromPlatform();
-    debugPrint('[Startup] App Version: ${info.version}+${info.buildNumber}');
+    AppLogger.i('[Startup] App Version: ${info.version}+${info.buildNumber}',
+        tag: 'Startup');
   }
 }

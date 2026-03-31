@@ -1,4 +1,4 @@
-import '../entities/subscription_status.dart';
+import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import '../repositories/i_subscription_repository.dart';
 
 class GetSubscriptionStatus {
@@ -6,7 +6,7 @@ class GetSubscriptionStatus {
 
   GetSubscriptionStatus(this._repository);
 
-  Stream<SubscriptionStatus> call() => _repository.statusStream;
+  Stream<QuotaStatus> call() => _repository.statusStream;
 
-  SubscriptionStatus? get current => _repository.currentStatus;
+  QuotaStatus? get current => _repository.currentStatus;
 }
