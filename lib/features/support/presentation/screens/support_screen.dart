@@ -6,7 +6,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../blocs/support_bloc.dart';
 import '../widgets/support_sidebar.dart';
-import '../widgets/support_navigation_rail.dart';
 import '../widgets/support_chat_view.dart';
 import '../widgets/feedback_form.dart';
 import '../widgets/support_footer.dart';
@@ -45,13 +44,12 @@ class _SupportScreenState extends State<SupportScreen> {
         ..add(const LoadTicketHistory()),
       child: AppDashboardShell(
         currentRoute: AppRouter.support,
+        header: buildSupportHeader(context),
         child: Column(
           children: [
-            buildSupportHeader(context),
             Expanded(
               child: Row(
                 children: [
-                  const SupportNavigationRail(),
                   const SupportSidebar(),
                   Expanded(
                     child: BlocBuilder<SupportBloc, SupportState>(

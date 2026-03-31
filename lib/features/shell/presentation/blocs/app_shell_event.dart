@@ -26,3 +26,30 @@ class AppShellSubscriptionStatusChanged extends AppShellEvent {
   @override
   List<Object?> get props => [status];
 }
+
+class AppShellToggleSettingsExpanded extends AppShellEvent {
+  final bool? isExpanded;
+
+  const AppShellToggleSettingsExpanded({this.isExpanded});
+
+  @override
+  List<Object?> get props => [isExpanded];
+}
+
+class AppShellToggleSupportExpanded extends AppShellEvent {
+  final bool? isExpanded;
+
+  const AppShellToggleSupportExpanded({this.isExpanded});
+
+  @override
+  List<Object?> get props => [isExpanded];
+}
+
+class AppShellRouteChanged extends AppShellEvent {
+  final String routeName;
+
+  const AppShellRouteChanged(this.routeName);
+
+  @override
+  List<Object?> get props => [routeName];
+}

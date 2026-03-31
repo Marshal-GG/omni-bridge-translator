@@ -1,170 +1,259 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:omni_bridge/core/theme/app_theme.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:omni_bridge/features/shell/presentation/blocs/app_shell_bloc.dart';
-import 'package:omni_bridge/features/shell/presentation/blocs/app_shell_state.dart';
-import 'package:omni_bridge/core/widgets/omni_card.dart';
-import 'package:omni_bridge/core/widgets/omni_chip.dart';
 import 'package:omni_bridge/core/navigation/app_router.dart';
+import 'package:omni_bridge/core/widgets/omni_branding.dart';
+import 'package:omni_bridge/core/widgets/omni_chip.dart';
+import 'package:omni_bridge/features/shell/presentation/blocs/app_shell_bloc.dart';
+import 'package:omni_bridge/features/shell/presentation/blocs/app_shell_event.dart';
+import 'package:omni_bridge/features/shell/presentation/blocs/app_shell_state.dart';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  AppNavigationRail — dashboard sidebar
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class AppNavigationRail extends StatelessWidget {
   final String currentRoute;
 
-  const AppNavigationRail({super.key, required this.currentRoute});
+  /// Index of the active settings sub-tab (0 = Translation, 1 = Display, 2 = I/O).
+  final int? settingsTabIndex;
+
+  /// Callback when a settings sub-tab is tapped while already on Settings.
+  final ValueChanged<int>? onSettingsTabChanged;
+
+  const AppNavigationRail({
+    super.key,
+    required this.currentRoute,
+    this.settingsTabIndex,
+    this.onSettingsTabChanged,
+  });
+
+  static const _settingsSubTabs = [
+    (icon: Icons.translate_rounded, label: 'Translation'),
+    (icon: Icons.palette_outlined, label: 'Display'),
+    (icon: Icons.headphones_rounded, label: 'Input & Output'),
+  ];
+
+  static const _supportSubTabs = [
+    (icon: Icons.forum_rounded, label: 'All Tickets'),
+    (icon: Icons.bolt_rounded, label: 'Active'),
+    (icon: Icons.hourglass_empty_rounded, label: 'Pending'),
+    (icon: Icons.check_circle_rounded, label: 'Resolved'),
+    (icon: Icons.inventory_2_rounded, label: 'Archive'),
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final isOnSettings = currentRoute == AppRouter.settingsOverlay;
+
     return Container(
-      width: AppSpacing.navRailWidth, // 256
-      decoration: const BoxDecoration(
-        color: AppColors.bgDeep,
-        border: Border(right: BorderSide(color: Colors.white10)),
+      width: AppSpacing.navRailWidth,
+      decoration: BoxDecoration(
+        color: AppColors.bgDeepest,
+        border: Border(right: BorderSide(color: AppColors.cardBorder)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildBranding(context),
-          const SizedBox(height: 16),
-          _buildSectionLabel('MENU'),
-          _buildNavLinks(context),
+          // ── Branding ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
+            child: Transform.scale(
+              scale: 1,
+              child: OmniBranding(
+                subtitle: 'Dashboard',
+                fallbackIcon: Icons.dashboard_rounded,
+                logoSize: 36,
+                subtitleAsChip: true,
+                subtitleChipColor: AppColors.accentCyan,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _divider(),
+          const SizedBox(height: AppSpacing.sm),
+          _sectionLabel('NAVIGATION'),
+          const SizedBox(height: AppSpacing.xs),
+          _buildNavLinks(context, isOnSettings),
           const Spacer(),
+          _divider(),
+          const SizedBox(height: AppSpacing.sm),
           _buildUserProfile(context),
         ],
       ),
     );
   }
 
-  // ── Branding ──────────────────────────────────────────────────────────────
+  // ── Gradient divider ──────────────────────────────────────────────────────
 
-  Widget _buildBranding(BuildContext context) {
+  static Widget _divider() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-      child: GestureDetector(
-        onTap: () {
-          // Navigating to default settings if they click the brand
-          if (currentRoute != AppRouter.settingsOverlay) {
-             Navigator.pushReplacementNamed(context, AppRouter.settingsOverlay);
-          }
-        },
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ClipRRect(
-              borderRadius: AppShapes.md,
-              child: Image.asset(
-                'assets/app/icons/icon.png',
-                width: 38,
-                height: 38,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: AppColors.accentCyan.withValues(alpha: 0.15),
-                    borderRadius: AppShapes.md,
-                  ),
-                  child: const Icon(Icons.dashboard_rounded,
-                      color: AppColors.accentCyan, size: 20),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Omni Bridge',
-                  style: AppTextStyles.body.copyWith(
-                    color: AppColors.offWhite,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                Text(
-                  'DASHBOARD',
-                  style: AppTextStyles.labelTiny.copyWith(
-                    color: AppColors.accentCyan,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 9,
-                    letterSpacing: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ],
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: Container(
+        height: 1,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.transparent,
+              AppColors.white(0.06),
+              AppColors.transparent,
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ── Section Label ─────────────────────────────────────────────────────────
+  // ── Section label ─────────────────────────────────────────────────────────
 
-  Widget _buildSectionLabel(String text) {
+  static Widget _sectionLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xs,
+      ),
       child: Text(
         text,
         style: AppTextStyles.labelTiny.copyWith(
-          color: AppColors.white54.withValues(alpha: 0.6),
+          color: AppColors.textFaint,
           fontWeight: FontWeight.w700,
-          letterSpacing: 1.6,
-          fontSize: 9,
+          letterSpacing: 1.8,
         ),
       ),
     );
   }
 
-  // ── Nav Links ─────────────────────────────────────────────────────────────
+  // ── Nav links ─────────────────────────────────────────────────────────────
 
-  Widget _buildNavLinks(BuildContext context) {
-    return Column(
-      children: [
-        _NavTile(
-          icon: Icons.settings_rounded,
-          label: 'Settings',
-          isActive: currentRoute == AppRouter.settingsOverlay,
-          onTap: () => _navigate(context, AppRouter.settingsOverlay),
-        ),
-        _NavTile(
-          icon: Icons.card_membership_rounded,
-          label: 'Subscription',
-          isActive: currentRoute == AppRouter.subscription,
-          onTap: () => _navigate(context, AppRouter.subscription),
-        ),
-        _NavTile(
-          icon: Icons.analytics_rounded,
-          label: 'Usage Logs',
-          isActive: currentRoute == AppRouter.usage,
-          onTap: () => _navigate(context, AppRouter.usage),
-        ),
-        _NavTile(
-          icon: Icons.support_agent_rounded,
-          label: 'Help & Support',
-          isActive: currentRoute == AppRouter.support,
-          onTap: () => _navigate(context, AppRouter.support),
-        ),
-        _NavTile(
-          icon: Icons.info_rounded,
-          label: 'About',
-          isActive: currentRoute == AppRouter.about,
-          onTap: () => _navigate(context, AppRouter.about),
-        ),
-      ],
+  Widget _buildNavLinks(BuildContext context, bool isOnSettings) {
+    return BlocBuilder<AppShellBloc, AppShellState>(
+      buildWhen: (previous, current) =>
+          previous.isSettingsExpanded != current.isSettingsExpanded ||
+          previous.isSupportExpanded != current.isSupportExpanded,
+      builder: (context, state) {
+        final isSettingsExpanded = state.isSettingsExpanded;
+        final isSupportExpanded = state.isSupportExpanded;
+
+        return Column(
+          children: [
+            _NavTile(
+              icon: Icons.settings_rounded,
+              label: 'Settings',
+              isActive: isOnSettings,
+              trailing: AnimatedRotation(
+                turns: isSettingsExpanded ? 0.25 : 0,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: isOnSettings ? AppColors.cyan(0.8) : AppColors.textFaint,
+                ),
+              ),
+              onTap: () {
+                context.read<AppShellBloc>().add(const AppShellToggleSettingsExpanded());
+              },
+            ),
+
+            _ExpandableSubMenu(
+              isExpanded: isSettingsExpanded,
+              children: List.generate(_settingsSubTabs.length, (i) {
+                final tab = _settingsSubTabs[i];
+                return _NavSubTile(
+                  icon: tab.icon,
+                  label: tab.label,
+                  isActive: isOnSettings && settingsTabIndex == i,
+                  onTap: () {
+                    if (isOnSettings) {
+                      onSettingsTabChanged?.call(i);
+                    } else {
+                      Navigator.pushReplacementNamed(
+                        context,
+                        AppRouter.settingsOverlay,
+                        arguments: i,
+                      );
+                    }
+                  },
+                );
+              }),
+            ),
+
+            const SizedBox(height: AppSpacing.xs),
+
+            _NavTile(
+              icon: Icons.workspace_premium_rounded,
+              label: 'Subscription',
+              isActive: currentRoute == AppRouter.subscription,
+              onTap: () => _navigate(context, AppRouter.subscription),
+            ),
+            _NavTile(
+              icon: Icons.insights_rounded,
+              label: 'Usage Analytics',
+              isActive: currentRoute == AppRouter.usage,
+              onTap: () => _navigate(context, AppRouter.usage),
+            ),
+            _NavTile(
+              icon: Icons.forum_rounded,
+              label: 'Support',
+              isActive: currentRoute == AppRouter.support,
+              trailing: AnimatedRotation(
+                turns: isSupportExpanded ? 0.25 : 0,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: currentRoute == AppRouter.support
+                      ? AppColors.cyan(0.8)
+                      : AppColors.textFaint,
+                ),
+              ),
+              onTap: () {
+                context.read<AppShellBloc>().add(const AppShellToggleSupportExpanded());
+              },
+            ),
+
+            _ExpandableSubMenu(
+              isExpanded: isSupportExpanded,
+              children: List.generate(_supportSubTabs.length, (i) {
+                final tab = _supportSubTabs[i];
+                return _NavSubTile(
+                  icon: tab.icon,
+                  label: tab.label,
+                  isActive: currentRoute == AppRouter.support && i == 0, // Mock highlighting 'All Tickets' as default
+                  onTap: () {
+                    if (currentRoute != AppRouter.support) {
+                      Navigator.pushReplacementNamed(context, AppRouter.support);
+                    }
+                  },
+                );
+              }),
+            ),
+            _NavTile(
+              icon: Icons.info_outline_rounded,
+              label: 'About',
+              isActive: currentRoute == AppRouter.about,
+              onTap: () => _navigate(context, AppRouter.about),
+            ),
+          ],
+        );
+      },
     );
   }
 
   void _navigate(BuildContext context, String routeName) {
     if (currentRoute != routeName) {
-      // Use pushReplacementNamed to prevent stacking endless routes when navigating via side-bar
-      // And we rely on PageRouteBuilder duration: zero transitions in AppRouter to make it seamless
       Navigator.pushReplacementNamed(context, routeName);
     }
   }
 
-  // ── User Profile (reactive via BlocBuilder) ────────────────────
+  // ── User profile ──────────────────────────────────────────────────────────
 
   Widget _buildUserProfile(BuildContext context) {
     return BlocBuilder<AppShellBloc, AppShellState>(
@@ -177,12 +266,12 @@ class AppNavigationRail extends StatelessWidget {
         final photoUrl = user.photoURL;
         final initials = name.isNotEmpty
             ? name
-                .trim()
-                .split(' ')
-                .map((w) => w.isNotEmpty ? w[0] : '')
-                .take(2)
-                .join()
-                .toUpperCase()
+                  .trim()
+                  .split(' ')
+                  .map((w) => w.isNotEmpty ? w[0] : '')
+                  .take(2)
+                  .join()
+                  .toUpperCase()
             : '?';
 
         final status = state.currentSubscriptionStatus;
@@ -192,84 +281,114 @@ class AppNavigationRail extends StatelessWidget {
             : AppColors.accentCyan;
 
         return Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-          child: Tooltip(
-            message: 'Manage account',
-            child: GestureDetector(
-              onTap: () {
-                // Navigate to account. Account is usually a modal or push over the dashboard.
-                // Push (not replacement) because account is a sub-page of settings/dashboard.
-                Navigator.pushNamed(context, AppRouter.account);
-              },
-              child: OmniCard(
-                baseColor: AppColors.surfaceLight,
-                hasGlow: false,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                child: Row(
-                  children: [
-                    ClipOval(
-                      child: SizedBox(
-                        width: 38,
-                        height: 38,
-                        child: photoUrl != null && photoUrl.isNotEmpty
-                            ? Image.network(
-                                photoUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) =>
-                                    _Initials(initials: initials),
-                              )
-                            : _Initials(initials: initials),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  name,
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: AppColors.offWhite,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 11,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (planTier != null) ...[
-                                const SizedBox(width: 4),
-                                OmniChip(
-                                  label: planTier.toUpperCase(),
-                                  color: chipColor,
-                                  fontSize: 8,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                    vertical: 1,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          if (email.isNotEmpty)
-                            Text(
-                              email,
-                              style: AppTextStyles.labelTiny.copyWith(
-                                color: AppColors.white54,
-                                fontSize: 9,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.sm + 4,
+            AppSpacing.sm,
+            AppSpacing.sm + 4,
+            AppSpacing.md,
+          ),
+          child: _HoverContainer(
+            onTap: () => Navigator.pushNamed(context, AppRouter.account),
+            builder: (isHovered) => Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm + 2,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.white(isHovered ? 0.06 : 0.03),
+                borderRadius: AppShapes.md,
+                border: Border.all(
+                  color: AppColors.white(isHovered ? 0.1 : 0.05),
                 ),
+              ),
+              child: Row(
+                children: [
+                  // Avatar
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          chipColor.withValues(alpha: 0.25),
+                          chipColor.withValues(alpha: 0.08),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      border: Border.all(
+                        color: chipColor.withValues(alpha: 0.3),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: ClipOval(
+                      child: photoUrl != null && photoUrl.isNotEmpty
+                          ? Image.network(
+                              photoUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => _AvatarInitials(
+                                initials: initials,
+                                color: chipColor,
+                              ),
+                            )
+                          : _AvatarInitials(
+                              initials: initials,
+                              color: chipColor,
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm + 2),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                name,
+                                style: AppTextStyles.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (planTier != null) ...[
+                              const SizedBox(width: AppSpacing.sm),
+                              OmniChip(
+                                label: planTier.toUpperCase(),
+                                color: chipColor,
+                                fontSize: 7,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.xs,
+                                  vertical: 1,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        if (email.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            email,
+                            style: AppTextStyles.labelTiny.copyWith(
+                              color: AppColors.textDisabled,
+                              fontSize: 10,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.more_horiz_rounded,
+                    size: 16,
+                    color: AppColors.white(isHovered ? 0.4 : 0.15),
+                  ),
+                ],
               ),
             ),
           ),
@@ -279,22 +398,23 @@ class AppNavigationRail extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// _Initials — centered initials text inside the avatar circle
-// ─────────────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+//  _AvatarInitials
+// ═══════════════════════════════════════════════════════════════════════════════
 
-class _Initials extends StatelessWidget {
+class _AvatarInitials extends StatelessWidget {
   final String initials;
-  const _Initials({required this.initials});
+  final Color color;
+  const _AvatarInitials({required this.initials, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Text(
         initials,
-        style: const TextStyle(
-          color: AppColors.accentCyan,
-          fontSize: 11,
+        style: AppTextStyles.label.copyWith(
+          color: color,
+          fontSize: 12,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.5,
         ),
@@ -303,21 +423,85 @@ class _Initials extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Nav Tile — animated hover + active state
-// ─────────────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+//  _HoverContainer — hover-aware tappable wrapper
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _HoverContainer extends StatefulWidget {
+  final Widget Function(bool isHovered) builder;
+  final VoidCallback? onTap;
+  const _HoverContainer({required this.builder, this.onTap});
+
+  @override
+  State<_HoverContainer> createState() => _HoverContainerState();
+}
+
+class _HoverContainerState extends State<_HoverContainer> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: widget.onTap != null
+          ? SystemMouseCursors.click
+          : MouseCursor.defer,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: widget.builder(_hovered),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  _ExpandableSubMenu
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _ExpandableSubMenu extends StatelessWidget {
+  final bool isExpanded;
+  final List<Widget> children;
+
+  const _ExpandableSubMenu({required this.isExpanded, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: isExpanded
+          ? Padding(
+              padding: const EdgeInsets.only(
+                left: AppSpacing.sm + 4,
+                top: 2,
+                bottom: AppSpacing.xs,
+              ),
+              child: Column(mainAxisSize: MainAxisSize.min, children: children),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  _NavTile — top-level nav item
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class _NavTile extends StatefulWidget {
   final IconData icon;
   final String label;
   final bool isActive;
   final VoidCallback onTap;
+  final Widget? trailing;
 
   const _NavTile({
     required this.icon,
     required this.label,
     required this.onTap,
     this.isActive = false,
+    this.trailing,
   });
 
   @override
@@ -329,7 +513,141 @@ class _NavTileState extends State<_NavTile> {
 
   @override
   Widget build(BuildContext context) {
-    final isHighlighted = widget.isActive || _hovered;
+    final active = widget.isActive;
+    final highlighted = active || _hovered;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm + 2,
+            vertical: 1.5,
+          ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: active
+                  ? AppColors.cyan(0.08)
+                  : (_hovered ? AppColors.white(0.04) : AppColors.transparent),
+              borderRadius: AppShapes.md,
+              border: Border.all(
+                color: active ? AppColors.cyan(0.12) : AppColors.transparent,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: AppShapes.md,
+              child: IntrinsicHeight(
+                child: Row(
+                  children: [
+                    // ── Accent bar ──
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      width: active ? 3 : 0,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [AppColors.cyan(0.9), AppColors.teal(0.4)],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: 6,
+                        ),
+                        child: Row(
+                          children: [
+                            // Icon with tinted bg
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: active
+                                    ? AppColors.cyan(0.12)
+                                    : (_hovered
+                                          ? AppColors.white(0.06)
+                                          : AppColors.white(0.03)),
+                                borderRadius: AppShapes.sm,
+                              ),
+                              child: Icon(
+                                widget.icon,
+                                size: 15,
+                                color: active
+                                    ? AppColors.accentCyan
+                                    : (highlighted
+                                          ? AppColors.textSecondary
+                                          : AppColors.textDisabled),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm + 2),
+                            Expanded(
+                              child: Text(
+                                widget.label,
+                                style: AppTextStyles.caption.copyWith(
+                                  fontSize: 12.5,
+                                  color: active
+                                      ? AppColors.accentCyan
+                                      : (highlighted
+                                            ? AppColors.textSecondary
+                                            : AppColors.textMuted),
+                                  fontWeight: active
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            if (widget.trailing != null) widget.trailing!,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  _NavSubTile — indented sub-item with vertical indicator
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _NavSubTile extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _NavSubTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.isActive = false,
+  });
+
+  @override
+  State<_NavSubTile> createState() => _NavSubTileState();
+}
+
+class _NavSubTileState extends State<_NavSubTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = widget.isActive;
+    final highlighted = active || _hovered;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -338,45 +656,59 @@ class _NavTileState extends State<_NavTile> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          duration: const Duration(milliseconds: 150),
+          margin: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: 1,
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm + 2,
+            vertical: AppSpacing.sm - 1,
+          ),
           decoration: BoxDecoration(
-            color: widget.isActive
-                ? AppColors.accentCyan.withValues(alpha: 0.1)
-                : (_hovered
-                    ? Colors.white.withValues(alpha: 0.04)
-                    : Colors.transparent),
-            borderRadius: AppShapes.md,
-            border: widget.isActive
-                ? Border.all(color: AppColors.accentCyan.withValues(alpha: 0.2))
-                : Border.all(color: Colors.transparent),
+            color: active
+                ? AppColors.teal(0.07)
+                : (_hovered ? AppColors.white(0.03) : AppColors.transparent),
+            borderRadius: AppShapes.sm,
           ),
           child: Row(
             children: [
+              // Vertical indicator pip
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 2,
+                height: active ? 16 : 12,
+                margin: const EdgeInsets.only(right: AppSpacing.sm + 2),
+                decoration: BoxDecoration(
+                  color: active
+                      ? AppColors.accentTeal
+                      : (highlighted
+                            ? AppColors.white(0.15)
+                            : AppColors.white(0.06)),
+                  borderRadius: BorderRadius.circular(1),
+                ),
+              ),
               Icon(
                 widget.icon,
-                size: 16,
-                color: widget.isActive
-                    ? AppColors.accentCyan
-                    : (isHighlighted
-                        ? AppColors.offWhite
-                        : AppColors.white54),
+                size: 13,
+                color: active
+                    ? AppColors.accentTeal
+                    : (highlighted
+                          ? AppColors.textMuted
+                          : AppColors.textDisabled),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   widget.label,
-                  style: AppTextStyles.body.copyWith(
-                    fontSize: 13,
-                    color: widget.isActive
-                        ? AppColors.accentCyan
-                        : (isHighlighted
-                            ? AppColors.offWhite
-                            : AppColors.white54),
-                    fontWeight: widget.isActive
-                        ? FontWeight.w600
-                        : FontWeight.w500,
+                  style: AppTextStyles.caption.copyWith(
+                    fontSize: 11.5,
+                    color: active
+                        ? AppColors.accentTeal
+                        : (highlighted
+                              ? AppColors.textSecondary
+                              : AppColors.textDisabled),
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
               ),

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/core/routes/my_nav_observer.dart';
 import 'package:omni_bridge/features/shell/presentation/blocs/app_shell_bloc.dart';
 import 'package:omni_bridge/core/navigation/app_router.dart';
-import 'package:omni_bridge/core/routes/my_nav_observer.dart';
 import 'package:omni_bridge/core/theme/app_theme.dart';
 import 'package:omni_bridge/core/navigation/global_navigator.dart';
 
@@ -22,7 +22,7 @@ class MyApp extends StatelessWidget {
         theme: AppTheme.darkTheme,
         initialRoute: initialRoute,
         onGenerateRoute: AppRouter.generateRoute,
-        navigatorObservers: [MyNavigatorObserver()],
+        navigatorObservers: [sl<MyNavigatorObserver>()],
       ),
     );
   }

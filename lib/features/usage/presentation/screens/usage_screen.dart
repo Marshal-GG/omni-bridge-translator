@@ -42,10 +42,9 @@ class _UsageScreenState extends State<UsageScreen> {
       )..add(const LoadUsageStats()),
       child: AppDashboardShell(
             currentRoute: AppRouter.usage,
+            header: buildUsageHeader(context),
             child: Column(
               children: [
-                buildUsageHeader(context),
-                const Divider(height: 1, color: Colors.white10),
                 Expanded(
                   child: BlocBuilder<UsageBloc, UsageState>(
                     builder: (context, state) {

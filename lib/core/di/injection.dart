@@ -78,6 +78,8 @@ import 'package:omni_bridge/features/about/domain/usecases/check_for_update.dart
 import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
 import 'package:omni_bridge/features/usage/domain/repositories/usage_repository.dart';
 import 'package:omni_bridge/features/usage/data/repositories/usage_repository_impl.dart';
+import 'package:omni_bridge/core/routes/my_nav_observer.dart';
+import 'package:omni_bridge/core/navigation/route_change_notifier.dart';
 
 final sl = GetIt.instance;
 
@@ -134,13 +136,16 @@ Future<void> setupInjection() async {
     () => AuthBloc(authRepository: sl()),
   );
 
-  sl.registerFactory(
+  sl.registerLazySingleton(
     () => AppShellBloc(
       getCurrentUser: sl(),
       observeAuthChanges: sl(),
       getSubscriptionStatus: sl(),
     ),
   );
+
+  // Register the abstract RouteChangeNotifier pointing to AppShellBloc
+  sl.registerLazySingleton<RouteChangeNotifier>(() => sl<AppShellBloc>());
 
   sl.registerFactory(
     () => SubscriptionBloc(
@@ -275,6 +280,9 @@ Future<void> setupInjection() async {
   sl.registerLazySingleton(() => UsageMetricsRemoteDataSource.instance);
   sl.registerLazySingleton(() => DataMaintenanceRemoteDataSource.instance);
   sl.registerLazySingleton(() => LiveCaptionSyncDataSource.instance);
+
+  // Navigation Observer (singleton so its route stream persists)
+  sl.registerLazySingleton(() => MyNavigatorObserver());
 
   sl.registerLazySingleton<ISupportLocalDataSource>(() => SupportLocalDataSourceImpl());
   sl.registerLazySingleton<ISupportRemoteDataSource>(

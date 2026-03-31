@@ -31,22 +31,24 @@ class _SettingsScreenState extends State<SettingsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_onTabChanged);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Read providers here — this is the correct lifecycle hook for accessing
-    // inherited widgets. initState runs before the element is inserted into
-    // the tree, so Provider.of / context.read will throw there.
+
+    // Read initial tab index from route arguments (set by nav rail sub-tab tap)
+    if (!_synced) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is int && args >= 0 && args < 3) {
+        _tabController.index = args;
+      }
+    }
+
     if (!_synced) {
       _synced = true;
       final translationState = context.read<TranslationBloc>().state;
-      // Only sync temp settings if the TranslationBloc has already finished
-      // loading settings from Firestore. If it's still loading, the
-      // BlocListener below will fire a SyncTempSettingsEvent once loading
-      // completes, so we don't need to do anything here and risk syncing
-      // stale default values.
       if (!translationState.isSettingsLoading) {
         context.read<SettingsBloc>().add(
           SyncTempSettingsEvent(
@@ -70,11 +72,25 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
   }
 
+  void _onTabChanged() {
+    // Rebuild so the shell/nav rail knows which sub-tab is active.
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
+
+  // ── Tab labels shown in the content area as a section title ──────────────
+  static const _tabTitles = ['Translation', 'Display', 'Input & Output'];
+  static const _tabIcons = [
+    Icons.translate_rounded,
+    Icons.palette_outlined,
+    Icons.headphones_rounded,
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +123,6 @@ class _SettingsScreenState extends State<SettingsScreen>
           listenWhen: (previous, current) =>
               previous.isSettingsSaving && !current.isSettingsSaving,
           listener: (context, translationState) {
-            // After saving, sync state and close screen
             context.read<SettingsBloc>().add(
               SyncTempSettingsEvent(
                 targetLang: translationState.activeTargetLang,
@@ -136,47 +151,50 @@ class _SettingsScreenState extends State<SettingsScreen>
         builder: (context, state) {
           return AppDashboardShell(
             currentRoute: AppRouter.settingsOverlay,
+            header: buildSettingsHeader(context),
+            settingsTabIndex: _tabController.index,
+            onSettingsTabChanged: (index) =>
+                _tabController.animateTo(index),
             child: Container(
               color: const Color(0xFF121212),
               child: LayoutBuilder(
                   builder: (context, constraints) {
-                    // Hide content while the window is transitioning to a larger size
-                    // to prevent RenderFlex overflow errors during the animation.
                     if (constraints.maxHeight < 200) {
                       return const SizedBox.shrink();
                     }
 
                     return Column(
                       children: [
-                        buildSettingsHeader(context),
-                        const Divider(height: 1, color: Colors.white10),
+                        // ── Section title bar ─────────────────────────
                         Container(
-                          color: const Color(0xFF1A1A1A),
-                          height: 38,
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 500),
-                              child: TabBar(
-                                controller: _tabController,
-                                indicatorColor: Colors.tealAccent,
-                                indicatorWeight: 2,
-                                labelColor: Colors.tealAccent,
-                                unselectedLabelColor: Colors.white38,
-                                labelStyle: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'Inter',
-                                ),
-                                labelPadding: EdgeInsets.zero,
-                                tabs: const [
-                                  Tab(text: 'Translation'),
-                                  Tab(text: 'Display'),
-                                  Tab(text: 'Input & Output'),
-                                ],
+                          color: const Color(0xFF161616),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _tabIcons[_tabController.index],
+                                size: 15,
+                                color: Colors.tealAccent,
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _tabTitles[_tabController.index],
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        const Divider(height: 1, color: Colors.white10),
+
+                        // ── Tab content ───────────────────────────────
                         Expanded(
                           child: BlocBuilder<TranslationBloc, TranslationState>(
                             buildWhen: (prev, curr) =>
@@ -214,10 +232,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                                 children: [
                                   SingleChildScrollView(
                                     padding: const EdgeInsets.fromLTRB(
-                                      20,
-                                      20,
-                                      20,
-                                      20,
+                                      20, 20, 20, 20,
                                     ),
                                     child: Center(
                                       child: ConstrainedBox(
@@ -245,10 +260,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                                   ),
                                   SingleChildScrollView(
                                     padding: const EdgeInsets.fromLTRB(
-                                      20,
-                                      20,
-                                      20,
-                                      20,
+                                      20, 20, 20, 20,
                                     ),
                                     child: Center(
                                       child: ConstrainedBox(
@@ -267,10 +279,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                                   ),
                                   SingleChildScrollView(
                                     padding: const EdgeInsets.fromLTRB(
-                                      20,
-                                      20,
-                                      20,
-                                      20,
+                                      20, 20, 20, 20,
                                     ),
                                     child: Center(
                                       child: ConstrainedBox(
@@ -304,4 +313,3 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 }
-

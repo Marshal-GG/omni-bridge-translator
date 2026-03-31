@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:omni_bridge/core/di/injection.dart';
 import 'package:omni_bridge/core/platform/window_manager.dart';
 import 'package:omni_bridge/core/navigation/app_router.dart';
+import 'package:omni_bridge/core/navigation/route_change_notifier.dart';
 
 /// A comprehensive navigator observer for tracking app routing and access control.
 /// It also handles window resizing and positioning based on the current screen.
@@ -28,7 +30,6 @@ class MyNavigatorObserver extends NavigatorObserver {
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPop(route, previousRoute);
 
-    // Only adjust window size if we are returning from an official main app route.
     final name = route.settings.name;
     if (name == AppRouter.login ||
         name == AppRouter.translationOverlay ||
@@ -53,6 +54,9 @@ class MyNavigatorObserver extends NavigatorObserver {
 
     debugPrint('[NavObserver] Routing to: $name');
 
+    // Notify via core-layer abstraction — no feature imports needed
+    sl<RouteChangeNotifier>().onRouteChanged(name);
+
     if (name == AppRouter.login) {
       setToLoginPosition();
     } else if (name == AppRouter.translationOverlay) {
@@ -71,7 +75,9 @@ class MyNavigatorObserver extends NavigatorObserver {
       setToUsagePosition();
     } else if (name == AppRouter.support) {
       setToSupportPosition();
-    } else if (name == AppRouter.onboarding || name == AppRouter.splash || name == AppRouter.forceUpdate) {
+    } else if (name == AppRouter.onboarding ||
+        name == AppRouter.splash ||
+        name == AppRouter.forceUpdate) {
       setToStartupPosition();
     }
   }

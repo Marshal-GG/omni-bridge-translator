@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:omni_bridge/core/widgets/omni_chip.dart';
+
 /// A reusable branding header used across different screens in the application.
 class OmniBranding extends StatelessWidget {
   final String title;
@@ -8,6 +10,13 @@ class OmniBranding extends StatelessWidget {
   final double logoSize;
   final Widget? bottomWidget;
 
+  /// When `true`, renders the subtitle as an [OmniChip] instead of plain text.
+  final bool subtitleAsChip;
+
+  /// The accent color for the chip when [subtitleAsChip] is `true`.
+  /// Defaults to [Colors.tealAccent] if not specified.
+  final Color? subtitleChipColor;
+
   const OmniBranding({
     super.key,
     this.title = 'Omni Bridge',
@@ -15,6 +24,8 @@ class OmniBranding extends StatelessWidget {
     required this.fallbackIcon,
     this.logoSize = 56.0,
     this.bottomWidget,
+    this.subtitleAsChip = false,
+    this.subtitleChipColor,
   });
 
   @override
@@ -22,14 +33,12 @@ class OmniBranding extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Image.asset(
-            'assets/app/icons/icon.png',
-            width: logoSize,
-            height: logoSize,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
+        Image.asset(
+          'assets/app/icons/icon.png',
+          width: logoSize,
+          height: logoSize,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
               return Container(
                 width: logoSize,
                 height: logoSize,
@@ -37,12 +46,11 @@ class OmniBranding extends StatelessWidget {
                 child: Icon(
                   fallbackIcon,
                   color: Colors.tealAccent,
-                  size: logoSize * 0.57, // scale icon size based on logo size
+                  size: logoSize * 0.57,
                 ),
               );
             },
           ),
-        ),
         const SizedBox(width: 16),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,15 +64,24 @@ class OmniBranding extends StatelessWidget {
                 letterSpacing: -0.2,
               ),
             ),
-            Text(
-              subtitle.toUpperCase(),
-              style: const TextStyle(
-                color: Colors.tealAccent,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.2,
+            const SizedBox(height: 2),
+            if (subtitleAsChip)
+              OmniChip(
+                label: subtitle.toUpperCase(),
+                color: subtitleChipColor ?? Colors.tealAccent,
+                fontSize: 8,
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              )
+            else
+              Text(
+                subtitle.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.tealAccent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                ),
               ),
-            ),
             if (bottomWidget != null) ...[
               const SizedBox(height: 12),
               bottomWidget!,

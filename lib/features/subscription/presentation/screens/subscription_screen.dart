@@ -49,12 +49,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   Widget build(BuildContext context) {
     return AppDashboardShell(
       currentRoute: AppRouter.subscription,
+      header: buildSubscriptionHeader(context),
       child: BlocProvider(
         create: (context) => sl<SubscriptionBloc>(),
             child: Column(
               children: [
-                buildSubscriptionHeader(context),
-                const Divider(height: 1, color: Colors.white10),
                 Expanded(
                   child: BlocBuilder<SubscriptionBloc, SubscriptionState>(
                     builder: (context, state) {

@@ -41,15 +41,14 @@ class _AboutScreenState extends State<AboutScreen> {
   Widget build(BuildContext context) {
     return AppDashboardShell(
       currentRoute: AppRouter.about,
+      header: OmniHeader(
+        title: 'About Omni Bridge',
+        icon: Icons.info_outline_rounded,
+        onBack: () => Navigator.of(context).pop(),
+        onClose: () => Navigator.of(context).pop(),
+      ),
       child: Column(
           children: [
-            OmniHeader(
-              title: 'About Omni Bridge',
-              icon: Icons.info_outline_rounded,
-              onBack: () => Navigator.of(context).pop(),
-              onClose: () => Navigator.of(context).pop(),
-            ),
-                const Divider(height: 1, color: Colors.white10),
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {

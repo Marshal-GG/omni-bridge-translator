@@ -3,11 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/observe_auth_changes_usecase.dart';
 import 'package:omni_bridge/features/subscription/domain/usecases/get_subscription_status.dart';
+import 'package:omni_bridge/core/navigation/app_router.dart';
+import 'package:omni_bridge/core/navigation/route_change_notifier.dart';
 
 import 'app_shell_event.dart';
 import 'app_shell_state.dart';
 
-class AppShellBloc extends Bloc<AppShellEvent, AppShellState> {
+class AppShellBloc extends Bloc<AppShellEvent, AppShellState>
+    implements RouteChangeNotifier {
   final ObserveAuthChangesUseCase _observeAuthChanges;
   final GetSubscriptionStatus _getSubscriptionStatus;
 
@@ -26,12 +29,16 @@ class AppShellBloc extends Bloc<AppShellEvent, AppShellState> {
         )) {
     on<AppShellUserChanged>(_onUserChanged);
     on<AppShellSubscriptionStatusChanged>(_onStatusChanged);
+    on<AppShellToggleSettingsExpanded>(_onToggleSettingsExpanded);
+    on<AppShellToggleSupportExpanded>(_onToggleSupportExpanded);
+    on<AppShellRouteChanged>(_onRouteChanged);
 
-    // Listen to changes
+    // Listen to auth changes
     _authSubscription = _observeAuthChanges.call().listen((user) {
       add(AppShellUserChanged(user));
     });
 
+    // Listen to subscription status changes
     _statusSubscription = _getSubscriptionStatus.call().listen((status) {
       add(AppShellSubscriptionStatusChanged(status));
     });
@@ -49,6 +56,45 @@ class AppShellBloc extends Bloc<AppShellEvent, AppShellState> {
     Emitter<AppShellState> emit,
   ) {
     emit(state.copyWith(currentSubscriptionStatus: () => event.status));
+  }
+
+  void _onToggleSettingsExpanded(
+    AppShellToggleSettingsExpanded event,
+    Emitter<AppShellState> emit,
+  ) {
+    if (event.isExpanded != null) {
+      emit(state.copyWith(isSettingsExpanded: event.isExpanded!));
+    } else {
+      emit(state.copyWith(isSettingsExpanded: !state.isSettingsExpanded));
+    }
+  }
+
+  void _onToggleSupportExpanded(
+    AppShellToggleSupportExpanded event,
+    Emitter<AppShellState> emit,
+  ) {
+    if (event.isExpanded != null) {
+      emit(state.copyWith(isSupportExpanded: event.isExpanded!));
+    } else {
+      emit(state.copyWith(isSupportExpanded: !state.isSupportExpanded));
+    }
+  }
+
+  void _onRouteChanged(
+    AppShellRouteChanged event,
+    Emitter<AppShellState> emit,
+  ) {
+    if (event.routeName == AppRouter.settingsOverlay) {
+      emit(state.copyWith(isSettingsExpanded: true));
+    } else if (event.routeName == AppRouter.support) {
+      emit(state.copyWith(isSupportExpanded: true));
+    }
+  }
+
+  /// Called by the navigator observer via the [RouteChangeNotifier] interface.
+  @override
+  void onRouteChanged(String routeName) {
+    add(AppShellRouteChanged(routeName));
   }
 
   @override

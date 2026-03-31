@@ -3,28 +3,57 @@ import 'package:omni_bridge/core/widgets/omni_window_layout.dart';
 import 'package:omni_bridge/features/shell/presentation/widgets/app_navigation_rail.dart';
 
 /// A wrapper layout that provides a global dashboard shell experience.
-/// 
-/// It encapsulates the standard `OmniWindowLayout` but injects the
-/// `AppNavigationRail` on the left side, leaving the remaining space
-/// for the [child]. The [currentRoute] dictates which nav item is highlighted.
+///
+/// It places the [header] (typically an [OmniHeader] title-bar) spanning the
+/// full window width at the top, followed by a [Row] containing the
+/// [AppNavigationRail] on the left and the [child] content on the right.
+///
+/// This ensures the draggable title-bar and window controls span the entire
+/// window rather than being confined to only the content area next to the rail.
 class AppDashboardShell extends StatelessWidget {
   final Widget child;
   final String currentRoute;
+
+  /// An optional full-width header (e.g. [OmniHeader]) rendered above the
+  /// navigation rail + content row.
+  final Widget? header;
+
+  /// Index of the active settings sub-tab (forwarded to the nav rail).
+  final int? settingsTabIndex;
+
+  /// Callback when a settings sub-tab is clicked in the nav rail.
+  final ValueChanged<int>? onSettingsTabChanged;
 
   const AppDashboardShell({
     super.key,
     required this.child,
     required this.currentRoute,
+    this.header,
+    this.settingsTabIndex,
+    this.onSettingsTabChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     return OmniWindowLayout(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Column(
         children: [
-          AppNavigationRail(currentRoute: currentRoute),
-          Expanded(child: child),
+          ?header,
+          if (header != null)
+            const Divider(height: 1, color: Colors.white10),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppNavigationRail(
+                  currentRoute: currentRoute,
+                  settingsTabIndex: settingsTabIndex,
+                  onSettingsTabChanged: onSettingsTabChanged,
+                ),
+                Expanded(child: child),
+              ],
+            ),
+          ),
         ],
       ),
     );
