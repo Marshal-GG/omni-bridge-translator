@@ -2,6 +2,7 @@ import 'package:omni_bridge/features/settings/domain/repositories/i_settings_rep
 import 'package:omni_bridge/features/about/presentation/blocs/about_bloc.dart';
 import 'package:omni_bridge/features/startup/presentation/blocs/startup_bloc.dart';
 import 'package:omni_bridge/features/auth/presentation/blocs/auth_bloc.dart';
+import 'package:omni_bridge/features/shell/presentation/blocs/app_shell_bloc.dart';
 import 'package:omni_bridge/features/history/presentation/blocs/history_bloc.dart';
 import 'package:omni_bridge/features/subscription/presentation/bloc/subscription_bloc.dart';
 import 'package:omni_bridge/features/settings/data/repositories/settings_repository_impl.dart';
@@ -131,6 +132,14 @@ Future<void> setupInjection() async {
 
   sl.registerFactory(
     () => AuthBloc(authRepository: sl()),
+  );
+
+  sl.registerFactory(
+    () => AppShellBloc(
+      getCurrentUser: sl(),
+      observeAuthChanges: sl(),
+      getSubscriptionStatus: sl(),
+    ),
   );
 
   sl.registerFactory(
