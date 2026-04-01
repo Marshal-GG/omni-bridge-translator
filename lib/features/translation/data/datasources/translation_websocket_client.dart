@@ -6,12 +6,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:omni_bridge/core/utils/app_logger.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'package:omni_bridge/features/translation/domain/entities/caption_message.dart';
 import 'package:omni_bridge/features/translation/data/models/caption_dto.dart';
 
-class TranslationWebsocketClient {
+class TranslationWebsocketClient implements IResettable {
+  static const String _tag = 'WS';
   final String serverHost;
   final int serverPort;
 
@@ -43,7 +45,10 @@ class TranslationWebsocketClient {
 
   String get _wsUrl => 'ws://$serverHost:$serverPort/captions';
 
-  TranslationWebsocketClient({required this.serverHost, this.serverPort = 8765});
+  TranslationWebsocketClient({
+    required this.serverHost,
+    this.serverPort = 8765,
+  });
 
   /// Stream of incoming caption messages from the server
   Stream<CaptionMessage> get captions => _captionController.stream;
@@ -92,7 +97,10 @@ class TranslationWebsocketClient {
     if (_channel != null) {
       if (_isConnected) {
         // Already connected and ready — skip handshake, just send the payload immediately.
-        AppLogger.d('Already connected — sending start payload directly.', tag: 'WS');
+        AppLogger.d(
+          'Already connected — sending start payload directly.',
+          tag: _tag,
+        );
         _sendStartPayload();
       }
     } else {
@@ -104,7 +112,7 @@ class TranslationWebsocketClient {
     if (_intentionallyStopped) return;
 
     try {
-      AppLogger.d('Attempting to connect to $_wsUrl...', tag: 'WS');
+      AppLogger.d('Attempting to connect to $_wsUrl...', tag: _tag);
       _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
 
       // Wait for the handshake to complete (throws if server is down)
@@ -115,7 +123,7 @@ class TranslationWebsocketClient {
       _wasConnected = true;
       _isConnected = true;
       _reconnectAttempt = 0;
-      AppLogger.d('Connection established to $_wsUrl', tag: 'WS');
+      AppLogger.d('Connection established to $_wsUrl', tag: _tag);
 
       if (isReconnect) {
         _captionController.add(
@@ -135,11 +143,16 @@ class TranslationWebsocketClient {
             final jsonMap = jsonDecode(data as String) as Map<String, dynamic>;
             _captionController.add(CaptionDto.fromJson(jsonMap));
           } catch (e, st) {
-            AppLogger.e('Failed to parse message', error: e, stack: st, tag: 'WS');
+            AppLogger.e(
+              'Failed to parse message',
+              error: e,
+              stack: st,
+              tag: _tag,
+            );
           }
         },
         onDone: () {
-          AppLogger.d('Connection closed.', tag: 'WS');
+          AppLogger.d('Connection closed.', tag: _tag);
           _isConnected = false;
           if (!_intentionallyStopped) {
             _captionController.add(
@@ -156,7 +169,7 @@ class TranslationWebsocketClient {
           }
         },
         onError: (e) {
-          AppLogger.e('Error', error: e, tag: 'WS');
+          AppLogger.e('Error', error: e, tag: _tag);
           _isConnected = false;
           if (!_intentionallyStopped) _scheduleReconnect();
         },
@@ -168,7 +181,7 @@ class TranslationWebsocketClient {
         _sendStartPayload();
       }
     } catch (e) {
-      AppLogger.e('Connect failed', error: e, tag: 'WS');
+      AppLogger.e('Connect failed', error: e, tag: _tag);
       _isConnected = false;
       if (!_intentionallyStopped) {
         if (_reconnectAttempt == 0) {
@@ -199,7 +212,7 @@ class TranslationWebsocketClient {
     final delay = Duration(seconds: (_reconnectAttempt * 2).clamp(2, 15));
     AppLogger.d(
       'Reconnecting to $_wsUrl in ${delay.inSeconds}s (attempt $_reconnectAttempt)…',
-      tag: 'WS',
+      tag: _tag,
     );
 
     _reconnectTimer?.cancel();
@@ -316,17 +329,12 @@ class TranslationWebsocketClient {
   }
 
   /// Instantly update active capture devices without restarting the whole pipeline
-  void sendDeviceUpdate({
-    int? inputDeviceIndex,
-    int? outputDeviceIndex,
-  }) {
+  void sendDeviceUpdate({int? inputDeviceIndex, int? outputDeviceIndex}) {
     if (inputDeviceIndex != null) _inputDeviceIndex = inputDeviceIndex;
     if (outputDeviceIndex != null) _outputDeviceIndex = outputDeviceIndex;
 
     if (_channel != null) {
-      final payload = <String, dynamic>{
-        'cmd': 'device_update',
-      };
+      final payload = <String, dynamic>{'cmd': 'device_update'};
       if (inputDeviceIndex != null) {
         payload['input_device_index'] = inputDeviceIndex;
       }
@@ -341,12 +349,7 @@ class TranslationWebsocketClient {
   void sendMicToggle(bool useMic) {
     _useMic = useMic;
     if (_channel != null) {
-      _channel!.sink.add(
-        jsonEncode({
-          'cmd': 'mic_update',
-          'use_mic': useMic,
-        }),
-      );
+      _channel!.sink.add(jsonEncode({'cmd': 'mic_update', 'use_mic': useMic}));
     }
   }
 
@@ -363,6 +366,12 @@ class TranslationWebsocketClient {
     await Future.delayed(const Duration(milliseconds: 300));
     await _channel?.sink.close();
     _channel = null;
+  }
+
+  @override
+  void reset() {
+    AppLogger.i('Resetting Translation WebSocket client...', tag: _tag);
+    stop();
   }
 
   void dispose() {

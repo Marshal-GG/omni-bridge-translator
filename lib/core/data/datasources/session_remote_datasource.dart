@@ -84,7 +84,10 @@ class SessionRemoteDataSource implements IResettable {
             await sessionRef.set({
               'appReopenedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
-            AppLogger.i('Resumed existing session $_currentSessionId', tag: _tag);
+            AppLogger.i(
+              'Resumed existing session $_currentSessionId',
+              tag: _tag,
+            );
           }
         }
       } catch (e) {
@@ -128,7 +131,10 @@ class SessionRemoteDataSource implements IResettable {
         if (snapshot.exists) {
           final data = snapshot.data();
           if (data is Map<String, dynamic> && data['forceLogout'] == true) {
-            AppLogger.w('Remote forceLogout for session $_currentSessionId', tag: _tag);
+            AppLogger.w(
+              'Remote forceLogout for session $_currentSessionId',
+              tag: _tag,
+            );
             _handleRemoteLogout();
           }
         }
@@ -136,22 +142,26 @@ class SessionRemoteDataSource implements IResettable {
     });
 
     _userSub?.cancel();
-    _userSub = _firestore.collection(FirebasePaths.users).doc(uid).snapshots().listen((
-      snapshot,
-    ) {
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (snapshot.exists) {
-          final data = snapshot.data();
-          if (data is Map<String, dynamic> && data['forceLogout'] == true) {
-            AppLogger.w('Remote forceLogout for user $uid', tag: _tag);
-            _handleRemoteLogout();
-          }
-        }
-      });
-    });
+    _userSub = _firestore
+        .collection(FirebasePaths.users)
+        .doc(uid)
+        .snapshots()
+        .listen((snapshot) {
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (snapshot.exists) {
+              final data = snapshot.data();
+              if (data is Map<String, dynamic> && data['forceLogout'] == true) {
+                AppLogger.w('Remote forceLogout for user $uid', tag: _tag);
+                _handleRemoteLogout();
+              }
+            }
+          });
+        });
 
     try {
-      final url = await _rtdbClient.getRTDBUrl('${FirebasePaths.activeSessions}/$_currentSessionId');
+      final url = await _rtdbClient.getRTDBUrl(
+        '${FirebasePaths.activeSessions}/$_currentSessionId',
+      );
       if (url != null) {
         await _rtdbClient.request(
           (client) => client.patch(
@@ -191,7 +201,7 @@ class SessionRemoteDataSource implements IResettable {
         AppLogger.e('Failed to reset forceLogout', error: e, tag: _tag);
       }
     }
-    
+
     await _auth.signOut();
     await GlobalNavigator.pushNamedAndRemoveUntil('/splash', (route) => false);
   }
@@ -207,7 +217,7 @@ class SessionRemoteDataSource implements IResettable {
     _sessionSub = null;
     _userSub?.cancel();
     _userSub = null;
-    
+
     AppLogger.i('state reset', tag: _tag);
   }
 
@@ -242,7 +252,9 @@ class SessionRemoteDataSource implements IResettable {
       }, SetOptions(merge: true));
 
       try {
-        final url = await _rtdbClient.getRTDBUrl('${FirebasePaths.activeSessions}/$_currentSessionId');
+        final url = await _rtdbClient.getRTDBUrl(
+          '${FirebasePaths.activeSessions}/$_currentSessionId',
+        );
         if (url != null) {
           await _rtdbClient.request(
             (client) => client.patch(
@@ -270,9 +282,13 @@ class SessionRemoteDataSource implements IResettable {
   Future<void> _pingSession() async {
     if (uid == null || _currentSessionId == null) return;
     try {
-      final diff = _sessionStartTime != null ? DateTime.now().difference(_sessionStartTime!) : Duration.zero;
+      final diff = _sessionStartTime != null
+          ? DateTime.now().difference(_sessionStartTime!)
+          : Duration.zero;
       final duration = diff.inSeconds;
-      final url = await _rtdbClient.getRTDBUrl('${FirebasePaths.activeSessions}/$_currentSessionId');
+      final url = await _rtdbClient.getRTDBUrl(
+        '${FirebasePaths.activeSessions}/$_currentSessionId',
+      );
       if (url != null) {
         await _rtdbClient.request(
           (client) => client.patch(
@@ -298,7 +314,10 @@ class SessionRemoteDataSource implements IResettable {
         errorStr.contains('setState() called after dispose()')) {
       return;
     }
-    AppLogger.e('$message${errorStr.isNotEmpty ? ' — $errorStr' : ''}', tag: _tag);
+    AppLogger.e(
+      '$message${errorStr.isNotEmpty ? ' — $errorStr' : ''}',
+      tag: _tag,
+    );
   }
 
   void dispose() {

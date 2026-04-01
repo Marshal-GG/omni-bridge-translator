@@ -24,17 +24,14 @@ class SystemConfig extends Equatable {
 
   factory SystemConfig.fromMap(Map<String, dynamic> map) {
     return SystemConfig(
-      rivaTranslationFunctionId: map['riva_nmt_fid'] ??
-          map['rivaTranslationFunctionId'] ??
-          '',
-      rivaAsrParakeetFunctionId: map['riva_parakeet_fid'] ??
-          map['rivaAsrParakeetFunctionId'] ??
-          '',
-      rivaAsrCanaryFunctionId: map['riva_canary_fid'] ??
-          map['rivaAsrCanaryFunctionId'] ??
-          '',
-      googleCredentials: map['google_credentials'] ??
-          (map.containsKey('type') ? map : null),
+      rivaTranslationFunctionId:
+          map['riva_nmt_fid'] ?? map['rivaTranslationFunctionId'] ?? '',
+      rivaAsrParakeetFunctionId:
+          map['riva_parakeet_fid'] ?? map['rivaAsrParakeetFunctionId'] ?? '',
+      rivaAsrCanaryFunctionId:
+          map['riva_canary_fid'] ?? map['rivaAsrCanaryFunctionId'] ?? '',
+      googleCredentials:
+          map['google_credentials'] ?? (map.containsKey('type') ? map : null),
     );
   }
 
@@ -60,16 +57,15 @@ class SystemConfig extends Equatable {
           rivaAsrParakeetFunctionId ?? this.rivaAsrParakeetFunctionId,
       rivaAsrCanaryFunctionId:
           rivaAsrCanaryFunctionId ?? this.rivaAsrCanaryFunctionId,
-      googleCredentials:
-          googleCredentials ?? this.googleCredentials,
+      googleCredentials: googleCredentials ?? this.googleCredentials,
     );
   }
 
   @override
   List<Object?> get props => [
-        rivaTranslationFunctionId,
-        rivaAsrParakeetFunctionId,
-        rivaAsrCanaryFunctionId,
-        googleCredentials,
-      ];
+    rivaTranslationFunctionId,
+    rivaAsrParakeetFunctionId,
+    rivaAsrCanaryFunctionId,
+    googleCredentials,
+  ];
 }

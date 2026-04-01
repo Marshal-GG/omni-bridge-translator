@@ -20,7 +20,10 @@ class UsageHistoryChart extends StatelessWidget {
       );
     }
 
-    final maxTokens = history.fold<int>(0, (max, e) => e.totalTokens > max ? e.totalTokens : max);
+    final maxTokens = history.fold<int>(
+      0,
+      (max, e) => e.totalTokens > max ? e.totalTokens : max,
+    );
     final displayMax = maxTokens == 0 ? 1000 : (maxTokens * 1.2).toInt();
 
     return SizedBox(
@@ -36,7 +39,8 @@ class UsageHistoryChart extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 2),
                     child: Tooltip(
-                      message: '${record.date.month}/${record.date.day}: ${record.totalTokens} tokens',
+                      message:
+                          '${record.date.month}/${record.date.day}: ${record.totalTokens} tokens',
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -76,7 +80,11 @@ class UsageHistoryChart extends StatelessWidget {
               ),
               const Text(
                 'Last 30 Days',
-                style: TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white38,
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               Text(
                 '${history.last.date.month}/${history.last.date.day}',

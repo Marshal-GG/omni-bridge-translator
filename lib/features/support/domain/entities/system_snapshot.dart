@@ -37,10 +37,10 @@ class SystemSnapshot extends Equatable {
 
   @override
   List<Object?> get props => [
-        osVersion,
-        appVersion,
-        subscriptionTier,
-        remainingQuota,
-        userEmail,
-      ];
+    osVersion,
+    appVersion,
+    subscriptionTier,
+    remainingQuota,
+    userEmail,
+  ];
 }

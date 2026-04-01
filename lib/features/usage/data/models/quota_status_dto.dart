@@ -14,7 +14,8 @@ class QuotaStatusDto extends QuotaStatus {
     super.periodLimit = 0,
   });
 
-  factory QuotaStatusDto.fromJson(Map<String, dynamic> json, {
+  factory QuotaStatusDto.fromJson(
+    Map<String, dynamic> json, {
     required String tier,
     required int dailyLimit,
     required int periodLimit,
@@ -25,8 +26,10 @@ class QuotaStatusDto extends QuotaStatus {
       tier: tier,
       dailyTokensUsed: (json['daily'] as num?)?.toInt() ?? 0,
       weeklyTokensUsed: (json['weekly'] as num?)?.toInt() ?? 0,
-      monthlyTokensUsed: (json['subscription_monthly'] as num?)?.toInt() ?? 
-                         (json['calendar_monthly'] as num?)?.toInt() ?? 0,
+      monthlyTokensUsed:
+          (json['subscription_monthly'] as num?)?.toInt() ??
+          (json['calendar_monthly'] as num?)?.toInt() ??
+          0,
       lifetimeTokensUsed: (json['lifetime'] as num?)?.toInt() ?? 0,
       dailyLimit: dailyLimit,
       periodLimit: periodLimit,

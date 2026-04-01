@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/core/di/di.dart';
 import '../bloc/subscription_bloc.dart';
 import '../bloc/subscription_state.dart';
 import '../widgets/plan_card.dart';

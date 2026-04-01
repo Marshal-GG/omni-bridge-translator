@@ -56,9 +56,16 @@ class _FeedbackFormState extends State<FeedbackForm> {
             decoration: BoxDecoration(
               color: AppColors.accentCyan.withValues(alpha: 0.1),
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.accentCyan.withValues(alpha: 0.3), width: 1.5),
+              border: Border.all(
+                color: AppColors.accentCyan.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
             ),
-            child: const Icon(Icons.check_rounded, size: 36, color: AppColors.accentCyan),
+            child: const Icon(
+              Icons.check_rounded,
+              size: 36,
+              color: AppColors.accentCyan,
+            ),
           ),
           const SizedBox(height: 24),
           Text(
@@ -123,11 +130,24 @@ class _FeedbackFormState extends State<FeedbackForm> {
         OmniSegmentedControl<FeedbackType>(
           value: state.feedbackType,
           color: AppColors.accentCyan,
-          onChanged: (type) => context.read<SupportBloc>().add(UpdateFeedbackType(type)),
+          onChanged: (type) =>
+              context.read<SupportBloc>().add(UpdateFeedbackType(type)),
           segments: const [
-            OmniSegment(value: FeedbackType.support, label: 'Support',    icon: Icons.support_agent_outlined),
-            OmniSegment(value: FeedbackType.bug,     label: 'Bug Report', icon: Icons.bug_report_outlined),
-            OmniSegment(value: FeedbackType.feature, label: 'Feature',    icon: Icons.lightbulb_outline_rounded),
+            OmniSegment(
+              value: FeedbackType.support,
+              label: 'Support',
+              icon: Icons.support_agent_outlined,
+            ),
+            OmniSegment(
+              value: FeedbackType.bug,
+              label: 'Bug Report',
+              icon: Icons.bug_report_outlined,
+            ),
+            OmniSegment(
+              value: FeedbackType.feature,
+              label: 'Feature',
+              icon: Icons.lightbulb_outline_rounded,
+            ),
           ],
         ),
         const SizedBox(height: 24),
@@ -138,7 +158,8 @@ class _FeedbackFormState extends State<FeedbackForm> {
           label: 'Subject',
           hint: 'Brief summary of your issue...',
           icon: Icons.title_rounded,
-          onChanged: (val) => context.read<SupportBloc>().add(UpdateFeedbackSubject(val)),
+          onChanged: (val) =>
+              context.read<SupportBloc>().add(UpdateFeedbackSubject(val)),
         ),
         const SizedBox(height: 16),
 
@@ -149,23 +170,33 @@ class _FeedbackFormState extends State<FeedbackForm> {
           hint: 'Describe your issue or suggestion in detail...',
           icon: Icons.article_outlined,
           maxLines: 6,
-          onChanged: (val) => context.read<SupportBloc>().add(UpdateFeedbackMessage(val)),
+          onChanged: (val) =>
+              context.read<SupportBloc>().add(UpdateFeedbackMessage(val)),
         ),
         const SizedBox(height: 24),
 
         // ── Attachments ───────────────────────────────────────────────
         Row(
           children: [
-            const Icon(Icons.attach_file_rounded, size: 14, color: AppColors.white54),
+            const Icon(
+              Icons.attach_file_rounded,
+              size: 14,
+              color: AppColors.white54,
+            ),
             const SizedBox(width: 8),
-            Text('Attachments', style: AppTextStyles.caption.copyWith(color: AppColors.white54)),
+            Text(
+              'Attachments',
+              style: AppTextStyles.caption.copyWith(color: AppColors.white54),
+            ),
             const Spacer(),
             _GhostButton(
               label: 'Add Files',
               icon: Icons.upload_file_outlined,
               onTap: () async {
                 final bloc = context.read<SupportBloc>();
-                final result = await FilePicker.platform.pickFiles(allowMultiple: true);
+                final result = await FilePicker.platform.pickFiles(
+                  allowMultiple: true,
+                );
                 if (result != null) {
                   for (final path in result.paths) {
                     if (path != null) bloc.add(AddAttachment(File(path)));
@@ -184,7 +215,9 @@ class _FeedbackFormState extends State<FeedbackForm> {
               final name = entry.value.path.split(Platform.pathSeparator).last;
               return _AttachmentChip(
                 name: name,
-                onRemove: () => context.read<SupportBloc>().add(RemoveAttachment(entry.key)),
+                onRemove: () => context.read<SupportBloc>().add(
+                  RemoveAttachment(entry.key),
+                ),
               );
             }).toList(),
           ),
@@ -206,7 +239,10 @@ class _FeedbackFormState extends State<FeedbackForm> {
                 : 'Submit Feedback',
             icon: Icons.send_rounded,
             color: AppColors.accentCyan,
-            onPressed: (state.subject.isEmpty || state.message.isEmpty || state.isSubmitting)
+            onPressed:
+                (state.subject.isEmpty ||
+                    state.message.isEmpty ||
+                    state.isSubmitting)
                 ? null
                 : () => context.read<SupportBloc>().add(const SubmitFeedback()),
           ),
@@ -215,12 +251,18 @@ class _FeedbackFormState extends State<FeedbackForm> {
           const SizedBox(height: 10),
           Row(
             children: [
-              const Icon(Icons.error_outline_rounded, size: 14, color: AppColors.accentRed),
+              const Icon(
+                Icons.error_outline_rounded,
+                size: 14,
+                color: AppColors.accentRed,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   state.error!,
-                  style: AppTextStyles.caption.copyWith(color: AppColors.accentRed),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.accentRed,
+                  ),
                 ),
               ),
             ],
@@ -266,7 +308,11 @@ class _OmniTextFieldState extends State<_OmniTextField> {
       children: [
         Row(
           children: [
-            Icon(widget.icon, size: 13, color: _focused ? AppColors.accentCyan : AppColors.white54),
+            Icon(
+              widget.icon,
+              size: 13,
+              color: _focused ? AppColors.accentCyan : AppColors.white54,
+            ),
             const SizedBox(width: 6),
             Text(
               widget.label.toUpperCase(),
@@ -304,7 +350,10 @@ class _OmniTextFieldState extends State<_OmniTextField> {
                 hintStyle: AppTextStyles.body.copyWith(
                   color: AppColors.white54.withValues(alpha: 0.5),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 border: InputBorder.none,
               ),
             ),
@@ -320,7 +369,11 @@ class _GhostButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _GhostButton({required this.label, required this.icon, required this.onTap});
+  const _GhostButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -331,7 +384,9 @@ class _GhostButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.accentCyan.withValues(alpha: 0.06),
           borderRadius: AppShapes.md,
-          border: Border.all(color: AppColors.accentCyan.withValues(alpha: 0.2)),
+          border: Border.all(
+            color: AppColors.accentCyan.withValues(alpha: 0.2),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -370,20 +425,30 @@ class _AttachmentChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.insert_drive_file_outlined, size: 12, color: AppColors.accentCyan),
+          const Icon(
+            Icons.insert_drive_file_outlined,
+            size: 12,
+            color: AppColors.accentCyan,
+          ),
           const SizedBox(width: 6),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 140),
             child: Text(
               name,
-              style: AppTextStyles.labelTiny.copyWith(color: AppColors.offWhite),
+              style: AppTextStyles.labelTiny.copyWith(
+                color: AppColors.offWhite,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 8),
           GestureDetector(
             onTap: onRemove,
-            child: Icon(Icons.close_rounded, size: 12, color: AppColors.white54.withValues(alpha: 0.6)),
+            child: Icon(
+              Icons.close_rounded,
+              size: 12,
+              color: AppColors.white54.withValues(alpha: 0.6),
+            ),
           ),
         ],
       ),

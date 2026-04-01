@@ -9,7 +9,10 @@ class SubmitFeedbackUseCase {
 
   SubmitFeedbackUseCase(this.repository);
 
-  Future<Either<Failure, Unit>> call(FeedbackTicket ticket, List<File> attachments) async {
+  Future<Either<Failure, Unit>> call(
+    FeedbackTicket ticket,
+    List<File> attachments,
+  ) async {
     return await repository.submitFeedback(ticket, attachments);
   }
 }

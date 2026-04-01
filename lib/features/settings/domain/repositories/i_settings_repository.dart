@@ -13,4 +13,3 @@ abstract class ISettingsRepository {
   Future<Either<Failure, AppSettings?>> getSettings();
   Future<Either<Failure, SystemConfig>> getSystemConfig();
 }
-

@@ -36,8 +36,8 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                             .shrinkWrap, // Removes Flutter's forced 48px padding
                         onChanged: (val) {
                           context.read<SettingsBloc>().add(
-                                UpdateTempSettingEvent(useMic: val),
-                              );
+                            UpdateTempSettingEvent(useMic: val),
+                          );
                           context.read<TranslationBloc>().liveMicToggle(val);
                         },
                       ),
@@ -63,20 +63,20 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                           if (device != null) {
                             final idx = device['index'] as int;
                             context.read<SettingsBloc>().add(
-                                  UpdateTempSettingEvent(inputDeviceIndex: idx),
-                                );
-                            context
-                                .read<TranslationBloc>()
-                                .liveDeviceUpdate(inputDeviceIndex: idx);
+                              UpdateTempSettingEvent(inputDeviceIndex: idx),
+                            );
+                            context.read<TranslationBloc>().liveDeviceUpdate(
+                              inputDeviceIndex: idx,
+                            );
                           } else {
                             context.read<SettingsBloc>().add(
-                                  const UpdateTempSettingEvent(
-                                    clearInputDevice: true,
-                                  ),
-                                );
-                            context
-                                .read<TranslationBloc>()
-                                .liveDeviceUpdate(inputDeviceIndex: null);
+                              const UpdateTempSettingEvent(
+                                clearInputDevice: true,
+                              ),
+                            );
+                            context.read<TranslationBloc>().liveDeviceUpdate(
+                              inputDeviceIndex: null,
+                            );
                           }
                         },
                       ),
@@ -145,20 +145,20 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                         if (device != null) {
                           final idx = device['index'] as int;
                           context.read<SettingsBloc>().add(
-                                UpdateTempSettingEvent(outputDeviceIndex: idx),
-                              );
-                          context
-                              .read<TranslationBloc>()
-                              .liveDeviceUpdate(outputDeviceIndex: idx);
+                            UpdateTempSettingEvent(outputDeviceIndex: idx),
+                          );
+                          context.read<TranslationBloc>().liveDeviceUpdate(
+                            outputDeviceIndex: idx,
+                          );
                         } else {
                           context.read<SettingsBloc>().add(
-                                const UpdateTempSettingEvent(
-                                  clearOutputDevice: true,
-                                ),
-                              );
-                          context
-                              .read<TranslationBloc>()
-                              .liveDeviceUpdate(outputDeviceIndex: null);
+                            const UpdateTempSettingEvent(
+                              clearOutputDevice: true,
+                            ),
+                          );
+                          context.read<TranslationBloc>().liveDeviceUpdate(
+                            outputDeviceIndex: null,
+                          );
                         }
                       },
                     ),
@@ -328,9 +328,7 @@ Widget buildDeviceDropdown({
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    isSystem
-                        ? 'System Default'
-                        : device['name'] as String,
+                    isSystem ? 'System Default' : device['name'] as String,
                     style: TextStyle(
                       color: isSelected
                           ? Colors.tealAccent
@@ -344,9 +342,7 @@ Widget buildDeviceDropdown({
                       child: Text(
                         device['fullName'] as String,
                         style: TextStyle(
-                          color: isSelected
-                              ? Colors.white70
-                              : Colors.white38,
+                          color: isSelected ? Colors.white70 : Colors.white38,
                           fontSize: 11,
                         ),
                       ),

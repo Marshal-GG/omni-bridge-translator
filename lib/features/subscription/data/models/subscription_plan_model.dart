@@ -39,7 +39,8 @@ class SubscriptionPlanModel extends SubscriptionPlan {
       ),
       requestsPerMinute: (json['requestsPerMinute'] as num?)?.toInt() ?? 0,
       concurrentSessions: (json['concurrentSessions'] as num?)?.toInt() ?? 1,
-      engineLimits: (json['engineLimits'] as Map<String, dynamic>?)?.map(
+      engineLimits:
+          (json['engineLimits'] as Map<String, dynamic>?)?.map(
             (k, v) => MapEntry(k, (v as num).toInt()),
           ) ??
           const {},

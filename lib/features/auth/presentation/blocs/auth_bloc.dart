@@ -77,7 +77,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await authRepository.sendPasswordReset(event.email);
       emit(AuthPasswordResetSent(event.email));
       // Reset back to initial state so they can try to login again if they want
-      emit(const AuthInitial()); 
+      emit(const AuthInitial());
     } on FirebaseAuthException catch (e) {
       emit(AuthError(e.message ?? 'Failed to send reset email.'));
     } catch (e) {
@@ -85,10 +85,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  Future<void> _onLogout(
-    AuthLogoutEvent event,
-    Emitter<AuthState> emit,
-  ) async {
+  Future<void> _onLogout(AuthLogoutEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
     try {
       await authRepository.signOut();

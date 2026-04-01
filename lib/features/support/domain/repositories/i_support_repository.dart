@@ -9,8 +9,17 @@ import '../entities/support_message.dart';
 abstract class ISupportRepository {
   Future<Either<Failure, List<SupportLink>>> getSupportLinks();
   Future<Either<Failure, SystemSnapshot>> getSystemSnapshot();
-  Future<Either<Failure, Unit>> submitFeedback(FeedbackTicket ticket, List<File> attachments);
+  Future<Either<Failure, Unit>> submitFeedback(
+    FeedbackTicket ticket,
+    List<File> attachments,
+  );
   Future<Either<Failure, List<FeedbackTicket>>> getTicketHistory();
-  Stream<Either<Failure, List<SupportMessage>>> getTicketMessages(String ticketId);
-  Future<Either<Failure, Unit>> sendSupportMessage(String ticketId, SupportMessage message, {List<File> attachments = const []});
+  Stream<Either<Failure, List<SupportMessage>>> getTicketMessages(
+    String ticketId,
+  );
+  Future<Either<Failure, Unit>> sendSupportMessage(
+    String ticketId,
+    SupportMessage message, {
+    List<File> attachments = const [],
+  });
 }

@@ -16,7 +16,8 @@ abstract class ISettingsRemoteDataSource {
   Future<void> logEvent(String name, {Map<String, dynamic>? parameters});
 }
 
-class SettingsRemoteDataSourceImpl implements ISettingsRemoteDataSource, IResettable {
+class SettingsRemoteDataSourceImpl
+    implements ISettingsRemoteDataSource, IResettable {
   FirebaseApp get _app => Firebase.app(RTDBClient.appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
@@ -39,7 +40,7 @@ class SettingsRemoteDataSourceImpl implements ISettingsRemoteDataSource, IResett
           .doc(FirebasePaths.translationConfig)
           .get();
       final data = doc.data() ?? {};
-      
+
       return data;
     } catch (e) {
       AppLogger.e('Failed to fetch system config', tag: _tag, error: e);
@@ -62,7 +63,7 @@ class SettingsRemoteDataSourceImpl implements ISettingsRemoteDataSource, IResett
     }
     try {
       AppLogger.d('Attempting to sync settings for UID: $uid', tag: _tag);
-      
+
       await _firestore
           .collection(FirebasePaths.users)
           .doc(uid)
@@ -75,7 +76,10 @@ class SettingsRemoteDataSourceImpl implements ISettingsRemoteDataSource, IResett
       AppLogger.i('User settings successfully synced to Firestore.', tag: _tag);
     } catch (e) {
       AppLogger.e('Critical error syncing user settings', tag: _tag, error: e);
-      UsageMetricsRemoteDataSource.instance.logEvent('Failed to sync user settings', {'error': e.toString()});
+      UsageMetricsRemoteDataSource.instance.logEvent(
+        'Failed to sync user settings',
+        {'error': e.toString()},
+      );
     }
   }
 
@@ -94,20 +98,29 @@ class SettingsRemoteDataSourceImpl implements ISettingsRemoteDataSource, IResett
           .doc(FirebasePaths.appPreferences)
           .get();
       if (doc.exists) {
-        AppLogger.i('Successfully fetched user settings from Firestore.', tag: _tag);
+        AppLogger.i(
+          'Successfully fetched user settings from Firestore.',
+          tag: _tag,
+        );
         return doc.data();
       } else {
         AppLogger.i('No settings found in Firestore for UID: $uid', tag: _tag);
       }
     } catch (e) {
       AppLogger.e('Critical error fetching user settings', tag: _tag, error: e);
-      UsageMetricsRemoteDataSource.instance.logEvent('Failed to fetch user settings', {'error': e.toString()});
+      UsageMetricsRemoteDataSource.instance.logEvent(
+        'Failed to fetch user settings',
+        {'error': e.toString()},
+      );
     }
     return null;
   }
 
   @override
   Future<void> logEvent(String eventName, {Map<String, dynamic>? parameters}) {
-    return UsageMetricsRemoteDataSource.instance.logEvent(eventName, parameters);
+    return UsageMetricsRemoteDataSource.instance.logEvent(
+      eventName,
+      parameters,
+    );
   }
 }

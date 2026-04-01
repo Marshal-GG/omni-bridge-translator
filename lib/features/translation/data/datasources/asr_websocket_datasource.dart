@@ -5,6 +5,7 @@ import 'package:omni_bridge/core/config/server_config.dart';
 import 'package:omni_bridge/core/device/asr_text_controller.dart';
 import 'package:omni_bridge/core/data/datasources/usage_metrics_remote_datasource.dart';
 import 'package:omni_bridge/core/utils/app_logger.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 import './translation_websocket_client.dart';
 import 'package:omni_bridge/features/history/domain/usecases/add_history_entry_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/configure_history_usecase.dart';
@@ -15,7 +16,7 @@ import 'package:omni_bridge/features/history/domain/usecases/configure_history_u
 /// The WebSocket connection is kept alive across toggle off→on cycles to avoid
 /// the WASAPI cold-start delay on every toggle. Only [dispose] fully tears down
 /// the connection (called on app shutdown).
-class AsrWebSocketClient {
+class AsrWebSocketClient implements IResettable {
   static const String _tag = 'AsrWebSocketClient';
   TranslationWebsocketClient? _service;
 
@@ -37,7 +38,10 @@ class AsrWebSocketClient {
   /// so the connection is ready before the user presses play.
   void _ensureService() {
     if (_service != null) return;
-    AppLogger.d('ASR WS pre-connecting to: ${ServerConfig.wsUrl}/captions', tag: _tag);
+    AppLogger.d(
+      'ASR WS pre-connecting to: ${ServerConfig.wsUrl}/captions',
+      tag: _tag,
+    );
     _service = TranslationWebsocketClient(
       serverHost: ServerConfig.host,
       serverPort: ServerConfig.port,
@@ -71,7 +75,9 @@ class AsrWebSocketClient {
         asrTextController.showSystemMessage('⚠ Error: $errMsg.');
 
         // Remote logging
-        UsageMetricsRemoteDataSource.instance.logEvent('Server Error', {'error': errMsg});
+        UsageMetricsRemoteDataSource.instance.logEvent('Server Error', {
+          'error': errMsg,
+        });
         return;
       }
 
@@ -175,14 +181,11 @@ class AsrWebSocketClient {
     _service?.sendVolumeUpdate(
       desktopVolume: desktopVolume,
       micVolume: micVolume,
-      );
+    );
   }
 
   /// Instantly update active capture devices without restarting the pipeline.
-  void liveDeviceUpdate({
-    int? inputDeviceIndex,
-    int? outputDeviceIndex,
-  }) {
+  void liveDeviceUpdate({int? inputDeviceIndex, int? outputDeviceIndex}) {
     _service?.sendDeviceUpdate(
       inputDeviceIndex: inputDeviceIndex,
       outputDeviceIndex: outputDeviceIndex,
@@ -226,11 +229,14 @@ class AsrWebSocketClient {
     _service?.sendStopCommand();
   }
 
-  /// Sends a reset_session command to the Python server so it clears all
-  /// cached model error states. Called on user logout to prevent Red Markers
-  /// from persisting into the next session.
-  void resetSession() {
+  /// Standard reset from IResettable. Fully clears WebSocket state.
+  /// Called on user logout to prevent state/errors from leaking between sessions.
+  @override
+  void reset() {
+    AppLogger.i('Resetting ASR WebSocket state...', tag: _tag);
     _service?.sendResetSessionCommand();
+    _service?.stop();
+    _service = null;
   }
 
   /// Hard-stop: fully tears down the WebSocket. Only call on app shutdown.

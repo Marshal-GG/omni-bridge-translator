@@ -15,10 +15,7 @@ class OmniWindowLayout extends StatelessWidget {
   /// The screen content to display inside the window border.
   final Widget child;
 
-  const OmniWindowLayout({
-    super.key,
-    required this.child,
-  });
+  const OmniWindowLayout({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {

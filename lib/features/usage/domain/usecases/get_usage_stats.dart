@@ -65,8 +65,9 @@ class GetUsageStats {
 
       if (groupedStats.containsKey(groupKey)) {
         final existing = groupedStats[groupKey]!;
-        final existingMonthly =
-            existing.monthlyTokensUsed > 0 ? existing.monthlyTokensUsed : 0;
+        final existingMonthly = existing.monthlyTokensUsed > 0
+            ? existing.monthlyTokensUsed
+            : 0;
         groupedStats[groupKey] = EngineUsage(
           engine: existing.engine,
           totalTokens: existing.totalTokens + s.totalTokens,
@@ -77,8 +78,9 @@ class GetUsageStats {
           type: s.type,
           lastUsed: _latestDate(existing.lastUsed, s.lastUsed),
           monthlyTokensUsed: existingMonthly + monthlyUsed,
-          monthlyTokensLimit:
-              monthlyLimit > 0 ? monthlyLimit : existing.monthlyTokensLimit,
+          monthlyTokensLimit: monthlyLimit > 0
+              ? monthlyLimit
+              : existing.monthlyTokensLimit,
           isInPlan: existing.isInPlan || inPlan,
         );
       } else {

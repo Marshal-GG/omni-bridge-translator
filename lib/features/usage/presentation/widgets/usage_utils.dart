@@ -36,8 +36,8 @@ class UsageUtils {
     if (engineId.isEmpty) return 'Unknown';
 
     // 1. Remote config is the single source of truth.
-    final remoteName =
-        SubscriptionRemoteDataSource.instance.getModelDisplayName(engineId);
+    final remoteName = SubscriptionRemoteDataSource.instance
+        .getModelDisplayName(engineId);
     if (remoteName != engineId && remoteName.isNotEmpty) {
       // If remote gives a whisper-specific name, still collapse to "Whisper"
       if (engineId.toLowerCase().startsWith('whisper')) return 'Whisper';

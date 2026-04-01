@@ -43,18 +43,18 @@ class OmniBranding extends StatelessWidget {
           height: logoSize,
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: logoSize,
-                height: logoSize,
-                color: Colors.white10,
-                child: Icon(
-                  fallbackIcon,
-                  color: Colors.tealAccent,
-                  size: logoSize * 0.57,
-                ),
-              );
-            },
-          ),
+            return Container(
+              width: logoSize,
+              height: logoSize,
+              color: Colors.white10,
+              child: Icon(
+                fallbackIcon,
+                color: Colors.tealAccent,
+                size: logoSize * 0.57,
+              ),
+            );
+          },
+        ),
         const SizedBox(width: 16),
         Flexible(
           child: Column(
@@ -77,7 +77,10 @@ class OmniBranding extends StatelessWidget {
                   label: subtitle.toUpperCase(),
                   color: subtitleChipColor ?? Colors.tealAccent,
                   fontSize: 8,
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                 )
               else
                 Text(

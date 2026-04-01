@@ -45,9 +45,13 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (_isLoginMode) {
-      context.read<AuthBloc>().add(AuthLoginWithEmailPasswordEvent(email, password));
+      context.read<AuthBloc>().add(
+        AuthLoginWithEmailPasswordEvent(email, password),
+      );
     } else {
-      context.read<AuthBloc>().add(AuthRegisterWithEmailPasswordEvent(email, password));
+      context.read<AuthBloc>().add(
+        AuthRegisterWithEmailPasswordEvent(email, password),
+      );
     }
   }
 
@@ -55,7 +59,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter your email above, then tap Forgot Password.')),
+        const SnackBar(
+          content: Text('Enter your email above, then tap Forgot Password.'),
+        ),
       );
       return;
     }
@@ -205,13 +211,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                   const SizedBox(height: 16),
 
                                   // Google button with proper logo
-                                  _GoogleSignInButton(onPressed: _signInWithGoogle),
+                                  _GoogleSignInButton(
+                                    onPressed: _signInWithGoogle,
+                                  ),
                                   const SizedBox(height: 12),
 
                                   // View Tutorial button
                                   TextButton.icon(
-                                    onPressed: () =>
-                                        Navigator.pushNamed(context, '/onboarding'),
+                                    onPressed: () => Navigator.pushNamed(
+                                      context,
+                                      '/onboarding',
+                                    ),
                                     icon: const Icon(
                                       Icons.help_outline_rounded,
                                       size: 16,
@@ -286,7 +296,11 @@ class _GoogleSignInButtonState extends State<_GoogleSignInButton> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset('assets/app/images/google-logo.png', width: 20, height: 20),
+              Image.asset(
+                'assets/app/images/google-logo.png',
+                width: 20,
+                height: 20,
+              ),
               const SizedBox(width: 10),
               const Text(
                 'Continue with Google',

@@ -38,7 +38,8 @@ class EngineUsage extends Equatable {
     this.isInPlan = false,
   });
 
-  double get averageLatencyMs => totalCalls > 0 ? totalLatencyMs / totalCalls : 0;
+  double get averageLatencyMs =>
+      totalCalls > 0 ? totalLatencyMs / totalCalls : 0;
 
   /// Tokens to use for display and sorting.
   /// Many engines (e.g. google, riva, mymemory) write to total_input_tokens /
@@ -88,16 +89,16 @@ class EngineUsage extends Equatable {
 
   @override
   List<Object?> get props => [
-        engine,
-        totalTokens,
-        totalCalls,
-        totalInputTokens,
-        totalOutputTokens,
-        totalLatencyMs,
-        lastUsed,
-        type,
-        monthlyTokensUsed,
-        monthlyTokensLimit,
-        isInPlan,
-      ];
+    engine,
+    totalTokens,
+    totalCalls,
+    totalInputTokens,
+    totalOutputTokens,
+    totalLatencyMs,
+    lastUsed,
+    type,
+    monthlyTokensUsed,
+    monthlyTokensLimit,
+    isInPlan,
+  ];
 }

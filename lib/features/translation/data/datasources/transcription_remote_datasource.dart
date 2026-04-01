@@ -20,8 +20,10 @@ class TranscriptionRemoteDataSource implements IResettable {
   StreamSubscription? _subscription;
 
   void init() {
-    AppLogger.i('[Transcription] Initializing config listener...',
-        tag: 'Transcription');
+    AppLogger.i(
+      '[Transcription] Initializing config listener...',
+      tag: 'Transcription',
+    );
     _listenToTranscriptionConfig();
   }
 
@@ -30,16 +32,24 @@ class TranscriptionRemoteDataSource implements IResettable {
     _subscription = _firestore
         .doc(FirebasePaths.transcriptionConfig)
         .snapshots()
-        .listen((doc) {
-      if (doc.exists) {
-        _config = doc.data();
-        AppLogger.d('[Transcription] Config updated: $_config',
-            tag: 'Transcription');
-      }
-    }, onError: (e) {
-      AppLogger.e('[Transcription] Config error: $e',
-          tag: 'Transcription', error: e);
-    });
+        .listen(
+          (doc) {
+            if (doc.exists) {
+              _config = doc.data();
+              AppLogger.d(
+                '[Transcription] Config updated: $_config',
+                tag: 'Transcription',
+              );
+            }
+          },
+          onError: (e) {
+            AppLogger.e(
+              '[Transcription] Config error: $e',
+              tag: 'Transcription',
+              error: e,
+            );
+          },
+        );
   }
 
   @override

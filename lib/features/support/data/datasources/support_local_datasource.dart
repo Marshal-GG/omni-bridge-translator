@@ -5,7 +5,8 @@ abstract class ISupportLocalDataSource {
   Future<List<SupportLink>> getSupportLinks();
 }
 
-class SupportLocalDataSourceImpl implements ISupportLocalDataSource, IResettable {
+class SupportLocalDataSourceImpl
+    implements ISupportLocalDataSource, IResettable {
   @override
   Future<List<SupportLink>> getSupportLinks() async {
     return const [

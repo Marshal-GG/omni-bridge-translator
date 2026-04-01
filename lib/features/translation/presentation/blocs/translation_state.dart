@@ -14,6 +14,7 @@ class TranslationState extends Equatable {
   // Per-engine limit state (hybrid fallback)
   /// Non-null when a specific engine's monthly limit was just hit (show dialog).
   final String? engineLimitReachedFor;
+
   /// True when translation is using a fallback engine due to model limit.
   final bool isUsingFallbackEngine;
 
@@ -158,7 +159,8 @@ class TranslationState extends Equatable {
       engineLimitReachedFor: engineLimitReachedFor == _sentinel
           ? this.engineLimitReachedFor
           : engineLimitReachedFor as String?,
-      isUsingFallbackEngine: isUsingFallbackEngine ?? this.isUsingFallbackEngine,
+      isUsingFallbackEngine:
+          isUsingFallbackEngine ?? this.isUsingFallbackEngine,
     );
   }
 

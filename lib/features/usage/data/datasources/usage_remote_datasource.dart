@@ -14,15 +14,13 @@ import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 class UsageRemoteDataSource implements IResettable {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
-  UsageRemoteDataSource({
-    FirebaseAuth? auth,
-    FirebaseFirestore? firestore,
-  })  : _auth = auth ??
-            FirebaseAuth.instanceFor(
-                app: Firebase.app(RTDBClient.appName)),
-        _firestore = firestore ??
-            FirebaseFirestore.instanceFor(
-                app: Firebase.app(RTDBClient.appName));
+  UsageRemoteDataSource({FirebaseAuth? auth, FirebaseFirestore? firestore})
+    : _auth =
+          auth ??
+          FirebaseAuth.instanceFor(app: Firebase.app(RTDBClient.appName)),
+      _firestore =
+          firestore ??
+          FirebaseFirestore.instanceFor(app: Firebase.app(RTDBClient.appName));
 
   static final UsageRemoteDataSource instance = UsageRemoteDataSource();
 
@@ -118,7 +116,10 @@ class UsageRemoteDataSource implements IResettable {
     if (_currentPollInterval == newInterval) return;
 
     _currentPollInterval = newInterval;
-    AppLogger.d('Poll interval changed to ${newInterval}s, restarting polling.', tag: _tag);
+    AppLogger.d(
+      'Poll interval changed to ${newInterval}s, restarting polling.',
+      tag: _tag,
+    );
     _startUsagePolling(uid);
   }
 
@@ -128,7 +129,10 @@ class UsageRemoteDataSource implements IResettable {
 
     final interval = _pollIntervalProvider!();
 
-    AppLogger.d('Starting usage polling for $uid every $interval seconds.', tag: _tag);
+    AppLogger.d(
+      'Starting usage polling for $uid every $interval seconds.',
+      tag: _tag,
+    );
 
     // Initial fetch
     _fetchUsageData(uid);
@@ -155,13 +159,17 @@ class UsageRemoteDataSource implements IResettable {
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
       // 1. Fetch daily usage
-      final dailyUrl = await RTDBClient.instance.getRTDBUrl('${FirebasePaths.dailyUsage}/$todayStr/tokens');
+      final dailyUrl = await RTDBClient.instance.getRTDBUrl(
+        '${FirebasePaths.dailyUsage}/$todayStr/tokens',
+      );
       if (dailyUrl == null) return;
       final dailyResp = await http.get(dailyUrl);
       final dailyUsed = (jsonDecode(dailyResp.body) as num?)?.toInt() ?? 0;
 
       // 2. Fetch totals
-      final totalsUrl = await RTDBClient.instance.getRTDBUrl(FirebasePaths.usageTotals);
+      final totalsUrl = await RTDBClient.instance.getRTDBUrl(
+        FirebasePaths.usageTotals,
+      );
       if (totalsUrl == null) return;
       final totalsResp = await http.get(totalsUrl);
       final totalsData =
@@ -169,7 +177,9 @@ class UsageRemoteDataSource implements IResettable {
 
       // 3. Fetch per-engine monthly totals
       _engineMonthlyUsages.clear();
-      final modelsUrl = await RTDBClient.instance.getRTDBUrl('${FirebasePaths.usageTotals}/subscription_monthly_models');
+      final modelsUrl = await RTDBClient.instance.getRTDBUrl(
+        '${FirebasePaths.usageTotals}/subscription_monthly_models',
+      );
       if (modelsUrl == null) return;
       final modelsResp = await http.get(modelsUrl);
       final modelsData =
@@ -244,11 +254,11 @@ class UsageRemoteDataSource implements IResettable {
         .collection(FirebasePaths.usageHistory)
         .doc('calendar_$lastMonth')
         .set({
-      'tokens': tokens,
-      'period_type': 'calendar',
-      'period': lastMonth,
-      'archivedAt': FieldValue.serverTimestamp(),
-    });
+          'tokens': tokens,
+          'period_type': 'calendar',
+          'period': lastMonth,
+          'archivedAt': FieldValue.serverTimestamp(),
+        });
 
     await http.patch(
       url,
@@ -275,11 +285,11 @@ class UsageRemoteDataSource implements IResettable {
         .collection(FirebasePaths.usageHistory)
         .doc('weekly_$lastWeek')
         .set({
-      'tokens': tokens,
-      'period_type': 'weekly',
-      'period': lastWeek,
-      'archivedAt': FieldValue.serverTimestamp(),
-    });
+          'tokens': tokens,
+          'period_type': 'weekly',
+          'period': lastWeek,
+          'archivedAt': FieldValue.serverTimestamp(),
+        });
 
     await http.patch(
       url,
@@ -303,11 +313,11 @@ class UsageRemoteDataSource implements IResettable {
         .collection(FirebasePaths.usageHistory)
         .doc('subscription_$cycleLabel')
         .set({
-      'tokens': tokens,
-      'period_type': 'subscription',
-      'period': cycleLabel,
-      'archivedAt': FieldValue.serverTimestamp(),
-    });
+          'tokens': tokens,
+          'period_type': 'subscription',
+          'period': cycleLabel,
+          'archivedAt': FieldValue.serverTimestamp(),
+        });
 
     await Future.wait([
       http.patch(
@@ -339,7 +349,8 @@ class UsageRemoteDataSource implements IResettable {
       return;
     }
 
-    final newTier = tier ?? _currentQuotaStatus?.tier ?? _defaultTierProvider!();
+    final newTier =
+        tier ?? _currentQuotaStatus?.tier ?? _defaultTierProvider!();
     final newDailyReset =
         dailyResetAt ?? _currentQuotaStatus?.dailyResetAt ?? DateTime.now();
     final newMonthlyReset =

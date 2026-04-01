@@ -29,11 +29,11 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
     required GetChunkedHistoryUseCase getChunkedHistoryUseCase,
     required ClearHistoryUseCase clearHistoryUseCase,
     required SubscriptionRemoteDataSource subscriptionDataSource,
-  })  : _getLiveHistoryUseCase = getLiveHistoryUseCase,
-        _getChunkedHistoryUseCase = getChunkedHistoryUseCase,
-        _clearHistoryUseCase = clearHistoryUseCase,
-        _subscriptionDataSource = subscriptionDataSource,
-        super(HistoryLoading()) {
+  }) : _getLiveHistoryUseCase = getLiveHistoryUseCase,
+       _getChunkedHistoryUseCase = getChunkedHistoryUseCase,
+       _clearHistoryUseCase = clearHistoryUseCase,
+       _subscriptionDataSource = subscriptionDataSource,
+       super(HistoryLoading()) {
     on<LoadHistoryEvent>(_onLoadHistory);
     on<HistoryUpdatedEvent>(_onHistoryUpdated);
     on<ClearHistoryEvent>(_onClearHistory);
@@ -44,7 +44,9 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
     _liveHistoryListenable.addListener(_onLiveHistoryChanged);
     _chunkedHistoryListenable.addListener(_onChunkedHistoryChanged);
 
-    _subscriptionStreamSub = _subscriptionDataSource.statusStream.listen((status) {
+    _subscriptionStreamSub = _subscriptionDataSource.statusStream.listen((
+      status,
+    ) {
       add(HistoryUpdatedEvent(subscriptionStatus: status));
     });
   }
@@ -56,14 +58,19 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
 
     if (_currentSubStatus == null) return;
 
-    emit(HistoryLoaded(
-      liveEntries: _currentLive,
-      chunkedEntries: _currentChunked,
-      subscriptionStatus: _currentSubStatus!,
-    ));
+    emit(
+      HistoryLoaded(
+        liveEntries: _currentLive,
+        chunkedEntries: _currentChunked,
+        subscriptionStatus: _currentSubStatus!,
+      ),
+    );
   }
 
-  void _onHistoryUpdated(HistoryUpdatedEvent event, Emitter<HistoryState> emit) {
+  void _onHistoryUpdated(
+    HistoryUpdatedEvent event,
+    Emitter<HistoryState> emit,
+  ) {
     if (event.liveEntries != null) {
       _currentLive = event.liveEntries!;
     }
@@ -76,11 +83,13 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
 
     if (_currentSubStatus == null) return;
 
-    emit(HistoryLoaded(
-      liveEntries: _currentLive,
-      chunkedEntries: _currentChunked,
-      subscriptionStatus: _currentSubStatus!,
-    ));
+    emit(
+      HistoryLoaded(
+        liveEntries: _currentLive,
+        chunkedEntries: _currentChunked,
+        subscriptionStatus: _currentSubStatus!,
+      ),
+    );
   }
 
   void _onClearHistory(ClearHistoryEvent event, Emitter<HistoryState> emit) {

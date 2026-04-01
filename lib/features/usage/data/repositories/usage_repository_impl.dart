@@ -10,9 +10,8 @@ import 'package:omni_bridge/features/usage/data/models/daily_usage_record_dto.da
 class UsageRepositoryImpl implements UsageRepository {
   final UsageRemoteDataSource _remoteDataSource;
 
-  UsageRepositoryImpl({
-    UsageRemoteDataSource? remoteDataSource,
-  }) : _remoteDataSource = remoteDataSource ?? UsageRemoteDataSource.instance;
+  UsageRepositoryImpl({UsageRemoteDataSource? remoteDataSource})
+    : _remoteDataSource = remoteDataSource ?? UsageRemoteDataSource.instance;
 
   @override
   Future<List<EngineUsage>> getModelUsageStats() async {
@@ -31,8 +30,11 @@ class UsageRepositoryImpl implements UsageRepository {
 
       return stats;
     } catch (e) {
-      AppLogger.e('[UsageRepositoryImpl] Error fetching model stats: $e',
-          tag: 'UsageRepository', error: e);
+      AppLogger.e(
+        '[UsageRepositoryImpl] Error fetching model stats: $e',
+        tag: 'UsageRepository',
+        error: e,
+      );
       return [];
     }
   }
@@ -57,8 +59,11 @@ class UsageRepositoryImpl implements UsageRepository {
 
       return history.reversed.toList();
     } catch (e) {
-      AppLogger.e('[UsageRepositoryImpl] Error fetching daily history: $e',
-          tag: 'UsageRepository', error: e);
+      AppLogger.e(
+        '[UsageRepositoryImpl] Error fetching daily history: $e',
+        tag: 'UsageRepository',
+        error: e,
+      );
       return [];
     }
   }
@@ -78,13 +83,20 @@ class UsageRepositoryImpl implements UsageRepository {
         '${now.year}_${now.month.toString().padLeft(2, '0')}';
     if (uid != null) {
       await _remoteDataSource.rolloverCalendar(
-          uid, month, currentMonthStr, tokens);
+        uid,
+        month,
+        currentMonthStr,
+        tokens,
+      );
     }
   }
 
   @override
   Future<void> rolloverWeekly(
-      String oldWeek, int tokens, String currentWeek) async {
+    String oldWeek,
+    int tokens,
+    String currentWeek,
+  ) async {
     final uid = _remoteDataSource.currentUid;
     if (uid != null) {
       await _remoteDataSource.rolloverWeekly(uid, oldWeek, currentWeek, tokens);
@@ -93,11 +105,18 @@ class UsageRepositoryImpl implements UsageRepository {
 
   @override
   Future<void> rolloverSubscription(
-      String cycleLabel, int tokens, DateTime nextReset) async {
+    String cycleLabel,
+    int tokens,
+    DateTime nextReset,
+  ) async {
     final uid = _remoteDataSource.currentUid;
     if (uid != null) {
       await _remoteDataSource.rolloverSubscription(
-          uid, cycleLabel, tokens, nextReset);
+        uid,
+        cycleLabel,
+        tokens,
+        nextReset,
+      );
     }
   }
 

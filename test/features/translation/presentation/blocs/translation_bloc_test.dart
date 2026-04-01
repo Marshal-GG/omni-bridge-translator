@@ -33,41 +33,77 @@ import 'package:omni_bridge/features/settings/domain/entities/app_settings.dart'
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:flutter_test/flutter_test.dart';
 
-class MockStartTranslationUseCase extends Mock implements StartTranslationUseCase {}
-class MockStopTranslationUseCase extends Mock implements StopTranslationUseCase {}
+class MockStartTranslationUseCase extends Mock
+    implements StartTranslationUseCase {}
+
+class MockStopTranslationUseCase extends Mock
+    implements StopTranslationUseCase {}
+
 class MockUpdateVolumeUseCase extends Mock implements UpdateVolumeUseCase {}
+
 class MockGetModelStatusUseCase extends Mock implements GetModelStatusUseCase {}
-class MockObserveCaptionsUseCase extends Mock implements ObserveCaptionsUseCase {}
-class MockObserveQuotaStatusUseCase extends Mock implements ObserveQuotaStatusUseCase {}
-class MockGetInitialQuotaStatusUseCase extends Mock implements GetInitialQuotaStatusUseCase {}
+
+class MockObserveCaptionsUseCase extends Mock
+    implements ObserveCaptionsUseCase {}
+
+class MockObserveQuotaStatusUseCase extends Mock
+    implements ObserveQuotaStatusUseCase {}
+
+class MockGetInitialQuotaStatusUseCase extends Mock
+    implements GetInitialQuotaStatusUseCase {}
+
 class MockGetDefaultTierUseCase extends Mock implements GetDefaultTierUseCase {}
-class MockUpdateTranslationSettingsUseCase extends Mock implements UpdateTranslationSettingsUseCase {}
-class MockCheckServerHealthUseCase extends Mock implements CheckServerHealthUseCase {}
+
+class MockUpdateTranslationSettingsUseCase extends Mock
+    implements UpdateTranslationSettingsUseCase {}
+
+class MockCheckServerHealthUseCase extends Mock
+    implements CheckServerHealthUseCase {}
+
 class MockGetCurrentUserUseCase extends Mock implements GetCurrentUserUseCase {}
-class MockObserveAuthChangesUseCase extends Mock implements ObserveAuthChangesUseCase {}
+
+class MockObserveAuthChangesUseCase extends Mock
+    implements ObserveAuthChangesUseCase {}
+
 class MockGetAppSettingsUseCase extends Mock implements GetAppSettingsUseCase {}
-class MockGetGoogleCredentialsUseCase extends Mock implements GetGoogleCredentialsUseCase {}
+
+class MockGetGoogleCredentialsUseCase extends Mock
+    implements GetGoogleCredentialsUseCase {}
+
 class MockSyncSettingsUseCase extends Mock implements SyncSettingsUseCase {}
+
 class MockLogEventUseCase extends Mock implements LogEventUseCase {}
+
 class MockLogoutUseCase extends Mock implements LogoutUseCase {}
-class MockGetSystemConfigUseCase extends Mock implements GetSystemConfigUseCase {}
-class MockSubscriptionRemoteDataSource extends Mock implements SubscriptionRemoteDataSource {}
-class MockTranslationRestDatasource extends Mock implements TranslationRestDatasource {}
-class MockLiveDeviceUpdateUseCase extends Mock implements LiveDeviceUpdateUseCase {}
+
+class MockGetSystemConfigUseCase extends Mock
+    implements GetSystemConfigUseCase {}
+
+class MockSubscriptionRemoteDataSource extends Mock
+    implements SubscriptionRemoteDataSource {}
+
+class MockTranslationRestDatasource extends Mock
+    implements TranslationRestDatasource {}
+
+class MockLiveDeviceUpdateUseCase extends Mock
+    implements LiveDeviceUpdateUseCase {}
+
 class MockLiveMicToggleUseCase extends Mock implements LiveMicToggleUseCase {}
 
 void main() {
   setUpAll(() {
     registerFallbackValue(<String, dynamic>{});
-    registerFallbackValue(QuotaStatus(
-      tier: 'free',
-      dailyTokensUsed: 0,
-      weeklyTokensUsed: 0,
-      monthlyTokensUsed: 0,
-      lifetimeTokensUsed: 0,
-      dailyLimit: 0,
-      dailyResetAt: DateTime.now(),
-    ));
+    registerFallbackValue(
+      QuotaStatus(
+        tier: 'free',
+        dailyTokensUsed: 0,
+        weeklyTokensUsed: 0,
+        monthlyTokensUsed: 0,
+        lifetimeTokensUsed: 0,
+        dailyLimit: 0,
+        dailyResetAt: DateTime.now(),
+      ),
+    );
   });
 
   late MockStartTranslationUseCase mockStartTranslationUseCase;
@@ -78,7 +114,8 @@ void main() {
   late MockObserveQuotaStatusUseCase mockObserveQuotaStatusUseCase;
   late MockGetInitialQuotaStatusUseCase mockGetInitialQuotaStatusUseCase;
   late MockGetDefaultTierUseCase mockGetDefaultTierUseCase;
-  late MockUpdateTranslationSettingsUseCase mockUpdateTranslationSettingsUseCase;
+  late MockUpdateTranslationSettingsUseCase
+  mockUpdateTranslationSettingsUseCase;
   late MockCheckServerHealthUseCase mockCheckServerHealthUseCase;
   late MockGetCurrentUserUseCase mockGetCurrentUserUseCase;
   late MockObserveAuthChangesUseCase mockObserveAuthChangesUseCase;
@@ -102,7 +139,8 @@ void main() {
     mockObserveQuotaStatusUseCase = MockObserveQuotaStatusUseCase();
     mockGetInitialQuotaStatusUseCase = MockGetInitialQuotaStatusUseCase();
     mockGetDefaultTierUseCase = MockGetDefaultTierUseCase();
-    mockUpdateTranslationSettingsUseCase = MockUpdateTranslationSettingsUseCase();
+    mockUpdateTranslationSettingsUseCase =
+        MockUpdateTranslationSettingsUseCase();
     mockCheckServerHealthUseCase = MockCheckServerHealthUseCase();
     mockGetCurrentUserUseCase = MockGetCurrentUserUseCase();
     mockObserveAuthChangesUseCase = MockObserveAuthChangesUseCase();
@@ -120,16 +158,34 @@ void main() {
     // Default stubs
     when(() => mockGetInitialQuotaStatusUseCase.call()).thenReturn(null);
     when(() => mockGetDefaultTierUseCase.call()).thenReturn('free');
-    when(() => mockObserveQuotaStatusUseCase.call()).thenAnswer((_) => Stream.empty());
-    when(() => mockObserveCaptionsUseCase.call()).thenAnswer((_) => Stream.empty());
-    when(() => mockGetCurrentUserUseCase.call()).thenReturn(ValueNotifier<auth.User?>(null));
+    when(
+      () => mockObserveQuotaStatusUseCase.call(),
+    ).thenAnswer((_) => Stream.empty());
+    when(
+      () => mockObserveCaptionsUseCase.call(),
+    ).thenAnswer((_) => Stream.empty());
+    when(
+      () => mockGetCurrentUserUseCase.call(),
+    ).thenReturn(ValueNotifier<auth.User?>(null));
     when(() => mockGetModelStatusUseCase.call()).thenAnswer((_) async => []);
-    when(() => mockGetAppSettingsUseCase.call()).thenAnswer((_) async => const Right(null));
-    when(() => mockGetGoogleCredentialsUseCase.call()).thenAnswer((_) async => const Right(''));
-    when(() => mockObserveAuthChangesUseCase.call()).thenAnswer((_) => Stream.empty());
-    when(() => mockTranslationRestDatasource.unloadModel()).thenAnswer((_) async => true);
-    when(() => mockCheckServerHealthUseCase.call()).thenAnswer((_) async => true);
-    when(() => mockGetSystemConfigUseCase.call()).thenAnswer((_) async => Right(SystemConfig.initial()));
+    when(
+      () => mockGetAppSettingsUseCase.call(),
+    ).thenAnswer((_) async => const Right(null));
+    when(
+      () => mockGetGoogleCredentialsUseCase.call(),
+    ).thenAnswer((_) async => const Right(''));
+    when(
+      () => mockObserveAuthChangesUseCase.call(),
+    ).thenAnswer((_) => Stream.empty());
+    when(
+      () => mockTranslationRestDatasource.unloadModel(),
+    ).thenAnswer((_) async => true);
+    when(
+      () => mockCheckServerHealthUseCase.call(),
+    ).thenAnswer((_) async => true);
+    when(
+      () => mockGetSystemConfigUseCase.call(),
+    ).thenAnswer((_) async => Right(SystemConfig.initial()));
   });
 
   TranslationBloc createBloc() {
@@ -163,16 +219,26 @@ void main() {
     blocTest<TranslationBloc, TranslationState>(
       'emits initial states during construction',
       build: () {
-        when(() => mockSubscriptionDataSource.allowedTranslationModels(any()))
-            .thenReturn(['google', 'mymemory']);
-        when(() => mockSubscriptionDataSource.allowedTranscriptionModels(any()))
-            .thenReturn(['online']);
+        when(
+          () => mockSubscriptionDataSource.allowedTranslationModels(any()),
+        ).thenReturn(['google', 'mymemory']);
+        when(
+          () => mockSubscriptionDataSource.allowedTranscriptionModels(any()),
+        ).thenReturn(['online']);
         return createBloc();
       },
       expect: () => [
-        isA<TranslationState>().having((s) => s.isSettingsLoading, 'isSettingsLoading', true),
+        isA<TranslationState>().having(
+          (s) => s.isSettingsLoading,
+          'isSettingsLoading',
+          true,
+        ),
         isA<TranslationState>(), // UpdateQuotaEvent
-        isA<TranslationState>().having((s) => s.isSettingsLoading, 'isSettingsLoading', false),
+        isA<TranslationState>().having(
+          (s) => s.isSettingsLoading,
+          'isSettingsLoading',
+          false,
+        ),
       ],
     );
   });
@@ -181,21 +247,25 @@ void main() {
     blocTest<TranslationBloc, TranslationState>(
       'starts translation when toggled from stopped state',
       build: () {
-        when(() => mockSubscriptionDataSource.allowedTranslationModels(any()))
-            .thenReturn(['google', 'mymemory']);
-        when(() => mockSubscriptionDataSource.allowedTranscriptionModels(any()))
-            .thenReturn(['online']);
-        when(() => mockStartTranslationUseCase.call(
-              sourceLang: any(named: 'sourceLang'),
-              targetLang: any(named: 'targetLang'),
-              useMic: any(named: 'useMic'),
-              inputDeviceIndex: any(named: 'inputDeviceIndex'),
-              outputDeviceIndex: any(named: 'outputDeviceIndex'),
-              translationModel: any(named: 'translationModel'),
-              nvidiaNimKey: any(named: 'nvidiaNimKey'),
-              googleCredentials: any(named: 'googleCredentials'),
-              transcriptionModel: any(named: 'transcriptionModel'),
-            )).thenReturn(null);
+        when(
+          () => mockSubscriptionDataSource.allowedTranslationModels(any()),
+        ).thenReturn(['google', 'mymemory']);
+        when(
+          () => mockSubscriptionDataSource.allowedTranscriptionModels(any()),
+        ).thenReturn(['online']);
+        when(
+          () => mockStartTranslationUseCase.call(
+            sourceLang: any(named: 'sourceLang'),
+            targetLang: any(named: 'targetLang'),
+            useMic: any(named: 'useMic'),
+            inputDeviceIndex: any(named: 'inputDeviceIndex'),
+            outputDeviceIndex: any(named: 'outputDeviceIndex'),
+            translationModel: any(named: 'translationModel'),
+            nvidiaNimKey: any(named: 'nvidiaNimKey'),
+            googleCredentials: any(named: 'googleCredentials'),
+            transcriptionModel: any(named: 'transcriptionModel'),
+          ),
+        ).thenReturn(null);
 
         return createBloc();
       },
@@ -209,22 +279,26 @@ void main() {
     blocTest<TranslationBloc, TranslationState>(
       'stops translation when toggled from running state',
       build: () {
-        when(() => mockSubscriptionDataSource.allowedTranslationModels(any()))
-            .thenReturn(['google', 'mymemory']);
-        when(() => mockSubscriptionDataSource.allowedTranscriptionModels(any()))
-            .thenReturn(['online']);
+        when(
+          () => mockSubscriptionDataSource.allowedTranslationModels(any()),
+        ).thenReturn(['google', 'mymemory']);
+        when(
+          () => mockSubscriptionDataSource.allowedTranscriptionModels(any()),
+        ).thenReturn(['online']);
         when(() => mockStopTranslationUseCase.call()).thenAnswer((_) async {});
-        when(() => mockStartTranslationUseCase.call(
-              sourceLang: any(named: 'sourceLang'),
-              targetLang: any(named: 'targetLang'),
-              useMic: any(named: 'useMic'),
-              inputDeviceIndex: any(named: 'inputDeviceIndex'),
-              outputDeviceIndex: any(named: 'outputDeviceIndex'),
-              translationModel: any(named: 'translationModel'),
-              nvidiaNimKey: any(named: 'nvidiaNimKey'),
-              googleCredentials: any(named: 'googleCredentials'),
-              transcriptionModel: any(named: 'transcriptionModel'),
-            )).thenReturn(null);
+        when(
+          () => mockStartTranslationUseCase.call(
+            sourceLang: any(named: 'sourceLang'),
+            targetLang: any(named: 'targetLang'),
+            useMic: any(named: 'useMic'),
+            inputDeviceIndex: any(named: 'inputDeviceIndex'),
+            outputDeviceIndex: any(named: 'outputDeviceIndex'),
+            translationModel: any(named: 'translationModel'),
+            nvidiaNimKey: any(named: 'nvidiaNimKey'),
+            googleCredentials: any(named: 'googleCredentials'),
+            transcriptionModel: any(named: 'transcriptionModel'),
+          ),
+        ).thenReturn(null);
 
         return createBloc();
       },
@@ -251,17 +325,19 @@ void main() {
       act: (bloc) => bloc.add(ToggleRunningEvent()),
       expect: () => [],
       verify: (_) {
-        verifyNever(() => mockStartTranslationUseCase.call(
-              sourceLang: any(named: 'sourceLang'),
-              targetLang: any(named: 'targetLang'),
-              useMic: any(named: 'useMic'),
-              inputDeviceIndex: any(named: 'inputDeviceIndex'),
-              outputDeviceIndex: any(named: 'outputDeviceIndex'),
-              translationModel: any(named: 'translationModel'),
-              nvidiaNimKey: any(named: 'nvidiaNimKey'),
-              googleCredentials: any(named: 'googleCredentials'),
-              transcriptionModel: any(named: 'transcriptionModel'),
-            ));
+        verifyNever(
+          () => mockStartTranslationUseCase.call(
+            sourceLang: any(named: 'sourceLang'),
+            targetLang: any(named: 'targetLang'),
+            useMic: any(named: 'useMic'),
+            inputDeviceIndex: any(named: 'inputDeviceIndex'),
+            outputDeviceIndex: any(named: 'outputDeviceIndex'),
+            translationModel: any(named: 'translationModel'),
+            nvidiaNimKey: any(named: 'nvidiaNimKey'),
+            googleCredentials: any(named: 'googleCredentials'),
+            transcriptionModel: any(named: 'transcriptionModel'),
+          ),
+        );
       },
     );
   });
@@ -270,10 +346,15 @@ void main() {
     blocTest<TranslationBloc, TranslationState>(
       'updates isServerConnected when UpdateServerConnectionEvent is added',
       build: () => createBloc(),
-      act: (bloc) => bloc.add(const UpdateServerConnectionEvent(isConnected: false)),
+      act: (bloc) =>
+          bloc.add(const UpdateServerConnectionEvent(isConnected: false)),
       skip: 3, // Skip init events
       expect: () => [
-        isA<TranslationState>().having((s) => s.isServerConnected, 'isServerConnected', false),
+        isA<TranslationState>().having(
+          (s) => s.isServerConnected,
+          'isServerConnected',
+          false,
+        ),
       ],
     );
   });
@@ -302,36 +383,46 @@ void main() {
     blocTest<TranslationBloc, TranslationState>(
       'unloads models and resets settings on tier downgrade if current models not allowed',
       build: () {
-        when(() => mockGetInitialQuotaStatusUseCase.call()).thenReturn(proStatus);
-        when(() => mockSubscriptionDataSource.allowedTranslationModels('free'))
-            .thenReturn(['google']);
-        when(() => mockSubscriptionDataSource.allowedTranscriptionModels('free'))
-            .thenReturn(['online']);
-        when(() => mockTranslationRestDatasource.unloadModel()).thenAnswer((_) async => true);
+        when(
+          () => mockGetInitialQuotaStatusUseCase.call(),
+        ).thenReturn(proStatus);
+        when(
+          () => mockSubscriptionDataSource.allowedTranslationModels('free'),
+        ).thenReturn(['google']);
+        when(
+          () => mockSubscriptionDataSource.allowedTranscriptionModels('free'),
+        ).thenReturn(['online']);
+        when(
+          () => mockTranslationRestDatasource.unloadModel(),
+        ).thenAnswer((_) async => true);
         when(() => mockStopTranslationUseCase.call()).thenAnswer((_) async {});
-        when(() => mockUpdateTranslationSettingsUseCase.call(
-              targetLang: any(named: 'targetLang'),
-              sourceLang: any(named: 'sourceLang'),
-              useMic: any(named: 'useMic'),
-              inputDeviceIndex: any(named: 'inputDeviceIndex'),
-              outputDeviceIndex: any(named: 'outputDeviceIndex'),
-              desktopVolume: any(named: 'desktopVolume'),
-              micVolume: any(named: 'micVolume'),
-              translationModel: any(named: 'translationModel'),
-              nvidiaNimKey: any(named: 'nvidiaNimKey'),
-              googleCredentials: any(named: 'googleCredentials'),
-              transcriptionModel: any(named: 'transcriptionModel'),
-            )).thenReturn(null);
-        
+        when(
+          () => mockUpdateTranslationSettingsUseCase.call(
+            targetLang: any(named: 'targetLang'),
+            sourceLang: any(named: 'sourceLang'),
+            useMic: any(named: 'useMic'),
+            inputDeviceIndex: any(named: 'inputDeviceIndex'),
+            outputDeviceIndex: any(named: 'outputDeviceIndex'),
+            desktopVolume: any(named: 'desktopVolume'),
+            micVolume: any(named: 'micVolume'),
+            translationModel: any(named: 'translationModel'),
+            nvidiaNimKey: any(named: 'nvidiaNimKey'),
+            googleCredentials: any(named: 'googleCredentials'),
+            transcriptionModel: any(named: 'transcriptionModel'),
+          ),
+        ).thenReturn(null);
+
         // Return llama/whisper first, then defaults on subsequent calls
         var callCount = 0;
         when(() => mockGetAppSettingsUseCase.call()).thenAnswer((_) async {
           callCount++;
           if (callCount == 1) {
-            return Right(AppSettings.initial().copyWith(
-              translationModel: 'llama',
-              transcriptionModel: 'whisper',
-            ));
+            return Right(
+              AppSettings.initial().copyWith(
+                translationModel: 'llama',
+                transcriptionModel: 'whisper',
+              ),
+            );
           }
           return Right(AppSettings.initial());
         });
@@ -349,7 +440,7 @@ void main() {
         bloc.add(UpdateQuotaEvent(freeStatus));
       },
       wait: const Duration(milliseconds: 200),
-      skip: 4, 
+      skip: 4,
       expect: () => [
         // 1. Quota update only (tier changed to free)
         isA<TranslationState>()
@@ -358,33 +449,59 @@ void main() {
         // 2. Internal reset (isRunning: false, models: google/online)
         isA<TranslationState>()
             .having((s) => s.isRunning, 'isRunning', false)
-            .having((s) => s.activeTranslationModel, 'activeTranslationModel', 'google')
-            .having((s) => s.activeTranscriptionModel, 'activeTranscriptionModel', 'online'),
+            .having(
+              (s) => s.activeTranslationModel,
+              'activeTranslationModel',
+              'google',
+            )
+            .having(
+              (s) => s.activeTranscriptionModel,
+              'activeTranscriptionModel',
+              'online',
+            ),
         // 3. LoadSettingsEvent start
-        isA<TranslationState>().having((s) => s.isSettingsLoading, 'isSettingsLoading', true),
+        isA<TranslationState>().having(
+          (s) => s.isSettingsLoading,
+          'isSettingsLoading',
+          true,
+        ),
         // 4. LoadSettingsEvent finish (should remain google/online if we mock it right)
-        isA<TranslationState>().having((s) => s.isSettingsLoading, 'isSettingsLoading', false),
+        isA<TranslationState>().having(
+          (s) => s.isSettingsLoading,
+          'isSettingsLoading',
+          false,
+        ),
         // 5. ApplySettingsEvent (triggered by LoadSettingsEvent) start
-        isA<TranslationState>().having((s) => s.isSettingsSaving, 'isSettingsSaving', true),
+        isA<TranslationState>().having(
+          (s) => s.isSettingsSaving,
+          'isSettingsSaving',
+          true,
+        ),
         // 6. ApplySettingsEvent finish
-        isA<TranslationState>().having((s) => s.isSettingsSaving, 'isSettingsSaving', false),
+        isA<TranslationState>().having(
+          (s) => s.isSettingsSaving,
+          'isSettingsSaving',
+          false,
+        ),
       ],
       verify: (_) {
         verify(() => mockStopTranslationUseCase.call()).called(2);
         verify(() => mockTranslationRestDatasource.unloadModel()).called(1);
-        verify(() => mockUpdateTranslationSettingsUseCase.call(
-          targetLang: any(named: 'targetLang'),
-          sourceLang: any(named: 'sourceLang'),
-          useMic: any(named: 'useMic'),
-          inputDeviceIndex: any(named: 'inputDeviceIndex'),
-          outputDeviceIndex: any(named: 'outputDeviceIndex'),
-          desktopVolume: any(named: 'desktopVolume'),
-          micVolume: any(named: 'micVolume'),
-          translationModel: 'google',
-          nvidiaNimKey: any(named: 'nvidiaNimKey'),
-          googleCredentials: '',
-          transcriptionModel: 'online',
-        )).called(2);
+        verify(
+          () => mockUpdateTranslationSettingsUseCase.call(
+            targetLang: any(named: 'targetLang'),
+            sourceLang: any(named: 'sourceLang'),
+            useMic: any(named: 'useMic'),
+            inputDeviceIndex: any(named: 'inputDeviceIndex'),
+            outputDeviceIndex: any(named: 'outputDeviceIndex'),
+            desktopVolume: any(named: 'desktopVolume'),
+            micVolume: any(named: 'micVolume'),
+            translationModel: 'google',
+            nvidiaNimKey: any(named: 'nvidiaNimKey'),
+            googleCredentials: '',
+            transcriptionModel: 'online',
+          ),
+        ).called(2);
       },
     );
   });

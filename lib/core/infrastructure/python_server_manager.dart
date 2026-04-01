@@ -23,7 +23,10 @@ class PythonServerManager {
             .get(Uri.parse('${ServerConfig.httpUrl}/status'))
             .timeout(const Duration(seconds: 1));
         if (checkResponse.statusCode == 200) {
-          AppLogger.i('Python server is already running externally.', tag: _tag);
+          AppLogger.i(
+            'Python server is already running externally.',
+            tag: _tag,
+          );
           return;
         }
       } catch (_) {
@@ -36,7 +39,10 @@ class PythonServerManager {
       if (File(pyPath).existsSync()) {
         // Kill any stray server processes before starting fresh (only if we found the bundled one)
         if (Platform.isWindows) {
-          AppLogger.i('Killing stale server instances before start...', tag: _tag);
+          AppLogger.i(
+            'Killing stale server instances before start...',
+            tag: _tag,
+          );
           Process.runSync('taskkill', [
             '/F',
             '/IM',
@@ -117,7 +123,10 @@ class PythonServerManager {
     _isIntentionalStop = true;
     _restartCount = 0;
     if (_serverProcess != null) {
-      AppLogger.i('Attempting to kill Python server process tree...', tag: _tag);
+      AppLogger.i(
+        'Attempting to kill Python server process tree...',
+        tag: _tag,
+      );
       try {
         // PyInstaller creates a bootloader process -> python child process.
         // Process.runSync blocks the UI thread until the kill command completes.

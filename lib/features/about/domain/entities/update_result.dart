@@ -18,5 +18,11 @@ class UpdateResult extends Equatable {
   });
 
   @override
-  List<Object?> get props => [status, latestVersion, releaseUrl, errorMessage, forceUpdateMessage];
+  List<Object?> get props => [
+    status,
+    latestVersion,
+    releaseUrl,
+    errorMessage,
+    forceUpdateMessage,
+  ];
 }

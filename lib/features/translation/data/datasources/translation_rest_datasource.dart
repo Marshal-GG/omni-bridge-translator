@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:omni_bridge/core/utils/app_logger.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 import 'package:http/http.dart' as http;
 import 'package:omni_bridge/core/config/server_config.dart';
 
 /// Communicates with the Python server's translation/model management endpoints.
-class TranslationRestDatasource {
+class TranslationRestDatasource implements IResettable {
+  static const String _tag = 'TranslationRest';
   static String get _base => ServerConfig.httpUrl;
   static const _timeout = Duration(seconds: 10);
 
@@ -19,7 +21,7 @@ class TranslationRestDatasource {
         return jsonDecode(resp.body) as Map<String, dynamic>;
       }
     } catch (e) {
-      AppLogger.e('getStatus error', error: e, tag: 'TranslationRest');
+      AppLogger.e('getStatus error', error: e, tag: _tag);
     }
     return {
       'downloaded': false,
@@ -40,10 +42,11 @@ class TranslationRestDatasource {
           )
           .timeout(_timeout);
       if (resp.statusCode == 200) {
+        AppLogger.d('Download started for model: $size', tag: _tag);
         return jsonDecode(resp.body) as Map<String, dynamic>;
       }
     } catch (e) {
-      AppLogger.e('startDownload error', error: e, tag: 'TranslationRest');
+      AppLogger.e('startDownload error', error: e, tag: _tag);
     }
     return {'status': 'error'};
   }
@@ -58,7 +61,7 @@ class TranslationRestDatasource {
         return jsonDecode(resp.body) as Map<String, dynamic>;
       }
     } catch (e) {
-      AppLogger.e('getProgress error', error: e, tag: 'TranslationRest');
+      AppLogger.e('getProgress error', error: e, tag: _tag);
     }
     return {'downloaded': false, 'progress': 0.0, 'status': 'idle'};
   }
@@ -71,10 +74,11 @@ class TranslationRestDatasource {
           .timeout(_timeout);
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        AppLogger.i('Model deleted: $size', tag: _tag);
         return data['status'] == 'deleted';
       }
     } catch (e) {
-      AppLogger.e('deleteModel error', error: e, tag: 'TranslationRest');
+      AppLogger.e('deleteModel error', error: e, tag: _tag);
     }
     return false;
   }
@@ -90,7 +94,7 @@ class TranslationRestDatasource {
         return data['models'] as List<dynamic>;
       }
     } catch (e) {
-      AppLogger.e('getModelStatuses error', error: e, tag: 'TranslationRest');
+      AppLogger.e('getModelStatuses error', error: e, tag: _tag);
     }
     return [];
   }
@@ -103,10 +107,11 @@ class TranslationRestDatasource {
           .timeout(_timeout);
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        AppLogger.i('Model unloaded from memory', tag: _tag);
         return data['status'] == 'unloaded';
       }
     } catch (e) {
-      AppLogger.e('unloadModel error', error: e, tag: 'TranslationRest');
+      AppLogger.e('unloadModel error', error: e, tag: _tag);
     }
     return false;
   }
@@ -114,10 +119,18 @@ class TranslationRestDatasource {
   /// Pings the server status endpoint to check health.
   Future<bool> checkHealth() async {
     try {
-      final resp = await http.get(Uri.parse('$_base/status')).timeout(const Duration(seconds: 2));
+      final resp = await http
+          .get(Uri.parse('$_base/status'))
+          .timeout(const Duration(seconds: 2));
       return resp.statusCode == 200;
     } catch (_) {
       return false;
     }
+  }
+
+  @override
+  void reset() {
+    AppLogger.i('Resetting Translation REST datasource...', tag: _tag);
+    // REST datasource is largely stateless on the client side, but we log for audit trail.
   }
 }

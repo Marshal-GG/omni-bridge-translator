@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 
-Widget buildHistoryHeader(BuildContext context, {required VoidCallback onClear}) {
+Widget buildHistoryHeader(
+  BuildContext context, {
+  required VoidCallback onClear,
+}) {
   return SizedBox(
     height: 32,
     child: Row(

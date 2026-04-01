@@ -5,8 +5,9 @@ import 'package:omni_bridge/core/constants/firebase_paths.dart';
 import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:omni_bridge/core/network/rtdb_client.dart';
 import 'package:omni_bridge/core/data/datasources/session_remote_datasource.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 
-abstract class ILiveCaptionSyncDataSource {
+abstract class ILiveCaptionSyncDataSource implements IResettable {
   Future<void> syncLiveCaption(
     String originalText,
     String translatedText,
@@ -20,7 +21,8 @@ abstract class ILiveCaptionSyncDataSource {
 
 class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
   LiveCaptionSyncDataSource._();
-  static final LiveCaptionSyncDataSource instance = LiveCaptionSyncDataSource._();
+  static final LiveCaptionSyncDataSource instance =
+      LiveCaptionSyncDataSource._();
 
   static const String _tag = 'LiveCaptionSyncDataSource';
 
@@ -44,7 +46,8 @@ class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
     if (uid == null) return;
 
     final now = DateTime.now().millisecondsSinceEpoch;
-    final currentSessionId = SessionRemoteDataSource.instance.currentSessionId ?? 'unknown';
+    final currentSessionId =
+        SessionRemoteDataSource.instance.currentSessionId ?? 'unknown';
 
     try {
       if (isFinal) {
@@ -69,7 +72,9 @@ class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
           );
         }
         // 2. Clear interim node
-        final interimUrl = await _rtdbClient.getRTDBUrl(FirebasePaths.currentCaption);
+        final interimUrl = await _rtdbClient.getRTDBUrl(
+          FirebasePaths.currentCaption,
+        );
         if (interimUrl != null) {
           // Fire and forget delete so we don't block
           http.delete(interimUrl).catchError((_) => http.Response('', 500));
@@ -124,6 +129,14 @@ class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
         _syncInterimSequentially(nextData);
       }
     }
+  }
+
+  @override
+  void reset() {
+    AppLogger.i('Resetting LiveCaptionSync state...', tag: _tag);
+    _pendingInterim = null;
+    _isSyncingInterim = false;
+    _lastCaptionTimestamp = 0;
   }
 
   @override

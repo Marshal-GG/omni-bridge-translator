@@ -78,14 +78,11 @@ class _OmniTintedButtonState extends State<OmniTintedButton> {
                   ),
                 )
               : (widget.icon != null
-                  ? Icon(widget.icon, size: 16)
-                  : const SizedBox.shrink()),
+                    ? Icon(widget.icon, size: 16)
+                    : const SizedBox.shrink()),
           label: Text(
             widget.label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             maxLines: 1,
             softWrap: false,
             overflow: TextOverflow.ellipsis,

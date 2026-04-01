@@ -47,11 +47,11 @@ class SupportMessage extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        senderId,
-        senderType,
-        text,
-        attachmentUrls,
-        timestamp,
-      ];
+    id,
+    senderId,
+    senderType,
+    text,
+    attachmentUrls,
+    timestamp,
+  ];
 }

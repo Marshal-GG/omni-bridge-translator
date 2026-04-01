@@ -10,9 +10,8 @@ import 'package:omni_bridge/features/usage/presentation/widgets/usage_donut_char
 import 'package:omni_bridge/features/usage/presentation/widgets/model_usage_bar_chart.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/usage_header.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/engine_usage_card.dart';
-import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/core/di/di.dart';
 import 'package:omni_bridge/core/widgets/omni_card.dart';
-
 
 import 'package:omni_bridge/features/subscription/presentation/widgets/info_card.dart';
 import 'package:omni_bridge/features/subscription/presentation/widgets/current_usage_display.dart';
@@ -30,8 +29,6 @@ class UsageScreen extends StatefulWidget {
 }
 
 class _UsageScreenState extends State<UsageScreen> {
-
-
   @override
   void initState() {
     super.initState();
@@ -42,176 +39,185 @@ class _UsageScreenState extends State<UsageScreen> {
     return BlocProvider(
       create: (context) => sl<UsageBloc>()..add(const LoadUsageStats()),
       child: AppDashboardShell(
-            currentRoute: AppRouter.usage,
-            header: buildUsageHeader(context),
-            child: Column(
-              children: [
-                Expanded(
-                  child: BlocBuilder<UsageBloc, UsageState>(
-                    builder: (context, state) {
-                      if (state is UsageLoading) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.tealAccent,
-                            strokeWidth: 2,
+        currentRoute: AppRouter.usage,
+        header: buildUsageHeader(context),
+        child: Column(
+          children: [
+            Expanded(
+              child: BlocBuilder<UsageBloc, UsageState>(
+                builder: (context, state) {
+                  if (state is UsageLoading) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.tealAccent,
+                        strokeWidth: 2,
+                      ),
+                    );
+                  }
+
+                  if (state is UsageError) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            color: Colors.redAccent,
+                            size: 32,
                           ),
-                        );
-                      }
-
-                      if (state is UsageError) {
-                        return Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.error_outline_rounded,
-                                color: Colors.redAccent,
-                                size: 32,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Error: ${state.message}',
-                                style: const TextStyle(color: Colors.redAccent),
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: () {
-                                  context.read<UsageBloc>().add(
-                                    const LoadUsageStats(refresh: true),
-                                  );
-                                },
-                                child: const Text('Try Again'),
-                              ),
-                            ],
+                          const SizedBox(height: 16),
+                          Text(
+                            'Error: ${state.message}',
+                            style: const TextStyle(color: Colors.redAccent),
                           ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              context.read<UsageBloc>().add(
+                                const LoadUsageStats(refresh: true),
+                              );
+                            },
+                            child: const Text('Try Again'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (state is UsageLoaded) {
+                    return RefreshIndicator(
+                      onRefresh: () async {
+                        context.read<UsageBloc>().add(
+                          const LoadUsageStats(refresh: true),
                         );
-                      }
+                      },
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 32,
+                        ),
+                        physics: const BouncingScrollPhysics(),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isNarrow = constraints.maxWidth < 700;
 
-                      if (state is UsageLoaded) {
-                        return RefreshIndicator(
-                          onRefresh: () async {
-                            context.read<UsageBloc>().add(
-                                  const LoadUsageStats(refresh: true),
-                                );
-                          },
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 32,
-                            ),
-                            physics: const BouncingScrollPhysics(),
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                final isNarrow = constraints.maxWidth < 700;
+                            return Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 1020,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const OmniBranding(
+                                      subtitle: 'USAGE DASHBOARD',
+                                      fallbackIcon: Icons.analytics_rounded,
+                                    ),
+                                    const SizedBox(height: 32),
+                                    _buildDashboard(context, state, isNarrow),
+                                    const SizedBox(height: 32),
 
-                                return Center(
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(maxWidth: 1020),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const OmniBranding(
-                                          subtitle: 'USAGE DASHBOARD',
-                                          fallbackIcon: Icons.analytics_rounded,
-                                        ),
-                                        const SizedBox(height: 32),
-                                        _buildDashboard(context, state, isNarrow),
-                                        const SizedBox(height: 32),
+                                    // ── Engine Performance ───────────────
+                                    const _SectionTitle(
+                                      icon: Icons.model_training_rounded,
+                                      label: 'Engine Performance',
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildEngineSection(
+                                      context,
+                                      'ASR Engines',
+                                      Icons.mic_none_rounded,
+                                      const Color(0xFF6366F1),
+                                      state.engineUsage
+                                          .where((e) => e.type == UsageType.asr)
+                                          .toList(),
+                                      state.engineUsage,
+                                      constraints.maxWidth,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildEngineSection(
+                                      context,
+                                      'Translation Engines',
+                                      Icons.translate_rounded,
+                                      const Color(0xFF2DD4BF),
+                                      state.engineUsage
+                                          .where(
+                                            (e) =>
+                                                e.type == UsageType.translation,
+                                          )
+                                          .toList(),
+                                      state.engineUsage,
+                                      constraints.maxWidth,
+                                    ),
+                                    const SizedBox(height: 32),
 
-                                        // ── Engine Performance ───────────────
-                                        const _SectionTitle(
-                                          icon: Icons.model_training_rounded,
-                                          label: 'Engine Performance',
-                                        ),
-                                        const SizedBox(height: 12),
-                                        _buildEngineSection(
-                                          context,
-                                          'ASR Engines',
-                                          Icons.mic_none_rounded,
-                                          const Color(0xFF6366F1),
-                                          state.engineUsage
-                                              .where((e) => e.type == UsageType.asr)
-                                              .toList(),
-                                          state.engineUsage,
-                                          constraints.maxWidth,
-                                        ),
-                                        const SizedBox(height: 16),
-                                        _buildEngineSection(
-                                          context,
-                                          'Translation Engines',
-                                          Icons.translate_rounded,
-                                          const Color(0xFF2DD4BF),
-                                          state.engineUsage
-                                              .where((e) => e.type == UsageType.translation)
-                                              .toList(),
-                                          state.engineUsage,
-                                          constraints.maxWidth,
-                                        ),
-                                        const SizedBox(height: 32),
+                                    // ── Model Distribution ───────────────
+                                    _UsageCard(
+                                      icon: Icons.bar_chart_rounded,
+                                      title: 'Model Distribution',
+                                      child: ModelUsageBarChart(
+                                        engineUsage: state.engineUsage,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 32),
 
-                                        // ── Model Distribution ───────────────
-                                        _UsageCard(
-                                          icon: Icons.bar_chart_rounded,
-                                          title: 'Model Distribution',
-                                          child: ModelUsageBarChart(
-                                            engineUsage: state.engineUsage,
+                                    // ── Usage History ────────────────────
+                                    _UsageCard(
+                                      icon: Icons.timeline_rounded,
+                                      title: 'Usage History (Last 30 Days)',
+                                      child: UsageHistoryChart(
+                                        history: state.dailyHistory,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 48),
+
+                                    // ── Current Quota ──────────────────────────
+                                    if (state.quotaStatus != null) ...[
+                                      Center(
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 32.0,
                                           ),
-                                        ),
-                                        const SizedBox(height: 32),
-
-                                        // ── Usage History ────────────────────
-                                        _UsageCard(
-                                          icon: Icons.timeline_rounded,
-                                          title: 'Usage History (Last 30 Days)',
-                                          child: UsageHistoryChart(
-                                            history: state.dailyHistory,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 48),
-
-                                        // ── Current Quota ──────────────────────────
-                                        if (state.quotaStatus != null) ...[
-                                          Center(
-                                            child: Padding(
-                                              padding: const EdgeInsets.only(bottom: 32.0),
-                                              child: buildInfoCard(
-                                                icon: Icons.data_usage_rounded,
-                                                title: 'Current Daily Usage',
-                                                child: buildCurrentUsageDisplay(
-                                                  status: state.quotaStatus!,
-                                                  formatter: NumberFormat('#,###'),
-                                                ),
-                                              ),
+                                          child: buildInfoCard(
+                                            icon: Icons.data_usage_rounded,
+                                            title: 'Current Daily Usage',
+                                            child: buildCurrentUsageDisplay(
+                                              status: state.quotaStatus!,
+                                              formatter: NumberFormat('#,###'),
                                             ),
                                           ),
-                                        ],
-                                        const SizedBox(height: 16),
-                                        
-                                        const Center(
-                                          child: OmniVersionChip(),
                                         ),
-                                        const SizedBox(height: 16),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        );
-                      }
+                                      ),
+                                    ],
+                                    const SizedBox(height: 16),
 
-                      return const SizedBox();
-                    },
-                  ),
-                ),
-            ],
-          ),
+                                    const Center(child: OmniVersionChip()),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  }
+
+                  return const SizedBox();
+                },
+              ),
+            ),
+          ],
         ),
+      ),
     );
   }
 
-  Widget _buildDashboard(BuildContext context, UsageLoaded state, bool isNarrow) {
+  Widget _buildDashboard(
+    BuildContext context,
+    UsageLoaded state,
+    bool isNarrow,
+  ) {
     final formatter = NumberFormat.compact();
 
     final lifetimeCard = _UsageCard(
@@ -234,11 +240,16 @@ class _UsageScreenState extends State<UsageScreen> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.tealAccent.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: Colors.tealAccent.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Text(
                   state.tier.toUpperCase(),
@@ -303,11 +314,7 @@ class _UsageScreenState extends State<UsageScreen> {
 
     if (isNarrow) {
       return Column(
-        children: [
-          lifetimeCard,
-          const SizedBox(height: 16),
-          breakdownCard,
-        ],
+        children: [lifetimeCard, const SizedBox(height: 16), breakdownCard],
       );
     }
 
@@ -369,7 +376,8 @@ class _UsageScreenState extends State<UsageScreen> {
         LayoutBuilder(
           builder: (context, constraints) {
             const spacing = 10.0;
-            final cardWidth = (constraints.maxWidth - spacing * (cols - 1)) / cols;
+            final cardWidth =
+                (constraints.maxWidth - spacing * (cols - 1)) / cols;
             return Wrap(
               spacing: spacing,
               runSpacing: spacing,
@@ -396,11 +404,7 @@ class _UsageCard extends StatelessWidget {
   final IconData? icon;
   final String? title;
 
-  const _UsageCard({
-    required this.child,
-    this.icon,
-    this.title,
-  });
+  const _UsageCard({required this.child, this.icon, this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -409,31 +413,31 @@ class _UsageCard extends StatelessWidget {
       child: OmniCard(
         padding: const EdgeInsets.all(20),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null && title != null) ...[
-            Row(
-              children: [
-                Icon(icon!, size: 14, color: Colors.tealAccent),
-                const SizedBox(width: 8),
-                Text(
-                  title!,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null && title != null) ...[
+              Row(
+                children: [
+                  Icon(icon!, size: 14, color: Colors.tealAccent),
+                  const SizedBox(width: 8),
+                  Text(
+                    title!,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+            child,
           ],
-          child,
-        ],
+        ),
       ),
-     ),
     );
   }
 }

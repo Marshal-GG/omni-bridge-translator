@@ -49,26 +49,26 @@ class _AboutScreenState extends State<AboutScreen> {
         onClose: () => Navigator.of(context).pop(),
       ),
       child: Column(
-          children: [
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: constraints.maxHeight,
-                        ),
-                        child: Center(
-                          child: SizedBox(
-                            width: 1000,
-                            key: _contentKey,
-                            child: BlocBuilder<AboutBloc, AboutState>(
-                              builder: (context, state) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 28,
-                                  ),
+        children: [
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: Center(
+                      child: SizedBox(
+                        width: 1000,
+                        key: _contentKey,
+                        child: BlocBuilder<AboutBloc, AboutState>(
+                          builder: (context, state) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 28,
+                              ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
@@ -77,159 +77,149 @@ class _AboutScreenState extends State<AboutScreen> {
                                     subtitle: 'Live AI Translator',
                                     fallbackIcon: Icons.info_outline_rounded,
                                     bottomWidget: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         // ── Check for Updates ──────────────────
                                         SizedBox(
                                           height: 26,
-                                                child: OutlinedButton(
-                                                  onPressed:
-                                                      state.updateStatus ==
-                                                          UpdateStatus.checking
-                                                      ? null
-                                                      : () => _handleUpdateCheck(context),
-                                                  style: OutlinedButton.styleFrom(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 12,
-                                                          vertical: 0,
-                                                        ),
-                                                    side: BorderSide(
-                                                      color:
-                                                          state.updateStatus ==
-                                                              UpdateStatus
-                                                                  .checking
-                                                          ? Colors.white10
-                                                          : Colors.tealAccent
-                                                                .withValues(
-                                                                  alpha: 0.3,
-                                                                ),
-                                                    ),
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
-                                                    ),
-                                                    foregroundColor:
-                                                        Colors.tealAccent,
-                                                    backgroundColor: Colors
-                                                        .tealAccent
-                                                        .withValues(
-                                                          alpha: 0.02,
-                                                        ),
+                                          child: OutlinedButton(
+                                            onPressed:
+                                                state.updateStatus ==
+                                                    UpdateStatus.checking
+                                                ? null
+                                                : () => _handleUpdateCheck(
+                                                    context,
                                                   ),
-                                                  child:
-                                                      state.updateStatus ==
-                                                          UpdateStatus.checking
-                                                      ? const SizedBox(
-                                                          width: 10,
-                                                          height: 10,
-                                                          child:
-                                                              CircularProgressIndicator(
-                                                                strokeWidth:
-                                                                    1.5,
-                                                                color: Colors
-                                                                    .white38,
-                                                              ),
-                                                        )
-                                                      : Text(
-                                                          state.updateStatus ==
-                                                                  UpdateStatus
-                                                                      .idle
-                                                              ? 'Check for updates'
-                                                              : 'Check again',
-                                                          style:
-                                                              const TextStyle(
-                                                                fontSize: 11,
-                                                              ),
-                                                        ),
-                                                ),
-                                              ),
-                                              // Status result shown below
-                                              if (state.updateStatus !=
-                                                      UpdateStatus.idle &&
-                                                  state.updateStatus !=
-                                                      UpdateStatus
-                                                          .checking) ...[
-                                                const SizedBox(height: 4),
-                                                Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    if (state.updateStatus ==
-                                                        UpdateStatus.upToDate)
-                                                      const Icon(
-                                                        Icons
-                                                            .check_circle_outline_rounded,
-                                                        size: 11,
-                                                        color:
-                                                            Colors.tealAccent,
-                                                      )
-                                                    else if (state.updateStatus ==
-                                                        UpdateStatus.available)
-                                                      const Icon(
-                                                        Icons.upgrade_rounded,
-                                                        size: 11,
-                                                        color:
-                                                            Colors.orangeAccent,
-                                                      )
-                                                    else if (state.updateStatus ==
-                                                        UpdateStatus.error)
-                                                      const Icon(
-                                                        Icons
-                                                            .error_outline_rounded,
-                                                        size: 11,
-                                                        color: Colors.redAccent,
-                                                      ),
-                                                    const SizedBox(width: 4),
-                                                    if (state.updateStatus ==
-                                                        UpdateStatus.upToDate)
-                                                      const Text(
-                                                        'Up to date',
-                                                        style: TextStyle(
-                                                          color:
-                                                              Colors.tealAccent,
-                                                          fontSize: 10,
-                                                        ),
-                                                      )
-                                                    else if (state.updateStatus ==
-                                                        UpdateStatus.available)
-                                                      GestureDetector(
-                                                        onTap: () => _openRelease(state.updateResult?.releaseUrl ?? ''),
-                                                        child: Text(
-                                                          'v${state.updateResult?.latestVersion} available — Download',
-                                                          style: const TextStyle(
-                                                            color: Colors
-                                                                .orangeAccent,
-                                                            fontSize: 10,
-                                                            decoration:
-                                                                TextDecoration
-                                                                    .underline,
-                                                            decorationColor:
-                                                                Colors
-                                                                    .orangeAccent,
+                                            style: OutlinedButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 0,
+                                                  ),
+                                              side: BorderSide(
+                                                color:
+                                                    state.updateStatus ==
+                                                        UpdateStatus.checking
+                                                    ? Colors.white10
+                                                    : Colors.tealAccent
+                                                          .withValues(
+                                                            alpha: 0.3,
                                                           ),
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              foregroundColor:
+                                                  Colors.tealAccent,
+                                              backgroundColor: Colors.tealAccent
+                                                  .withValues(alpha: 0.02),
+                                            ),
+                                            child:
+                                                state.updateStatus ==
+                                                    UpdateStatus.checking
+                                                ? const SizedBox(
+                                                    width: 10,
+                                                    height: 10,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 1.5,
+                                                          color: Colors.white38,
                                                         ),
-                                                      )
-                                                    else if (state.updateStatus ==
-                                                        UpdateStatus.error)
-                                                      Text(
-                                                        state.updateResult
-                                                                ?.errorMessage ??
-                                                            'Check failed.',
-                                                        style: const TextStyle(
-                                                          color:
-                                                              Colors.redAccent,
-                                                          fontSize: 10,
-                                                        ),
-                                                      ),
-                                                  ],
+                                                  )
+                                                : Text(
+                                                    state.updateStatus ==
+                                                            UpdateStatus.idle
+                                                        ? 'Check for updates'
+                                                        : 'Check again',
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                    ),
+                                                  ),
+                                          ),
+                                        ),
+                                        // Status result shown below
+                                        if (state.updateStatus !=
+                                                UpdateStatus.idle &&
+                                            state.updateStatus !=
+                                                UpdateStatus.checking) ...[
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (state.updateStatus ==
+                                                  UpdateStatus.upToDate)
+                                                const Icon(
+                                                  Icons
+                                                      .check_circle_outline_rounded,
+                                                  size: 11,
+                                                  color: Colors.tealAccent,
+                                                )
+                                              else if (state.updateStatus ==
+                                                  UpdateStatus.available)
+                                                const Icon(
+                                                  Icons.upgrade_rounded,
+                                                  size: 11,
+                                                  color: Colors.orangeAccent,
+                                                )
+                                              else if (state.updateStatus ==
+                                                  UpdateStatus.error)
+                                                const Icon(
+                                                  Icons.error_outline_rounded,
+                                                  size: 11,
+                                                  color: Colors.redAccent,
                                                 ),
-                                              ],
-                                        ], // Column children
-                                      ), // Column (bottomWidget)
+                                              const SizedBox(width: 4),
+                                              if (state.updateStatus ==
+                                                  UpdateStatus.upToDate)
+                                                const Text(
+                                                  'Up to date',
+                                                  style: TextStyle(
+                                                    color: Colors.tealAccent,
+                                                    fontSize: 10,
+                                                  ),
+                                                )
+                                              else if (state.updateStatus ==
+                                                  UpdateStatus.available)
+                                                GestureDetector(
+                                                  onTap: () => _openRelease(
+                                                    state
+                                                            .updateResult
+                                                            ?.releaseUrl ??
+                                                        '',
+                                                  ),
+                                                  child: Text(
+                                                    'v${state.updateResult?.latestVersion} available — Download',
+                                                    style: const TextStyle(
+                                                      color:
+                                                          Colors.orangeAccent,
+                                                      fontSize: 10,
+                                                      decoration: TextDecoration
+                                                          .underline,
+                                                      decorationColor:
+                                                          Colors.orangeAccent,
+                                                    ),
+                                                  ),
+                                                )
+                                              else if (state.updateStatus ==
+                                                  UpdateStatus.error)
+                                                Text(
+                                                  state
+                                                          .updateResult
+                                                          ?.errorMessage ??
+                                                      'Check failed.',
+                                                  style: const TextStyle(
+                                                    color: Colors.redAccent,
+                                                    fontSize: 10,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ],
+                                      ], // Column children
+                                    ), // Column (bottomWidget)
                                   ), // OmniBranding
                                   const SizedBox(height: 24),
 
@@ -262,12 +252,20 @@ class _AboutScreenState extends State<AboutScreen> {
                                                     OmniChip(label: 'Flutter'),
                                                     OmniChip(label: 'FastAPI'),
                                                     OmniChip(label: 'Firebase'),
-                                                    OmniChip(label: 'NVIDIA Riva'),
+                                                    OmniChip(
+                                                      label: 'NVIDIA Riva',
+                                                    ),
                                                     OmniChip(label: 'Whisper'),
-                                                    OmniChip(label: 'Llama 3.1'),
-                                                    OmniChip(label: 'Google Translate'),
+                                                    OmniChip(
+                                                      label: 'Llama 3.1',
+                                                    ),
+                                                    OmniChip(
+                                                      label: 'Google Translate',
+                                                    ),
                                                     OmniChip(label: 'MyMemory'),
-                                                    OmniChip(label: 'WebSocket'),
+                                                    OmniChip(
+                                                      label: 'WebSocket',
+                                                    ),
                                                     OmniChip(label: 'PyAudio'),
                                                   ],
                                                 ),
@@ -352,11 +350,17 @@ class _AboutScreenState extends State<AboutScreen> {
                                                 child: Row(
                                                   children: [
                                                     _LinkButton(
-                                                      icon: Icons.support_agent_rounded,
+                                                      icon: Icons
+                                                          .support_agent_rounded,
                                                       label: 'Get Support',
                                                       url: '',
-                                                      color: Colors.lightBlueAccent,
-                                                      onTap: () => Navigator.pushNamed(context, '/support'),
+                                                      color: Colors
+                                                          .lightBlueAccent,
+                                                      onTap: () =>
+                                                          Navigator.pushNamed(
+                                                            context,
+                                                            '/support',
+                                                          ),
                                                     ),
                                                   ],
                                                 ),
@@ -440,11 +444,17 @@ class _AboutScreenState extends State<AboutScreen> {
                                                             ),
                                                       ),
                                                       _LinkButton(
-                                                        icon: Icons.system_update_alt_rounded,
+                                                        icon: Icons
+                                                            .system_update_alt_rounded,
                                                         label: 'Test Update',
                                                         url: '',
                                                         color: Colors.redAccent,
-                                                        onTap: () => Navigator.pushNamed(context, AppRouter.forceUpdate),
+                                                        onTap: () =>
+                                                            Navigator.pushNamed(
+                                                              context,
+                                                              AppRouter
+                                                                  .forceUpdate,
+                                                            ),
                                                       ),
                                                     ],
                                                   ),
@@ -489,22 +499,21 @@ class _AboutScreenState extends State<AboutScreen> {
                                   const OmniCopyright(),
                                   const SizedBox(height: 16),
                                 ],
-                                ),
-                              );
-                            },
-                            ),
-                          ),
+                              ),
+                            );
+                          },
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
-            ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
+        ],
+      ),
     );
   }
-
 }
 
 class _InfoCard extends StatelessWidget {

@@ -17,14 +17,16 @@ class ConnectivityService {
   /// Starts listening for connectivity changes.
   void init() {
     _subscription?.cancel();
-    _subscription = Connectivity().onConnectivityChanged.listen(_handleConnectivityChange);
+    _subscription = Connectivity().onConnectivityChanged.listen(
+      _handleConnectivityChange,
+    );
     debugPrint('[ConnectivityService] Listener initialized.');
   }
 
   void _handleConnectivityChange(List<ConnectivityResult> results) {
     final hasNetwork = results.any((r) => r != ConnectivityResult.none);
-    
-    // If it's the first result (usually triggered immediately on listen), 
+
+    // If it's the first result (usually triggered immediately on listen),
     // we ignore it to avoid double-checking what AppInitializer already did.
     if (_isFirstCheck) {
       _isFirstCheck = false;
@@ -32,27 +34,34 @@ class ConnectivityService {
     }
 
     if (hasNetwork) {
-      debugPrint('[ConnectivityService] Internet connection restored. Retrying background tasks...');
-      
+      debugPrint(
+        '[ConnectivityService] Internet connection restored. Retrying background tasks...',
+      );
+
       // Delay slightly to let the OS fully establish the data path
       Future.delayed(const Duration(seconds: 3), () async {
         try {
           final result = await UpdateRemoteDataSource.instance.checkForUpdate();
-          
+
           // If we find a forced update or a new available version, UpdateRemoteDataSource.instance.checkForUpdate()
           // already notifies UpdateNotifier.instance, which the UI reflects.
-          if (result.status == UpdateStatus.forced || result.status == UpdateStatus.available) {
-             UpdateNotifier.instance.setAvailable(
+          if (result.status == UpdateStatus.forced ||
+              result.status == UpdateStatus.available) {
+            UpdateNotifier.instance.setAvailable(
               result.latestVersion ?? '',
               result.releaseUrl ?? '',
               forced: result.status == UpdateStatus.forced,
               message: result.forceUpdateMessage,
             );
           }
-          
-          debugPrint('[ConnectivityService] Background update check completed: ${result.status}');
+
+          debugPrint(
+            '[ConnectivityService] Background update check completed: ${result.status}',
+          );
         } catch (e) {
-          debugPrint('[ConnectivityService] Background update check failed: $e');
+          debugPrint(
+            '[ConnectivityService] Background update check failed: $e',
+          );
         }
       });
     } else {

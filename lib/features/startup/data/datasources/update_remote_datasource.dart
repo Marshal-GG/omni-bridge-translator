@@ -12,9 +12,9 @@ class UpdateRemoteDataSource implements IResettable {
   final FirebaseFirestore _firestore;
 
   UpdateRemoteDataSource({FirebaseFirestore? firestore})
-      : _firestore = firestore ??
-            FirebaseFirestore.instanceFor(
-                app: Firebase.app(RTDBClient.appName));
+    : _firestore =
+          firestore ??
+          FirebaseFirestore.instanceFor(app: Firebase.app(RTDBClient.appName));
 
   static final UpdateRemoteDataSource instance = UpdateRemoteDataSource();
 
@@ -91,7 +91,8 @@ class UpdateRemoteDataSource implements IResettable {
       }
 
       // Automatically update the global notifier if an update is found
-      if (result.status == UpdateStatus.forced || result.status == UpdateStatus.available) {
+      if (result.status == UpdateStatus.forced ||
+          result.status == UpdateStatus.available) {
         UpdateNotifier.instance.setAvailable(
           result.latestVersion ?? '',
           result.releaseUrl ?? '',

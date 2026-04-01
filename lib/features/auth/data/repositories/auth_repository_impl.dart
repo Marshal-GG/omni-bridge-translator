@@ -96,7 +96,7 @@ class AuthRepositoryImpl implements IAuthRepository {
   @override
   Future<void> signOut() async {
     await _authRemoteDataSource.signOut();
-    
+
     // Reset all data sources that maintain user-scoped state
     final resetNames = [
       'auth_reset',

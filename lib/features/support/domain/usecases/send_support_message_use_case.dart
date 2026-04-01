@@ -9,7 +9,15 @@ class SendSupportMessageUseCase {
 
   SendSupportMessageUseCase(this.repository);
 
-  Future<Either<Failure, Unit>> call(String ticketId, SupportMessage message, {List<File> attachments = const []}) async {
-    return await repository.sendSupportMessage(ticketId, message, attachments: attachments);
+  Future<Either<Failure, Unit>> call(
+    String ticketId,
+    SupportMessage message, {
+    List<File> attachments = const [],
+  }) async {
+    return await repository.sendSupportMessage(
+      ticketId,
+      message,
+      attachments: attachments,
+    );
   }
 }

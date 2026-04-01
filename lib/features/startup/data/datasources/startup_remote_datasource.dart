@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/core/di/di.dart';
 import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:omni_bridge/features/translation/data/datasources/transcription_remote_datasource.dart';
@@ -19,7 +19,9 @@ class StartupRemoteDataSource {
     // Session tracking moved to AuthRepositoryImpl
 
     final info = await PackageInfo.fromPlatform();
-    AppLogger.i('[Startup] App Version: ${info.version}+${info.buildNumber}',
-        tag: 'Startup');
+    AppLogger.i(
+      '[Startup] App Version: ${info.version}+${info.buildNumber}',
+      tag: 'Startup',
+    );
   }
 }

@@ -36,7 +36,8 @@ class OmniChip extends StatelessWidget {
     final chipColor = color ?? Theme.of(context).colorScheme.primary;
 
     return Container(
-      padding: padding ?? const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding:
+          padding ?? const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: chipColor.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(6),

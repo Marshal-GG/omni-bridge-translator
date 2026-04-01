@@ -10,6 +10,7 @@ import 'package:omni_bridge/features/startup/presentation/blocs/startup_state.da
 import 'package:omni_bridge/features/auth/domain/repositories/i_auth_repository.dart';
 
 class MockAuthRepository extends Mock implements IAuthRepository {}
+
 class MockUser extends Mock implements User {}
 
 void main() {
@@ -20,8 +21,9 @@ void main() {
   });
 
   test('initial state is StartupInitial', () {
-    when(() => mockAuthRepository.currentUser)
-        .thenReturn(ValueNotifier<User?>(null));
+    when(
+      () => mockAuthRepository.currentUser,
+    ).thenReturn(ValueNotifier<User?>(null));
     final bloc = StartupBloc(authRepository: mockAuthRepository);
     expect(bloc.state, const StartupInitial());
     bloc.close();
@@ -31,30 +33,26 @@ void main() {
     'emits [StartupLoading, StartupNavigateToHome] when user is logged in',
     build: () {
       final mockUser = MockUser();
-      when(() => mockAuthRepository.currentUser)
-          .thenReturn(ValueNotifier<User?>(mockUser));
+      when(
+        () => mockAuthRepository.currentUser,
+      ).thenReturn(ValueNotifier<User?>(mockUser));
       return StartupBloc(authRepository: mockAuthRepository);
     },
     act: (bloc) => bloc.add(const StartupInitializeEvent()),
     wait: const Duration(milliseconds: 2200),
-    expect: () => [
-      const StartupLoading(),
-      const StartupNavigateToHome(),
-    ],
+    expect: () => [const StartupLoading(), const StartupNavigateToHome()],
   );
 
   blocTest<StartupBloc, StartupState>(
     'emits [StartupLoading, StartupNavigateToOnboarding] when user is not logged in',
     build: () {
-      when(() => mockAuthRepository.currentUser)
-          .thenReturn(ValueNotifier<User?>(null));
+      when(
+        () => mockAuthRepository.currentUser,
+      ).thenReturn(ValueNotifier<User?>(null));
       return StartupBloc(authRepository: mockAuthRepository);
     },
     act: (bloc) => bloc.add(const StartupInitializeEvent()),
     wait: const Duration(milliseconds: 2200),
-    expect: () => [
-      const StartupLoading(),
-      const StartupNavigateToOnboarding(),
-    ],
+    expect: () => [const StartupLoading(), const StartupNavigateToOnboarding()],
   );
 }

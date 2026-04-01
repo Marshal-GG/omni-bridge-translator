@@ -4,11 +4,8 @@ import '../../../../core/widgets/omni_tinted_button.dart';
 
 class SupportNewTicketButton extends StatelessWidget {
   final VoidCallback onTap;
-  
-  const SupportNewTicketButton({
-    super.key,
-    required this.onTap,
-  });
+
+  const SupportNewTicketButton({super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

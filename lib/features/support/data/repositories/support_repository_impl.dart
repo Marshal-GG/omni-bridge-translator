@@ -49,28 +49,36 @@ class SupportRepositoryImpl implements ISupportRepository {
       String osInfo = 'Unknown';
       if (Platform.isWindows) {
         final windowsInfo = await deviceInfo.windowsInfo;
-        osInfo = 'Windows ${windowsInfo.majorVersion}.${windowsInfo.minorVersion} (Build ${windowsInfo.buildNumber})';
+        osInfo =
+            'Windows ${windowsInfo.majorVersion}.${windowsInfo.minorVersion} (Build ${windowsInfo.buildNumber})';
       } else if (Platform.isMacOS) {
         final macInfo = await deviceInfo.macOsInfo;
         osInfo = 'macOS ${macInfo.osRelease}';
       }
 
-      final remainingQuota = quotaStatus == null ? 0 : quotaStatus.dailyLimit - quotaStatus.dailyTokensUsed;
+      final remainingQuota = quotaStatus == null
+          ? 0
+          : quotaStatus.dailyLimit - quotaStatus.dailyTokensUsed;
 
-      return Right(SystemSnapshot(
-        osVersion: osInfo,
-        appVersion: packageInfo.version,
-        subscriptionTier: quotaStatus?.tier ?? 'Free',
-        remainingQuota: remainingQuota,
-        userEmail: user?.email ?? 'anonymous',
-      ));
+      return Right(
+        SystemSnapshot(
+          osVersion: osInfo,
+          appVersion: packageInfo.version,
+          subscriptionTier: quotaStatus?.tier ?? 'Free',
+          remainingQuota: remainingQuota,
+          userEmail: user?.email ?? 'anonymous',
+        ),
+      );
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
   }
 
   @override
-  Future<Either<Failure, Unit>> submitFeedback(FeedbackTicket ticket, List<File> attachments) async {
+  Future<Either<Failure, Unit>> submitFeedback(
+    FeedbackTicket ticket,
+    List<File> attachments,
+  ) async {
     try {
       final user = firebaseAuth.currentUser;
       final userId = user?.uid ?? 'anonymous';
@@ -78,7 +86,10 @@ class SupportRepositoryImpl implements ISupportRepository {
       // 1. Upload attachments if any
       List<String> attachmentUrls = [];
       if (attachments.isNotEmpty) {
-        attachmentUrls = await remoteDataSource.uploadAttachments(attachments, userId);
+        attachmentUrls = await remoteDataSource.uploadAttachments(
+          attachments,
+          userId,
+        );
       }
 
       // 2. Create updated ticket with URLs
@@ -108,7 +119,9 @@ class SupportRepositoryImpl implements ISupportRepository {
   Future<Either<Failure, List<FeedbackTicket>>> getTicketHistory() async {
     try {
       final user = firebaseAuth.currentUser;
-      if (user == null) return const Left(ServerFailure('User not authenticated'));
+      if (user == null) {
+        return const Left(ServerFailure('User not authenticated'));
+      }
 
       final tickets = await remoteDataSource.getTickets(user.uid);
       return Right(tickets);
@@ -118,16 +131,25 @@ class SupportRepositoryImpl implements ISupportRepository {
   }
 
   @override
-  Stream<Either<Failure, List<SupportMessage>>> getTicketMessages(String ticketId) {
-    return remoteDataSource.getTicketMessages(ticketId).map(
-          (messages) => Right<Failure, List<SupportMessage>>(messages),
-        ).handleError((e) {
-          return Left<Failure, List<SupportMessage>>(ServerFailure(e.toString()));
+  Stream<Either<Failure, List<SupportMessage>>> getTicketMessages(
+    String ticketId,
+  ) {
+    return remoteDataSource
+        .getTicketMessages(ticketId)
+        .map((messages) => Right<Failure, List<SupportMessage>>(messages))
+        .handleError((e) {
+          return Left<Failure, List<SupportMessage>>(
+            ServerFailure(e.toString()),
+          );
         });
   }
 
   @override
-  Future<Either<Failure, Unit>> sendSupportMessage(String ticketId, SupportMessage message, {List<File> attachments = const []}) async {
+  Future<Either<Failure, Unit>> sendSupportMessage(
+    String ticketId,
+    SupportMessage message, {
+    List<File> attachments = const [],
+  }) async {
     try {
       final user = firebaseAuth.currentUser;
       final userId = user?.uid ?? 'anonymous';
@@ -141,7 +163,11 @@ class SupportRepositoryImpl implements ISupportRepository {
         timestamp: message.timestamp,
       );
 
-      await remoteDataSource.sendSupportMessage(ticketId, updatedMessage, attachments: attachments);
+      await remoteDataSource.sendSupportMessage(
+        ticketId,
+        updatedMessage,
+        attachments: attachments,
+      );
       return const Right(unit);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

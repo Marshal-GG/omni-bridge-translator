@@ -15,7 +15,7 @@ import 'package:omni_bridge/core/widgets/omni_version_chip.dart';
 import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
 import 'package:omni_bridge/core/navigation/app_router.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/audio_level_cubit.dart';
-import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/core/di/di.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -30,8 +30,9 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isInitialized =
-        context.select((SettingsBloc b) => b.state.isInitialized);
+    final isInitialized = context.select(
+      (SettingsBloc b) => b.state.isInitialized,
+    );
     if (!isInitialized) {
       final translationState = context.read<TranslationBloc>().state;
       final args = ModalRoute.of(context)?.settings.arguments;
@@ -40,7 +41,37 @@ class SettingsScreen extends StatelessWidget {
       Future.microtask(() {
         if (context.mounted) {
           context.read<SettingsBloc>().add(
-                InitializeSettingsEvent(
+            InitializeSettingsEvent(
+              targetLang: translationState.activeTargetLang,
+              sourceLang: translationState.activeSourceLang,
+              useMic: translationState.activeUseMic,
+              fontSize: translationState.activeFontSize,
+              isBold: translationState.activeIsBold,
+              opacity: translationState.activeOpacity,
+              inputDeviceIndex: translationState.activeInputDeviceIndex,
+              outputDeviceIndex: translationState.activeOutputDeviceIndex,
+              desktopVolume: translationState.activeDesktopVolume,
+              micVolume: translationState.activeMicVolume,
+              translationModel: translationState.activeTranslationModel,
+              nvidiaNimKey: translationState.activeNvidiaNimKey,
+              transcriptionModel: translationState.activeTranscriptionModel,
+              initialTabIndex: tabIndex,
+            ),
+          );
+        }
+      });
+    }
+
+    return BlocProvider<AudioLevelCubit>(
+      create: (context) => sl<AudioLevelCubit>(),
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<TranslationBloc, TranslationState>(
+            listenWhen: (previous, current) =>
+                previous.isSettingsLoading && !current.isSettingsLoading,
+            listener: (context, translationState) {
+              context.read<SettingsBloc>().add(
+                SyncTempSettingsEvent(
                   targetLang: translationState.activeTargetLang,
                   sourceLang: translationState.activeSourceLang,
                   useMic: translationState.activeUseMic,
@@ -54,88 +85,61 @@ class SettingsScreen extends StatelessWidget {
                   translationModel: translationState.activeTranslationModel,
                   nvidiaNimKey: translationState.activeNvidiaNimKey,
                   transcriptionModel: translationState.activeTranscriptionModel,
-                  initialTabIndex: tabIndex,
                 ),
               );
-        }
-      });
-    }
-
-    return BlocProvider<AudioLevelCubit>(
-      create: (context) => sl<AudioLevelCubit>(),
-      child: MultiBlocListener(
-        listeners: [
-        BlocListener<TranslationBloc, TranslationState>(
-          listenWhen: (previous, current) =>
-              previous.isSettingsLoading && !current.isSettingsLoading,
-          listener: (context, translationState) {
-            context.read<SettingsBloc>().add(
-              SyncTempSettingsEvent(
-                targetLang: translationState.activeTargetLang,
-                sourceLang: translationState.activeSourceLang,
-                useMic: translationState.activeUseMic,
-                fontSize: translationState.activeFontSize,
-                isBold: translationState.activeIsBold,
-                opacity: translationState.activeOpacity,
-                inputDeviceIndex: translationState.activeInputDeviceIndex,
-                outputDeviceIndex: translationState.activeOutputDeviceIndex,
-                desktopVolume: translationState.activeDesktopVolume,
-                micVolume: translationState.activeMicVolume,
-                translationModel: translationState.activeTranslationModel,
-                nvidiaNimKey: translationState.activeNvidiaNimKey,
-                transcriptionModel: translationState.activeTranscriptionModel,
-              ),
-            );
-          },
-        ),
-        BlocListener<TranslationBloc, TranslationState>(
-          listenWhen: (previous, current) =>
-              previous.isSettingsSaving && !current.isSettingsSaving,
-          listener: (context, translationState) {
-            context.read<SettingsBloc>().add(
-              SyncTempSettingsEvent(
-                targetLang: translationState.activeTargetLang,
-                sourceLang: translationState.activeSourceLang,
-                useMic: translationState.activeUseMic,
-                fontSize: translationState.activeFontSize,
-                isBold: translationState.activeIsBold,
-                opacity: translationState.activeOpacity,
-                inputDeviceIndex: translationState.activeInputDeviceIndex,
-                outputDeviceIndex: translationState.activeOutputDeviceIndex,
-                desktopVolume: translationState.activeDesktopVolume,
-                micVolume: translationState.activeMicVolume,
-                translationModel: translationState.activeTranslationModel,
-                nvidiaNimKey: translationState.activeNvidiaNimKey,
-                transcriptionModel: translationState.activeTranscriptionModel,
-              ),
-            );
-
-            if (context.mounted) {
-              Navigator.pop(context);
-            }
-          },
-        ),
-      ],
-      child: BlocBuilder<SettingsBloc, SettingsState>(
-        buildWhen: (prev, curr) {
-          return prev.settings != curr.settings ||
-              prev.devicesLoading != curr.devicesLoading ||
-              prev.inputDevices != curr.inputDevices ||
-              prev.outputDevices != curr.outputDevices ||
-              prev.activeTabIndex != curr.activeTabIndex ||
-              prev.translationCompatibilityError != curr.translationCompatibilityError;
-        },
-        builder: (context, state) {
-          return AppDashboardShell(
-            currentRoute: AppRouter.settingsOverlay,
-            header: buildSettingsHeader(context),
-            settingsTabIndex: state.activeTabIndex,
-            onSettingsTabChanged: (index) {
-              context.read<SettingsBloc>().add(SettingsTabIndexChanged(index));
             },
-            child: Container(
-              color: const Color(0xFF121212),
-              child: LayoutBuilder(
+          ),
+          BlocListener<TranslationBloc, TranslationState>(
+            listenWhen: (previous, current) =>
+                previous.isSettingsSaving && !current.isSettingsSaving,
+            listener: (context, translationState) {
+              context.read<SettingsBloc>().add(
+                SyncTempSettingsEvent(
+                  targetLang: translationState.activeTargetLang,
+                  sourceLang: translationState.activeSourceLang,
+                  useMic: translationState.activeUseMic,
+                  fontSize: translationState.activeFontSize,
+                  isBold: translationState.activeIsBold,
+                  opacity: translationState.activeOpacity,
+                  inputDeviceIndex: translationState.activeInputDeviceIndex,
+                  outputDeviceIndex: translationState.activeOutputDeviceIndex,
+                  desktopVolume: translationState.activeDesktopVolume,
+                  micVolume: translationState.activeMicVolume,
+                  translationModel: translationState.activeTranslationModel,
+                  nvidiaNimKey: translationState.activeNvidiaNimKey,
+                  transcriptionModel: translationState.activeTranscriptionModel,
+                ),
+              );
+
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
+            },
+          ),
+        ],
+        child: BlocBuilder<SettingsBloc, SettingsState>(
+          buildWhen: (prev, curr) {
+            return prev.settings != curr.settings ||
+                prev.devicesLoading != curr.devicesLoading ||
+                prev.inputDevices != curr.inputDevices ||
+                prev.outputDevices != curr.outputDevices ||
+                prev.activeTabIndex != curr.activeTabIndex ||
+                prev.translationCompatibilityError !=
+                    curr.translationCompatibilityError;
+          },
+          builder: (context, state) {
+            return AppDashboardShell(
+              currentRoute: AppRouter.settingsOverlay,
+              header: buildSettingsHeader(context),
+              settingsTabIndex: state.activeTabIndex,
+              onSettingsTabChanged: (index) {
+                context.read<SettingsBloc>().add(
+                  SettingsTabIndexChanged(index),
+                );
+              },
+              child: Container(
+                color: const Color(0xFF121212),
+                child: LayoutBuilder(
                   builder: (context, constraints) {
                     if (constraints.maxHeight < 200) {
                       return const SizedBox.shrink();
@@ -210,7 +214,10 @@ class SettingsScreen extends StatelessWidget {
                                 children: [
                                   SingleChildScrollView(
                                     padding: const EdgeInsets.fromLTRB(
-                                      20, 20, 20, 20,
+                                      20,
+                                      20,
+                                      20,
+                                      20,
                                     ),
                                     child: Center(
                                       child: ConstrainedBox(
@@ -238,7 +245,10 @@ class SettingsScreen extends StatelessWidget {
                                   ),
                                   SingleChildScrollView(
                                     padding: const EdgeInsets.fromLTRB(
-                                      20, 20, 20, 20,
+                                      20,
+                                      20,
+                                      20,
+                                      20,
                                     ),
                                     child: Center(
                                       child: ConstrainedBox(
@@ -257,7 +267,10 @@ class SettingsScreen extends StatelessWidget {
                                   ),
                                   SingleChildScrollView(
                                     padding: const EdgeInsets.fromLTRB(
-                                      20, 20, 20, 20,
+                                      20,
+                                      20,
+                                      20,
+                                      20,
                                     ),
                                     child: Center(
                                       child: ConstrainedBox(

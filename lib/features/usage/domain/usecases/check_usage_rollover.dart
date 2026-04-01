@@ -14,8 +14,10 @@ class CheckUsageRollover {
     final now = DateTime.now();
 
     // 1. Calendar Rollover (Monthly token bucket)
-    final currentMonthStr = '${now.year}_${now.month.toString().padLeft(2, '0')}';
-    final lastCalendarMonth = totals['last_calendar_month'] as String? ?? currentMonthStr;
+    final currentMonthStr =
+        '${now.year}_${now.month.toString().padLeft(2, '0')}';
+    final lastCalendarMonth =
+        totals['last_calendar_month'] as String? ?? currentMonthStr;
 
     if (currentMonthStr != lastCalendarMonth) {
       final calendarUsed = (totals['calendar_monthly'] as num?)?.toInt() ?? 0;
@@ -24,7 +26,8 @@ class CheckUsageRollover {
 
     // 2. Weekly Rollover
     final currentMonday = now.subtract(Duration(days: now.weekday - 1));
-    final currentWeekStr = '${currentMonday.year}_${currentMonday.month.toString().padLeft(2, '0')}_${currentMonday.day.toString().padLeft(2, '0')}';
+    final currentWeekStr =
+        '${currentMonday.year}_${currentMonday.month.toString().padLeft(2, '0')}_${currentMonday.day.toString().padLeft(2, '0')}';
     final lastWeekStr = totals['last_week'] as String? ?? currentWeekStr;
 
     if (currentWeekStr != lastWeekStr) {
@@ -38,7 +41,8 @@ class CheckUsageRollover {
       final monthlyResetAt = status.monthlyResetAt;
       if (monthlyResetAt != null && now.isAfter(monthlyResetAt)) {
         final subUsed = (totals['subscription_monthly'] as num?)?.toInt() ?? 0;
-        final cycleLabel = '${monthlyResetAt.subtract(const Duration(days: 30)).toIso8601String().split('T')[0]}__${monthlyResetAt.toIso8601String().split('T')[0]}';
+        final cycleLabel =
+            '${monthlyResetAt.subtract(const Duration(days: 30)).toIso8601String().split('T')[0]}__${monthlyResetAt.toIso8601String().split('T')[0]}';
 
         DateTime nextReset = monthlyResetAt;
         while (now.isAfter(nextReset)) {

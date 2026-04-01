@@ -15,10 +15,17 @@ import 'package:omni_bridge/features/subscription/domain/usecases/get_subscripti
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
 class MockGetAppSettingsUseCase extends Mock implements GetAppSettingsUseCase {}
-class MockUpdateAppSettingsUseCase extends Mock implements UpdateAppSettingsUseCase {}
-class MockGetGoogleCredentialsUseCase extends Mock implements GetGoogleCredentialsUseCase {}
+
+class MockUpdateAppSettingsUseCase extends Mock
+    implements UpdateAppSettingsUseCase {}
+
+class MockGetGoogleCredentialsUseCase extends Mock
+    implements GetGoogleCredentialsUseCase {}
+
 class MockLoadDevicesUseCase extends Mock implements LoadDevicesUseCase {}
+
 class MockLogEventUseCase extends Mock implements LogEventUseCase {}
+
 class MockGetSubscriptionStatus extends Mock implements GetSubscriptionStatus {}
 
 void main() {
@@ -62,12 +69,18 @@ void main() {
     blocTest<SettingsBloc, SettingsState>(
       'LoadDevicesEvent emits correct devices',
       build: () {
-        when(() => mockLoadDevicesUseCase()).thenAnswer((_) async => {
-          'input': [{'name': 'Mic1', 'index': 1}],
-          'output': [{'name': 'Speaker1', 'index': 2}],
-          'default_input_name': 'Mic1',
-          'default_output_name': 'Speaker1',
-        });
+        when(() => mockLoadDevicesUseCase()).thenAnswer(
+          (_) async => {
+            'input': [
+              {'name': 'Mic1', 'index': 1},
+            ],
+            'output': [
+              {'name': 'Speaker1', 'index': 2},
+            ],
+            'default_input_name': 'Mic1',
+            'default_output_name': 'Speaker1',
+          },
+        );
         return settingsBloc;
       },
       act: (bloc) => bloc.add(LoadDevicesEvent()),
@@ -75,22 +88,29 @@ void main() {
         SettingsState.initial().copyWith(devicesLoading: true),
         SettingsState.initial().copyWith(
           devicesLoading: false,
-          inputDevices: [{'name': 'Mic1', 'index': 1}],
-          outputDevices: [{'name': 'Speaker1', 'index': 2}],
+          inputDevices: [
+            {'name': 'Mic1', 'index': 1},
+          ],
+          outputDevices: [
+            {'name': 'Speaker1', 'index': 2},
+          ],
           defaultInputDeviceName: 'Mic1',
           defaultOutputDeviceName: 'Speaker1',
         ),
       ],
     );
 
-
     blocTest<SettingsBloc, SettingsState>(
       'UpdateTempSettingEvent emits new settings',
       build: () => settingsBloc,
-      act: (bloc) => bloc.add(UpdateTempSettingEvent(fontSize: 24.0, useMic: true)),
+      act: (bloc) =>
+          bloc.add(UpdateTempSettingEvent(fontSize: 24.0, useMic: true)),
       expect: () => [
         SettingsState.initial().copyWith(
-          settings: AppSettings.initial().copyWith(fontSize: 24.0, useMic: true),
+          settings: AppSettings.initial().copyWith(
+            fontSize: 24.0,
+            useMic: true,
+          ),
           clearCompatibilityError: true,
         ),
       ],
@@ -116,9 +136,13 @@ void main() {
     blocTest<SettingsBloc, SettingsState>(
       'SubscriptionStatusChangedEvent resets models and PERSISTS if not supported by new tier',
       build: () {
-        when(() => mockUpdateAppSettingsUseCase(any())).thenAnswer((_) async => const Right(null));
-        when(() => mockLogEventUseCase(any(), parameters: any(named: 'parameters')))
-            .thenAnswer((_) async => const Right(null));
+        when(
+          () => mockUpdateAppSettingsUseCase(any()),
+        ).thenAnswer((_) async => const Right(null));
+        when(
+          () =>
+              mockLogEventUseCase(any(), parameters: any(named: 'parameters')),
+        ).thenAnswer((_) async => const Right(null));
         return settingsBloc;
       },
       seed: () => SettingsState.initial().copyWith(
@@ -127,17 +151,19 @@ void main() {
           transcriptionModel: 'riva',
         ),
       ),
-      act: (bloc) => bloc.add(SubscriptionStatusChangedEvent(
-        QuotaStatus(
-          tier: 'free',
-          dailyTokensUsed: 0,
-          weeklyTokensUsed: 0,
-          monthlyTokensUsed: 0,
-          lifetimeTokensUsed: 0,
-          dailyLimit: 1000,
-          dailyResetAt: DateTime.now(),
+      act: (bloc) => bloc.add(
+        SubscriptionStatusChangedEvent(
+          QuotaStatus(
+            tier: 'free',
+            dailyTokensUsed: 0,
+            weeklyTokensUsed: 0,
+            monthlyTokensUsed: 0,
+            lifetimeTokensUsed: 0,
+            dailyLimit: 1000,
+            dailyResetAt: DateTime.now(),
+          ),
         ),
-      )),
+      ),
       expect: () => [
         SettingsState.initial().copyWith(
           settings: AppSettings.initial().copyWith(
@@ -148,10 +174,12 @@ void main() {
       ],
       verify: (_) {
         verify(() => mockUpdateAppSettingsUseCase(any())).called(1);
-        verify(() => mockLogEventUseCase(
-              'subscription_downgrade_model_reset',
-              parameters: any(named: 'parameters'),
-            )).called(1);
+        verify(
+          () => mockLogEventUseCase(
+            'subscription_downgrade_model_reset',
+            parameters: any(named: 'parameters'),
+          ),
+        ).called(1);
       },
     );
   });

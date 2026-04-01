@@ -13,15 +13,17 @@ abstract class IDataMaintenanceRemoteDataSource {
   Future<void> cleanupOldSessions();
 }
 
-class DataMaintenanceRemoteDataSource implements IDataMaintenanceRemoteDataSource {
+class DataMaintenanceRemoteDataSource
+    implements IDataMaintenanceRemoteDataSource {
   DataMaintenanceRemoteDataSource._();
-  static final DataMaintenanceRemoteDataSource instance = DataMaintenanceRemoteDataSource._();
+  static final DataMaintenanceRemoteDataSource instance =
+      DataMaintenanceRemoteDataSource._();
 
   static const String _tag = 'DataMaintenanceRemoteDataSource';
 
   FirebaseApp get _app => Firebase.app(RTDBClient.appName);
   FirebaseFirestore get _firestore => FirebaseFirestore.instanceFor(app: _app);
-  
+
   final RTDBClient _rtdbClient = RTDBClient.instance;
 
   @override
@@ -30,7 +32,8 @@ class DataMaintenanceRemoteDataSource implements IDataMaintenanceRemoteDataSourc
     if (userUid == null) return;
 
     try {
-      final retentionDays = SubscriptionRemoteDataSource.instance.captionRetentionDays;
+      final retentionDays =
+          SubscriptionRemoteDataSource.instance.captionRetentionDays;
       if (retentionDays <= 0) return; // free tier — nothing stored to clean
 
       final cutoffMs = DateTime.now()
@@ -63,7 +66,9 @@ class DataMaintenanceRemoteDataSource implements IDataMaintenanceRemoteDataSourc
 
       final user = FirebaseAuth.instanceFor(app: _app).currentUser;
       if (user == null) return;
-      final deleteUrl = await _rtdbClient.getAbsoluteUrl(FirebasePaths.userCaptions(userUid));
+      final deleteUrl = await _rtdbClient.getAbsoluteUrl(
+        FirebasePaths.userCaptions(userUid),
+      );
 
       if (deleteUrl != null) {
         await _rtdbClient.request(
@@ -88,8 +93,10 @@ class DataMaintenanceRemoteDataSource implements IDataMaintenanceRemoteDataSourc
 
     try {
       final cutoffDate = DateTime.now().subtract(const Duration(days: 90));
-      
-      final url = await _rtdbClient.getAbsoluteUrl(FirebasePaths.userDailyUsage(userUid));
+
+      final url = await _rtdbClient.getAbsoluteUrl(
+        FirebasePaths.userDailyUsage(userUid),
+      );
       if (url == null) return;
 
       final shallowUrl = Uri.parse('${url.toString()}&shallow=true');
@@ -151,7 +158,10 @@ class DataMaintenanceRemoteDataSource implements IDataMaintenanceRemoteDataSourc
         batch.delete(doc.reference);
       }
       await batch.commit();
-      AppLogger.i('Cleaned up ${snapshots.docs.length} old sessions from Firestore.', tag: _tag);
+      AppLogger.i(
+        'Cleaned up ${snapshots.docs.length} old sessions from Firestore.',
+        tag: _tag,
+      );
     } catch (e) {
       AppLogger.e('Session cleanup failed', tag: _tag, error: e);
     }

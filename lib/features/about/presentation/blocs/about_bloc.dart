@@ -10,15 +10,15 @@ class AboutBloc extends Bloc<AboutEvent, AboutState> {
   final CheckForUpdate _checkForUpdate;
 
   AboutBloc({required CheckForUpdate checkForUpdate})
-      : _checkForUpdate = checkForUpdate,
-        super(const AboutState()) {
+    : _checkForUpdate = checkForUpdate,
+      super(const AboutState()) {
     on<AboutInitEvent>(_onInit);
     on<AboutCheckUpdateEvent>(_onCheckUpdate);
   }
 
   Future<void> _onInit(AboutInitEvent event, Emitter<AboutState> emit) async {
     final info = await PackageInfo.fromPlatform();
-    
+
     UpdateStatus status = UpdateStatus.idle;
     UpdateResult? result;
 
@@ -31,18 +31,23 @@ class AboutBloc extends Bloc<AboutEvent, AboutState> {
       );
     }
 
-    emit(state.copyWith(
-      version: info.version,
-      updateStatus: status,
-      updateResult: result,
-    ));
+    emit(
+      state.copyWith(
+        version: info.version,
+        updateStatus: status,
+        updateResult: result,
+      ),
+    );
   }
 
-  Future<void> _onCheckUpdate(AboutCheckUpdateEvent event, Emitter<AboutState> emit) async {
+  Future<void> _onCheckUpdate(
+    AboutCheckUpdateEvent event,
+    Emitter<AboutState> emit,
+  ) async {
     emit(state.copyWith(updateStatus: UpdateStatus.checking));
-    
+
     final result = await _checkForUpdate();
-    
+
     if (result.status == UpdateStatus.available) {
       UpdateNotifier.instance.setAvailable(
         result.latestVersion!,
@@ -50,9 +55,6 @@ class AboutBloc extends Bloc<AboutEvent, AboutState> {
       );
     }
 
-    emit(state.copyWith(
-      updateStatus: result.status,
-      updateResult: result,
-    ));
+    emit(state.copyWith(updateStatus: result.status, updateResult: result));
   }
 }

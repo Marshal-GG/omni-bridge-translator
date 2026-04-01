@@ -66,7 +66,8 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: state.chatAttachments.length,
-                  separatorBuilder: (context, index) => const SizedBox(width: 8),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     final file = state.chatAttachments[index];
                     return _buildAttachmentPreview(context, file, index);
@@ -74,31 +75,40 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                 ),
               ),
             Container(
-               padding: const EdgeInsets.all(AppSpacing.sm),
-               decoration: const BoxDecoration(
-                 color: Color(0x05FFFFFF), // white 0.02
-                 border: Border(top: BorderSide(color: AppColors.white10)),
-               ),
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: const BoxDecoration(
+                color: Color(0x05FFFFFF), // white 0.02
+                border: Border(top: BorderSide(color: AppColors.white10)),
+              ),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.attach_file, size: 20, color: AppColors.white38),
+                    icon: const Icon(
+                      Icons.attach_file,
+                      size: 20,
+                      color: AppColors.white38,
+                    ),
                     onPressed: _pickFile,
                   ),
                   Expanded(
                     child: TextField(
                       controller: _controller,
-                       style: AppTextStyles.body,
+                      style: AppTextStyles.body,
                       decoration: InputDecoration(
                         hintText: 'Type your message...',
-                        hintStyle: AppTextStyles.body.copyWith(color: AppColors.whiteOpacity(0.2)),
+                        hintStyle: AppTextStyles.body.copyWith(
+                          color: AppColors.whiteOpacity(0.2),
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: AppShapes.round,
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
                         fillColor: AppColors.whiteOpacity(0.05),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
                       ),
                       onSubmitted: (_) => _handleSubmitted(),
                     ),
@@ -108,7 +118,9 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                     icon: Icon(
                       Icons.send,
                       size: 20,
-                      color: state.isSendingMessage ? AppColors.white24 : AppColors.accentCyan,
+                      color: state.isSendingMessage
+                          ? AppColors.white24
+                          : AppColors.accentCyan,
                     ),
                     onPressed: state.isSendingMessage ? null : _handleSubmitted,
                   ),
@@ -138,14 +150,19 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
           Expanded(
             child: Text(
               fileName,
-               style: AppTextStyles.labelTiny,
+              style: AppTextStyles.labelTiny,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           InkWell(
-            onTap: () => context.read<SupportBloc>().add(RemoveChatAttachment(index)),
-            child: const Icon(Icons.close, size: 14, color: AppColors.accentRed),
+            onTap: () =>
+                context.read<SupportBloc>().add(RemoveChatAttachment(index)),
+            child: const Icon(
+              Icons.close,
+              size: 14,
+              color: AppColors.accentRed,
+            ),
           ),
         ],
       ),

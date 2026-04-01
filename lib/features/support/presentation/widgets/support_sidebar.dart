@@ -17,9 +17,7 @@ class SupportSidebar extends StatelessWidget {
       width: AppSpacing.ticketListWidth,
       decoration: const BoxDecoration(
         color: Colors.transparent,
-        border: Border(
-          right: BorderSide(color: Colors.white10),
-        ),
+        border: Border(right: BorderSide(color: Colors.white10)),
       ),
       child: Stack(
         children: [
@@ -30,7 +28,11 @@ class SupportSidebar extends StatelessWidget {
                 child: BlocBuilder<SupportBloc, SupportState>(
                   builder: (context, state) {
                     if (state.isLoadingHistory) {
-                      return const Center(child: CircularProgressIndicator(color: AppColors.accentCyan));
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.accentCyan,
+                        ),
+                      );
                     }
 
                     if (state.error != null && state.tickets.isEmpty) {
@@ -42,7 +44,10 @@ class SupportSidebar extends StatelessWidget {
                     }
 
                     return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: AppSpacing.xs),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs,
+                        vertical: AppSpacing.xs,
+                      ),
                       itemCount: state.tickets.length,
                       itemBuilder: (context, index) {
                         final ticket = state.tickets[index];
@@ -76,9 +81,7 @@ class SupportSidebar extends StatelessWidget {
   Widget _buildSearchHeader(BuildContext context) {
     return const Padding(
       padding: EdgeInsets.all(AppSpacing.sm),
-      child: OmniSearchBar(
-        hintText: 'Search tickets...',
-      ),
+      child: OmniSearchBar(hintText: 'Search tickets...'),
     );
   }
 
@@ -97,7 +100,8 @@ class SupportSidebar extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             TextButton.icon(
-              onPressed: () => context.read<SupportBloc>().add(const LoadTicketHistory()),
+              onPressed: () =>
+                  context.read<SupportBloc>().add(const LoadTicketHistory()),
               icon: const Icon(Icons.refresh, size: 16),
               label: const Text('Refresh'),
             ),
@@ -114,11 +118,18 @@ class SupportSidebar extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.accentRed),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 48,
+              color: AppColors.accentRed,
+            ),
             const SizedBox(height: 16),
             Text(
               'Failed to load tickets',
-              style: TextStyle(color: AppColors.offWhite, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.offWhite,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -128,7 +139,8 @@ class SupportSidebar extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: () => context.read<SupportBloc>().add(const LoadTicketHistory()),
+              onPressed: () =>
+                  context.read<SupportBloc>().add(const LoadTicketHistory()),
               icon: const Icon(Icons.refresh, size: 16),
               label: const Text('Retry'),
             ),
@@ -143,10 +155,7 @@ class _TicketListTile extends StatelessWidget {
   final FeedbackTicket ticket;
   final bool isActive;
 
-  const _TicketListTile({
-    required this.ticket,
-    required this.isActive,
-  });
+  const _TicketListTile({required this.ticket, required this.isActive});
 
   @override
   Widget build(BuildContext context) {
@@ -160,12 +169,12 @@ class _TicketListTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isActive 
+            color: isActive
                 ? Colors.tealAccent.withValues(alpha: 0.05)
                 : Colors.transparent,
             borderRadius: AppShapes.lg,
             border: Border.all(
-              color: isActive 
+              color: isActive
                   ? Colors.tealAccent.withValues(alpha: 0.2)
                   : Colors.transparent,
             ),
@@ -182,7 +191,9 @@ class _TicketListTile extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: isActive ? AppColors.accentCyan : AppColors.offWhite,
+                        color: isActive
+                            ? AppColors.accentCyan
+                            : AppColors.offWhite,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -199,11 +210,10 @@ class _TicketListTile extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                ticket.lastMessage.isNotEmpty ? ticket.lastMessage : ticket.message,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.white54,
-                ),
+                ticket.lastMessage.isNotEmpty
+                    ? ticket.lastMessage
+                    : ticket.message,
+                style: TextStyle(fontSize: 12, color: AppColors.white54),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -241,13 +251,21 @@ class _StatusTag extends StatelessWidget {
     String label;
     switch (status) {
       case TicketStatus.open:
-        color = AppColors.accentCyan; label = 'NEW'; break;
+        color = AppColors.accentCyan;
+        label = 'NEW';
+        break;
       case TicketStatus.inProgress:
-        color = AppColors.translationTeal; label = 'ACTIVE'; break;
+        color = AppColors.translationTeal;
+        label = 'ACTIVE';
+        break;
       case TicketStatus.resolved:
-        color = Colors.greenAccent; label = 'RESOLVED'; break;
+        color = Colors.greenAccent;
+        label = 'RESOLVED';
+        break;
       case TicketStatus.closed:
-        color = AppColors.white54; label = 'CLOSED'; break;
+        color = AppColors.white54;
+        label = 'CLOSED';
+        break;
     }
 
     return OmniBadge(text: label, color: color);
@@ -272,7 +290,11 @@ class _AvatarStack extends StatelessWidget {
               child: CircleAvatar(
                 radius: 8,
                 backgroundColor: AppColors.accentCyan.withValues(alpha: 0.15),
-                child: const Icon(Icons.person, size: 10, color: AppColors.accentCyan),
+                child: const Icon(
+                  Icons.person,
+                  size: 10,
+                  color: AppColors.accentCyan,
+                ),
               ),
             ),
           ),
@@ -284,7 +306,11 @@ class _AvatarStack extends StatelessWidget {
               child: const CircleAvatar(
                 radius: 8,
                 backgroundColor: Colors.white12,
-                child: Icon(Icons.support_agent, size: 10, color: Colors.white70),
+                child: Icon(
+                  Icons.support_agent,
+                  size: 10,
+                  color: Colors.white70,
+                ),
               ),
             ),
           ),

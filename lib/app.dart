@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/core/di/di.dart';
 import 'package:omni_bridge/core/routes/my_nav_observer.dart';
 import 'package:omni_bridge/features/shell/presentation/blocs/app_shell_bloc.dart';
 import 'package:omni_bridge/core/navigation/app_router.dart';

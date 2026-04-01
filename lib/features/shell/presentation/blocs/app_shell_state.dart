@@ -37,10 +37,10 @@ class AppShellState extends Equatable {
 
   @override
   List<Object?> get props => [
-        currentUser,
-        currentSubscriptionStatus,
-        isSettingsExpanded,
-        isSupportExpanded,
-        isSidebarExpanded,
-      ];
+    currentUser,
+    currentSubscriptionStatus,
+    isSettingsExpanded,
+    isSupportExpanded,
+    isSidebarExpanded,
+  ];
 }

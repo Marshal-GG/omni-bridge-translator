@@ -40,7 +40,11 @@ class ForceUpdateScreen extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 8),
-          const Icon(Icons.system_update_alt_rounded, size: 14, color: AppColors.accentTeal),
+          const Icon(
+            Icons.system_update_alt_rounded,
+            size: 14,
+            color: AppColors.accentTeal,
+          ),
           const SizedBox(width: 8),
           const Text(
             'Update Required',
@@ -68,8 +72,12 @@ class ForceUpdateScreen extends StatelessWidget {
 
   Widget _buildBody() {
     final notifier = UpdateNotifier.instance;
-    final message = notifier.forceUpdateMessage ?? 'A critical update is available. Please update to continue.';
-    final url = notifier.releaseUrl ?? 'https://github.com/Marshal-GG/omni-bridge-translator/releases';
+    final message =
+        notifier.forceUpdateMessage ??
+        'A critical update is available. Please update to continue.';
+    final url =
+        notifier.releaseUrl ??
+        'https://github.com/Marshal-GG/omni-bridge-translator/releases';
     final version = notifier.latestVersion ?? 'New Version';
 
     return SingleChildScrollView(
@@ -86,7 +94,9 @@ class ForceUpdateScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.cardBackground,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.accentTeal.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.accentTeal.withValues(alpha: 0.3),
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.accentTeal.withValues(alpha: 0.1),
@@ -115,7 +125,10 @@ class ForceUpdateScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.accentTeal.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -146,7 +159,8 @@ class ForceUpdateScreen extends StatelessWidget {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.accentTeal,
-                          foregroundColor: Colors.black, // Dark text on bright background
+                          foregroundColor:
+                              Colors.black, // Dark text on bright background
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -155,7 +169,10 @@ class ForceUpdateScreen extends StatelessWidget {
                         onPressed: () async {
                           final uri = Uri.parse(url);
                           if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            await launchUrl(
+                              uri,
+                              mode: LaunchMode.externalApplication,
+                            );
                           }
                         },
                         child: const Row(

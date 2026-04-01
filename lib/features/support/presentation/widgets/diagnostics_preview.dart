@@ -22,7 +22,11 @@ class DiagnosticsPreview extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.analytics_outlined, size: 16, color: Colors.blueAccent),
+              const Icon(
+                Icons.analytics_outlined,
+                size: 16,
+                color: Colors.blueAccent,
+              ),
               const SizedBox(width: 8),
               Text(
                 'System Diagnostics (Attached Automatically)',
@@ -38,7 +42,10 @@ class DiagnosticsPreview extends StatelessWidget {
           _buildInfoRow('OS Version', snapshot!.osVersion),
           _buildInfoRow('App Version', snapshot!.appVersion),
           _buildInfoRow('Subscription', snapshot!.subscriptionTier),
-          _buildInfoRow('Remaining Quota', '${snapshot!.remainingQuota} characters'),
+          _buildInfoRow(
+            'Remaining Quota',
+            '${snapshot!.remainingQuota} characters',
+          ),
           _buildInfoRow('User', snapshot!.userEmail),
         ],
       ),

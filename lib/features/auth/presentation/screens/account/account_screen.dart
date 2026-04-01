@@ -6,7 +6,7 @@ import 'package:omni_bridge/features/subscription/data/datasources/subscription_
 
 import 'package:omni_bridge/features/usage/domain/repositories/usage_repository.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
-import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/core/di/di.dart';
 
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_header.dart';
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_avatar.dart';
@@ -158,312 +158,301 @@ class _AccountScreenState extends State<AccountScreen> {
     return OmniWindowLayout(
       child: Column(
         children: [
-              // ── Draggable Header ──────────────────────────────────────────
-              buildAccountHeader(
-                context,
-                onBack: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-              const Divider(height: 1, color: Colors.white10),
+          // ── Draggable Header ──────────────────────────────────────────
+          buildAccountHeader(
+            context,
+            onBack: () {
+              Navigator.of(context).pop();
+            },
+          ),
+          const Divider(height: 1, color: Colors.white10),
 
-              // ── Content ───────────────────────────────────────────────────
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Center(
-                    child: SizedBox(
-                      width: 420,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 32,
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // ── Avatar Section ──────────────────────────────
-                            buildAccountAvatar(user, isAnon),
-                            const SizedBox(height: 32),
+          // ── Content ───────────────────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Center(
+                child: SizedBox(
+                  width: 420,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 32,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ── Avatar Section ──────────────────────────────
+                        buildAccountAvatar(user, isAnon),
+                        const SizedBox(height: 32),
 
-                            if (!isAnon) ...[
-                              // ── Profile Info Card ──────────────────────────
-                              OmniCard(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                        if (!isAnon) ...[
+                          // ── Profile Info Card ──────────────────────────
+                          OmniCard(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
                                   children: [
-                                      const Row(
-                                        children: [
-                                          Icon(
-                                            Icons.person_outline_rounded,
-                                            size: 16,
-                                            color: Colors.tealAccent,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'PROFILE INFORMATION',
-                                            style: TextStyle(
-                                              color: Colors.white70,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 0.8,
-                                            ),
-                                          ),
-                                        ],
+                                    Icon(
+                                      Icons.person_outline_rounded,
+                                      size: 16,
+                                      color: Colors.tealAccent,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'PROFILE INFORMATION',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.8,
                                       ),
-                                      const SizedBox(height: 16),
-                                      buildAccountNameEditor(
-                                        controller: _nameController,
-                                        isSaving: _isSaving,
-                                        message: _message,
-                                        messageIsError: _messageIsError,
-                                        onSave: _updateName,
-                                      ),
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          vertical: 12,
-                                        ),
-                                        child: Divider(
-                                          height: 1,
-                                          color: Colors.white10,
-                                        ),
-                                      ),
-                                      buildAccountEmailInfo(user),
-                                    ],
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                buildAccountNameEditor(
+                                  controller: _nameController,
+                                  isSaving: _isSaving,
+                                  message: _message,
+                                  messageIsError: _messageIsError,
+                                  onSave: _updateName,
+                                ),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Divider(
+                                    height: 1,
+                                    color: Colors.white10,
                                   ),
-                              ),
-                              const SizedBox(height: 12),
-
-                              // ── Plan Details Card ──────────────────────────
-                              StreamBuilder<QuotaStatus>(
-                                stream: sl<UsageRepository>().quotaStatusStream,
-                                initialData: sl<UsageRepository>().currentQuotaStatus,
-                                builder: (context, snapshot) {
-                                  final status = snapshot.data;
-                                  if (status == null) {
-                                    return const SizedBox.shrink();
-                                  }
-
-                                  final tierName = SubscriptionRemoteDataSource.instance
-                                      .getNameForTier(status.tier)
-                                      .toUpperCase();
-                                  final isUnlimited = status.isUnlimited;
-                                  final progress = status.progress;
-
-                                  return OmniCard(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.all(
-                                                  8,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.tealAccent
-                                                      .withValues(alpha: 0.1),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: const Icon(
-                                                  Icons.auto_awesome_rounded,
-                                                  color: Colors.tealAccent,
-                                                  size: 18,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      '$tierName PLAN',
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        letterSpacing: 0.5,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 2),
-                                                    Text(
-                                                      isUnlimited
-                                                          ? 'Unlimited token translation'
-                                                          : '${_formatter.format(status.dailyTokensUsed)} / ${_formatter.format(status.dailyLimit)} tokens used today',
-                                                      style: const TextStyle(
-                                                        color: Colors.white54,
-                                                        fontSize: 11,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Row(
-                                                      children: [
-                                                        _UsageBadge(
-                                                          label: 'WEEKLY',
-                                                          value: _formatter.format(
-                                                            status
-                                                                .weeklyTokensUsed,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 8,
-                                                        ),
-                                                        _UsageBadge(
-                                                          label: 'MONTHLY',
-                                                          value: _formatter.format(
-                                                            status
-                                                                .monthlyTokensUsed,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 8,
-                                                        ),
-                                                        _UsageBadge(
-                                                          label: 'LIFETIME',
-                                                          value: _formatter.format(
-                                                            status
-                                                                .lifetimeTokensUsed,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          if (!isUnlimited) ...[
-                                            const SizedBox(height: 16),
-                                            OmniProgressBar(
-                                              progress: progress,
-                                              backgroundColor: Colors.white.withValues(alpha: 0.05),
-                                            ),
-                                          ],
-                                          const SizedBox(height: 16),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: SizedBox(
-                                                  height: 36,
-                                                  child: OutlinedButton(
-                                                    onPressed: () {
-                                                      Navigator.pushNamed(
-                                                        context,
-                                                        '/usage',
-                                                      );
-                                                    },
-                                                    child: const Text('Detailed Usage'),
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: SizedBox(
-                                                  height: 36,
-                                                  child: OutlinedButton(
-                                                    onPressed: () {
-                                                      Navigator.pushNamed(
-                                                        context,
-                                                        '/subscription',
-                                                      );
-                                                    },
-                                                    child: const Text('Manage Plan'),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 12),
-
-                              const AdminPanel(),
-
-                              // ── Planned Features Card (Todo) ───────────────
-                              OmniCard(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                      const Row(
-                                        children: [
-                                          Icon(
-                                            Icons.upcoming_rounded,
-                                            size: 16,
-                                            color: Colors.orangeAccent,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'PLANNED FEATURES',
-                                            style: TextStyle(
-                                              color: Colors.white70,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 0.8,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-                                      _buildPlannedItem(
-                                        'Audio Translation & Text-to-Speech',
-                                        true,
-                                      ),
-                                      _buildPlannedItem(
-                                        'PDF & Image Document Support',
-                                        false,
-                                      ),
-                                      _buildPlannedItem(
-                                        'Custom Vocabulary & Glossary',
-                                        false,
-                                      ),
-                                    ],
-                                  ),
-                              ),
-                              const SizedBox(height: 24),
-                            ],
-
-                            if (isAnon) const SizedBox(height: 24),
-
-                            // ── Footer Actions ────────────────────────────
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              child: AccountButton(
-                                icon: Icons.logout_rounded,
-                                label: 'Sign Out',
-                                onPressed: _signOut,
-                                isDanger: true,
-                              ),
+                                ),
+                                buildAccountEmailInfo(user),
+                              ],
                             ),
+                          ),
+                          const SizedBox(height: 12),
 
-                            const SizedBox(height: 24),
-                            const OmniVersionChip(),
-                          ],
+                          // ── Plan Details Card ──────────────────────────
+                          StreamBuilder<QuotaStatus>(
+                            stream: sl<UsageRepository>().quotaStatusStream,
+                            initialData:
+                                sl<UsageRepository>().currentQuotaStatus,
+                            builder: (context, snapshot) {
+                              final status = snapshot.data;
+                              if (status == null) {
+                                return const SizedBox.shrink();
+                              }
+
+                              final tierName = SubscriptionRemoteDataSource
+                                  .instance
+                                  .getNameForTier(status.tier)
+                                  .toUpperCase();
+                              final isUnlimited = status.isUnlimited;
+                              final progress = status.progress;
+
+                              return OmniCard(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.tealAccent.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.auto_awesome_rounded,
+                                            color: Colors.tealAccent,
+                                            size: 18,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '$tierName PLAN',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                isUnlimited
+                                                    ? 'Unlimited token translation'
+                                                    : '${_formatter.format(status.dailyTokensUsed)} / ${_formatter.format(status.dailyLimit)} tokens used today',
+                                                style: const TextStyle(
+                                                  color: Colors.white54,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Row(
+                                                children: [
+                                                  _UsageBadge(
+                                                    label: 'WEEKLY',
+                                                    value: _formatter.format(
+                                                      status.weeklyTokensUsed,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  _UsageBadge(
+                                                    label: 'MONTHLY',
+                                                    value: _formatter.format(
+                                                      status.monthlyTokensUsed,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  _UsageBadge(
+                                                    label: 'LIFETIME',
+                                                    value: _formatter.format(
+                                                      status.lifetimeTokensUsed,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (!isUnlimited) ...[
+                                      const SizedBox(height: 16),
+                                      OmniProgressBar(
+                                        progress: progress,
+                                        backgroundColor: Colors.white
+                                            .withValues(alpha: 0.05),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: SizedBox(
+                                            height: 36,
+                                            child: OutlinedButton(
+                                              onPressed: () {
+                                                Navigator.pushNamed(
+                                                  context,
+                                                  '/usage',
+                                                );
+                                              },
+                                              child: const Text(
+                                                'Detailed Usage',
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: SizedBox(
+                                            height: 36,
+                                            child: OutlinedButton(
+                                              onPressed: () {
+                                                Navigator.pushNamed(
+                                                  context,
+                                                  '/subscription',
+                                                );
+                                              },
+                                              child: const Text('Manage Plan'),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 12),
+
+                          const AdminPanel(),
+
+                          // ── Planned Features Card (Todo) ───────────────
+                          OmniCard(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.upcoming_rounded,
+                                      size: 16,
+                                      color: Colors.orangeAccent,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'PLANNED FEATURES',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.8,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                _buildPlannedItem(
+                                  'Audio Translation & Text-to-Speech',
+                                  true,
+                                ),
+                                _buildPlannedItem(
+                                  'PDF & Image Document Support',
+                                  false,
+                                ),
+                                _buildPlannedItem(
+                                  'Custom Vocabulary & Glossary',
+                                  false,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        if (isAnon) const SizedBox(height: 24),
+
+                        // ── Footer Actions ────────────────────────────
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: AccountButton(
+                            icon: Icons.logout_rounded,
+                            label: 'Sign Out',
+                            onPressed: _signOut,
+                            isDanger: true,
+                          ),
                         ),
-                      ),
+
+                        const SizedBox(height: 24),
+                        const OmniVersionChip(),
+                      ],
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
+        ],
+      ),
     );
   }
 }
-
 
 class _UsageBadge extends StatelessWidget {
   final String label;

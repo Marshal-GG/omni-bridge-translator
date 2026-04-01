@@ -70,7 +70,9 @@ void main() {
     when(() => mockGetStatus()).thenAnswer((_) => statusController.stream);
     when(() => mockGetStatus.current).thenReturn(null);
     when(() => mockGetPlans()).thenReturn(const [_fakePlan]);
-    when(() => mockGetPlans.onChange).thenAnswer((_) => configController.stream);
+    when(
+      () => mockGetPlans.onChange,
+    ).thenAnswer((_) => configController.stream);
     when(() => mockHasUsedTrial()).thenAnswer((_) async => false);
   });
 
@@ -80,12 +82,12 @@ void main() {
   });
 
   SubscriptionBloc buildBloc() => SubscriptionBloc(
-        getStatus: mockGetStatus,
-        getPlans: mockGetPlans,
-        activateTrial: mockActivateTrial,
-        openCheckout: mockOpenCheckout,
-        hasUsedTrial: mockHasUsedTrial,
-      );
+    getStatus: mockGetStatus,
+    getPlans: mockGetPlans,
+    activateTrial: mockActivateTrial,
+    openCheckout: mockOpenCheckout,
+    hasUsedTrial: mockHasUsedTrial,
+  );
 
   test('initial state has isLoading true', () {
     final bloc = buildBloc();

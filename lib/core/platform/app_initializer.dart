@@ -17,7 +17,7 @@ import 'package:windows_single_instance/windows_single_instance.dart';
 import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
 import 'dart:io' show Platform;
-import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/core/di/di.dart';
 import 'package:omni_bridge/core/network/connectivity_service.dart';
 
 class AppInitializer {
@@ -87,7 +87,9 @@ class AppInitializer {
 
       PlatformDispatcher.instance.onError = (error, stack) {
         debugPrint('Async Error: $error');
-        UsageMetricsRemoteDataSource.instance.logEvent('Async Error', {'error': error.toString()});
+        UsageMetricsRemoteDataSource.instance.logEvent('Async Error', {
+          'error': error.toString(),
+        });
         debugPrintStack(stackTrace: stack);
         return true;
       };
@@ -107,7 +109,8 @@ class AppInitializer {
       limitProvider: SubscriptionRemoteDataSource.instance.engineMonthlyLimit,
       periodLimitProvider:
           SubscriptionRemoteDataSource.instance.getPeriodLimitForTier,
-      defaultTierProvider: () => SubscriptionRemoteDataSource.instance.defaultTier,
+      defaultTierProvider: () =>
+          SubscriptionRemoteDataSource.instance.defaultTier,
       pollIntervalProvider: () =>
           SubscriptionRemoteDataSource.instance.pollIntervalSeconds,
     );
@@ -174,7 +177,9 @@ class AppInitializer {
     // Determine initial route
 
     // Use the named app instance for Auth (session isolation)
-    final auth = FirebaseAuth.instanceFor(app: Firebase.app(RTDBClient.appName));
+    final auth = FirebaseAuth.instanceFor(
+      app: Firebase.app(RTDBClient.appName),
+    );
 
     // Wait for initial auth state to be resolved (useful for desktop where it might take a moment to load from storage)
     try {
@@ -212,7 +217,8 @@ class AppInitializer {
 
     // Check for forced update before allowing the user into the app
     try {
-      final updateResult = await UpdateRemoteDataSource.instance.checkForUpdate();
+      final updateResult = await UpdateRemoteDataSource.instance
+          .checkForUpdate();
       if (updateResult.status == UpdateStatus.forced) {
         initialRoute = '/force_update';
       }

@@ -15,10 +15,7 @@ import 'package:omni_bridge/core/network/rtdb_client.dart';
 import 'package:omni_bridge/core/data/datasources/session_remote_datasource.dart';
 import 'package:omni_bridge/core/data/datasources/usage_metrics_remote_datasource.dart';
 import 'package:omni_bridge/core/navigation/global_navigator.dart';
-import 'package:omni_bridge/core/di/injection.dart';
-import 'package:omni_bridge/features/history/data/datasources/history_local_datasource.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
-import 'package:omni_bridge/features/translation/data/datasources/asr_websocket_datasource.dart';
+import 'package:omni_bridge/core/di/di.dart';
 import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:omni_bridge/core/constants/firebase_paths.dart';
 import 'package:omni_bridge/core/data/interfaces/resettable.dart';
@@ -100,7 +97,9 @@ class AuthRemoteDataSource implements IResettable {
           idToken: credentials.idToken,
         );
         await _auth.signInWithCredential(credential);
-        await UsageMetricsRemoteDataSource.instance.logEvent('Silent Sign In via Init');
+        await UsageMetricsRemoteDataSource.instance.logEvent(
+          'Silent Sign In via Init',
+        );
       }
     });
   }
@@ -241,7 +240,9 @@ class AuthRemoteDataSource implements IResettable {
       final userCredential = await _auth.signInWithCredential(credential);
       if (userCredential.user != null) {
         await _saveUserToFirestore(userCredential.user!);
-        await UsageMetricsRemoteDataSource.instance.logEvent('Sign In With Google');
+        await UsageMetricsRemoteDataSource.instance.logEvent(
+          'Sign In With Google',
+        );
       }
       AppLogger.i('Step 5: Done → ${userCredential.user?.email}', tag: _tag);
       return userCredential.user;
@@ -261,7 +262,9 @@ class AuthRemoteDataSource implements IResettable {
     );
     if (userCredential.user != null) {
       await _saveUserToFirestore(userCredential.user!);
-      await UsageMetricsRemoteDataSource.instance.logEvent('Sign In With Email/Password');
+      await UsageMetricsRemoteDataSource.instance.logEvent(
+        'Sign In With Email/Password',
+      );
     }
     return userCredential.user;
   }
@@ -276,14 +279,18 @@ class AuthRemoteDataSource implements IResettable {
     );
     if (userCredential.user != null) {
       await _saveUserToFirestore(userCredential.user!);
-      await UsageMetricsRemoteDataSource.instance.logEvent('Registered With Email/Password');
+      await UsageMetricsRemoteDataSource.instance.logEvent(
+        'Registered With Email/Password',
+      );
     }
     return userCredential.user;
   }
 
   Future<void> sendPasswordReset(String email) async {
     await _auth.sendPasswordResetEmail(email: email);
-    await UsageMetricsRemoteDataSource.instance.logEvent('Password Reset Requested');
+    await UsageMetricsRemoteDataSource.instance.logEvent(
+      'Password Reset Requested',
+    );
   }
 
   Future<void> updateDisplayName(String newName) async {
@@ -299,23 +306,46 @@ class AuthRemoteDataSource implements IResettable {
         await _saveUserToFirestore(updatedUser);
       }
 
-      await UsageMetricsRemoteDataSource.instance.logEvent('Display Name Updated');
+      await UsageMetricsRemoteDataSource.instance.logEvent(
+        'Display Name Updated',
+      );
     }
   }
 
   Future<void> signOut() async {
-    // Do NOT call _googleSignIn.signOut() — it corrupts the package's
-    // internal HTTP server state, causing the next signIn() to hang.
+    // Phase 1: Logging & Active Session Termination
     await UsageMetricsRemoteDataSource.instance.logEvent('User Signed Out');
+    try {
+      await SessionRemoteDataSource.instance.endSession();
+    } catch (_) {}
 
-    // Phase 1: Client-Side Orchestration (ensure clean state before splash)
-    await SessionRemoteDataSource.instance.endSession();
-    SubscriptionRemoteDataSource.instance.reset();
-    sl<HistoryLocalDataSource>().clear();
-    
-    // Phase 2: Server-Side Orchestration
-    sl<AsrWebSocketClient>().resetSession();
+    // Phase 2: Comprehensive Reset of all registered IResettable Components
+    final resettables = [
+      'auth_reset',
+      'sub_reset',
+      'session_reset',
+      'metrics_reset',
+      'usage_reset',
+      'settings_reset',
+      'transcription_reset',
+      'rtdb_reset',
+      'history_reset',
+      'support_local_reset',
+      'translation_reset',
+      'live_caption_reset',
+    ];
 
+    for (final name in resettables) {
+      try {
+        if (sl.isRegistered<IResettable>(instanceName: name)) {
+          sl.get<IResettable>(instanceName: name).reset();
+        }
+      } catch (e) {
+        AppLogger.e('Error resetting $name during logout', error: e, tag: _tag);
+      }
+    }
+
+    // Phase 3: Firebase SignOut
     await _auth.signOut();
 
     // Ensure we redirect to splash on manual sign out as well

@@ -62,7 +62,9 @@ class FeedbackTicket extends Equatable {
       subject: json['subject'] as String? ?? 'No Subject',
       message: json['message'] as String? ?? '',
       lastMessage: json['last_message'] as String? ?? '',
-      systemSnapshot: SystemSnapshot.fromJson(json['system_snapshot'] as Map<String, dynamic>? ?? {}),
+      systemSnapshot: SystemSnapshot.fromJson(
+        json['system_snapshot'] as Map<String, dynamic>? ?? {},
+      ),
       attachmentUrls: List<String>.from(json['attachment_urls'] as List? ?? []),
       timestamp: json['timestamp'] is String
           ? DateTime.parse(json['timestamp'] as String)
@@ -75,16 +77,16 @@ class FeedbackTicket extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        userId,
-        type,
-        status,
-        subject,
-        message,
-        lastMessage,
-        systemSnapshot,
-        attachmentUrls,
-        timestamp,
-        updatedAt,
-      ];
+    id,
+    userId,
+    type,
+    status,
+    subject,
+    message,
+    lastMessage,
+    systemSnapshot,
+    attachmentUrls,
+    timestamp,
+    updatedAt,
+  ];
 }

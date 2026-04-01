@@ -20,7 +20,8 @@ class UpgradeSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final plans = SubscriptionRemoteDataSource.instance.availablePlans;
-    final promptConfig = SubscriptionRemoteDataSource.instance.upgradePromptConfig;
+    final promptConfig =
+        SubscriptionRemoteDataSource.instance.upgradePromptConfig;
     final title =
         promptConfig?['feature_locked']?['title'] as String? ??
         'Upgrade Your Plan';
@@ -64,17 +65,22 @@ class UpgradeSheet extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           // Show highlights from each paid plan (skip the first/free tier)
-          ...plans.where((p) => p.id != SubscriptionRemoteDataSource.instance.defaultTier).map((
-            plan,
-          ) {
-            final highlight = plan.isUnlimited
-                ? '${plan.name}: Unlimited usage & ${plan.allowedTranslationModels.length} engines'
-                : '${plan.name}: ${plan.features.isNotEmpty ? plan.features.first : plan.description}';
-            return _buildFeatureRow(
-              plan.isPopular ? Icons.auto_awesome_rounded : Icons.bolt_rounded,
-              highlight,
-            );
-          }),
+          ...plans
+              .where(
+                (p) =>
+                    p.id != SubscriptionRemoteDataSource.instance.defaultTier,
+              )
+              .map((plan) {
+                final highlight = plan.isUnlimited
+                    ? '${plan.name}: Unlimited usage & ${plan.allowedTranslationModels.length} engines'
+                    : '${plan.name}: ${plan.features.isNotEmpty ? plan.features.first : plan.description}';
+                return _buildFeatureRow(
+                  plan.isPopular
+                      ? Icons.auto_awesome_rounded
+                      : Icons.bolt_rounded,
+                  highlight,
+                );
+              }),
           // Extra highlights from Firestore upgrade_prompts config
           ...((promptConfig?['feature_locked']?['highlights']
                       as List<dynamic>?) ??

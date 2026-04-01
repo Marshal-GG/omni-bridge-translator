@@ -19,7 +19,7 @@ class ShellOverlay extends StatelessWidget {
             if (!UpdateNotifier.instance.value) return const SizedBox.shrink();
 
             final isForced = UpdateNotifier.instance.isForced;
-            
+
             return Positioned(
               top: AppSpacing.md,
               right: AppSpacing.md,
@@ -37,15 +37,19 @@ class ShellOverlay extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isForced ? AppColors.accentRed.withValues(alpha: 0.1) : AppColors.accentCyan.withValues(alpha: 0.1),
+          color: isForced
+              ? AppColors.accentRed.withValues(alpha: 0.1)
+              : AppColors.accentCyan.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: (isForced ? AppColors.accentRed : AppColors.accentCyan).withValues(alpha: 0.3),
+            color: (isForced ? AppColors.accentRed : AppColors.accentCyan)
+                .withValues(alpha: 0.3),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: (isForced ? AppColors.accentRed : AppColors.accentCyan).withValues(alpha: 0.1),
+              color: (isForced ? AppColors.accentRed : AppColors.accentCyan)
+                  .withValues(alpha: 0.1),
               blurRadius: 10,
               spreadRadius: 2,
             ),
@@ -55,7 +59,9 @@ class ShellOverlay extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              isForced ? Icons.priority_high_rounded : Icons.system_update_alt_rounded,
+              isForced
+                  ? Icons.priority_high_rounded
+                  : Icons.system_update_alt_rounded,
               size: 16,
               color: isForced ? AppColors.accentRed : AppColors.accentCyan,
             ),

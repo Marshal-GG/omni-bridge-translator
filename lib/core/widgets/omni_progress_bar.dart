@@ -39,7 +39,8 @@ class OmniProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final clampedProgress = progress.clamp(0.0, 1.0);
-    final isWarning = warningThreshold != null && clampedProgress >= warningThreshold!;
+    final isWarning =
+        warningThreshold != null && clampedProgress >= warningThreshold!;
     final activeColor = isWarning ? warningColor : color;
 
     return ClipRRect(

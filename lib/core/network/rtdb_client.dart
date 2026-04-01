@@ -12,8 +12,9 @@ class RTDBClient implements IResettable {
   RTDBClient._();
   static final RTDBClient instance = RTDBClient._();
 
-  static const String appName =
-      kDebugMode ? 'OmniBridge-Debug' : 'OmniBridge-Release';
+  static const String appName = kDebugMode
+      ? 'OmniBridge-Debug'
+      : 'OmniBridge-Release';
 
   FirebaseApp get _app => Firebase.app(appName);
   FirebaseAuth get _auth => FirebaseAuth.instanceFor(app: _app);
@@ -50,15 +51,17 @@ class RTDBClient implements IResettable {
     int attempts = 0;
     while (attempts < maxRetries) {
       try {
-        final response =
-            await requestFunc(_httpClient).timeout(const Duration(seconds: 5));
+        final response = await requestFunc(
+          _httpClient,
+        ).timeout(const Duration(seconds: 5));
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return response;
         }
         return response;
       } catch (e) {
         attempts++;
-        final isTransient = e is HandshakeException ||
+        final isTransient =
+            e is HandshakeException ||
             e is SocketException ||
             e is http.ClientException ||
             e is TimeoutException;
@@ -66,8 +69,11 @@ class RTDBClient implements IResettable {
           await Future.delayed(Duration(milliseconds: 500 * attempts));
           continue;
         }
-        AppLogger.e('[RTDBClient] RTDB ($context) error: $e',
-            tag: 'RTDB', error: e);
+        AppLogger.e(
+          '[RTDBClient] RTDB ($context) error: $e',
+          tag: 'RTDB',
+          error: e,
+        );
         return null;
       }
     }

@@ -22,12 +22,14 @@ class AppShellBloc extends Bloc<AppShellEvent, AppShellState>
     required GetCurrentUserUseCase getCurrentUser,
     required ObserveAuthChangesUseCase observeAuthChanges,
     required GetSubscriptionStatus getSubscriptionStatus,
-  })  : _observeAuthChanges = observeAuthChanges,
-        _getSubscriptionStatus = getSubscriptionStatus,
-        super(AppShellState(
-          currentUser: getCurrentUser.call().value,
-          currentSubscriptionStatus: getSubscriptionStatus.current,
-        )) {
+  }) : _observeAuthChanges = observeAuthChanges,
+       _getSubscriptionStatus = getSubscriptionStatus,
+       super(
+         AppShellState(
+           currentUser: getCurrentUser.call().value,
+           currentSubscriptionStatus: getSubscriptionStatus.current,
+         ),
+       ) {
     on<AppShellUserChanged>(_onUserChanged);
     on<AppShellSubscriptionStatusChanged>(_onStatusChanged);
     on<AppShellToggleSettingsExpanded>(_onToggleSettingsExpanded);
@@ -46,10 +48,7 @@ class AppShellBloc extends Bloc<AppShellEvent, AppShellState>
     });
   }
 
-  void _onUserChanged(
-    AppShellUserChanged event,
-    Emitter<AppShellState> emit,
-  ) {
+  void _onUserChanged(AppShellUserChanged event, Emitter<AppShellState> emit) {
     emit(state.copyWith(currentUser: () => event.user));
   }
 
@@ -104,11 +103,13 @@ class AppShellBloc extends Bloc<AppShellEvent, AppShellState>
 
     // When collapsing, close all sub-menus so they don't remain open invisibly.
     if (!newExpanded) {
-      emit(state.copyWith(
-        isSidebarExpanded: false,
-        isSettingsExpanded: false,
-        isSupportExpanded: false,
-      ));
+      emit(
+        state.copyWith(
+          isSidebarExpanded: false,
+          isSettingsExpanded: false,
+          isSupportExpanded: false,
+        ),
+      );
     } else {
       emit(state.copyWith(isSidebarExpanded: true));
     }
@@ -127,4 +128,3 @@ class AppShellBloc extends Bloc<AppShellEvent, AppShellState>
     return super.close();
   }
 }
-

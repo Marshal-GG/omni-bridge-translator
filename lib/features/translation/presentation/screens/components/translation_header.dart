@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:omni_bridge/features/settings/presentation/widgets/settings_helpers.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_event.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
 import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
-import 'package:omni_bridge/features/settings/presentation/widgets/settings_helpers.dart';
 
 Widget buildTranslationHeader(BuildContext context, TranslationState state) {
   final bloc = context.read<TranslationBloc>();
@@ -23,7 +23,11 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
             cursor: SystemMouseCursors.click,
             child: Tooltip(
               message: 'Support & Feedback',
-              child: Image.asset('assets/app/icons/icon.png', width: 14, height: 14),
+              child: Image.asset(
+                'assets/app/icons/icon.png',
+                width: 14,
+                height: 14,
+              ),
             ),
           ),
         ),
@@ -86,7 +90,9 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
               : null,
           tooltip: state.isRunning
               ? 'Pause Translation'
-              : (state.isServerConnected ? 'Resume Translation' : 'Server Offline'),
+              : (state.isServerConnected
+                    ? 'Resume Translation'
+                    : 'Server Offline'),
           padding: const EdgeInsets.all(8),
           constraints: const BoxConstraints(),
           splashRadius: 16,
@@ -206,10 +212,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
                                 child: InkWell(
                                   onTap: () {
                                     Navigator.pop(context);
-                                    Navigator.pushNamed(
-                                      context,
-                                      '/usage',
-                                    );
+                                    Navigator.pushNamed(context, '/usage');
                                   },
                                   child: const Padding(
                                     padding: EdgeInsets.symmetric(
@@ -353,14 +356,14 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
         ),
 
         MinimizeWindowButton(
-            colors: WindowButtonColors(iconNormal: Colors.white),
-          ),
+          colors: WindowButtonColors(iconNormal: Colors.white),
+        ),
         CloseWindowButton(
-            colors: WindowButtonColors(
-              iconNormal: Colors.white,
-              mouseOver: Colors.red,
-            ),
-            onPressed: () => appWindow.close(),
+          colors: WindowButtonColors(
+            iconNormal: Colors.white,
+            mouseOver: Colors.red,
+          ),
+          onPressed: () => appWindow.close(),
         ),
       ],
     ),

@@ -126,7 +126,9 @@ class _OmniSegmentTileState extends State<_OmniSegmentTile> {
                   widget.label,
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: widget.isSelected
+                        ? FontWeight.w700
+                        : FontWeight.w500,
                     color: activeColor,
                     letterSpacing: 0.2,
                   ),

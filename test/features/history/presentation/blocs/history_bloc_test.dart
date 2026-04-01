@@ -14,9 +14,14 @@ import 'package:omni_bridge/features/history/domain/usecases/clear_history_useca
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 
 class MockGetLiveHistoryUseCase extends Mock implements GetLiveHistoryUseCase {}
-class MockGetChunkedHistoryUseCase extends Mock implements GetChunkedHistoryUseCase {}
+
+class MockGetChunkedHistoryUseCase extends Mock
+    implements GetChunkedHistoryUseCase {}
+
 class MockClearHistoryUseCase extends Mock implements ClearHistoryUseCase {}
-class MockSubscriptionRemoteDataSource extends Mock implements SubscriptionRemoteDataSource {}
+
+class MockSubscriptionRemoteDataSource extends Mock
+    implements SubscriptionRemoteDataSource {}
 
 void main() {
   late HistoryBloc historyBloc;
@@ -69,8 +74,12 @@ void main() {
 
     when(() => mockGetLiveHistoryUseCase()).thenReturn(liveListenable);
     when(() => mockGetChunkedHistoryUseCase()).thenReturn(chunkedListenable);
-    when(() => mockSubscriptionDataSource.statusStream).thenAnswer((_) => subStreamController.stream);
-    when(() => mockSubscriptionDataSource.currentStatus).thenReturn(testStatusFree);
+    when(
+      () => mockSubscriptionDataSource.statusStream,
+    ).thenAnswer((_) => subStreamController.stream);
+    when(
+      () => mockSubscriptionDataSource.currentStatus,
+    ).thenReturn(testStatusFree);
 
     historyBloc = HistoryBloc(
       getLiveHistoryUseCase: mockGetLiveHistoryUseCase,

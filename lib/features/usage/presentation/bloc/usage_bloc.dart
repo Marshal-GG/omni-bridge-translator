@@ -17,11 +17,11 @@ class UsageBloc extends Bloc<UsageEvent, UsageState> {
     required GetUsageHistory getUsageHistory,
     required GetQuotaStatus getQuotaStatus,
     required CheckUsageRollover checkUsageRollover,
-  })  : _getUsageStats = getUsageStats,
-        _getUsageHistory = getUsageHistory,
-        _getQuotaStatus = getQuotaStatus,
-        _checkUsageRollover = checkUsageRollover,
-        super(UsageInitial()) {
+  }) : _getUsageStats = getUsageStats,
+       _getUsageHistory = getUsageHistory,
+       _getQuotaStatus = getQuotaStatus,
+       _checkUsageRollover = checkUsageRollover,
+       super(UsageInitial()) {
     on<LoadUsageStats>(_onLoadUsageStats);
   }
 

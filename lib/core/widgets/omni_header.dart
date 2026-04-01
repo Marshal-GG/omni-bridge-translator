@@ -60,13 +60,8 @@ class OmniHeader extends StatelessWidget {
                 tooltip: 'Back',
               ),
             ),
-          if (onBack == null)
-            const SizedBox(width: 12),
-          Icon(
-            icon,
-            size: 14,
-            color: Colors.tealAccent,
-          ),
+          if (onBack == null) const SizedBox(width: 12),
+          Icon(icon, size: 14, color: Colors.tealAccent),
           const SizedBox(width: 8),
           Text(
             title,

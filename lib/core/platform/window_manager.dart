@@ -55,9 +55,11 @@ void configureMainWindow() async {
 }
 
 bool _isNavRailExpanded = false;
-const double _navRailExpandedDiff = 180.0; // navRailWidth (260) - navRailWidthCollapsed (80)
+const double _navRailExpandedDiff =
+    180.0; // navRailWidth (260) - navRailWidthCollapsed (80)
 
 enum WindowMode { none, login, startup, translation, history, dashboard }
+
 WindowMode _currentWindowMode = WindowMode.none;
 
 /// Instantly resizes the OS window when the navigation rail expands or collapses.
@@ -66,7 +68,9 @@ Future<void> toggleNavRailWindowSize(bool isExpanded) async {
   _isNavRailExpanded = isExpanded;
 
   Size currentSize = await windowManager.getSize();
-  double newWidth = currentSize.width + (isExpanded ? _navRailExpandedDiff : -_navRailExpandedDiff);
+  double newWidth =
+      currentSize.width +
+      (isExpanded ? _navRailExpandedDiff : -_navRailExpandedDiff);
   await windowManager.setSize(Size(newWidth, currentSize.height));
 }
 

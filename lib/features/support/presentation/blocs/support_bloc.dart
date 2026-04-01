@@ -57,16 +57,24 @@ class SupportBloc extends Bloc<SupportEvent, SupportState> {
     return super.close();
   }
 
-  Future<void> _onLoadSupportLinks(LoadSupportLinks event, Emitter<SupportState> emit) async {
+  Future<void> _onLoadSupportLinks(
+    LoadSupportLinks event,
+    Emitter<SupportState> emit,
+  ) async {
     emit(state.copyWith(isLoadingLinks: true));
     final result = await getSupportLinks();
     result.fold(
-      (failure) => emit(state.copyWith(isLoadingLinks: false, error: failure.message)),
-      (links) => emit(state.copyWith(isLoadingLinks: false, supportLinks: links)),
+      (failure) =>
+          emit(state.copyWith(isLoadingLinks: false, error: failure.message)),
+      (links) =>
+          emit(state.copyWith(isLoadingLinks: false, supportLinks: links)),
     );
   }
 
-  Future<void> _onCaptureSystemSnapshot(CaptureSystemSnapshot event, Emitter<SupportState> emit) async {
+  Future<void> _onCaptureSystemSnapshot(
+    CaptureSystemSnapshot event,
+    Emitter<SupportState> emit,
+  ) async {
     final result = await getSystemSnapshot();
     result.fold(
       (failure) => emit(state.copyWith(error: failure.message)),
@@ -74,15 +82,24 @@ class SupportBloc extends Bloc<SupportEvent, SupportState> {
     );
   }
 
-  void _onUpdateFeedbackType(UpdateFeedbackType event, Emitter<SupportState> emit) {
+  void _onUpdateFeedbackType(
+    UpdateFeedbackType event,
+    Emitter<SupportState> emit,
+  ) {
     emit(state.copyWith(feedbackType: event.type));
   }
 
-  void _onUpdateFeedbackSubject(UpdateFeedbackSubject event, Emitter<SupportState> emit) {
+  void _onUpdateFeedbackSubject(
+    UpdateFeedbackSubject event,
+    Emitter<SupportState> emit,
+  ) {
     emit(state.copyWith(subject: event.subject));
   }
 
-  void _onUpdateFeedbackMessage(UpdateFeedbackMessage event, Emitter<SupportState> emit) {
+  void _onUpdateFeedbackMessage(
+    UpdateFeedbackMessage event,
+    Emitter<SupportState> emit,
+  ) {
     emit(state.copyWith(message: event.message));
   }
 
@@ -92,11 +109,15 @@ class SupportBloc extends Bloc<SupportEvent, SupportState> {
   }
 
   void _onRemoveAttachment(RemoveAttachment event, Emitter<SupportState> emit) {
-    final attachments = List<File>.from(state.attachments)..removeAt(event.index);
+    final attachments = List<File>.from(state.attachments)
+      ..removeAt(event.index);
     emit(state.copyWith(attachments: attachments));
   }
 
-  Future<void> _onSubmitFeedback(SubmitFeedback event, Emitter<SupportState> emit) async {
+  Future<void> _onSubmitFeedback(
+    SubmitFeedback event,
+    Emitter<SupportState> emit,
+  ) async {
     if (state.systemSnapshot == null) {
       add(const CaptureSystemSnapshot());
       return;
@@ -115,62 +136,87 @@ class SupportBloc extends Bloc<SupportEvent, SupportState> {
       updatedAt: DateTime.now(),
     );
 
-    final result = await submitFeedback(
-      ticket,
-      state.attachments,
-    );
+    final result = await submitFeedback(ticket, state.attachments);
 
     result.fold(
-      (failure) => emit(state.copyWith(isSubmitting: false, error: failure.message)),
+      (failure) =>
+          emit(state.copyWith(isSubmitting: false, error: failure.message)),
       (_) {
-        emit(state.copyWith(
-          isSubmitting: false,
-          isSubmitted: true,
-          subject: '',
-          message: '',
-          attachments: [],
-        ));
+        emit(
+          state.copyWith(
+            isSubmitting: false,
+            isSubmitted: true,
+            subject: '',
+            message: '',
+            attachments: [],
+          ),
+        );
         add(const LoadTicketHistory());
       },
     );
   }
 
-  Future<void> _onLoadTicketHistory(LoadTicketHistory event, Emitter<SupportState> emit) async {
+  Future<void> _onLoadTicketHistory(
+    LoadTicketHistory event,
+    Emitter<SupportState> emit,
+  ) async {
     emit(state.copyWith(isLoadingHistory: true));
     final result = await getTicketHistory();
     result.fold(
-      (failure) => emit(state.copyWith(isLoadingHistory: false, error: failure.message)),
-      (tickets) => emit(state.copyWith(isLoadingHistory: false, tickets: tickets)),
+      (failure) =>
+          emit(state.copyWith(isLoadingHistory: false, error: failure.message)),
+      (tickets) =>
+          emit(state.copyWith(isLoadingHistory: false, tickets: tickets)),
     );
   }
 
   Future<void> _onOpenChat(OpenChat event, Emitter<SupportState> emit) async {
     _messagesSubscription?.cancel();
-    emit(state.copyWith(activeTicketId: event.ticketId, isLoadingMessages: true, messages: []));
+    emit(
+      state.copyWith(
+        activeTicketId: event.ticketId,
+        isLoadingMessages: true,
+        messages: [],
+      ),
+    );
 
     _messagesSubscription = getTicketMessages(event.ticketId).listen((result) {
       result.fold(
-        (failure) => add(UpdateChatMessages(const [])), // or handle error better
+        (failure) =>
+            add(UpdateChatMessages(const [])), // or handle error better
         (messages) => add(UpdateChatMessages(messages)),
       );
     });
   }
 
-  void _onUpdateChatMessages(UpdateChatMessages event, Emitter<SupportState> emit) {
+  void _onUpdateChatMessages(
+    UpdateChatMessages event,
+    Emitter<SupportState> emit,
+  ) {
     emit(state.copyWith(isLoadingMessages: false, messages: event.messages));
   }
 
-  void _onAddChatAttachment(AddChatAttachment event, Emitter<SupportState> emit) {
+  void _onAddChatAttachment(
+    AddChatAttachment event,
+    Emitter<SupportState> emit,
+  ) {
     final attachments = List<File>.from(state.chatAttachments)..add(event.file);
     emit(state.copyWith(chatAttachments: attachments));
   }
 
-  void _onRemoveChatAttachment(RemoveChatAttachment event, Emitter<SupportState> emit) {
-    final attachments = List<File>.from(state.chatAttachments)..removeAt(event.index);
+  void _onRemoveChatAttachment(
+    RemoveChatAttachment event,
+    Emitter<SupportState> emit,
+  ) {
+    final attachments = List<File>.from(state.chatAttachments)
+      ..removeAt(event.index);
     emit(state.copyWith(chatAttachments: attachments));
   }
 
-  Future<void> _onSendMessage(SendMessage event, Emitter<SupportState> emit) async {
+  Future<void> _onSendMessage(
+    SendMessage event,
+    Emitter<SupportState> emit,
+  ) async {
     if (state.activeTicketId == null) return;
 
     emit(state.copyWith(isSendingMessage: true));
@@ -184,10 +230,21 @@ class SupportBloc extends Bloc<SupportEvent, SupportState> {
       attachmentUrls: const [],
     );
 
-    final result = await sendSupportMessage(state.activeTicketId!, message, attachments: state.chatAttachments);
+    final result = await sendSupportMessage(
+      state.activeTicketId!,
+      message,
+      attachments: state.chatAttachments,
+    );
     result.fold(
-      (failure) => emit(state.copyWith(isSendingMessage: false, error: failure.message)),
-      (_) => emit(state.copyWith(isSendingMessage: false, chatAttachments: [], error: null)),
+      (failure) =>
+          emit(state.copyWith(isSendingMessage: false, error: failure.message)),
+      (_) => emit(
+        state.copyWith(
+          isSendingMessage: false,
+          chatAttachments: [],
+          error: null,
+        ),
+      ),
     );
   }
 

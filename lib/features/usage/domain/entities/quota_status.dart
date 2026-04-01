@@ -37,11 +37,14 @@ class QuotaStatus extends Equatable {
   double get progress => hasPeriodLimit
       ? (periodLimit <= 0 ? 0 : monthlyTokensUsed / periodLimit)
       : hasMonthlyLimit
-          ? (monthlyLimit <= 0 ? 0 : monthlyTokensUsed / monthlyLimit)
-          : (dailyLimit <= 0 ? 0 : dailyTokensUsed / dailyLimit);
+      ? (monthlyLimit <= 0 ? 0 : monthlyTokensUsed / monthlyLimit)
+      : (dailyLimit <= 0 ? 0 : dailyTokensUsed / dailyLimit);
 
   bool get isDailyExceeded =>
-      !isUnlimited && !hasPeriodLimit && dailyLimit > 0 && dailyTokensUsed >= dailyLimit;
+      !isUnlimited &&
+      !hasPeriodLimit &&
+      dailyLimit > 0 &&
+      dailyTokensUsed >= dailyLimit;
 
   bool get isMonthlyExceeded =>
       hasMonthlyLimit && monthlyTokensUsed >= monthlyLimit;
@@ -56,8 +59,9 @@ class QuotaStatus extends Equatable {
       dailyLimit > 0 ? (dailyLimit - dailyTokensUsed).clamp(0, dailyLimit) : 0;
 
   /// Remaining monthly tokens (0 if exceeded or no monthly limit).
-  int get monthlyRemaining =>
-      monthlyLimit > 0 ? (monthlyLimit - monthlyTokensUsed).clamp(0, monthlyLimit) : 0;
+  int get monthlyRemaining => monthlyLimit > 0
+      ? (monthlyLimit - monthlyTokensUsed).clamp(0, monthlyLimit)
+      : 0;
 
   QuotaStatus copyWith({
     String? tier,
@@ -85,15 +89,15 @@ class QuotaStatus extends Equatable {
 
   @override
   List<Object?> get props => [
-        tier,
-        dailyTokensUsed,
-        weeklyTokensUsed,
-        monthlyTokensUsed,
-        lifetimeTokensUsed,
-        dailyLimit,
-        monthlyLimit,
-        dailyResetAt,
-        monthlyResetAt,
-        periodLimit,
-      ];
+    tier,
+    dailyTokensUsed,
+    weeklyTokensUsed,
+    monthlyTokensUsed,
+    lifetimeTokensUsed,
+    dailyLimit,
+    monthlyLimit,
+    dailyResetAt,
+    monthlyResetAt,
+    periodLimit,
+  ];
 }

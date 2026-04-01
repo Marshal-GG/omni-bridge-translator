@@ -65,12 +65,14 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       tag: 'SubscriptionBloc',
     );
 
-    emit(state.copyWith(
-      isLoading: false,
-      status: status,
-      plans: plans,
-      trialUsed: trialUsed,
-    ));
+    emit(
+      state.copyWith(
+        isLoading: false,
+        status: status,
+        plans: plans,
+        trialUsed: trialUsed,
+      ),
+    );
   }
 
   void _onStatusUpdated(

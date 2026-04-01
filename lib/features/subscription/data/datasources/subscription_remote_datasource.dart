@@ -82,13 +82,13 @@ class SubscriptionRemoteDataSource implements IResettable {
     _userSub = null;
     _lastKnownTier = null;
     _currentStatus = null;
-    
+
     _notifiedEngines.clear();
     activeEngineFallbacks.value = {};
-    
+
     // Also cancel monetization sub to be safe, though it's system-wide
-    // _monetizationSub?.cancel(); 
-    
+    // _monetizationSub?.cancel();
+
     _statusController.add(_getDefaultStatus());
     AppLogger.d('State reset', tag: _tag);
   }
@@ -115,7 +115,10 @@ class SubscriptionRemoteDataSource implements IResettable {
             // Notify any ValueListenableBuilder widgets (e.g. admin panel)
             configNotifier.value++;
           } else {
-            AppLogger.w('${FirebasePaths.system}/${FirebasePaths.monetization} document does NOT exist', tag: _tag);
+            AppLogger.w(
+              '${FirebasePaths.system}/${FirebasePaths.monetization} document does NOT exist',
+              tag: _tag,
+            );
           }
         });
   }
@@ -253,10 +256,7 @@ class SubscriptionRemoteDataSource implements IResettable {
     return _monetizationConfig?['upgrade_prompts'] as Map<String, dynamic>?;
   }
 
-  void _updateCurrentStatus({
-    String? tier,
-    DateTime? resetAt,
-  }) {
+  void _updateCurrentStatus({String? tier, DateTime? resetAt}) {
     if (_currentStatus == null && tier == null) return;
 
     final newTier = tier ?? _currentStatus?.tier ?? defaultTier;
@@ -277,50 +277,54 @@ class SubscriptionRemoteDataSource implements IResettable {
 
   void _listenToUserDoc(String uid) {
     _userSub?.cancel();
-    _userSub = _firestore.collection(FirebasePaths.users).doc(uid).snapshots().listen((
-      doc,
-    ) {
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (!doc.exists) {
-          _initializeUserDoc(uid);
-          return;
-        }
+    _userSub = _firestore
+        .collection(FirebasePaths.users)
+        .doc(uid)
+        .snapshots()
+        .listen((doc) {
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (!doc.exists) {
+              _initializeUserDoc(uid);
+              return;
+            }
 
-        final data = doc.data()!;
-        final tierStr = data['tier'] as String? ?? defaultTier;
-        final tier = tierStr;
-        final resetAt =
-            (data['dailyResetAt'] as Timestamp?)?.toDate() ??
-            _getNextDailyReset();
+            final data = doc.data()!;
+            final tierStr = data['tier'] as String? ?? defaultTier;
+            final tier = tierStr;
+            final resetAt =
+                (data['dailyResetAt'] as Timestamp?)?.toDate() ??
+                _getNextDailyReset();
 
-        if (DateTime.now().isAfter(resetAt)) {
-          _resetDailyQuota(uid);
-          return;
-        }
+            if (DateTime.now().isAfter(resetAt)) {
+              _resetDailyQuota(uid);
+              return;
+            }
 
-        final monthlyResetAt = (data['monthlyResetAt'] as Timestamp?)?.toDate();
-        if (monthlyResetAt != null && DateTime.now().isAfter(monthlyResetAt)) {
-          _resetMonthlyQuota(uid);
-          return;
-        }
+            final monthlyResetAt = (data['monthlyResetAt'] as Timestamp?)
+                ?.toDate();
+            if (monthlyResetAt != null &&
+                DateTime.now().isAfter(monthlyResetAt)) {
+              _resetMonthlyQuota(uid);
+              return;
+            }
 
-        // Auto-expire trial
-        if (tier == 'trial') {
-          _checkTrialExpiry(uid, data);
-        }
+            // Auto-expire trial
+            if (tier == 'trial') {
+              _checkTrialExpiry(uid, data);
+            }
 
-        if (_lastKnownTier != null && _lastKnownTier != tier) {
-          _logSubscriptionEvent(
-            uid: uid,
-            fromTier: _lastKnownTier!,
-            toTier: tier,
-          );
-        }
-        _lastKnownTier = tier;
+            if (_lastKnownTier != null && _lastKnownTier != tier) {
+              _logSubscriptionEvent(
+                uid: uid,
+                fromTier: _lastKnownTier!,
+                toTier: tier,
+              );
+            }
+            _lastKnownTier = tier;
 
-        _updateCurrentStatus(tier: tier, resetAt: resetAt);
-      });
-    });
+            _updateCurrentStatus(tier: tier, resetAt: resetAt);
+          });
+        });
   }
 
   Future<void> _initializeUserDoc(String uid) async {
@@ -456,7 +460,9 @@ class SubscriptionRemoteDataSource implements IResettable {
   }
 
   Future<void> setTierForOtherUser(String uid, String tier) async {
-    await _firestore.collection(FirebasePaths.users).doc(uid).update({'tier': tier});
+    await _firestore.collection(FirebasePaths.users).doc(uid).update({
+      'tier': tier,
+    });
     AppLogger.i('Tier for $uid set to $tier', tag: _tag);
   }
 

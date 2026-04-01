@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/core/di/di.dart';
 import 'package:omni_bridge/core/platform/window_manager.dart';
 import 'package:omni_bridge/core/navigation/app_router.dart';
 import 'package:omni_bridge/core/navigation/route_change_notifier.dart';

@@ -1,4 +1,3 @@
-
 class FirebasePaths {
   FirebasePaths._();
 
@@ -42,7 +41,8 @@ class FirebasePaths {
   static String userUsageHistory(String uid) => '$users/$uid/$usageHistory';
   static String userCaptions(String uid) => '$users/$uid/$captions';
   static String userDailyUsage(String uid) => '$users/$uid/$dailyUsage';
-  static String userFeedbackAttachments(String uid) => '$feedbackAttachments/$uid';
+  static String userFeedbackAttachments(String uid) =>
+      '$feedbackAttachments/$uid';
 
   // Firestore Collections (Additional)
   static const String legal = 'legal';

@@ -10,7 +10,8 @@ import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 
 class UsageMetricsRemoteDataSource implements IResettable {
   UsageMetricsRemoteDataSource._();
-  static final UsageMetricsRemoteDataSource instance = UsageMetricsRemoteDataSource._();
+  static final UsageMetricsRemoteDataSource instance =
+      UsageMetricsRemoteDataSource._();
 
   static const String _tag = 'UsageMetricsRemoteDataSource';
 
@@ -64,7 +65,10 @@ class UsageMetricsRemoteDataSource implements IResettable {
       b['last_model'] = stats['model'];
       if (stats['error'] != null) b['last_error'] = stats['error'];
 
-      _usageFlushTimer ??= Timer(const Duration(seconds: 3), () => flushUsage());
+      _usageFlushTimer ??= Timer(
+        const Duration(seconds: 3),
+        () => flushUsage(),
+      );
 
       AppLogger.d(
         'Buffered model usage: $engine (+$inputTokens/+$outputTokens tokens)',
@@ -114,48 +118,89 @@ class UsageMetricsRemoteDataSource implements IResettable {
         final data = entry.value;
 
         // Model Stats Base
-        final modelStats = currentData[FirebasePaths.modelStats]?[engine] as Map<String, dynamic>? ?? {};
-        
-        updates['${FirebasePaths.modelStats}/$engine/total_calls'] = (modelStats['total_calls'] ?? 0) + data['calls'];
-        updates['${FirebasePaths.modelStats}/$engine/total_tokens'] = (modelStats['total_tokens'] ?? 0) + data['total_tokens'];
-        updates['${FirebasePaths.modelStats}/$engine/total_input_tokens'] = (modelStats['total_input_tokens'] ?? 0) + data['input_tokens'];
-        updates['${FirebasePaths.modelStats}/$engine/total_output_tokens'] = (modelStats['total_output_tokens'] ?? 0) + data['output_tokens'];
-        updates['${FirebasePaths.modelStats}/$engine/total_latency_ms'] = (modelStats['total_latency_ms'] ?? 0) + data['latency_ms'];
-        updates['${FirebasePaths.modelStats}/$engine/last_used'] = {".sv": "timestamp"};
+        final modelStats =
+            currentData[FirebasePaths.modelStats]?[engine]
+                as Map<String, dynamic>? ??
+            {};
+
+        updates['${FirebasePaths.modelStats}/$engine/total_calls'] =
+            (modelStats['total_calls'] ?? 0) + data['calls'];
+        updates['${FirebasePaths.modelStats}/$engine/total_tokens'] =
+            (modelStats['total_tokens'] ?? 0) + data['total_tokens'];
+        updates['${FirebasePaths.modelStats}/$engine/total_input_tokens'] =
+            (modelStats['total_input_tokens'] ?? 0) + data['input_tokens'];
+        updates['${FirebasePaths.modelStats}/$engine/total_output_tokens'] =
+            (modelStats['total_output_tokens'] ?? 0) + data['output_tokens'];
+        updates['${FirebasePaths.modelStats}/$engine/total_latency_ms'] =
+            (modelStats['total_latency_ms'] ?? 0) + data['latency_ms'];
+        updates['${FirebasePaths.modelStats}/$engine/last_used'] = {
+          ".sv": "timestamp",
+        };
         updates['${FirebasePaths.modelStats}/$engine/engine'] = engine;
 
         if (data['total_tokens'] > 0) {
-          final dailyModel = currentData[FirebasePaths.dailyUsage]?[todayStr]?['models']?[engine] as Map<String, dynamic>? ?? {};
-          updates['${FirebasePaths.dailyUsage}/$todayStr/models/$engine/tokens'] = (dailyModel['tokens'] ?? 0) + data['total_tokens'];
-          updates['${FirebasePaths.dailyUsage}/$todayStr/models/$engine/calls'] = (dailyModel['calls'] ?? 0) + data['calls'];
-          updates['${FirebasePaths.dailyUsage}/$todayStr/models/$engine/last_updated'] = {".sv": "timestamp"};
+          final dailyModel =
+              currentData[FirebasePaths
+                      .dailyUsage]?[todayStr]?['models']?[engine]
+                  as Map<String, dynamic>? ??
+              {};
+          updates['${FirebasePaths.dailyUsage}/$todayStr/models/$engine/tokens'] =
+              (dailyModel['tokens'] ?? 0) + data['total_tokens'];
+          updates['${FirebasePaths.dailyUsage}/$todayStr/models/$engine/calls'] =
+              (dailyModel['calls'] ?? 0) + data['calls'];
+          updates['${FirebasePaths.dailyUsage}/$todayStr/models/$engine/last_updated'] =
+              {".sv": "timestamp"};
 
-          final totalsBase = currentData['usage']?['totals'] as Map<String, dynamic>? ?? {};
-          final subModelsBase = totalsBase['subscription_monthly_models'] as Map<String, dynamic>? ?? {};
-          final currentEngineMonth = (subModelsBase[engine] as num?)?.toInt() ?? 0;
-          updates['${FirebasePaths.usageTotals}/subscription_monthly_models/$engine'] = currentEngineMonth + data['total_tokens'];
+          final totalsBase =
+              currentData['usage']?['totals'] as Map<String, dynamic>? ?? {};
+          final subModelsBase =
+              totalsBase['subscription_monthly_models']
+                  as Map<String, dynamic>? ??
+              {};
+          final currentEngineMonth =
+              (subModelsBase[engine] as num?)?.toInt() ?? 0;
+          updates['${FirebasePaths.usageTotals}/subscription_monthly_models/$engine'] =
+              currentEngineMonth + data['total_tokens'];
 
           totalDailyTokens += data['total_tokens'] as int;
         }
 
         if (data['last_error'] != null) {
-          final dailyError = currentData[FirebasePaths.dailyUsage]?[todayStr]?['errors']?[engine] as Map<String, dynamic>? ?? {};
-          updates['${FirebasePaths.dailyUsage}/$todayStr/errors/$engine/failed_calls'] = (dailyError['failed_calls'] ?? 0) + data['calls'];
-          updates['${FirebasePaths.dailyUsage}/$todayStr/errors/$engine/last_error'] = data['last_error'];
-          updates['${FirebasePaths.dailyUsage}/$todayStr/errors/$engine/last_error_time'] = {".sv": "timestamp"};
+          final dailyError =
+              currentData[FirebasePaths
+                      .dailyUsage]?[todayStr]?['errors']?[engine]
+                  as Map<String, dynamic>? ??
+              {};
+          updates['${FirebasePaths.dailyUsage}/$todayStr/errors/$engine/failed_calls'] =
+              (dailyError['failed_calls'] ?? 0) + data['calls'];
+          updates['${FirebasePaths.dailyUsage}/$todayStr/errors/$engine/last_error'] =
+              data['last_error'];
+          updates['${FirebasePaths.dailyUsage}/$todayStr/errors/$engine/last_error_time'] =
+              {".sv": "timestamp"};
         }
       }
 
       if (totalDailyTokens > 0) {
-        final dailyBase = currentData[FirebasePaths.dailyUsage]?[todayStr] as Map<String, dynamic>? ?? {};
-        final totalsBase = currentData['usage']?['totals'] as Map<String, dynamic>? ?? {};
+        final dailyBase =
+            currentData[FirebasePaths.dailyUsage]?[todayStr]
+                as Map<String, dynamic>? ??
+            {};
+        final totalsBase =
+            currentData['usage']?['totals'] as Map<String, dynamic>? ?? {};
 
-        updates['${FirebasePaths.dailyUsage}/$todayStr/tokens'] = (dailyBase['tokens'] ?? 0) + totalDailyTokens;
-        updates['${FirebasePaths.dailyUsage}/$todayStr/last_updated'] = {".sv": "timestamp"};
-        updates['${FirebasePaths.usageTotals}/lifetime'] = (totalsBase['lifetime'] ?? 0) + totalDailyTokens;
-        updates['${FirebasePaths.usageTotals}/calendar_monthly'] = (totalsBase['calendar_monthly'] ?? 0) + totalDailyTokens;
-        updates['${FirebasePaths.usageTotals}/subscription_monthly'] = (totalsBase['subscription_monthly'] ?? 0) + totalDailyTokens;
-        updates['${FirebasePaths.usageTotals}/weekly'] = (totalsBase['weekly'] ?? 0) + totalDailyTokens;
+        updates['${FirebasePaths.dailyUsage}/$todayStr/tokens'] =
+            (dailyBase['tokens'] ?? 0) + totalDailyTokens;
+        updates['${FirebasePaths.dailyUsage}/$todayStr/last_updated'] = {
+          ".sv": "timestamp",
+        };
+        updates['${FirebasePaths.usageTotals}/lifetime'] =
+            (totalsBase['lifetime'] ?? 0) + totalDailyTokens;
+        updates['${FirebasePaths.usageTotals}/calendar_monthly'] =
+            (totalsBase['calendar_monthly'] ?? 0) + totalDailyTokens;
+        updates['${FirebasePaths.usageTotals}/subscription_monthly'] =
+            (totalsBase['subscription_monthly'] ?? 0) + totalDailyTokens;
+        updates['${FirebasePaths.usageTotals}/weekly'] =
+            (totalsBase['weekly'] ?? 0) + totalDailyTokens;
       }
 
       if (updates.isNotEmpty) {
@@ -166,7 +211,10 @@ class UsageMetricsRemoteDataSource implements IResettable {
           (client) => client.patch(patchUrl, body: jsonEncode(updates)),
           context: 'flushUsage:patch',
         );
-        AppLogger.i('Flushed usage stats to RTDB (+$totalDailyTokens tokens) via REST.', tag: _tag);
+        AppLogger.i(
+          'Flushed usage stats to RTDB (+$totalDailyTokens tokens) via REST.',
+          tag: _tag,
+        );
       }
     } catch (e) {
       AppLogger.e('Failed to flush usage to RTDB', tag: _tag, error: e);

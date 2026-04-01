@@ -6,6 +6,6 @@ class GetUsageHistory {
 
   GetUsageHistory(this._repository);
 
-  Future<List<DailyUsageRecord>> call({int days = 30}) => 
+  Future<List<DailyUsageRecord>> call({int days = 30}) =>
       _repository.getDailyUsageHistory(days: days);
 }

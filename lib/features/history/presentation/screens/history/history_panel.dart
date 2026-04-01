@@ -43,7 +43,10 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
   @override
   void initState() {
     super.initState();
-    if (SubscriptionRemoteDataSource.instance.getTierRank(widget.state.subscriptionStatus.tier) == 0) {
+    if (SubscriptionRemoteDataSource.instance.getTierRank(
+          widget.state.subscriptionStatus.tier,
+        ) ==
+        0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           showUpgradeSheet(context);
@@ -111,7 +114,8 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
             children: [
               buildHistoryHeader(
                 context,
-                onClear: () => context.read<HistoryBloc>().add(ClearHistoryEvent()),
+                onClear: () =>
+                    context.read<HistoryBloc>().add(ClearHistoryEvent()),
               ),
               const Divider(height: 1, color: Colors.white10),
               Expanded(
@@ -172,11 +176,11 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                                 subtitle:
                                     'Upgrade to ${SubscriptionRemoteDataSource.instance.getNameForRank(SubscriptionRemoteDataSource.instance.getTierRank(tier) + 1)} to unlock Intelligent Context Refresh — '
                                     'AI that corrects translations up to 5 seconds back in real time.',
-                                requiredTier: SubscriptionRemoteDataSource.instance
+                                requiredTier: SubscriptionRemoteDataSource
+                                    .instance
                                     .getNameForRank(
-                                      SubscriptionRemoteDataSource.instance.getTierRank(
-                                            tier,
-                                          ) +
+                                      SubscriptionRemoteDataSource.instance
+                                              .getTierRank(tier) +
                                           1,
                                     ),
                               ),

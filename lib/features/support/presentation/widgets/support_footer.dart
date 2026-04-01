@@ -42,7 +42,7 @@ Widget _buildFooterLink(
         shape: RoundedRectangleBorder(borderRadius: AppShapes.md),
         foregroundColor: color.withValues(alpha: 0.9),
       ),
-        child: Text(
+      child: Text(
         text,
         style: AppTextStyles.body.copyWith(
           fontWeight: FontWeight.w600,

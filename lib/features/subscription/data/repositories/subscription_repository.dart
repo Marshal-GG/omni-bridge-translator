@@ -8,7 +8,7 @@ class SubscriptionRepositoryImpl implements ISubscriptionRepository {
   final SubscriptionRemoteDataSource _service;
 
   SubscriptionRepositoryImpl({SubscriptionRemoteDataSource? service})
-      : _service = service ?? SubscriptionRemoteDataSource.instance;
+    : _service = service ?? SubscriptionRemoteDataSource.instance;
 
   @override
   Stream<QuotaStatus> get statusStream => _service.statusStream;
@@ -59,7 +59,8 @@ class SubscriptionRepositoryImpl implements ISubscriptionRepository {
   int getLimitForTier(String tier) => _service.getLimitForTier(tier);
 
   @override
-  int getPeriodLimitForTier(String tier) => _service.getPeriodLimitForTier(tier);
+  int getPeriodLimitForTier(String tier) =>
+      _service.getPeriodLimitForTier(tier);
 
   @override
   bool canUseModel(String engineId) => _service.canUseModel(engineId);

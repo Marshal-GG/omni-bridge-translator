@@ -214,7 +214,8 @@ Widget buildPlanCard({
             runSpacing: 4,
             children: plan.allowedTranscriptionModels.map((m) {
               return _ModelChip(
-                label: SubscriptionRemoteDataSource.instance.getModelDisplayName(m),
+                label: SubscriptionRemoteDataSource.instance
+                    .getModelDisplayName(m),
               );
             }).toList(),
           ),
@@ -233,10 +234,16 @@ Widget buildPlanCard({
                     final err = await SubscriptionRemoteDataSource.instance
                         .activateTrial();
                     if (err != null) {
-                      AppLogger.e('Trial activation failed', error: err, tag: 'Trial');
+                      AppLogger.e(
+                        'Trial activation failed',
+                        error: err,
+                        tag: 'Trial',
+                      );
                     }
                   }
-                : () => SubscriptionRemoteDataSource.instance.openCheckout(plan.id),
+                : () => SubscriptionRemoteDataSource.instance.openCheckout(
+                    plan.id,
+                  ),
             style: ElevatedButton.styleFrom(
               backgroundColor: plan.isTrial
                   ? (trialUsed ? Colors.white10 : Colors.amberAccent)

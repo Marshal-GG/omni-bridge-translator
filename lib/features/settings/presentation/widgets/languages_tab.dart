@@ -31,73 +31,73 @@ Widget buildLanguagesTab(BuildContext context, SettingsState state) {
       children: [
         Row(
           children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                sectionLabel('Source'),
-                const SizedBox(height: 6),
-                _langDropdown(
-                  context: context,
-                  items: appLanguages.entries
-                      .where((e) => e.key != 'none')
-                      .toList(),
-                  selected: MapEntry(
-                    state.settings.sourceLang,
-                    appLanguages[state.settings.sourceLang] ??
-                        state.settings.sourceLang,
-                  ),
-                  hint:
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  sectionLabel('Source'),
+                  const SizedBox(height: 6),
+                  _langDropdown(
+                    context: context,
+                    items: appLanguages.entries
+                        .where((e) => e.key != 'none')
+                        .toList(),
+                    selected: MapEntry(
+                      state.settings.sourceLang,
                       appLanguages[state.settings.sourceLang] ??
-                      'Search language...',
-                  onSelect: (item) {
-                    context.read<SettingsBloc>().add(
-                      UpdateTempSettingEvent(sourceLang: item.key),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(12, 24, 12, 0),
-            child: Icon(
-              Icons.arrow_forward_rounded,
-              size: 16,
-              color: Colors.white24,
-            ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                sectionLabel('Target'),
-                const SizedBox(height: 6),
-                _langDropdown(
-                  context: context,
-                  items: appLanguages.entries
-                      .where((e) => e.key != 'auto')
-                      .toList(),
-                  selected: MapEntry(
-                    state.settings.targetLang,
-                    appLanguages[state.settings.targetLang] ??
-                        state.settings.targetLang,
+                          state.settings.sourceLang,
+                    ),
+                    hint:
+                        appLanguages[state.settings.sourceLang] ??
+                        'Search language...',
+                    onSelect: (item) {
+                      context.read<SettingsBloc>().add(
+                        UpdateTempSettingEvent(sourceLang: item.key),
+                      );
+                    },
                   ),
-                  hint:
-                      appLanguages[state.settings.targetLang] ??
-                      'Search language...',
-                  onSelect: (item) {
-                    context.read<SettingsBloc>().add(
-                      UpdateTempSettingEvent(targetLang: item.key),
-                    );
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-    ],
+            const Padding(
+              padding: EdgeInsets.fromLTRB(12, 24, 12, 0),
+              child: Icon(
+                Icons.arrow_forward_rounded,
+                size: 16,
+                color: Colors.white24,
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  sectionLabel('Target'),
+                  const SizedBox(height: 6),
+                  _langDropdown(
+                    context: context,
+                    items: appLanguages.entries
+                        .where((e) => e.key != 'auto')
+                        .toList(),
+                    selected: MapEntry(
+                      state.settings.targetLang,
+                      appLanguages[state.settings.targetLang] ??
+                          state.settings.targetLang,
+                    ),
+                    hint:
+                        appLanguages[state.settings.targetLang] ??
+                        'Search language...',
+                    onSelect: (item) {
+                      context.read<SettingsBloc>().add(
+                        UpdateTempSettingEvent(targetLang: item.key),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     ),
   );
 }
@@ -186,170 +186,176 @@ Widget buildTranslationModelSelector(
             const SizedBox(height: 10),
             BlocBuilder<TranslationBloc, TranslationState>(
               builder: (context, transState) {
-          return SizedBox(
-            height: 36,
-            child: OmniDropdown<MapEntry<String, String>>(
-              showSearchBox: false,
-              items: translationModels.entries.toList(),
-              itemAsString: (entry) => entry.value,
-              selectedItem: MapEntry(
-                state.settings.translationModel,
-                translationModels[state.settings.translationModel] ??
-                    state.settings.translationModel,
-              ),
-              onBeforeChange: (prev, next) async {
-                if (next == null) return false;
-                return hasAccess(next.key);
-              },
-              compareFn: (a, b) => a.key == b.key,
-              onChanged: (entry) {
-                if (entry != null && hasAccess(entry.key)) {
-                  // Explicitly unload current model from memory upon selection change
-                  TranslationRestDatasource().unloadModel();
-                  Future.delayed(const Duration(milliseconds: 50), () {
-                    if (context.mounted) {
-                      context.read<SettingsBloc>().add(
-                        UpdateTempSettingEvent(translationModel: entry.key),
-                      );
-                    }
-                  });
-                }
-              },
-              disableItemFn: (item) => !hasAccess(item.key),
-              dropdownBuilder: (context, selectedItem) {
-                if (selectedItem == null) return const SizedBox();
-
-                final isRecommended = selectedItem.key == 'google';
-                final statusKey = {
-                  'google': 'google_translate',
-                  'google_api': 'google_api',
-                  'mymemory': 'mymemory',
-                  'riva-nmt': 'riva-nmt',
-                  'llama': 'llama',
-                }[selectedItem.key];
-
-                return Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        selectedItem.value,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                return SizedBox(
+                  height: 36,
+                  child: OmniDropdown<MapEntry<String, String>>(
+                    showSearchBox: false,
+                    items: translationModels.entries.toList(),
+                    itemAsString: (entry) => entry.value,
+                    selectedItem: MapEntry(
+                      state.settings.translationModel,
+                      translationModels[state.settings.translationModel] ??
+                          state.settings.translationModel,
                     ),
-                    if (statusKey != null) ...[
-                      const SizedBox(width: 8),
-                      BlocBuilder<TranslationBloc, TranslationState>(
-                        bloc: context.read<TranslationBloc>(),
-                        builder: (context, state) {
-                          return ModelStatusIndicator(
-                            status: state.modelStatuses[statusKey],
-                            compact: true,
-                          );
-                        },
-                      ),
-                    ],
-                    if (isRecommended) ...[
-                      const SizedBox(width: 8),
-                      _buildRecommendedBadge(isActive: true),
-                    ],
-                  ],
+                    onBeforeChange: (prev, next) async {
+                      if (next == null) return false;
+                      return hasAccess(next.key);
+                    },
+                    compareFn: (a, b) => a.key == b.key,
+                    onChanged: (entry) {
+                      if (entry != null && hasAccess(entry.key)) {
+                        // Explicitly unload current model from memory upon selection change
+                        TranslationRestDatasource().unloadModel();
+                        Future.delayed(const Duration(milliseconds: 50), () {
+                          if (context.mounted) {
+                            context.read<SettingsBloc>().add(
+                              UpdateTempSettingEvent(
+                                translationModel: entry.key,
+                              ),
+                            );
+                          }
+                        });
+                      }
+                    },
+                    disableItemFn: (item) => !hasAccess(item.key),
+                    dropdownBuilder: (context, selectedItem) {
+                      if (selectedItem == null) return const SizedBox();
+
+                      final isRecommended = selectedItem.key == 'google';
+                      final statusKey = {
+                        'google': 'google_translate',
+                        'google_api': 'google_api',
+                        'mymemory': 'mymemory',
+                        'riva-nmt': 'riva-nmt',
+                        'llama': 'llama',
+                      }[selectedItem.key];
+
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              selectedItem.value,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (statusKey != null) ...[
+                            const SizedBox(width: 8),
+                            BlocBuilder<TranslationBloc, TranslationState>(
+                              bloc: context.read<TranslationBloc>(),
+                              builder: (context, state) {
+                                return ModelStatusIndicator(
+                                  status: state.modelStatuses[statusKey],
+                                  compact: true,
+                                );
+                              },
+                            ),
+                          ],
+                          if (isRecommended) ...[
+                            const SizedBox(width: 8),
+                            _buildRecommendedBadge(isActive: true),
+                          ],
+                        ],
+                      );
+                    },
+                    maxHeight: 250,
+                    itemBuilder: (popupContext, item, isCurrentlySelected) {
+                      final isRecommended = item.key == 'google';
+                      final itemHasAccess = hasAccess(item.key);
+                      final statusKey = {
+                        'google': 'google_translate',
+                        'google_api': 'google_api',
+                        'mymemory': 'mymemory',
+                        'riva-nmt': 'riva-nmt',
+                        'llama': 'llama',
+                      }[item.key];
+
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.value,
+                              style: TextStyle(
+                                color: itemHasAccess
+                                    ? (isCurrentlySelected
+                                          ? Colors.tealAccent
+                                          : Colors.white70)
+                                    : Colors.white30,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          if (statusKey != null) ...[
+                            const SizedBox(width: 8),
+                            BlocBuilder<TranslationBloc, TranslationState>(
+                              bloc: context.read<TranslationBloc>(),
+                              builder: (context, state) {
+                                return ModelStatusIndicator(
+                                  status: state.modelStatuses[statusKey],
+                                  compact: true,
+                                );
+                              },
+                            ),
+                          ],
+                          if (!itemHasAccess) ...[
+                            const SizedBox(width: 8),
+                            _buildTierLockBadge(
+                              '${SubscriptionRemoteDataSource.instance.getNameForTier(SubscriptionRemoteDataSource.instance.getRequirement('engines', item.key, SubscriptionRemoteDataSource.instance.getTierAt(1)))}+',
+                            ),
+                          ],
+                          if (isRecommended && itemHasAccess) ...[
+                            const SizedBox(width: 8),
+                            _buildRecommendedBadge(
+                              isActive: isCurrentlySelected,
+                            ),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
                 );
               },
-              maxHeight: 250,
-              itemBuilder: (popupContext, item, isCurrentlySelected) {
-                  final isRecommended = item.key == 'google';
-                  final itemHasAccess = hasAccess(item.key);
-                  final statusKey = {
-                    'google': 'google_translate',
-                    'google_api': 'google_api',
-                    'mymemory': 'mymemory',
-                    'riva-nmt': 'riva-nmt',
-                    'llama': 'llama',
-                  }[item.key];
-
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.value,
-                          style: TextStyle(
-                            color: itemHasAccess
-                                ? (isCurrentlySelected
-                                      ? Colors.tealAccent
-                                      : Colors.white70)
-                                : Colors.white30,
-                            fontSize: 14,
-                          ),
+            ),
+            if (state.translationCompatibilityError != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: Colors.redAccent.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.redAccent,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        state.translationCompatibilityError!,
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 12,
+                          height: 1.4,
                         ),
                       ),
-                      if (statusKey != null) ...[
-                        const SizedBox(width: 8),
-                        BlocBuilder<TranslationBloc, TranslationState>(
-                          bloc: context.read<TranslationBloc>(),
-                          builder: (context, state) {
-                            return ModelStatusIndicator(
-                              status: state.modelStatuses[statusKey],
-                              compact: true,
-                            );
-                          },
-                        ),
-                      ],
-                      if (!itemHasAccess) ...[
-                        const SizedBox(width: 8),
-                        _buildTierLockBadge(
-                          '${SubscriptionRemoteDataSource.instance.getNameForTier(SubscriptionRemoteDataSource.instance.getRequirement('engines', item.key, SubscriptionRemoteDataSource.instance.getTierAt(1)))}+',
-                        ),
-                      ],
-                      if (isRecommended && itemHasAccess) ...[
-                        const SizedBox(width: 8),
-                        _buildRecommendedBadge(
-                          isActive: isCurrentlySelected,
-                        ),
-                      ],
-                    ],
-                  );
-                },
-            ),
-          );
-        },
-      ),
-      if (state.translationCompatibilityError != null) ...[
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.red.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                color: Colors.redAccent,
-                size: 16,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  state.translationCompatibilityError!,
-                  style: const TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: 12,
-                    height: 1.4,
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
-          ),
-        ),
-      ],
-
           ],
         ),
       ),
@@ -363,11 +369,7 @@ Widget buildTranslationModelSelector(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.white12),
           ),
-          child: Column(
-            children: [
-              _NvidiaApiKeySection(state: state),
-            ],
-          ),
+          child: Column(children: [_NvidiaApiKeySection(state: state)]),
         ),
       ],
 
@@ -422,7 +424,8 @@ Widget _buildTranscriptionModelSection(
                       label: 'NVIDIA Riva',
                       status: transState.modelStatuses['riva-asr'],
                       isRecommended: true,
-                      locked: !SubscriptionRemoteDataSource.instance.canUseModel('riva-asr'),
+                      locked: !SubscriptionRemoteDataSource.instance
+                          .canUseModel('riva-asr'),
                       icon: Icons.bolt_rounded,
                       onChanged: (v) {
                         // Explicitly unload current model from memory upon selection change
@@ -451,9 +454,8 @@ Widget _buildTranscriptionModelSection(
                                   .startsWith('whisper')
                               ? state.settings.transcriptionModel
                               : 'whisper-base'],
-                      locked: !SubscriptionRemoteDataSource.instance.canUseModel(
-                        'whisper-base',
-                      ),
+                      locked: !SubscriptionRemoteDataSource.instance
+                          .canUseModel('whisper-base'),
                       icon: Icons.offline_bolt_outlined,
                       onChanged: (v) {
                         // Explicitly unload current model from memory upon selection change
@@ -733,7 +735,10 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
             ? SubscriptionRemoteDataSource.instance.getTierAt(2)
             : SubscriptionRemoteDataSource.instance.getTierAt(1),
       );
-      return SubscriptionRemoteDataSource.instance.tierHasAccess(currentTier, required);
+      return SubscriptionRemoteDataSource.instance.tierHasAccess(
+        currentTier,
+        required,
+      );
     }
 
     String whisperLockLabel(String size) {
@@ -1049,7 +1054,9 @@ class _NvidiaApiKeySectionState extends State<_NvidiaApiKeySection> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.state.settings.nvidiaNimKey);
+    _controller = TextEditingController(
+      text: widget.state.settings.nvidiaNimKey,
+    );
 
     // Eagerly set assumed valid state to prevent UI flash before validation completes
     final key = _controller.text.trim();
@@ -1340,8 +1347,6 @@ class _NvidiaApiKeySectionState extends State<_NvidiaApiKeySection> {
     );
   }
 }
-
-
 
 class _ApiKeyInstructions {
   final String description;

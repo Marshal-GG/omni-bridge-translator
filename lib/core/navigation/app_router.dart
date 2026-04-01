@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/core/di/di.dart';
 import 'package:omni_bridge/features/usage/presentation/screens/usage_screen.dart';
 
 // Feature Screens
@@ -46,21 +46,16 @@ class AppRouter {
       case splash:
         return _fadeRoute(
           BlocProvider(
-            create: (context) => sl<StartupBloc>()..add(const StartupInitializeEvent()),
+            create: (context) =>
+                sl<StartupBloc>()..add(const StartupInitializeEvent()),
             child: const SplashScreen(),
           ),
           settings,
         );
       case onboarding:
-        return _fadeRoute(
-          const OnboardingScreen(),
-          settings,
-        );
+        return _fadeRoute(const OnboardingScreen(), settings);
       case forceUpdate:
-        return _fadeRoute(
-          const ForceUpdateScreen(),
-          settings,
-        );
+        return _fadeRoute(const ForceUpdateScreen(), settings);
       case login:
         return _fadeRoute(
           BlocProvider(
@@ -90,7 +85,9 @@ class AppRouter {
             providers: [
               passedBloc != null
                   ? BlocProvider<TranslationBloc>.value(value: passedBloc)
-                  : BlocProvider<TranslationBloc>(create: (_) => sl<TranslationBloc>()),
+                  : BlocProvider<TranslationBloc>(
+                      create: (_) => sl<TranslationBloc>(),
+                    ),
               BlocProvider<SettingsBloc>(create: (_) => sl<SettingsBloc>()),
             ],
             child: const SettingsScreen(),
@@ -122,20 +119,11 @@ class AppRouter {
           settings,
         );
       case usage:
-        return _fadeRoute(
-          const UsageScreen(),
-          settings,
-        );
+        return _fadeRoute(const UsageScreen(), settings);
       case subscription:
-        return _fadeRoute(
-          const SubscriptionScreen(),
-          settings,
-        );
+        return _fadeRoute(const SubscriptionScreen(), settings);
       case support:
-        return _fadeRoute(
-          const SupportScreen(),
-          settings,
-        );
+        return _fadeRoute(const SupportScreen(), settings);
       default:
         return _fadeRoute(
           Scaffold(
@@ -158,10 +146,7 @@ class AppRouter {
       transitionDuration: const Duration(milliseconds: 150),
       reverseTransitionDuration: const Duration(milliseconds: 150),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: animation,
-          child: child,
-        );
+        return FadeTransition(opacity: animation, child: child);
       },
     );
   }

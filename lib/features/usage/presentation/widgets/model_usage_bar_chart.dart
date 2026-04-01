@@ -9,10 +9,7 @@ import 'package:omni_bridge/features/usage/presentation/widgets/usage_utils.dart
 class ModelUsageBarChart extends StatelessWidget {
   final List<EngineUsage> engineUsage;
 
-  const ModelUsageBarChart({
-    super.key,
-    required this.engineUsage,
-  });
+  const ModelUsageBarChart({super.key, required this.engineUsage});
 
   @override
   Widget build(BuildContext context) {
@@ -102,11 +99,13 @@ class ModelUsageBarChart extends StatelessWidget {
     NumberFormat formatter,
   ) {
     final isAsr = usage.type == UsageType.asr;
-    final barColor =
-        isAsr ? UsageColors.asrAccent : UsageColors.translationAccent;
+    final barColor = isAsr
+        ? UsageColors.asrAccent
+        : UsageColors.translationAccent;
     final displayName = UsageUtils.getDisplayName(usage.engine, usage.type);
-    final fraction =
-        maxTokens > 0 ? (usage.effectiveTokens / maxTokens).clamp(0.0, 1.0) : 0.0;
+    final fraction = maxTokens > 0
+        ? (usage.effectiveTokens / maxTokens).clamp(0.0, 1.0)
+        : 0.0;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),

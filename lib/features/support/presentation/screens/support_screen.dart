@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:omni_bridge/core/di/injection.dart';
+import 'package:omni_bridge/core/di/di.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../blocs/support_bloc.dart';
@@ -50,7 +50,8 @@ class _SupportScreenState extends State<SupportScreen> {
                       builder: (context, state) {
                         return Container(
                           decoration: const BoxDecoration(
-                            color: Colors.transparent, // Let OmniWindowLayout background show through
+                            color: Colors
+                                .transparent, // Let OmniWindowLayout background show through
                           ),
                           child: Stack(
                             children: [
@@ -62,7 +63,10 @@ class _SupportScreenState extends State<SupportScreen> {
                                     Expanded(
                                       child: state.activeTicketId != null
                                           ? const SupportChatView()
-                                          : _buildDefaultDashboard(context, state),
+                                          : _buildDefaultDashboard(
+                                              context,
+                                              state,
+                                            ),
                                     ),
                                   ],
                                 ),
@@ -139,17 +143,24 @@ class _SupportScreenState extends State<SupportScreen> {
 
   Widget _buildDefaultDashboard(BuildContext context, SupportState state) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: 40.0),
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.sm,
+        horizontal: 40.0,
+      ),
       child: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: AppSpacing.maxDashboardWidth),
+          constraints: const BoxConstraints(
+            maxWidth: AppSpacing.maxDashboardWidth,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 40),
               Text(
                 'Help & Support',
-                style: AppTextStyles.display.copyWith(color: AppColors.offWhite),
+                style: AppTextStyles.display.copyWith(
+                  color: AppColors.offWhite,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
@@ -178,7 +189,9 @@ class _SupportScreenState extends State<SupportScreen> {
 
   Widget _buildHelpLinksGrid(SupportState state) {
     if (state.isLoadingLinks) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.accentCyan));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.accentCyan),
+      );
     }
 
     return GridView.builder(
@@ -199,8 +212,6 @@ class _SupportScreenState extends State<SupportScreen> {
   }
 }
 
-
-
 class _SupportLinkCard extends StatelessWidget {
   final SupportLink link;
 
@@ -217,7 +228,11 @@ class _SupportLinkCard extends StatelessWidget {
         baseColor: Colors.tealAccent,
         child: Row(
           children: [
-            Icon(_getIconForSlug(link.icon), color: AppColors.accentCyan, size: 24),
+            Icon(
+              _getIconForSlug(link.icon),
+              color: AppColors.accentCyan,
+              size: 24,
+            ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -234,10 +249,7 @@ class _SupportLinkCard extends StatelessWidget {
                   ),
                   Text(
                     link.description,
-                    style: TextStyle(
-                      fontSize: 10,
-                       color: AppColors.white54,
-                    ),
+                    style: TextStyle(fontSize: 10, color: AppColors.white54),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -252,11 +264,16 @@ class _SupportLinkCard extends StatelessWidget {
 
   IconData _getIconForSlug(String slug) {
     switch (slug) {
-      case 'guide': return Icons.menu_book;
-      case 'faq': return Icons.quiz;
-      case 'discord': return Icons.chat_bubble;
-      case 'twitter': return Icons.alternate_email;
-      default: return Icons.link;
+      case 'guide':
+        return Icons.menu_book;
+      case 'faq':
+        return Icons.quiz;
+      case 'discord':
+        return Icons.chat_bubble;
+      case 'twitter':
+        return Icons.alternate_email;
+      default:
+        return Icons.link;
     }
   }
 }

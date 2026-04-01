@@ -119,7 +119,11 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       final statuses = await getModelStatusUseCase();
       add(ModelStatusChangedEvent(statuses));
     } catch (e) {
-      AppLogger.e('Error fetching initial model statuses', error: e, tag: 'TranslationBloc');
+      AppLogger.e(
+        'Error fetching initial model statuses',
+        error: e,
+        tag: 'TranslationBloc',
+      );
     }
   }
 
@@ -131,10 +135,16 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   void _onAuthChanged() {
     final user = getCurrentUserUseCase().value;
     if (user != null && !isClosed) {
-      AppLogger.i('Auth detected, reloading settings...', tag: 'TranslationBloc');
+      AppLogger.i(
+        'Auth detected, reloading settings...',
+        tag: 'TranslationBloc',
+      );
       add(LoadSettingsEvent());
     } else if (user == null && !isClosed) {
-      AppLogger.i('Logout detected, resetting settings...', tag: 'TranslationBloc');
+      AppLogger.i(
+        'Logout detected, resetting settings...',
+        tag: 'TranslationBloc',
+      );
       add(ResetSettingsEvent());
     }
   }
@@ -171,7 +181,10 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           add(UpdateServerConnectionEvent(isConnected: false));
         }
         if (state.isRunning && !isClosed) {
-          AppLogger.i('Server disconnect detected. Auto-pausing.', tag: 'TranslationBloc');
+          AppLogger.i(
+            'Server disconnect detected. Auto-pausing.',
+            tag: 'TranslationBloc',
+          );
           add(ToggleRunningEvent());
         }
       } else {
@@ -191,7 +204,10 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       }
 
       if (msg.usageStats != null) {
-        AppLogger.i('Received usageStats from ASR client: ${msg.usageStats}', tag: 'TranslationBloc');
+        AppLogger.i(
+          'Received usageStats from ASR client: ${msg.usageStats}',
+          tag: 'TranslationBloc',
+        );
       }
 
       final text = msg.text;
@@ -238,7 +254,10 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   ) async {
     // Prevent starting translation if server is not connected
     if (!state.isRunning && !state.isServerConnected) {
-      AppLogger.w('Prevented resume: Server is not connected.', tag: 'TranslationBloc');
+      AppLogger.w(
+        'Prevented resume: Server is not connected.',
+        tag: 'TranslationBloc',
+      );
       return;
     }
 
@@ -263,7 +282,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           : '';
 
       final systemConfigResult = await getSystemConfigUseCase();
-      final systemConfig = systemConfigResult.getOrElse(() => SystemConfig.empty());
+      final systemConfig = systemConfigResult.getOrElse(
+        () => SystemConfig.empty(),
+      );
 
       startTranslationUseCase(
         sourceLang: state.activeSourceLang,
@@ -284,22 +305,34 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     }
   }
 
-  Future<void> _onUpdateQuota(UpdateQuotaEvent event, Emitter<TranslationState> emit) async {
+  Future<void> _onUpdateQuota(
+    UpdateQuotaEvent event,
+    Emitter<TranslationState> emit,
+  ) async {
     if (event.status == null) return;
 
     final bool exceeded = event.status!.isExceeded;
     final String? oldTier = state.quotaStatus?.tier;
     final String newTier = event.status!.tier;
 
-    final newState = state.copyWith(quotaStatus: event.status, isQuotaExceeded: exceeded);
+    final newState = state.copyWith(
+      quotaStatus: event.status,
+      isQuotaExceeded: exceeded,
+    );
     if (newState != state) {
-      AppLogger.i('_onUpdateQuota: emitted state with tier $newTier, exceeded: $exceeded', tag: 'TranslationBloc');
+      AppLogger.i(
+        '_onUpdateQuota: emitted state with tier $newTier, exceeded: $exceeded',
+        tag: 'TranslationBloc',
+      );
     }
     emit(newState);
 
     // Handle Quota Exhaustion
     if (exceeded && state.isRunning) {
-      AppLogger.w('Quota exceeded, stopping translation.', tag: 'TranslationBloc');
+      AppLogger.w(
+        'Quota exceeded, stopping translation.',
+        tag: 'TranslationBloc',
+      );
       stopTranslationUseCase();
       emit(
         state.copyWith(
@@ -313,7 +346,10 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
     // Handle Tier Change (Downgrade)
     if (oldTier != null && oldTier != newTier) {
-      AppLogger.i('Tier changed from $oldTier to $newTier', tag: 'TranslationBloc');
+      AppLogger.i(
+        'Tier changed from $oldTier to $newTier',
+        tag: 'TranslationBloc',
+      );
 
       final bool isTranslationAllowed = subscriptionDataSource
           .allowedTranslationModels(newTier)
@@ -330,7 +366,11 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         try {
           await translationRestDatasource.unloadModel();
         } catch (e) {
-          AppLogger.e('Error unloading model', error: e, tag: 'TranslationBloc');
+          AppLogger.e(
+            'Error unloading model',
+            error: e,
+            tag: 'TranslationBloc',
+          );
         }
 
         // Clear model statuses for the unsupported models to update UI immediately
@@ -390,8 +430,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     EngineLimitReachedEvent event,
     Emitter<TranslationState> emit,
   ) {
-    final shouldShowDialog =
-        subscriptionDataSource.shouldShowEngineLimitNotice(event.engineId);
+    final shouldShowDialog = subscriptionDataSource.shouldShowEngineLimitNotice(
+      event.engineId,
+    );
 
     if (shouldShowDialog) {
       // First time this engine is exceeded in this session → show dialog
@@ -403,10 +444,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         stopTranslationUseCase();
       }
       emit(
-        state.copyWith(
-          isRunning: false,
-          engineLimitReachedFor: event.engineId,
-        ),
+        state.copyWith(isRunning: false, engineLimitReachedFor: event.engineId),
       );
     } else {
       // Repeat occurrence → silent fallback to google
@@ -470,24 +508,28 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     try {
       final result = await getAppSettingsUseCase();
       result.fold(
-        (failure) => AppLogger.e('Error loading settings', error: failure.message, tag: 'TranslationBloc'),
+        (failure) => AppLogger.e(
+          'Error loading settings',
+          error: failure.message,
+          tag: 'TranslationBloc',
+        ),
         (settings) async {
           if (settings != null) {
             final loadedState = state.copyWith(
-                activeTargetLang: settings.targetLang,
-                activeSourceLang: settings.sourceLang,
-                activeUseMic: settings.useMic,
-                activeFontSize: settings.fontSize,
-                activeIsBold: settings.isBold,
-                activeOpacity: settings.opacity,
-                activeInputDeviceIndex: settings.inputDeviceIndex,
-                activeOutputDeviceIndex: settings.outputDeviceIndex,
-                activeDesktopVolume: settings.desktopVolume,
-                activeMicVolume: settings.micVolume,
-                activeTranslationModel: settings.translationModel,
-                activeNvidiaNimKey: settings.nvidiaNimKey,
-                activeTranscriptionModel: settings.transcriptionModel,
-              );
+              activeTargetLang: settings.targetLang,
+              activeSourceLang: settings.sourceLang,
+              activeUseMic: settings.useMic,
+              activeFontSize: settings.fontSize,
+              activeIsBold: settings.isBold,
+              activeOpacity: settings.opacity,
+              activeInputDeviceIndex: settings.inputDeviceIndex,
+              activeOutputDeviceIndex: settings.outputDeviceIndex,
+              activeDesktopVolume: settings.desktopVolume,
+              activeMicVolume: settings.micVolume,
+              activeTranslationModel: settings.translationModel,
+              activeNvidiaNimKey: settings.nvidiaNimKey,
+              activeTranscriptionModel: settings.transcriptionModel,
+            );
             emit(loadedState);
 
             // Trigger status update in backend
@@ -511,22 +553,25 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           } else {
             final defaults = AppSettings.initial();
             final defaultState = state.copyWith(
-                activeTargetLang: defaults.targetLang,
-                activeSourceLang: defaults.sourceLang,
-                activeUseMic: defaults.useMic,
-                activeFontSize: defaults.fontSize,
-                activeIsBold: defaults.isBold,
-                activeOpacity: defaults.opacity,
-                activeInputDeviceIndex: defaults.inputDeviceIndex,
-                activeOutputDeviceIndex: defaults.outputDeviceIndex,
-                activeDesktopVolume: defaults.desktopVolume,
-                activeMicVolume: defaults.micVolume,
-                activeTranslationModel: defaults.translationModel,
-                activeNvidiaNimKey: defaults.nvidiaNimKey,
-                activeTranscriptionModel: defaults.transcriptionModel,
-              );
+              activeTargetLang: defaults.targetLang,
+              activeSourceLang: defaults.sourceLang,
+              activeUseMic: defaults.useMic,
+              activeFontSize: defaults.fontSize,
+              activeIsBold: defaults.isBold,
+              activeOpacity: defaults.opacity,
+              activeInputDeviceIndex: defaults.inputDeviceIndex,
+              activeOutputDeviceIndex: defaults.outputDeviceIndex,
+              activeDesktopVolume: defaults.desktopVolume,
+              activeMicVolume: defaults.micVolume,
+              activeTranslationModel: defaults.translationModel,
+              activeNvidiaNimKey: defaults.nvidiaNimKey,
+              activeTranscriptionModel: defaults.transcriptionModel,
+            );
             if (defaultState != state) {
-              AppLogger.i('_onLoadSettings: emitted state with default settings', tag: 'TranslationBloc');
+              AppLogger.i(
+                '_onLoadSettings: emitted state with default settings',
+                tag: 'TranslationBloc',
+              );
             }
             emit(defaultState);
           }
@@ -547,10 +592,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     updateVolumeUseCase(desktopVolume: desktopVolume, micVolume: micVolume);
   }
 
-  void liveDeviceUpdate({
-    int? inputDeviceIndex,
-    int? outputDeviceIndex,
-  }) {
+  void liveDeviceUpdate({int? inputDeviceIndex, int? outputDeviceIndex}) {
     liveDeviceUpdateUseCase(
       inputDeviceIndex: inputDeviceIndex,
       outputDeviceIndex: outputDeviceIndex,
@@ -658,13 +700,14 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
     try {
       final result = await getGoogleCredentialsUseCase();
-      final googleCredentialsOnApply =
-          event.translationModel == 'google_api'
+      final googleCredentialsOnApply = event.translationModel == 'google_api'
           ? result.getOrElse(() => '')
           : '';
 
       final systemConfigResult = await getSystemConfigUseCase();
-      final systemConfig = systemConfigResult.getOrElse(() => SystemConfig.empty());
+      final systemConfig = systemConfigResult.getOrElse(
+        () => SystemConfig.empty(),
+      );
 
       updateTranslationSettingsUseCase(
         targetLang: event.targetLang,
@@ -708,17 +751,21 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
       _stopHealthCheck();
       _fetchInitialModelStatuses(); // Refresh statuses on reconnect
     } else {
-      emit(state.copyWith(
-        isServerConnected: false,
-        modelStatuses: {}, // Clear statuses when disconnected
-      ));
+      emit(
+        state.copyWith(
+          isServerConnected: false,
+          modelStatuses: {}, // Clear statuses when disconnected
+        ),
+      );
       _startHealthCheck();
     }
   }
 
   void _startHealthCheck() {
     if (_healthCheckTimer != null) return;
-    _healthCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+    _healthCheckTimer = Timer.periodic(const Duration(seconds: 5), (
+      timer,
+    ) async {
       final isHealthy = await checkServerHealthUseCase();
       if (isHealthy && !isClosed) {
         add(const UpdateServerConnectionEvent(isConnected: true));

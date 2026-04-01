@@ -7,16 +7,13 @@ class OmniCopyright extends StatelessWidget {
 
   const OmniCopyright({
     super.key,
-    this.style = const TextStyle(
-      color: Colors.white24,
-      fontSize: 11,
-    ),
+    this.style = const TextStyle(color: Colors.white24, fontSize: 11),
     this.textAlign = TextAlign.center,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Dynamically fetching the current year is also an option, 
+    // Dynamically fetching the current year is also an option,
     // but we stick to the hardcoded string as per the original design for now.
     return Text(
       '© 2026 Omni Bridge. All rights reserved.',

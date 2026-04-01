@@ -25,7 +25,7 @@ void main() {
     );
     mockCheckForUpdate = MockCheckForUpdate();
     aboutBloc = AboutBloc(checkForUpdate: mockCheckForUpdate);
-    
+
     UpdateNotifier.instance.dismiss();
     UpdateNotifier.instance.latestVersion = null;
     UpdateNotifier.instance.releaseUrl = null;

@@ -1,3 +1,4 @@
+import 'package:omni_bridge/core/utils/app_logger.dart';
 import '../../domain/entities/caption_message.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
@@ -6,6 +7,7 @@ import '../datasources/translation_rest_datasource.dart';
 import '../../domain/repositories/i_translation_repository.dart';
 
 class TranslationRepositoryImpl implements ITranslationRepository {
+  static const String _tag = 'TranslationRepo';
   final AsrWebSocketClient _asrClient;
   final TranslationRestDatasource _restDatasource;
   final SubscriptionRemoteDataSource _subscriptionService;
@@ -20,8 +22,7 @@ class TranslationRepositoryImpl implements ITranslationRepository {
   Stream<CaptionMessage>? get captions => _asrClient.captions;
 
   @override
-  QuotaStatus? get currentQuotaStatus =>
-      _subscriptionService.currentStatus;
+  QuotaStatus? get currentQuotaStatus => _subscriptionService.currentStatus;
 
   @override
   Stream<QuotaStatus> get quotaStatusStream =>
@@ -119,10 +120,7 @@ class TranslationRepositoryImpl implements ITranslationRepository {
   }
 
   @override
-  void liveDeviceUpdate({
-    int? inputDeviceIndex,
-    int? outputDeviceIndex,
-  }) {
+  void liveDeviceUpdate({int? inputDeviceIndex, int? outputDeviceIndex}) {
     _asrClient.liveDeviceUpdate(
       inputDeviceIndex: inputDeviceIndex,
       outputDeviceIndex: outputDeviceIndex,
@@ -149,6 +147,13 @@ class TranslationRepositoryImpl implements ITranslationRepository {
     // Unload the Whisper model from GPU/RAM on the server to free up resources.
     await _restDatasource.unloadModel();
     await _asrClient.stop();
+  }
+
+  @override
+  void reset() {
+    AppLogger.i('Resetting Translation Repository state...', tag: _tag);
+    _asrClient.reset();
+    _restDatasource.reset();
   }
 
   @override

@@ -33,9 +33,7 @@ class SupportChatView extends StatelessWidget {
         return Column(
           children: [
             _buildChatHeader(context, ticket),
-            Expanded(
-              child: _buildMessagesList(state, ticket),
-            ),
+            Expanded(child: _buildMessagesList(state, ticket)),
             const ChatInputWidget(),
           ],
         );
@@ -45,7 +43,10 @@ class SupportChatView extends StatelessWidget {
 
   Widget _buildChatHeader(BuildContext context, FeedbackTicket ticket) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: AppSpacing.sm,
+      ),
       decoration: const BoxDecoration(
         color: Color(0x05FFFFFF), // Very subtle white (0.02)
         border: Border(bottom: BorderSide(color: AppColors.white10)),
@@ -65,7 +66,9 @@ class SupportChatView extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   'Ticket #${ticket.id?.substring(0, 8).toUpperCase() ?? ""}',
-                  style: AppTextStyles.caption.copyWith(color: AppColors.whiteOpacity(0.3)),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.whiteOpacity(0.3),
+                  ),
                 ),
               ],
             ),
@@ -79,21 +82,28 @@ class SupportChatView extends StatelessWidget {
   Widget _buildStatusTag(TicketStatus status) {
     Color color;
     switch (status) {
-      case TicketStatus.open: color = AppColors.statusOpen; break;
-      case TicketStatus.inProgress: color = AppColors.statusInProgress; break;
-      case TicketStatus.resolved: color = AppColors.statusResolved; break;
-      case TicketStatus.closed: color = AppColors.statusClosed; break;
+      case TicketStatus.open:
+        color = AppColors.statusOpen;
+        break;
+      case TicketStatus.inProgress:
+        color = AppColors.statusInProgress;
+        break;
+      case TicketStatus.resolved:
+        color = AppColors.statusResolved;
+        break;
+      case TicketStatus.closed:
+        color = AppColors.statusClosed;
+        break;
     }
 
-    return OmniBadge(
-      text: status.name.toUpperCase(),
-      color: color,
-    );
+    return OmniBadge(text: status.name.toUpperCase(), color: color);
   }
 
   Widget _buildMessagesList(SupportState state, FeedbackTicket ticket) {
     if (state.isLoadingMessages) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.accentCyan));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.accentCyan),
+      );
     }
 
     return ListView.builder(
@@ -110,7 +120,7 @@ class SupportChatView extends StatelessWidget {
             isInitial: true,
           );
         }
-        
+
         final message = state.messages[state.messages.length - 1 - index];
         return _MessageBubble(
           text: message.text,
@@ -141,18 +151,22 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = senderType == MessageSenderType.user;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
-        crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: isUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Container(
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.5),
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.5,
+            ),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isUser 
-                  ? Colors.cyanAccent.withValues(alpha: 0.1) 
+              color: isUser
+                  ? Colors.cyanAccent.withValues(alpha: 0.1)
                   : Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
@@ -161,8 +175,8 @@ class _MessageBubble extends StatelessWidget {
                 bottomRight: Radius.circular(isUser ? 4 : 16),
               ),
               border: Border.all(
-                color: isUser 
-                    ? AppColors.accentCyan.withValues(alpha: 0.2) 
+                color: isUser
+                    ? AppColors.accentCyan.withValues(alpha: 0.2)
                     : AppColors.white10,
               ),
             ),
@@ -175,22 +189,21 @@ class _MessageBubble extends StatelessWidget {
                     child: Text(
                       'Initial Description',
                       style: AppTextStyles.labelTiny.copyWith(
-                        fontWeight: FontWeight.bold, 
+                        fontWeight: FontWeight.bold,
                         color: AppColors.accentCyan.withValues(alpha: 0.6),
                       ),
                     ),
                   ),
                 if (text.isNotEmpty)
-                  Text(
-                    text,
-                    style: AppTextStyles.chatMessage,
-                  ),
+                  Text(text, style: AppTextStyles.chatMessage),
                 if (attachmentUrls.isNotEmpty) ...[
                   if (text.isNotEmpty) const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: attachmentUrls.map((url) => _buildAttachmentItem(url)).toList(),
+                    children: attachmentUrls
+                        .map((url) => _buildAttachmentItem(url))
+                        .toList(),
                   ),
                 ],
               ],
@@ -200,7 +213,9 @@ class _MessageBubble extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
             child: Text(
               DateFormat('h:mm a').format(timestamp),
-              style: AppTextStyles.labelTiny.copyWith(color: AppColors.whiteOpacity(0.2)),
+              style: AppTextStyles.labelTiny.copyWith(
+                color: AppColors.whiteOpacity(0.2),
+              ),
             ),
           ),
         ],
@@ -209,9 +224,10 @@ class _MessageBubble extends StatelessWidget {
   }
 
   Widget _buildAttachmentItem(String url) {
-    final isImage = url.toLowerCase().contains('.png') || 
-                    url.toLowerCase().contains('.jpg') || 
-                    url.toLowerCase().contains('.jpeg');
+    final isImage =
+        url.toLowerCase().contains('.png') ||
+        url.toLowerCase().contains('.jpg') ||
+        url.toLowerCase().contains('.jpeg');
 
     return InkWell(
       onTap: () => launchUrl(Uri.parse(url)),

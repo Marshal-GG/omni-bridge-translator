@@ -5,10 +5,10 @@ import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 abstract class UsageRepository {
   Future<List<EngineUsage>> getModelUsageStats();
   Future<List<DailyUsageRecord>> getDailyUsageHistory({int days = 30});
-  
+
   Stream<QuotaStatus> get quotaStatusStream;
   QuotaStatus? get currentQuotaStatus;
-  
+
   /// Returns the per-engine monthly usage totals.
   Map<String, int> get engineMonthlyUsage;
 
@@ -22,5 +22,9 @@ abstract class UsageRepository {
   Future<void> rolloverWeekly(String oldWeek, int tokens, String currentWeek);
 
   /// Performs a subscription rollover (paid tiers only).
-  Future<void> rolloverSubscription(String cycleLabel, int tokens, DateTime nextReset);
+  Future<void> rolloverSubscription(
+    String cycleLabel,
+    int tokens,
+    DateTime nextReset,
+  );
 }

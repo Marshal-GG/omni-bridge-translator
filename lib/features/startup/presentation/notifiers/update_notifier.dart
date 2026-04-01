@@ -10,7 +10,12 @@ class UpdateNotifier extends ValueNotifier<bool> {
   String? forceUpdateMessage;
   bool isForced = false;
 
-  void setAvailable(String version, String url, {bool forced = false, String? message}) {
+  void setAvailable(
+    String version,
+    String url, {
+    bool forced = false,
+    String? message,
+  }) {
     latestVersion = version;
     releaseUrl = url;
     isForced = forced;

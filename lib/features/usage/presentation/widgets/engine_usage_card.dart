@@ -8,11 +8,7 @@ class EngineUsageCard extends StatelessWidget {
   final EngineUsage usage;
   final double? maxTokens;
 
-  const EngineUsageCard({
-    super.key,
-    required this.usage,
-    this.maxTokens,
-  });
+  const EngineUsageCard({super.key, required this.usage, this.maxTokens});
 
   @override
   Widget build(BuildContext context) {
@@ -28,9 +24,7 @@ class EngineUsageCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: UsageColors.cardBackground,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: themeColor.withValues(alpha: 0.15),
-          ),
+          border: Border.all(color: themeColor.withValues(alpha: 0.15)),
         ),
         clipBehavior: Clip.antiAlias,
         child: IntrinsicHeight(
@@ -225,8 +219,8 @@ class EngineUsageCard extends StatelessWidget {
             value: hasLimit
                 ? usage.monthlyProgress
                 : (maxTokens != null && maxTokens! > 0
-                    ? (monthlyUsed / maxTokens!).clamp(0.0, 1.0)
-                    : 0.0),
+                      ? (monthlyUsed / maxTokens!).clamp(0.0, 1.0)
+                      : 0.0),
             backgroundColor: UsageColors.barTrack,
             valueColor: AlwaysStoppedAnimation<Color>(
               UsageColors.barColor(isExceeded: isExceeded, accent: themeColor),

@@ -1,7 +1,8 @@
 import '../entities/caption_message.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
+import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 
-abstract class ITranslationRepository {
+abstract class ITranslationRepository implements IResettable {
   Stream<CaptionMessage>? get captions;
   void Function(double inputLevel, double outputLevel)? onAudioLevel;
 
@@ -46,10 +47,7 @@ abstract class ITranslationRepository {
     required double desktopVolume,
     required double micVolume,
   });
-  void liveDeviceUpdate({
-    int? inputDeviceIndex,
-    int? outputDeviceIndex,
-  });
+  void liveDeviceUpdate({int? inputDeviceIndex, int? outputDeviceIndex});
   void liveMicToggle(bool useMic);
 
   Future<Map<String, dynamic>> loadDevices();
