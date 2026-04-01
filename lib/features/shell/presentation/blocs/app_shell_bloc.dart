@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:omni_bridge/core/platform/window_manager.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/observe_auth_changes_usecase.dart';
 import 'package:omni_bridge/features/subscription/domain/usecases/get_subscription_status.dart';
@@ -32,6 +33,7 @@ class AppShellBloc extends Bloc<AppShellEvent, AppShellState>
     on<AppShellToggleSettingsExpanded>(_onToggleSettingsExpanded);
     on<AppShellToggleSupportExpanded>(_onToggleSupportExpanded);
     on<AppShellRouteChanged>(_onRouteChanged);
+    on<AppShellToggleSidebarEvent>(_onToggleSidebar);
 
     // Listen to auth changes
     _authSubscription = _observeAuthChanges.call().listen((user) {
@@ -88,6 +90,27 @@ class AppShellBloc extends Bloc<AppShellEvent, AppShellState>
       emit(state.copyWith(isSettingsExpanded: true));
     } else if (event.routeName == AppRouter.support) {
       emit(state.copyWith(isSupportExpanded: true));
+    }
+  }
+
+  void _onToggleSidebar(
+    AppShellToggleSidebarEvent event,
+    Emitter<AppShellState> emit,
+  ) {
+    final newExpanded = event.isExpanded ?? !state.isSidebarExpanded;
+
+    // Adjust the OS window size to match navigation rail width changes
+    toggleNavRailWindowSize(newExpanded);
+
+    // When collapsing, close all sub-menus so they don't remain open invisibly.
+    if (!newExpanded) {
+      emit(state.copyWith(
+        isSidebarExpanded: false,
+        isSettingsExpanded: false,
+        isSupportExpanded: false,
+      ));
+    } else {
+      emit(state.copyWith(isSidebarExpanded: true));
     }
   }
 

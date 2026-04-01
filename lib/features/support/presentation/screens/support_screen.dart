@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:omni_bridge/core/platform/window_manager.dart';
 import 'package:omni_bridge/core/di/injection.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -28,11 +27,6 @@ class _SupportScreenState extends State<SupportScreen> {
   @override
   void initState() {
     super.initState();
-    pathToResizingWindow();
-  }
-
-  void pathToResizingWindow() {
-    setToSupportPosition();
   }
 
   @override

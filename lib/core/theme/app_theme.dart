@@ -31,8 +31,8 @@ class AppColors {
   static const Color textFaint = Colors.white24;
 
   // Semantic feature colors
-  static const Color semanticAsr = Color(0xFF6366F1);           // Indigo
-  static const Color semanticTranslation = Color(0xFF10B981);   // Emerald
+  static const Color semanticAsr = Color(0xFF6366F1); // Indigo
+  static const Color semanticTranslation = Color(0xFF10B981); // Emerald
   static const Color translationTeal = Color(0xFF2DD4BF);
 
   // Ticket status
@@ -55,12 +55,13 @@ class AppColors {
   static const Color pink = Color(0xFFEC4899);
 
   // Borders / glass
-  static const Color cardBackground = Color(0x0DFFFFFF);  // ~5 % white
-  static const Color cardBorder = Color(0x14FFFFFF);       // ~8 % white
+  static const Color cardBackground = Color(0x0DFFFFFF); // ~5 % white
+  static const Color cardBorder = Color(0x14FFFFFF); // ~8 % white
 
   // Opacity helpers (one mechanism only)
   static Color white(double opacity) => Colors.white.withValues(alpha: opacity);
-  static Color black_(double opacity) => Colors.black.withValues(alpha: opacity);
+  static Color black_(double opacity) =>
+      Colors.black.withValues(alpha: opacity);
   static Color cyan(double opacity) => accentCyan.withValues(alpha: opacity);
   static Color teal(double opacity) => accentTeal.withValues(alpha: opacity);
 
@@ -81,9 +82,12 @@ class AppColors {
   static const Color white54 = Colors.white54;
   static const Color white70 = Colors.white70;
   // Helper
-  static Color whiteOpacity(double opacity) => Colors.white.withValues(alpha: opacity);
-  static Color accentCyanOpacity(double opacity) => accentCyan.withValues(alpha: opacity);
-  static Color glassBackground(double opacity) => const Color(0xFF1F2B49).withValues(alpha: opacity);
+  static Color whiteOpacity(double opacity) =>
+      Colors.white.withValues(alpha: opacity);
+  static Color accentCyanOpacity(double opacity) =>
+      accentCyan.withValues(alpha: opacity);
+  static Color glassBackground(double opacity) =>
+      const Color(0xFF1F2B49).withValues(alpha: opacity);
 
   // Gradients
   static const Gradient primaryGradient = LinearGradient(
@@ -138,19 +142,19 @@ class UsageColors {
   static const Color statBackground = Color(0x08FFFFFF); // ~3% white
 
   // Engine type accents
-  static const Color asrAccent = Color(0xFF818CF8);          // Lighter indigo
-  static const Color translationAccent = Color(0xFF2DD4BF);  // Teal
-  static const Color disabledAccent = Color(0xFF64748B);     // Slate grey
+  static const Color asrAccent = Color(0xFF818CF8); // Lighter indigo
+  static const Color translationAccent = Color(0xFF2DD4BF); // Teal
+  static const Color disabledAccent = Color(0xFF64748B); // Slate grey
 
   // Progress / status
   static const Color errorRed = Color(0xFFEF4444);
-  static const Color barTrack = Color(0x0FFFFFFF);           // ~6% white
+  static const Color barTrack = Color(0x0FFFFFFF); // ~6% white
 
   // Text
-  static const Color monthLabel = Color(0x40FFFFFF);         // ~25% white
-  static const Color limitText = Color(0x4DFFFFFF);          // ~30% white
+  static const Color monthLabel = Color(0x40FFFFFF); // ~25% white
+  static const Color limitText = Color(0x4DFFFFFF); // ~30% white
   static const Color statValue = Colors.white70;
-  static const Color statLabel = Color(0x4DFFFFFF);          // ~30% white
+  static const Color statLabel = Color(0x4DFFFFFF); // ~30% white
 
   // Helpers
   static Color accentFor({required bool isAsr, required bool isInPlan}) {
@@ -168,31 +172,32 @@ class UsageColors {
 // ─────────────────────────────────────────────────────────────────────────
 
 class AppSpacing {
-  static const double xs  = 4.0;
-  static const double sm  = 8.0;
-  static const double md  = 16.0;
-  static const double lg  = 24.0;
-  static const double xl  = 40.0;
+  static const double xs = 4.0;
+  static const double sm = 8.0;
+  static const double md = 16.0;
+  static const double lg = 24.0;
+  static const double xl = 40.0;
   static const double xxl = 64.0;
 
-  static const double navRailWidth       = 256.0;
-  static const double ticketListWidth    = 320.0;
-  static const double sidebarWidth       = 350.0;
+  static const double navRailWidth = 256.0;
+  static const double navRailWidthCollapsed = 64.0;
+  static const double ticketListWidth = 320.0;
+  static const double sidebarWidth = 350.0;
   static const double windowHeaderHeight = 32.0;
-  static const double maxDashboardWidth  = 800.0;
+  static const double maxDashboardWidth = 800.0;
 }
 
 class AppShapes {
-  static const double radiusSm    = 6.0;
-  static const double radiusMd    = 8.0;
-  static const double radiusLg    = 12.0;
-  static const double radiusXl    = 16.0;
+  static const double radiusSm = 6.0;
+  static const double radiusMd = 8.0;
+  static const double radiusLg = 12.0;
+  static const double radiusXl = 16.0;
   static const double radiusRound = 40.0;
 
-  static final BorderRadius sm    = BorderRadius.circular(radiusSm);
-  static final BorderRadius md    = BorderRadius.circular(radiusMd);
-  static const BorderRadius lg    = BorderRadius.all(Radius.circular(radiusLg));
-  static const BorderRadius xl    = BorderRadius.all(Radius.circular(radiusXl));
+  static final BorderRadius sm = BorderRadius.circular(radiusSm);
+  static final BorderRadius md = BorderRadius.circular(radiusMd);
+  static const BorderRadius lg = BorderRadius.all(Radius.circular(radiusLg));
+  static const BorderRadius xl = BorderRadius.all(Radius.circular(radiusXl));
   static final BorderRadius round = BorderRadius.circular(radiusRound);
 }
 
@@ -201,15 +206,40 @@ class AppShapes {
 // ─────────────────────────────────────────────────────────────────────────
 
 class AppTextStyles {
-  static const TextStyle display     = TextStyle(fontSize: 32, fontWeight: FontWeight.bold,  color: AppColors.textPrimary);
-  static const TextStyle title       = TextStyle(fontSize: 20, fontWeight: FontWeight.w600,  color: AppColors.textPrimary);
-  static const TextStyle body        = TextStyle(fontSize: 14,                               color: AppColors.textPrimary, height: 1.5);
-  static const TextStyle caption     = TextStyle(fontSize: 12,                               color: AppColors.textSecondary);
-  static const TextStyle label       = TextStyle(fontSize: 12, fontWeight: FontWeight.w600,  color: AppColors.textPrimary);
-  static const TextStyle chatMessage = TextStyle(fontSize: 14,                               color: AppColors.offWhite, height: 1.4);
-  static const TextStyle labelTiny   = TextStyle(fontSize: 9,                                color: AppColors.textDisabled);
+  static const TextStyle display = TextStyle(
+    fontSize: 32,
+    fontWeight: FontWeight.bold,
+    color: AppColors.textPrimary,
+  );
+  static const TextStyle title = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textPrimary,
+  );
+  static const TextStyle body = TextStyle(
+    fontSize: 14,
+    color: AppColors.textPrimary,
+    height: 1.5,
+  );
+  static const TextStyle caption = TextStyle(
+    fontSize: 12,
+    color: AppColors.textSecondary,
+  );
+  static const TextStyle label = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textPrimary,
+  );
+  static const TextStyle chatMessage = TextStyle(
+    fontSize: 14,
+    color: AppColors.offWhite,
+    height: 1.4,
+  );
+  static const TextStyle labelTiny = TextStyle(
+    fontSize: 9,
+    color: AppColors.textDisabled,
+  );
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────
 //  THEME
@@ -227,10 +257,22 @@ class AppTheme {
       textTheme: const TextTheme(
         displayLarge: AppTextStyles.display,
         headlineMedium: AppTextStyles.title,
-        titleLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+        titleLarge: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        ),
+        titleMedium: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        ),
         bodyLarge: AppTextStyles.body,
-        bodyMedium: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5),
+        bodyMedium: TextStyle(
+          fontSize: 13,
+          color: AppColors.textSecondary,
+          height: 1.5,
+        ),
         bodySmall: AppTextStyles.caption,
         labelLarge: AppTextStyles.label,
         labelMedium: AppTextStyles.caption,
@@ -254,12 +296,16 @@ class AppTheme {
       ),
 
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((s) =>
-            s.contains(WidgetState.selected) ? AppColors.accentTeal : Colors.grey),
-        trackColor: WidgetStateProperty.resolveWith((s) =>
-            s.contains(WidgetState.selected)
-                ? AppColors.teal(0.5)
-                : AppColors.white(0.24)),
+        thumbColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? AppColors.accentTeal
+              : Colors.grey,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? AppColors.teal(0.5)
+              : AppColors.white(0.24),
+        ),
       ),
 
       sliderTheme: const SliderThemeData(
@@ -300,7 +346,11 @@ class AppTheme {
         isDense: true,
         filled: true,
         fillColor: AppColors.white(0.05),
-        hintStyle: const TextStyle(fontSize: 13, color: AppColors.textFaint, height: 1.5),
+        hintStyle: const TextStyle(
+          fontSize: 13,
+          color: AppColors.textFaint,
+          height: 1.5,
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         border: OutlineInputBorder(
           borderRadius: AppShapes.sm,

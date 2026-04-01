@@ -138,7 +138,7 @@ class MyBloc extends Bloc<MyEvent, MyState> {
 ```
 
 ### B. Screen
-The main entry point in `presentation/screens/[feature_name]_screen.dart`. Use `BlocBuilder` to react to state changes.
+The main entry point in `presentation/screens/[feature_name]_screen.dart`. All dashboard-level screens should be wrapped in the `AppDashboardShell`.
 
 ```dart
 class MyScreen extends StatelessWidget {
@@ -146,12 +146,13 @@ class MyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('New Feature')),
-      body: BlocBuilder<MyBloc, MyState>(
+    return AppDashboardShell(
+      currentRoute: AppRouter.myFeature,
+      header: const OmniHeader(title: 'My New Feature'),
+      child: BlocBuilder<MyBloc, MyState>(
         builder: (context, state) {
           if (state is MyLoading) return const Center(child: CircularProgressIndicator());
-          if (state is MyLoaded) return Text(state.data.title);
+          if (state is MyLoaded) return _buildContent(state.data);
           return const SizedBox.shrink();
         },
       ),
@@ -207,39 +208,31 @@ void _handleWindowState(Route<dynamic> route) {
 
 ## 6. UI Structure & Premium Aesthetics
 
-To maintain the "Omni Bridge look," always wrap your screen in the standard boilerplate.
+To maintain the "Omni Bridge look," always use the standard shell and layout primitives.
 
-### A. Window Wrapper
-Use `WindowBorder` (from `bitsdojo_window`) to ensure the custom title bar is draggable and consistent.
+### A. Dashboard Shell
+Instead of manual boilerplate, use `AppDashboardShell`. It automatically provides:
+1.  **Window Handling**: Via `OmniWindowLayout` (Native borders & custom title bar).
+2.  **Global UI Layer**: Via `ShellOverlay` (Common overlays and feedback).
+3.  **Global Navigation**: Via `AppNavigationRail` (Sidebar integration).
 
 ```dart
 @override
 Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: Colors.transparent,
-    body: WindowBorder(
-      color: Colors.white10,
-      width: 1,
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF161616), Color(0xFF0F0F0F)],
-          ),
-        ),
-        child: Column(
-          children: [
-            buildMyFeatureHeader(context),
-            const Divider(height: 1, color: Colors.white10),
-            Expanded(child: _buildBody()),
-          ],
-        ),
-      ),
+  return AppDashboardShell(
+    currentRoute: AppRouter.myFeature,
+    header: const OmniHeader(
+      title: 'Feature Title',
+      icon: Icons.auto_awesome_rounded,
+      accentColor: AppColors.accentCyan,
     ),
+    child: _buildBody(),
   );
 }
 ```
+
+> [!NOTE]
+> `AppDashboardShell` is the high-level layout. If you are building a smaller utility window that does NOT need the sidebar, use `OmniWindowLayout` directly.
 
 ### B. Draggable Header
 Create a header widget in `presentation/widgets/[feature]_header.dart`.
@@ -330,12 +323,21 @@ sl.registerFactory(() => MyBloc(getDataUseCase: sl()));
 
 ---
 
-## 8. Navigation & Routing
+### B. Register Sidebar Item (Required)
 
-### A. Define Route Name
-Add a constant in `lib/core/navigation/app_router.dart`.
+To make your screen accessible, you must add it to the `AppNavigationRail` items.
+
+1.  Open `lib/features/shell/presentation/widgets/app_navigation_rail.dart`.
+2.  Add your route to the appropriate section (Top items, Middle, or Bottom).
+
 ```dart
-static const String myFeature = '/my-feature';
+_NavTile(
+  icon: Icons.my_feature_icon,
+  label: 'My Feature',
+  isActive: currentRoute == AppRouter.myFeature,
+  isExpanded: isExpanded,
+  onTap: () => _navigate(context, AppRouter.myFeature),
+),
 ```
 
 ### C. Register Header Resizing (Required)
@@ -474,8 +476,9 @@ Always center the core content within a **1020px fixed-width container** for des
 - [ ] **BLoC**: Events, States, and Logic implemented (using specific states like `Loading`, `Loaded`, `Error`).
 - [ ] **Injection**: DataSources, Repositories, UseCases, and BLoCs registered in `injection.dart`.
 - [ ] **Router**: Constant defined and route registered (with `BlocProvider`) in `app_router.dart`.
+- [ ] **Sidebar**: `_NavTile` added to `AppNavigationRail` with proper active state check.
 - [ ] **Window Management**: New position preset added to `window_manager.dart` and registered in `my_nav_observer.dart`.
-- [ ] **UI Structure**: Screen uses `WindowBorder`, `MoveWindow` (for header), and `1020px` width constraint.
+- [ ] **UI Structure**: Screen uses `AppDashboardShell` with proper `currentRoute` and `OmniHeader`.
 - [ ] **Design Language**: Colors match feature category (ASR: Indigo, Trans: Teal). Model names match standard nomenclature.
 - [ ] **Performance**: Vertical dead space minimized using `MainAxisSize.min` and high-density padding.
 - [ ] **Testing**: Unit tests for UseCases and BLoC tests implemented in `test/features/[name]/`.

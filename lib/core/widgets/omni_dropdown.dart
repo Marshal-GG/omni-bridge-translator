@@ -42,6 +42,12 @@ class OmniDropdown<T> extends StatelessWidget {
   /// Whether to show a search box at the top of the popup. Defaults to `true`.
   final bool showSearchBox;
 
+  /// Optional function to determine if an item is disabled (cannot be selected).
+  final bool Function(T item)? disableItemFn;
+
+  /// The accent color used for highlighting the selected item. Defaults to [Colors.tealAccent].
+  final Color accentColor;
+
   /// Custom builder for the collapsed dropdown trigger display.
   final Widget Function(BuildContext, T?)? dropdownBuilder;
 
@@ -64,6 +70,8 @@ class OmniDropdown<T> extends StatelessWidget {
     this.onBeforeChange,
     this.hintText = 'Search...',
     this.showSearchBox = true,
+    this.disableItemFn,
+    this.accentColor = Colors.tealAccent,
     this.dropdownBuilder,
     this.itemBuilder,
     this.maxHeight = 300,
@@ -88,84 +96,143 @@ class OmniDropdown<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       height: 36,
-      child: DropdownSearch<T>(
-        items: items,
-        itemAsString: itemAsString,
-        selectedItem: selectedItem,
-        compareFn: compareFn,
-        onChanged: onChanged,
-        onBeforeChange: onBeforeChange,
-        dropdownButtonProps: DropdownButtonProps(
-          padding: padding,
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-          mouseCursor: SystemMouseCursors.basic,
-          icon: const Icon(
-            Icons.keyboard_arrow_down,
-            size: 18,
-            color: Colors.white38,
-          ),
-        ),
-        dropdownDecoratorProps: DropDownDecoratorProps(
-          baseStyle: const TextStyle(color: Colors.white, fontSize: 13),
-          dropdownSearchDecoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: const TextStyle(color: Colors.white70),
-            border: InputBorder.none,
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: DropdownSearch<T>(
+          items: items,
+          itemAsString: itemAsString,
+          selectedItem: selectedItem,
+          compareFn: compareFn,
+          onChanged: onChanged,
+          onBeforeChange: onBeforeChange,
+          dropdownButtonProps: DropdownButtonProps(
+            padding: padding,
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+            mouseCursor: SystemMouseCursors.click,
+            icon: const Icon(
+              Icons.keyboard_arrow_down,
+              size: 18,
+              color: Colors.white38,
             ),
           ),
-        ),
-        dropdownBuilder:
-            dropdownBuilder ??
-            (context, selected) {
-              if (selected == null) {
-                return Text(
-                  hintText,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  softWrap: false,
-                );
-              }
-              return Text(
-                itemAsString(selected),
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-                softWrap: false,
-              );
-            },
-        popupProps: PopupProps.menu(
-          showSearchBox: showSearchBox,
-          showSelectedItems: true,
-          fit: FlexFit.loose,
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          searchDelay: Duration.zero,
-          interceptCallBacks: false,
-          searchFieldProps: showSearchBox
-              ? TextFieldProps(
-                  autofocus: true,
-                  decoration: _searchDecoration(hintText),
-                )
-              : const TextFieldProps(),
-          menuProps: MenuProps(
-            backgroundColor: const Color(0xFF2C2C2C),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
+          dropdownDecoratorProps: DropDownDecoratorProps(
+            baseStyle: const TextStyle(color: Colors.white, fontSize: 13),
+            dropdownSearchDecoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: const TextStyle(color: Colors.white70),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
             ),
           ),
-          containerBuilder: (context, child) {
+          dropdownBuilder: (context, selected) {
+            final Widget child = dropdownBuilder != null
+                ? dropdownBuilder!(context, selected)
+                : Text(
+                    selected == null ? hintText : itemAsString(selected),
+                    style: TextStyle(
+                      color: selected == null ? Colors.white70 : Colors.white,
+                      fontSize: 13,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    softWrap: false,
+                  );
+
             return MouseRegion(
               cursor: SystemMouseCursors.click,
-              child: child,
+              child: Container(
+                width: double.infinity,
+                alignment: Alignment.centerLeft,
+                color: Colors.transparent,
+                child: child,
+              ),
             );
           },
-          itemBuilder: itemBuilder,
+          popupProps: PopupProps.menu(
+            showSearchBox: showSearchBox,
+            showSelectedItems: true,
+            fit: FlexFit.loose,
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            searchDelay: Duration.zero,
+            interceptCallBacks: false,
+            searchFieldProps: showSearchBox
+                ? TextFieldProps(
+                    autofocus: true,
+                    decoration: _searchDecoration(hintText),
+                  )
+                : const TextFieldProps(),
+            menuProps: MenuProps(
+              backgroundColor: const Color(0xFF2C2C2C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            containerBuilder: (context, child) {
+              return MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: child,
+              );
+            },
+            itemBuilder: (context, item, isSelected) {
+              final bool isDisabled = disableItemFn?.call(item) ?? false;
+
+              Widget innerChild;
+              if (itemBuilder != null) {
+                innerChild = itemBuilder!(context, item, isSelected);
+              } else {
+                innerChild = Text(
+                  itemAsString(item),
+                  style: TextStyle(
+                    color: isDisabled
+                        ? Colors.white24
+                        : isSelected
+                        ? accentColor
+                        : Colors.white70,
+                    fontSize: 14,
+                  ),
+                );
+              }
+
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  mouseCursor: isDisabled
+                      ? SystemMouseCursors.basic
+                      : SystemMouseCursors.click,
+                  onTap: isDisabled
+                      ? null
+                      : () {}, // Allow event to propagate or be captured by library
+                  hoverColor: Colors.transparent,
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? accentColor.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      border: Border(
+                        left: BorderSide(
+                          color: isSelected ? accentColor : Colors.transparent,
+                          width: 3,
+                        ),
+                      ),
+                    ),
+                    child: innerChild,
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

@@ -34,9 +34,12 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                         value: state.settings.useMic,
                         materialTapTargetSize: MaterialTapTargetSize
                             .shrinkWrap, // Removes Flutter's forced 48px padding
-                        onChanged: (val) => context.read<SettingsBloc>().add(
-                          UpdateTempSettingEvent(useMic: val),
-                        ),
+                        onChanged: (val) {
+                          context.read<SettingsBloc>().add(
+                                UpdateTempSettingEvent(useMic: val),
+                              );
+                          context.read<TranslationBloc>().liveMicToggle(val);
+                        },
                       ),
                     ),
                   ),
@@ -58,17 +61,22 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                         loading: state.devicesLoading,
                         onChanged: (device) {
                           if (device != null) {
+                            final idx = device['index'] as int;
                             context.read<SettingsBloc>().add(
-                              UpdateTempSettingEvent(
-                                inputDeviceIndex: device['index'] as int,
-                              ),
-                            );
+                                  UpdateTempSettingEvent(inputDeviceIndex: idx),
+                                );
+                            context
+                                .read<TranslationBloc>()
+                                .liveDeviceUpdate(inputDeviceIndex: idx);
                           } else {
                             context.read<SettingsBloc>().add(
-                              const UpdateTempSettingEvent(
-                                clearInputDevice: true,
-                              ),
-                            );
+                                  const UpdateTempSettingEvent(
+                                    clearInputDevice: true,
+                                  ),
+                                );
+                            context
+                                .read<TranslationBloc>()
+                                .liveDeviceUpdate(inputDeviceIndex: null);
                           }
                         },
                       ),
@@ -135,17 +143,22 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                       loading: state.devicesLoading,
                       onChanged: (device) {
                         if (device != null) {
+                          final idx = device['index'] as int;
                           context.read<SettingsBloc>().add(
-                            UpdateTempSettingEvent(
-                              outputDeviceIndex: device['index'] as int,
-                            ),
-                          );
+                                UpdateTempSettingEvent(outputDeviceIndex: idx),
+                              );
+                          context
+                              .read<TranslationBloc>()
+                              .liveDeviceUpdate(outputDeviceIndex: idx);
                         } else {
                           context.read<SettingsBloc>().add(
-                            const UpdateTempSettingEvent(
-                              clearOutputDevice: true,
-                            ),
-                          );
+                                const UpdateTempSettingEvent(
+                                  clearOutputDevice: true,
+                                ),
+                              );
+                          context
+                              .read<TranslationBloc>()
+                              .liveDeviceUpdate(outputDeviceIndex: null);
                         }
                       },
                     ),
@@ -307,57 +320,41 @@ Widget buildDeviceDropdown({
       },
       itemBuilder: (context, device, isSelected) {
         final bool isSystem = device['isSystem'] == true;
-        return Container(
-          decoration: BoxDecoration(
-            color: isSelected
-                ? Colors.tealAccent.withValues(alpha: 0.12)
-                : Colors.transparent,
-            border: Border(
-              left: BorderSide(
-                color: isSelected
-                    ? Colors.tealAccent
-                    : Colors.transparent,
-                width: 3,
-              ),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      isSystem
-                          ? 'System Default'
-                          : device['name'] as String,
-                      style: TextStyle(
-                        color: isSelected
-                            ? Colors.tealAccent
-                            : Colors.white.withValues(alpha: 0.9),
-                        fontSize: 13,
-                      ),
+        return Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isSystem
+                        ? 'System Default'
+                        : device['name'] as String,
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.tealAccent
+                          : Colors.white.withValues(alpha: 0.9),
+                      fontSize: 13,
                     ),
-                    if (isSystem)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          device['fullName'] as String,
-                          style: TextStyle(
-                            color: isSelected
-                                ? Colors.white70
-                                : Colors.white38,
-                            fontSize: 11,
-                          ),
+                  ),
+                  if (isSystem)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        device['fullName'] as String,
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white70
+                              : Colors.white38,
+                          fontSize: 11,
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
       hintText: hintText,

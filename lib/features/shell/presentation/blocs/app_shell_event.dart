@@ -53,3 +53,12 @@ class AppShellRouteChanged extends AppShellEvent {
   @override
   List<Object?> get props => [routeName];
 }
+
+class AppShellToggleSidebarEvent extends AppShellEvent {
+  final bool? isExpanded;
+
+  const AppShellToggleSidebarEvent({this.isExpanded});
+
+  @override
+  List<Object?> get props => [isExpanded];
+}

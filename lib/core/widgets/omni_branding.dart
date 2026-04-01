@@ -17,6 +17,9 @@ class OmniBranding extends StatelessWidget {
   /// Defaults to [Colors.tealAccent] if not specified.
   final Color? subtitleChipColor;
 
+  /// Controls horizontal alignment of the branding row contents.
+  final MainAxisAlignment mainAxisAlignment;
+
   const OmniBranding({
     super.key,
     this.title = 'Omni Bridge',
@@ -26,12 +29,13 @@ class OmniBranding extends StatelessWidget {
     this.bottomWidget,
     this.subtitleAsChip = false,
     this.subtitleChipColor,
+    this.mainAxisAlignment = MainAxisAlignment.center,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: mainAxisAlignment,
       children: [
         Image.asset(
           'assets/app/icons/icon.png',
@@ -52,41 +56,47 @@ class OmniBranding extends StatelessWidget {
             },
           ),
         const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.2,
-              ),
-            ),
-            const SizedBox(height: 2),
-            if (subtitleAsChip)
-              OmniChip(
-                label: subtitle.toUpperCase(),
-                color: subtitleChipColor ?? Colors.tealAccent,
-                fontSize: 8,
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              )
-            else
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                subtitle.toUpperCase(),
+                title,
                 style: const TextStyle(
-                  color: Colors.tealAccent,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            if (bottomWidget != null) ...[
-              const SizedBox(height: 12),
-              bottomWidget!,
+              const SizedBox(height: 2),
+              if (subtitleAsChip)
+                OmniChip(
+                  label: subtitle.toUpperCase(),
+                  color: subtitleChipColor ?? Colors.tealAccent,
+                  fontSize: 8,
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                )
+              else
+                Text(
+                  subtitle.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.tealAccent,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              if (bottomWidget != null) ...[
+                const SizedBox(height: 12),
+                bottomWidget!,
+              ],
             ],
-          ],
+          ),
         ),
       ],
     );

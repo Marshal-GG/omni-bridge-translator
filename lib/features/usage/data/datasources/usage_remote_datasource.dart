@@ -149,29 +149,28 @@ class UsageRemoteDataSource implements IResettable {
           _periodLimitProvider == null) {
         return;
       }
-      final idToken = await user.getIdToken();
 
       final now = DateTime.now();
       final todayStr =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
       // 1. Fetch daily usage
-      final dailyUrl = Uri.parse(
-          '${RTDBClient.rtdbBaseUrl}/${FirebasePaths.dailyUsage}/$uid/$todayStr/tokens.json?auth=$idToken');
+      final dailyUrl = await RTDBClient.instance.getRTDBUrl('${FirebasePaths.dailyUsage}/$todayStr/tokens');
+      if (dailyUrl == null) return;
       final dailyResp = await http.get(dailyUrl);
       final dailyUsed = (jsonDecode(dailyResp.body) as num?)?.toInt() ?? 0;
 
       // 2. Fetch totals
-      final totalsUrl = Uri.parse(
-          '${RTDBClient.rtdbBaseUrl}/${FirebasePaths.usageTotals}/$uid.json?auth=$idToken');
+      final totalsUrl = await RTDBClient.instance.getRTDBUrl(FirebasePaths.usageTotals);
+      if (totalsUrl == null) return;
       final totalsResp = await http.get(totalsUrl);
       final totalsData =
           jsonDecode(totalsResp.body) as Map<String, dynamic>? ?? {};
 
       // 3. Fetch per-engine monthly totals
       _engineMonthlyUsages.clear();
-      final modelsUrl = Uri.parse(
-          '${RTDBClient.rtdbBaseUrl}/${FirebasePaths.usageTotals}/$uid/subscription_monthly_models.json?auth=$idToken');
+      final modelsUrl = await RTDBClient.instance.getRTDBUrl('${FirebasePaths.usageTotals}/subscription_monthly_models');
+      if (modelsUrl == null) return;
       final modelsResp = await http.get(modelsUrl);
       final modelsData =
           jsonDecode(modelsResp.body) as Map<String, dynamic>? ?? {};
@@ -207,34 +206,24 @@ class UsageRemoteDataSource implements IResettable {
   }
 
   Future<Map<String, dynamic>> fetchUsageTotals(String uid) async {
-    final user = _auth.currentUser;
-    if (user == null) return {};
-    final idToken = await user.getIdToken();
-
-    final url = Uri.parse(
-        '${RTDBClient.rtdbBaseUrl}/${FirebasePaths.usageTotals}/$uid.json?auth=$idToken');
+    final url = await RTDBClient.instance.getRTDBUrl(FirebasePaths.usageTotals);
+    if (url == null) return {};
     final resp = await http.get(url);
     if (resp.statusCode != 200) return {};
     return jsonDecode(resp.body) as Map<String, dynamic>? ?? {};
   }
 
   Future<Map<String, dynamic>> getModelUsageStatsRaw(String uid) async {
-    final user = _auth.currentUser;
-    if (user == null) return {};
-    final idToken = await user.getIdToken();
-    final url = Uri.parse(
-        '${RTDBClient.rtdbBaseUrl}/${FirebasePaths.modelStats}/$uid.json?auth=$idToken');
+    final url = await RTDBClient.instance.getRTDBUrl(FirebasePaths.modelStats);
+    if (url == null) return {};
     final response = await http.get(url);
     if (response.statusCode != 200) return {};
     return jsonDecode(response.body) as Map<String, dynamic>? ?? {};
   }
 
   Future<Map<String, dynamic>> getDailyUsageHistoryRaw(String uid) async {
-    final user = _auth.currentUser;
-    if (user == null) return {};
-    final idToken = await user.getIdToken();
-    final url = Uri.parse(
-        '${RTDBClient.rtdbBaseUrl}/${FirebasePaths.dailyUsage}/$uid.json?auth=$idToken');
+    final url = await RTDBClient.instance.getRTDBUrl(FirebasePaths.dailyUsage);
+    if (url == null) return {};
     final response = await http.get(url);
     if (response.statusCode != 200) return {};
     return jsonDecode(response.body) as Map<String, dynamic>? ?? {};
@@ -246,9 +235,8 @@ class UsageRemoteDataSource implements IResettable {
     String currentMonth,
     int tokens,
   ) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    final idToken = await user.getIdToken();
+    final url = await RTDBClient.instance.getRTDBUrl(FirebasePaths.usageTotals);
+    if (url == null) return;
 
     await _firestore
         .collection(FirebasePaths.users)
@@ -263,8 +251,7 @@ class UsageRemoteDataSource implements IResettable {
     });
 
     await http.patch(
-      Uri.parse(
-          '${RTDBClient.rtdbBaseUrl}/${FirebasePaths.usageTotals}/$uid.json?auth=$idToken'),
+      url,
       body: jsonEncode({
         'calendar_monthly': 0,
         'last_calendar_month': currentMonth,
@@ -279,9 +266,8 @@ class UsageRemoteDataSource implements IResettable {
     String currentWeek,
     int tokens,
   ) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    final idToken = await user.getIdToken();
+    final url = await RTDBClient.instance.getRTDBUrl(FirebasePaths.usageTotals);
+    if (url == null) return;
 
     await _firestore
         .collection(FirebasePaths.users)
@@ -296,8 +282,7 @@ class UsageRemoteDataSource implements IResettable {
     });
 
     await http.patch(
-      Uri.parse(
-          '${RTDBClient.rtdbBaseUrl}/${FirebasePaths.usageTotals}/$uid.json?auth=$idToken'),
+      url,
       body: jsonEncode({'weekly': 0, 'last_week': currentWeek}),
     );
     AppLogger.i('Weekly rollover performed: $lastWeek', tag: _tag);
@@ -309,9 +294,8 @@ class UsageRemoteDataSource implements IResettable {
     int tokens,
     DateTime nextReset,
   ) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    final idToken = await user.getIdToken();
+    final url = await RTDBClient.instance.getRTDBUrl(FirebasePaths.usageTotals);
+    if (url == null) return;
 
     await _firestore
         .collection(FirebasePaths.users)
@@ -327,8 +311,7 @@ class UsageRemoteDataSource implements IResettable {
 
     await Future.wait([
       http.patch(
-        Uri.parse(
-            '${RTDBClient.rtdbBaseUrl}/${FirebasePaths.usageTotals}/$uid.json?auth=$idToken'),
+        url,
         body: jsonEncode({
           'subscription_monthly': 0,
           'subscription_monthly_models': null,

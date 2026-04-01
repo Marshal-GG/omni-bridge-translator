@@ -119,6 +119,22 @@ class TranslationRepositoryImpl implements ITranslationRepository {
   }
 
   @override
+  void liveDeviceUpdate({
+    int? inputDeviceIndex,
+    int? outputDeviceIndex,
+  }) {
+    _asrClient.liveDeviceUpdate(
+      inputDeviceIndex: inputDeviceIndex,
+      outputDeviceIndex: outputDeviceIndex,
+    );
+  }
+
+  @override
+  void liveMicToggle(bool useMic) {
+    _asrClient.liveMicToggle(useMic);
+  }
+
+  @override
   Future<Map<String, dynamic>> loadDevices() => _asrClient.loadDevices();
 
   @override

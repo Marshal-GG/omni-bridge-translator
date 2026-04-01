@@ -175,7 +175,23 @@ class AsrWebSocketClient {
     _service?.sendVolumeUpdate(
       desktopVolume: desktopVolume,
       micVolume: micVolume,
+      );
+  }
+
+  /// Instantly update active capture devices without restarting the pipeline.
+  void liveDeviceUpdate({
+    int? inputDeviceIndex,
+    int? outputDeviceIndex,
+  }) {
+    _service?.sendDeviceUpdate(
+      inputDeviceIndex: inputDeviceIndex,
+      outputDeviceIndex: outputDeviceIndex,
     );
+  }
+
+  /// Instantly toggle microphone status for live level preview.
+  void liveMicToggle(bool useMic) {
+    _service?.sendMicToggle(useMic);
   }
 
   /// Fetches available audio input and output devices from the Python server.

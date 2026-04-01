@@ -315,6 +315,41 @@ class TranslationWebsocketClient {
     }
   }
 
+  /// Instantly update active capture devices without restarting the whole pipeline
+  void sendDeviceUpdate({
+    int? inputDeviceIndex,
+    int? outputDeviceIndex,
+  }) {
+    if (inputDeviceIndex != null) _inputDeviceIndex = inputDeviceIndex;
+    if (outputDeviceIndex != null) _outputDeviceIndex = outputDeviceIndex;
+
+    if (_channel != null) {
+      final payload = <String, dynamic>{
+        'cmd': 'device_update',
+      };
+      if (inputDeviceIndex != null) {
+        payload['input_device_index'] = inputDeviceIndex;
+      }
+      if (outputDeviceIndex != null) {
+        payload['output_device_index'] = outputDeviceIndex;
+      }
+      _channel!.sink.add(jsonEncode(payload));
+    }
+  }
+
+  /// Instantly toggle microphone status for live level preview
+  void sendMicToggle(bool useMic) {
+    _useMic = useMic;
+    if (_channel != null) {
+      _channel!.sink.add(
+        jsonEncode({
+          'cmd': 'mic_update',
+          'use_mic': useMic,
+        }),
+      );
+    }
+  }
+
   /// Hard-stop: send stop, close WebSocket, cancel auto-reconnect.
   /// Use this only on app shutdown.
   Future<void> stop() async {

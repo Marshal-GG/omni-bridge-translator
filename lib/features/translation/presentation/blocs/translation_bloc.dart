@@ -18,6 +18,8 @@ import 'package:omni_bridge/features/translation/domain/usecases/observe_quota_s
 import 'package:omni_bridge/features/translation/domain/usecases/get_initial_quota_status_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/get_default_tier_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/update_translation_settings_usecase.dart';
+import 'package:omni_bridge/features/translation/domain/usecases/live_device_update_usecase.dart';
+import 'package:omni_bridge/features/translation/domain/usecases/live_mic_toggle_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/check_server_health_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/observe_auth_changes_usecase.dart';
@@ -52,6 +54,8 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final GetSystemConfigUseCase getSystemConfigUseCase;
   final SubscriptionRemoteDataSource subscriptionDataSource;
   final TranslationRestDatasource translationRestDatasource;
+  final LiveDeviceUpdateUseCase liveDeviceUpdateUseCase;
+  final LiveMicToggleUseCase liveMicToggleUseCase;
 
   StreamSubscription? _captionSub;
   StreamSubscription? _statusSub;
@@ -79,6 +83,8 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     required this.getSystemConfigUseCase,
     required this.subscriptionDataSource,
     required this.translationRestDatasource,
+    required this.liveDeviceUpdateUseCase,
+    required this.liveMicToggleUseCase,
   }) : super(
          TranslationState.initial().copyWith(
            quotaStatus: getInitialQuotaStatusUseCase(),
@@ -541,6 +547,20 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     updateVolumeUseCase(desktopVolume: desktopVolume, micVolume: micVolume);
   }
 
+  void liveDeviceUpdate({
+    int? inputDeviceIndex,
+    int? outputDeviceIndex,
+  }) {
+    liveDeviceUpdateUseCase(
+      inputDeviceIndex: inputDeviceIndex,
+      outputDeviceIndex: outputDeviceIndex,
+    );
+  }
+
+  void liveMicToggle(bool useMic) {
+    liveMicToggleUseCase(useMic);
+  }
+
   Future<void> _onCaptionTextChanged(
     CaptionTextChangedEvent event,
     Emitter<TranslationState> emit,
@@ -671,7 +691,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         'isBold': event.isBold,
         'opacity': event.opacity,
         'translationModel': event.translationModel,
-        'nvidia_nim_key': event.nvidiaNimKey,
+        'nvidiaNimKey': event.nvidiaNimKey,
         'transcriptionModel': event.transcriptionModel,
       });
     } finally {

@@ -46,6 +46,11 @@ abstract class ITranslationRepository {
     required double desktopVolume,
     required double micVolume,
   });
+  void liveDeviceUpdate({
+    int? inputDeviceIndex,
+    int? outputDeviceIndex,
+  });
+  void liveMicToggle(bool useMic);
 
   Future<Map<String, dynamic>> loadDevices();
   Future<List<dynamic>> getModelStatuses();

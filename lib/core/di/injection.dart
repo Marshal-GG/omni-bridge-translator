@@ -52,6 +52,8 @@ import 'package:omni_bridge/features/translation/domain/usecases/get_initial_quo
 import 'package:omni_bridge/features/translation/domain/usecases/get_default_tier_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/observe_captions_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/update_translation_settings_usecase.dart';
+import 'package:omni_bridge/features/translation/domain/usecases/live_device_update_usecase.dart';
+import 'package:omni_bridge/features/translation/domain/usecases/live_mic_toggle_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/check_server_health_usecase.dart';
 import 'package:omni_bridge/features/translation/data/datasources/translation_rest_datasource.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/login_with_google_usecase.dart';
@@ -117,6 +119,8 @@ Future<void> setupInjection() async {
       getSystemConfigUseCase: sl(),
       subscriptionDataSource: sl(),
       translationRestDatasource: sl(),
+      liveDeviceUpdateUseCase: sl(),
+      liveMicToggleUseCase: sl(),
     ),
   );
 
@@ -274,6 +278,8 @@ Future<void> setupInjection() async {
   sl.registerLazySingleton(() => ObserveCaptionsUseCase(sl()));
   sl.registerLazySingleton(() => UpdateTranslationSettingsUseCase(sl()));
   sl.registerLazySingleton(() => CheckServerHealthUseCase(sl()));
+  sl.registerLazySingleton(() => LiveDeviceUpdateUseCase(sl()));
+  sl.registerLazySingleton(() => LiveMicToggleUseCase(sl()));
 
   // Subscription
   sl.registerLazySingleton(() => GetSubscriptionStatus(sl()));

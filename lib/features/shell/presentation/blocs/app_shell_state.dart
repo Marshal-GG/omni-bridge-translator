@@ -7,12 +7,14 @@ class AppShellState extends Equatable {
   final QuotaStatus? currentSubscriptionStatus;
   final bool isSettingsExpanded;
   final bool isSupportExpanded;
+  final bool isSidebarExpanded;
 
   const AppShellState({
     this.currentUser,
     this.currentSubscriptionStatus,
     this.isSettingsExpanded = false,
     this.isSupportExpanded = false,
+    this.isSidebarExpanded = true,
   });
 
   AppShellState copyWith({
@@ -20,6 +22,7 @@ class AppShellState extends Equatable {
     QuotaStatus? Function()? currentSubscriptionStatus,
     bool? isSettingsExpanded,
     bool? isSupportExpanded,
+    bool? isSidebarExpanded,
   }) {
     return AppShellState(
       currentUser: currentUser != null ? currentUser() : this.currentUser,
@@ -28,6 +31,7 @@ class AppShellState extends Equatable {
           : this.currentSubscriptionStatus,
       isSettingsExpanded: isSettingsExpanded ?? this.isSettingsExpanded,
       isSupportExpanded: isSupportExpanded ?? this.isSupportExpanded,
+      isSidebarExpanded: isSidebarExpanded ?? this.isSidebarExpanded,
     );
   }
 
@@ -37,5 +41,6 @@ class AppShellState extends Equatable {
         currentSubscriptionStatus,
         isSettingsExpanded,
         isSupportExpanded,
+        isSidebarExpanded,
       ];
 }

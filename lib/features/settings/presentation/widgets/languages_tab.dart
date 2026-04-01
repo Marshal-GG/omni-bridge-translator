@@ -115,61 +115,14 @@ Widget _langDropdown({
     itemAsString: (entry) => entry.value,
     selectedItem: selected,
     compareFn: (a, b) => a.key == b.key,
-    onChanged: (_) {}, // handled directly in itemBuilder onTap
+    onChanged: (item) {
+      if (item != null && !disabledKeys.contains(item.key)) {
+        onSelect(item);
+      }
+    },
     hintText: hint,
     showSearchBox: true,
-    dropdownBuilder: (context, selectedItem) {
-      if (selectedItem == null) return const SizedBox();
-      return Text(
-        selectedItem.value,
-        style: const TextStyle(color: Colors.white, fontSize: 13),
-        overflow: TextOverflow.ellipsis,
-      );
-    },
-    itemBuilder: (popupContext, item, isSelectedRaw) {
-      final isCurrentlySelected = item.key == selected.key;
-      final isDisabled = disabledKeys.contains(item.key);
-      return InkWell(
-        onTap: isDisabled
-            ? null
-            : () {
-                Navigator.pop(popupContext);
-                Future.delayed(Duration.zero, () {
-                  onSelect(item);
-                });
-              },
-        splashColor: Colors.tealAccent.withValues(alpha: 0.2),
-        highlightColor: Colors.white10,
-        hoverColor: Colors.white10,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: isCurrentlySelected
-                ? Colors.tealAccent.withValues(alpha: 0.12)
-                : Colors.transparent,
-            border: Border(
-              left: BorderSide(
-                color: isCurrentlySelected
-                    ? Colors.tealAccent
-                    : Colors.transparent,
-                width: 3,
-              ),
-            ),
-          ),
-          child: Text(
-            item.value,
-            style: TextStyle(
-              color: isDisabled
-                  ? Colors.white24
-                  : isCurrentlySelected
-                      ? Colors.tealAccent
-                      : Colors.white70,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      );
-    },
+    disableItemFn: (item) => disabledKeys.contains(item.key),
   );
 }
 
@@ -262,6 +215,7 @@ Widget buildTranslationModelSelector(
                   });
                 }
               },
+              disableItemFn: (item) => !hasAccess(item.key),
               dropdownBuilder: (context, selectedItem) {
                 if (selectedItem == null) return const SizedBox();
 
@@ -306,9 +260,7 @@ Widget buildTranslationModelSelector(
                 );
               },
               maxHeight: 250,
-              itemBuilder: (popupContext, item, _) {
-                  final isCurrentlySelected =
-                      item.key == state.settings.translationModel;
+              itemBuilder: (popupContext, item, isCurrentlySelected) {
                   final isRecommended = item.key == 'google';
                   final itemHasAccess = hasAccess(item.key);
                   final statusKey = {
@@ -319,90 +271,46 @@ Widget buildTranslationModelSelector(
                     'llama': 'llama',
                   }[item.key];
 
-                  return InkWell(
-                    onTap: () {
-                      if (itemHasAccess) {
-                        Navigator.pop(popupContext);
-                        // Explicitly unload current model from memory upon selection change
-                        TranslationRestDatasource().unloadModel();
-                        Future.delayed(Duration.zero, () {
-                          if (context.mounted) {
-                            context.read<SettingsBloc>().add(
-                              UpdateTempSettingEvent(translationModel: item.key),
-                            );
-                          }
-                        });
-                      }
-                    },
-                    splashColor: itemHasAccess
-                        ? Colors.tealAccent.withValues(alpha: 0.2)
-                        : Colors.transparent,
-                    highlightColor: itemHasAccess
-                        ? Colors.white10
-                        : Colors.transparent,
-                    hoverColor: itemHasAccess
-                        ? Colors.white10
-                        : Colors.transparent,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isCurrentlySelected
-                            ? Colors.tealAccent.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        border: Border(
-                          left: BorderSide(
-                            color: isCurrentlySelected
-                                ? Colors.tealAccent
-                                : Colors.transparent,
-                            width: 3,
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.value,
+                          style: TextStyle(
+                            color: itemHasAccess
+                                ? (isCurrentlySelected
+                                      ? Colors.tealAccent
+                                      : Colors.white70)
+                                : Colors.white30,
+                            fontSize: 14,
                           ),
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              item.value,
-                              style: TextStyle(
-                                color: itemHasAccess
-                                    ? (isCurrentlySelected
-                                          ? Colors.tealAccent
-                                          : Colors.white70)
-                                    : Colors.white30,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          if (statusKey != null) ...[
-                            const SizedBox(width: 8),
-                            BlocBuilder<TranslationBloc, TranslationState>(
-                              bloc: context.read<TranslationBloc>(),
-                              builder: (context, state) {
-                                return ModelStatusIndicator(
-                                  status: state.modelStatuses[statusKey],
-                                  compact: true,
-                                );
-                              },
-                            ),
-                          ],
-                          if (!itemHasAccess) ...[
-                            const SizedBox(width: 8),
-                            _buildTierLockBadge(
-                              '${SubscriptionRemoteDataSource.instance.getNameForTier(SubscriptionRemoteDataSource.instance.getRequirement('engines', item.key, SubscriptionRemoteDataSource.instance.getTierAt(1)))}+',
-                            ),
-                          ],
-                          if (isRecommended && itemHasAccess) ...[
-                            const SizedBox(width: 8),
-                            _buildRecommendedBadge(
-                              isActive: isCurrentlySelected,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
+                      if (statusKey != null) ...[
+                        const SizedBox(width: 8),
+                        BlocBuilder<TranslationBloc, TranslationState>(
+                          bloc: context.read<TranslationBloc>(),
+                          builder: (context, state) {
+                            return ModelStatusIndicator(
+                              status: state.modelStatuses[statusKey],
+                              compact: true,
+                            );
+                          },
+                        ),
+                      ],
+                      if (!itemHasAccess) ...[
+                        const SizedBox(width: 8),
+                        _buildTierLockBadge(
+                          '${SubscriptionRemoteDataSource.instance.getNameForTier(SubscriptionRemoteDataSource.instance.getRequirement('engines', item.key, SubscriptionRemoteDataSource.instance.getTierAt(1)))}+',
+                        ),
+                      ],
+                      if (isRecommended && itemHasAccess) ...[
+                        const SizedBox(width: 8),
+                        _buildRecommendedBadge(
+                          isActive: isCurrentlySelected,
+                        ),
+                      ],
+                    ],
                   );
                 },
             ),

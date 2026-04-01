@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:omni_bridge/core/widgets/omni_window_layout.dart';
 import 'package:omni_bridge/features/shell/presentation/widgets/app_navigation_rail.dart';
+import 'package:omni_bridge/features/shell/presentation/widgets/shell_overlay.dart';
 
 /// A wrapper layout that provides a global dashboard shell experience.
 ///
@@ -36,26 +37,30 @@ class AppDashboardShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return OmniWindowLayout(
-      child: Column(
-        children: [
-          ?header,
-          if (header != null)
-            const Divider(height: 1, color: Colors.white10),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AppNavigationRail(
-                  currentRoute: currentRoute,
-                  settingsTabIndex: settingsTabIndex,
-                  onSettingsTabChanged: onSettingsTabChanged,
-                ),
-                Expanded(child: child),
-              ],
+      child: ShellOverlay(
+        child: Column(
+          children: [
+            if (header != null) ...[
+              header!,
+              const Divider(height: 1, color: Colors.white10),
+            ],
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppNavigationRail(
+                    currentRoute: currentRoute,
+                    settingsTabIndex: settingsTabIndex,
+                    onSettingsTabChanged: onSettingsTabChanged,
+                  ),
+                  Expanded(child: child),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
+

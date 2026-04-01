@@ -13,6 +13,8 @@ import 'package:omni_bridge/features/translation/domain/usecases/observe_quota_s
 import 'package:omni_bridge/features/translation/domain/usecases/get_initial_quota_status_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/get_default_tier_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/update_translation_settings_usecase.dart';
+import 'package:omni_bridge/features/translation/domain/usecases/live_device_update_usecase.dart';
+import 'package:omni_bridge/features/translation/domain/usecases/live_mic_toggle_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/check_server_health_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/observe_auth_changes_usecase.dart';
@@ -51,6 +53,8 @@ class MockLogoutUseCase extends Mock implements LogoutUseCase {}
 class MockGetSystemConfigUseCase extends Mock implements GetSystemConfigUseCase {}
 class MockSubscriptionRemoteDataSource extends Mock implements SubscriptionRemoteDataSource {}
 class MockTranslationRestDatasource extends Mock implements TranslationRestDatasource {}
+class MockLiveDeviceUpdateUseCase extends Mock implements LiveDeviceUpdateUseCase {}
+class MockLiveMicToggleUseCase extends Mock implements LiveMicToggleUseCase {}
 
 void main() {
   setUpAll(() {
@@ -86,6 +90,8 @@ void main() {
   late MockGetSystemConfigUseCase mockGetSystemConfigUseCase;
   late MockSubscriptionRemoteDataSource mockSubscriptionDataSource;
   late MockTranslationRestDatasource mockTranslationRestDatasource;
+  late MockLiveDeviceUpdateUseCase mockLiveDeviceUpdateUseCase;
+  late MockLiveMicToggleUseCase mockLiveMicToggleUseCase;
 
   setUp(() {
     mockStartTranslationUseCase = MockStartTranslationUseCase();
@@ -108,6 +114,8 @@ void main() {
     mockGetSystemConfigUseCase = MockGetSystemConfigUseCase();
     mockSubscriptionDataSource = MockSubscriptionRemoteDataSource();
     mockTranslationRestDatasource = MockTranslationRestDatasource();
+    mockLiveDeviceUpdateUseCase = MockLiveDeviceUpdateUseCase();
+    mockLiveMicToggleUseCase = MockLiveMicToggleUseCase();
 
     // Default stubs
     when(() => mockGetInitialQuotaStatusUseCase.call()).thenReturn(null);
@@ -146,6 +154,8 @@ void main() {
       getSystemConfigUseCase: mockGetSystemConfigUseCase,
       subscriptionDataSource: mockSubscriptionDataSource,
       translationRestDatasource: mockTranslationRestDatasource,
+      liveDeviceUpdateUseCase: mockLiveDeviceUpdateUseCase,
+      liveMicToggleUseCase: mockLiveMicToggleUseCase,
     );
   }
 

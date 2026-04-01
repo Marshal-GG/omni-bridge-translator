@@ -63,22 +63,12 @@ class MyNavigatorObserver extends NavigatorObserver {
       setToTranslationPosition();
     } else if (name == AppRouter.historyPanel) {
       setToHistoryPosition();
-    } else if (name == AppRouter.account) {
-      setToAccountPosition();
-    } else if (name == AppRouter.subscription) {
-      setToSubscriptionPosition();
-    } else if (name == AppRouter.about) {
-      setToAboutPosition();
-    } else if (name == AppRouter.settingsOverlay) {
-      setToSettingsPosition();
-    } else if (name == AppRouter.usage) {
-      setToUsagePosition();
-    } else if (name == AppRouter.support) {
-      setToSupportPosition();
     } else if (name == AppRouter.onboarding ||
         name == AppRouter.splash ||
         name == AppRouter.forceUpdate) {
       setToStartupPosition();
+    } else {
+      setToDashboardPosition();
     }
   }
 }

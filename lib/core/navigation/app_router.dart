@@ -44,38 +44,38 @@ class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case splash:
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _fadeRoute(
+          BlocProvider(
             create: (context) => sl<StartupBloc>()..add(const StartupInitializeEvent()),
             child: const SplashScreen(),
           ),
-          settings: settings,
+          settings,
         );
       case onboarding:
-        return MaterialPageRoute(
-          builder: (_) => const OnboardingScreen(),
-          settings: settings,
+        return _fadeRoute(
+          const OnboardingScreen(),
+          settings,
         );
       case forceUpdate:
-        return MaterialPageRoute(
-          builder: (_) => const ForceUpdateScreen(),
-          settings: settings,
+        return _fadeRoute(
+          const ForceUpdateScreen(),
+          settings,
         );
       case login:
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _fadeRoute(
+          BlocProvider(
             create: (context) => sl<AuthBloc>(),
             child: const LoginScreen(),
           ),
-          settings: settings,
+          settings,
         );
       case translationOverlay:
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _fadeRoute(
+          BlocProvider(
             create: (_) => sl<TranslationBloc>(),
             child: const TranslationScreen(),
           ),
-          settings: settings,
+          settings,
         );
       case settingsOverlay:
         // When navigating from within the translation screen, the caller
@@ -85,8 +85,8 @@ class AppRouter {
         final passedBloc = settings.arguments is TranslationBloc
             ? settings.arguments as TranslationBloc
             : null;
-        return MaterialPageRoute(
-          builder: (_) => MultiBlocProvider(
+        return _fadeRoute(
+          MultiBlocProvider(
             providers: [
               passedBloc != null
                   ? BlocProvider<TranslationBloc>.value(value: passedBloc)
@@ -95,50 +95,50 @@ class AppRouter {
             ],
             child: const SettingsScreen(),
           ),
-          settings: settings,
+          settings,
         );
       case historyPanel:
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _fadeRoute(
+          BlocProvider(
             create: (context) => sl<HistoryBloc>()..add(LoadHistoryEvent()),
             child: const HistoryPanel(),
           ),
-          settings: settings,
+          settings,
         );
       case account:
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _fadeRoute(
+          BlocProvider(
             create: (context) => sl<AuthBloc>(),
             child: const AccountScreen(),
           ),
-          settings: settings,
+          settings,
         );
       case about:
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _fadeRoute(
+          BlocProvider(
             create: (context) => sl<AboutBloc>()..add(const AboutInitEvent()),
             child: const AboutScreen(),
           ),
-          settings: settings,
+          settings,
         );
       case usage:
-        return MaterialPageRoute(
-          builder: (_) => const UsageScreen(),
-          settings: settings,
+        return _fadeRoute(
+          const UsageScreen(),
+          settings,
         );
       case subscription:
-        return MaterialPageRoute(
-          builder: (_) => const SubscriptionScreen(),
-          settings: settings,
+        return _fadeRoute(
+          const SubscriptionScreen(),
+          settings,
         );
       case support:
-        return MaterialPageRoute(
-          builder: (_) => const SupportScreen(),
-          settings: settings,
+        return _fadeRoute(
+          const SupportScreen(),
+          settings,
         );
       default:
-        return MaterialPageRoute(
-          builder: (_) => Scaffold(
+        return _fadeRoute(
+          Scaffold(
             body: Center(
               child: Text(
                 'No route defined for ${settings.name}',
@@ -146,8 +146,23 @@ class AppRouter {
               ),
             ),
           ),
-          settings: settings,
+          settings,
         );
     }
+  }
+
+  static PageRouteBuilder _fadeRoute(Widget child, RouteSettings settings) {
+    return PageRouteBuilder(
+      settings: settings,
+      pageBuilder: (context, animation, secondaryAnimation) => child,
+      transitionDuration: const Duration(milliseconds: 150),
+      reverseTransitionDuration: const Duration(milliseconds: 150),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: animation,
+          child: child,
+        );
+      },
+    );
   }
 }
