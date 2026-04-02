@@ -9,8 +9,12 @@ import 'package:omni_bridge/features/settings/domain/entities/app_settings.dart'
 import 'package:omni_bridge/features/settings/domain/usecases/get_app_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/update_app_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_google_credentials_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/usecases/live_device_update_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/usecases/live_mic_toggle_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/entities/audio_device.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/load_devices_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/usecases/update_volume_usecase.dart';
 import 'package:omni_bridge/features/subscription/domain/usecases/get_subscription_status.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
@@ -28,6 +32,13 @@ class MockLogEventUseCase extends Mock implements LogEventUseCase {}
 
 class MockGetSubscriptionStatus extends Mock implements GetSubscriptionStatus {}
 
+class MockUpdateVolumeUseCase extends Mock implements UpdateVolumeUseCase {}
+
+class MockLiveDeviceUpdateUseCase extends Mock
+    implements LiveDeviceUpdateUseCase {}
+
+class MockLiveMicToggleUseCase extends Mock implements LiveMicToggleUseCase {}
+
 void main() {
   late SettingsBloc settingsBloc;
   late MockGetAppSettingsUseCase mockGetAppSettingsUseCase;
@@ -36,6 +47,9 @@ void main() {
   late MockLoadDevicesUseCase mockLoadDevicesUseCase;
   late MockLogEventUseCase mockLogEventUseCase;
   late MockGetSubscriptionStatus mockGetSubscriptionStatus;
+  late MockUpdateVolumeUseCase mockUpdateVolumeUseCase;
+  late MockLiveDeviceUpdateUseCase mockLiveDeviceUpdateUseCase;
+  late MockLiveMicToggleUseCase mockLiveMicToggleUseCase;
 
   setUp(() {
     mockGetAppSettingsUseCase = MockGetAppSettingsUseCase();
@@ -44,6 +58,9 @@ void main() {
     mockLoadDevicesUseCase = MockLoadDevicesUseCase();
     mockLogEventUseCase = MockLogEventUseCase();
     mockGetSubscriptionStatus = MockGetSubscriptionStatus();
+    mockUpdateVolumeUseCase = MockUpdateVolumeUseCase();
+    mockLiveDeviceUpdateUseCase = MockLiveDeviceUpdateUseCase();
+    mockLiveMicToggleUseCase = MockLiveMicToggleUseCase();
 
     when(() => mockGetSubscriptionStatus()).thenAnswer((_) => Stream.empty());
 
@@ -54,6 +71,9 @@ void main() {
       loadDevicesUseCase: mockLoadDevicesUseCase,
       logEventUseCase: mockLogEventUseCase,
       getSubscriptionStatus: mockGetSubscriptionStatus,
+      updateVolumeUseCase: mockUpdateVolumeUseCase,
+      liveDeviceUpdateUseCase: mockLiveDeviceUpdateUseCase,
+      liveMicToggleUseCase: mockLiveMicToggleUseCase,
     );
   });
 
@@ -70,16 +90,12 @@ void main() {
       'LoadDevicesEvent emits correct devices',
       build: () {
         when(() => mockLoadDevicesUseCase()).thenAnswer(
-          (_) async => {
-            'input': [
-              {'name': 'Mic1', 'index': 1},
-            ],
-            'output': [
-              {'name': 'Speaker1', 'index': 2},
-            ],
-            'default_input_name': 'Mic1',
-            'default_output_name': 'Speaker1',
-          },
+          (_) async => DeviceListResult(
+            inputDevices: [const AudioDevice(name: 'Mic1', index: 1)],
+            outputDevices: [const AudioDevice(name: 'Speaker1', index: 2)],
+            defaultInputName: 'Mic1',
+            defaultOutputName: 'Speaker1',
+          ),
         );
         return settingsBloc;
       },
@@ -88,12 +104,8 @@ void main() {
         SettingsState.initial().copyWith(devicesLoading: true),
         SettingsState.initial().copyWith(
           devicesLoading: false,
-          inputDevices: [
-            {'name': 'Mic1', 'index': 1},
-          ],
-          outputDevices: [
-            {'name': 'Speaker1', 'index': 2},
-          ],
+          inputDevices: [const AudioDevice(name: 'Mic1', index: 1)],
+          outputDevices: [const AudioDevice(name: 'Speaker1', index: 2)],
           defaultInputDeviceName: 'Mic1',
           defaultOutputDeviceName: 'Speaker1',
         ),

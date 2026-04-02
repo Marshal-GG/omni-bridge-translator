@@ -18,6 +18,7 @@ import 'package:omni_bridge/features/support/presentation/screens/support_screen
 
 // Blocs
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_event.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_bloc.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_bloc.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_event.dart';
@@ -67,7 +68,7 @@ class AppRouter {
       case translationOverlay:
         return _fadeRoute(
           BlocProvider(
-            create: (_) => sl<TranslationBloc>(),
+            create: (_) => sl<TranslationBloc>()..add(InitializeEvent()),
             child: const TranslationScreen(),
           ),
           settings,
@@ -84,10 +85,10 @@ class AppRouter {
           MultiBlocProvider(
             providers: [
               passedBloc != null
-                  ? BlocProvider<TranslationBloc>.value(value: passedBloc)
-                  : BlocProvider<TranslationBloc>(
-                      create: (_) => sl<TranslationBloc>(),
-                    ),
+                    ? BlocProvider<TranslationBloc>.value(value: passedBloc)
+                    : BlocProvider<TranslationBloc>(
+                        create: (_) => sl<TranslationBloc>()..add(InitializeEvent()),
+                      ),
               BlocProvider<SettingsBloc>(create: (_) => sl<SettingsBloc>()),
             ],
             child: const SettingsScreen(),

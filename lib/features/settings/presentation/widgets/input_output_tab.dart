@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
+import 'package:omni_bridge/features/settings/domain/entities/audio_device.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_bloc.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_event.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_state.dart';
@@ -27,18 +27,19 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                 children: [
                   Expanded(child: sectionLabel('Microphone Input')),
                   SizedBox(
-                    height: 20, // Reduces the vertical footprint
+                    height: 20,
                     child: Transform.scale(
                       scale: 0.7,
                       child: Switch(
                         value: state.settings.useMic,
-                        materialTapTargetSize: MaterialTapTargetSize
-                            .shrinkWrap, // Removes Flutter's forced 48px padding
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         onChanged: (val) {
                           context.read<SettingsBloc>().add(
                             UpdateTempSettingEvent(useMic: val),
                           );
-                          context.read<TranslationBloc>().liveMicToggle(val);
+                          context.read<SettingsBloc>().add(
+                            LiveMicToggleEvent(useMic: val),
+                          );
                         },
                       ),
                     ),
@@ -53,7 +54,6 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                       flex: 3,
                       child: buildDeviceDropdown(
                         context: context,
-                        state: state,
                         items: state.inputDevices,
                         defaultName: state.defaultInputDeviceName,
                         selectedIndex: state.settings.inputDeviceIndex,
@@ -61,12 +61,15 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                         loading: state.devicesLoading,
                         onChanged: (device) {
                           if (device != null) {
-                            final idx = device['index'] as int;
                             context.read<SettingsBloc>().add(
-                              UpdateTempSettingEvent(inputDeviceIndex: idx),
+                              UpdateTempSettingEvent(
+                                inputDeviceIndex: device.index,
+                              ),
                             );
-                            context.read<TranslationBloc>().liveDeviceUpdate(
-                              inputDeviceIndex: idx,
+                            context.read<SettingsBloc>().add(
+                              LiveDeviceUpdateEvent(
+                                inputDeviceIndex: device.index,
+                              ),
                             );
                           } else {
                             context.read<SettingsBloc>().add(
@@ -74,8 +77,10 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                                 clearInputDevice: true,
                               ),
                             );
-                            context.read<TranslationBloc>().liveDeviceUpdate(
-                              inputDeviceIndex: null,
+                            context.read<SettingsBloc>().add(
+                              const LiveDeviceUpdateEvent(
+                                inputDeviceIndex: null,
+                              ),
                             );
                           }
                         },
@@ -92,11 +97,12 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                         onChangeEnd: (v) => context.read<SettingsBloc>().add(
                           UpdateTempSettingEvent(micVolume: v),
                         ),
-                        onLiveChange: (v) =>
-                            context.read<TranslationBloc>().liveVolumeUpdate(
-                              desktopVolume: state.settings.desktopVolume,
-                              micVolume: v,
-                            ),
+                        onLiveChange: (v) => context.read<SettingsBloc>().add(
+                          LiveVolumeUpdateEvent(
+                            desktopVolume: state.settings.desktopVolume,
+                            micVolume: v,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -135,7 +141,6 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                     flex: 3,
                     child: buildDeviceDropdown(
                       context: context,
-                      state: state,
                       items: state.outputDevices,
                       defaultName: state.defaultOutputDeviceName,
                       selectedIndex: state.settings.outputDeviceIndex,
@@ -143,12 +148,15 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                       loading: state.devicesLoading,
                       onChanged: (device) {
                         if (device != null) {
-                          final idx = device['index'] as int;
                           context.read<SettingsBloc>().add(
-                            UpdateTempSettingEvent(outputDeviceIndex: idx),
+                            UpdateTempSettingEvent(
+                              outputDeviceIndex: device.index,
+                            ),
                           );
-                          context.read<TranslationBloc>().liveDeviceUpdate(
-                            outputDeviceIndex: idx,
+                          context.read<SettingsBloc>().add(
+                            LiveDeviceUpdateEvent(
+                              outputDeviceIndex: device.index,
+                            ),
                           );
                         } else {
                           context.read<SettingsBloc>().add(
@@ -156,8 +164,10 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                               clearOutputDevice: true,
                             ),
                           );
-                          context.read<TranslationBloc>().liveDeviceUpdate(
-                            outputDeviceIndex: null,
+                          context.read<SettingsBloc>().add(
+                            const LiveDeviceUpdateEvent(
+                              outputDeviceIndex: null,
+                            ),
                           );
                         }
                       },
@@ -174,11 +184,12 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
                       onChangeEnd: (v) => context.read<SettingsBloc>().add(
                         UpdateTempSettingEvent(desktopVolume: v),
                       ),
-                      onLiveChange: (v) =>
-                          context.read<TranslationBloc>().liveVolumeUpdate(
-                            desktopVolume: v,
-                            micVolume: state.settings.micVolume,
-                          ),
+                      onLiveChange: (v) => context.read<SettingsBloc>().add(
+                        LiveVolumeUpdateEvent(
+                          desktopVolume: v,
+                          micVolume: state.settings.micVolume,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -264,13 +275,12 @@ Widget buildInputOutputTab(BuildContext context, SettingsState state) {
 
 Widget buildDeviceDropdown({
   required BuildContext context,
-  required SettingsState state,
-  required List<Map<String, dynamic>> items,
+  required List<AudioDevice> items,
   required String defaultName,
   required int? selectedIndex,
   required String hintText,
   required bool loading,
-  required void Function(Map<String, dynamic>?) onChanged,
+  required void Function(AudioDevice?) onChanged,
 }) {
   if (loading) {
     return const SizedBox(
@@ -279,47 +289,27 @@ Widget buildDeviceDropdown({
     );
   }
 
-  // Create a virtual item for the system default
-  final systemDefaultItem = {
-    'name': 'System Default',
-    'fullName': defaultName,
-    'index': null,
-    'isSystem': true,
-  };
-
-  // Combine items, avoiding duplication if the specific default device is also in the list
-  final List<Map<String, dynamic>> allItems = [systemDefaultItem, ...items];
-
   return SizedBox(
     height: 36,
-    child: OmniDropdown<Map<String, dynamic>>(
-      items: allItems,
-      itemAsString: (device) {
-        if (device['isSystem'] == true) return 'System Default';
-        return device['name'] as String;
-      },
+    child: OmniDropdown<AudioDevice?>(
+      items: [null, ...items],
+      itemAsString: (device) => device == null ? 'System Default' : device.name,
       selectedItem: selectedIndex == null
-          ? systemDefaultItem
-          : allItems.firstWhere(
-              (d) => d['index'] == selectedIndex,
-              orElse: () => systemDefaultItem,
+          ? null
+          : items.cast<AudioDevice?>().firstWhere(
+              (d) => d?.index == selectedIndex,
+              orElse: () => null,
             ),
-      compareFn: (a, b) =>
-          a['index'] == b['index'] && a['isSystem'] == b['isSystem'],
+      compareFn: (a, b) => a?.index == b?.index,
       onChanged: (device) {
         Future.delayed(Duration.zero, () {
           if (context.mounted) {
-            // If selecting system default, pass null to the backend
-            if (device?['isSystem'] == true) {
-              onChanged(null);
-            } else {
-              onChanged(device);
-            }
+            onChanged(device);
           }
         });
       },
       itemBuilder: (context, device, isSelected) {
-        final bool isSystem = device['isSystem'] == true;
+        final bool isSystem = device == null;
         return Row(
           children: [
             Expanded(
@@ -328,7 +318,7 @@ Widget buildDeviceDropdown({
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    isSystem ? 'System Default' : device['name'] as String,
+                    isSystem ? 'System Default' : device.name,
                     style: TextStyle(
                       color: isSelected
                           ? Colors.tealAccent
@@ -340,7 +330,7 @@ Widget buildDeviceDropdown({
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
-                        device['fullName'] as String,
+                        defaultName,
                         style: TextStyle(
                           color: isSelected ? Colors.white70 : Colors.white38,
                           fontSize: 11,

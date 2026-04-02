@@ -8,10 +8,10 @@ import 'package:omni_bridge/features/settings/presentation/blocs/settings_bloc.d
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_event.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_state.dart';
 import 'package:omni_bridge/core/constants/languages.dart';
-import 'package:omni_bridge/features/translation/data/datasources/translation_rest_datasource.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/features/translation/data/datasources/translation_rest_datasource.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
-import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
+import 'package:omni_bridge/features/translation/presentation/blocs/translation_event.dart';
 import 'package:omni_bridge/features/settings/presentation/widgets/settings_helpers.dart';
 import 'package:omni_bridge/core/widgets/omni_card.dart';
 import 'package:omni_bridge/core/widgets/omni_dropdown.dart';
@@ -184,9 +184,7 @@ Widget buildTranslationModelSelector(
           children: [
             sectionLabel('Translation Engine'),
             const SizedBox(height: 10),
-            BlocBuilder<TranslationBloc, TranslationState>(
-              builder: (context, transState) {
-                return SizedBox(
+            SizedBox(
                   height: 36,
                   child: OmniDropdown<MapEntry<String, String>>(
                     showSearchBox: false,
@@ -204,8 +202,9 @@ Widget buildTranslationModelSelector(
                     compareFn: (a, b) => a.key == b.key,
                     onChanged: (entry) {
                       if (entry != null && hasAccess(entry.key)) {
-                        // Explicitly unload current model from memory upon selection change
-                        TranslationRestDatasource().unloadModel();
+                        context.read<TranslationBloc>().add(
+                          RequestModelUnloadEvent(),
+                        );
                         Future.delayed(const Duration(milliseconds: 50), () {
                           if (context.mounted) {
                             context.read<SettingsBloc>().add(
@@ -244,14 +243,9 @@ Widget buildTranslationModelSelector(
                           ),
                           if (statusKey != null) ...[
                             const SizedBox(width: 8),
-                            BlocBuilder<TranslationBloc, TranslationState>(
-                              bloc: context.read<TranslationBloc>(),
-                              builder: (context, state) {
-                                return ModelStatusIndicator(
-                                  status: state.modelStatuses[statusKey],
-                                  compact: true,
-                                );
-                              },
+                            ModelStatusIndicator(
+                              status: state.modelStatuses[statusKey],
+                              compact: true,
                             ),
                           ],
                           if (isRecommended) ...[
@@ -290,14 +284,9 @@ Widget buildTranslationModelSelector(
                           ),
                           if (statusKey != null) ...[
                             const SizedBox(width: 8),
-                            BlocBuilder<TranslationBloc, TranslationState>(
-                              bloc: context.read<TranslationBloc>(),
-                              builder: (context, state) {
-                                return ModelStatusIndicator(
-                                  status: state.modelStatuses[statusKey],
-                                  compact: true,
-                                );
-                              },
+                            ModelStatusIndicator(
+                              status: state.modelStatuses[statusKey],
+                              compact: true,
                             ),
                           ],
                           if (!itemHasAccess) ...[
@@ -316,9 +305,7 @@ Widget buildTranslationModelSelector(
                       );
                     },
                   ),
-                );
-              },
-            ),
+                ),
             if (state.translationCompatibilityError != null) ...[
               const SizedBox(height: 10),
               Container(
@@ -391,102 +378,85 @@ Widget _buildTranscriptionModelSection(
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      BlocBuilder<TranslationBloc, TranslationState>(
-        builder: (context, transState) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          sectionLabel('Transcription Method'),
+          const SizedBox(height: 10),
+          Row(
             children: [
-              sectionLabel('Transcription Method'),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _TranscriptionOption(
-                      value: 'online',
-                      groupValue: state.settings.transcriptionModel,
-                      label: 'Google Online',
-                      icon: Icons.cloud_outlined,
-                      status: transState.modelStatuses['google_asr'],
-                      onChanged: (v) {
-                        // Explicitly unload current model from memory upon selection change
-                        TranslationRestDatasource().unloadModel();
-                        context.read<SettingsBloc>().add(
-                          UpdateTempSettingEvent(transcriptionModel: v),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _TranscriptionOption(
-                      value: 'riva-asr',
-                      groupValue: state.settings.transcriptionModel,
-                      label: 'NVIDIA Riva',
-                      status: transState.modelStatuses['riva-asr'],
-                      isRecommended: true,
-                      locked: !SubscriptionRemoteDataSource.instance
-                          .canUseModel('riva-asr'),
-                      icon: Icons.bolt_rounded,
-                      onChanged: (v) {
-                        // Explicitly unload current model from memory upon selection change
-                        TranslationRestDatasource().unloadModel();
-                        context.read<SettingsBloc>().add(
-                          UpdateTempSettingEvent(transcriptionModel: v),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _TranscriptionOption(
-                      value:
-                          state.settings.transcriptionModel.startsWith(
-                            'whisper',
-                          )
-                          ? state.settings.transcriptionModel
-                          : 'whisper-base',
-                      groupValue: state.settings.transcriptionModel,
-                      label: 'Whisper Offline',
-                      status:
-                          transState.modelStatuses[state
-                                  .settings
-                                  .transcriptionModel
-                                  .startsWith('whisper')
-                              ? state.settings.transcriptionModel
-                              : 'whisper-base'],
-                      locked: !SubscriptionRemoteDataSource.instance
-                          .canUseModel('whisper-base'),
-                      icon: Icons.offline_bolt_outlined,
-                      onChanged: (v) {
-                        // Explicitly unload current model from memory upon selection change
-                        TranslationRestDatasource().unloadModel();
-                        context.read<SettingsBloc>().add(
-                          UpdateTempSettingEvent(transcriptionModel: v),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-
-              // Whisper model manager (shown when offline is selected)
-              if (state.settings.transcriptionModel.startsWith('whisper')) ...[
-                const SizedBox(height: 12),
-                _WhisperModelCard(
-                  selectedModel: state.settings.transcriptionModel,
-                  modelStatuses: transState.modelStatuses,
-                  onModelChanged: (newModel) {
-                    // Explicitly unload current model from memory upon selection change
-                    TranslationRestDatasource().unloadModel();
+              Expanded(
+                child: _TranscriptionOption(
+                  value: 'online',
+                  groupValue: state.settings.transcriptionModel,
+                  label: 'Google Online',
+                  icon: Icons.cloud_outlined,
+                  status: state.modelStatuses['google_asr'],
+                  onChanged: (v) {
                     context.read<SettingsBloc>().add(
-                      UpdateTempSettingEvent(transcriptionModel: newModel),
+                      UpdateTempSettingEvent(transcriptionModel: v),
                     );
                   },
                 ),
-              ],
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _TranscriptionOption(
+                  value: 'riva-asr',
+                  groupValue: state.settings.transcriptionModel,
+                  label: 'NVIDIA Riva',
+                  status: state.modelStatuses['riva-asr'],
+                  isRecommended: true,
+                  locked: !SubscriptionRemoteDataSource.instance
+                      .canUseModel('riva-asr'),
+                  icon: Icons.bolt_rounded,
+                  onChanged: (v) {
+                    context.read<SettingsBloc>().add(
+                      UpdateTempSettingEvent(transcriptionModel: v),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _TranscriptionOption(
+                  value:
+                      state.settings.transcriptionModel.startsWith('whisper')
+                      ? state.settings.transcriptionModel
+                      : 'whisper-base',
+                  groupValue: state.settings.transcriptionModel,
+                  label: 'Whisper Offline',
+                  status: state.modelStatuses[state.settings.transcriptionModel
+                          .startsWith('whisper')
+                      ? state.settings.transcriptionModel
+                      : 'whisper-base'],
+                  locked: !SubscriptionRemoteDataSource.instance
+                      .canUseModel('whisper-base'),
+                  icon: Icons.offline_bolt_outlined,
+                  onChanged: (v) {
+                    context.read<SettingsBloc>().add(
+                      UpdateTempSettingEvent(transcriptionModel: v),
+                    );
+                  },
+                ),
+              ),
             ],
-          );
-        },
+          ),
+
+          // Whisper model manager (shown when offline is selected)
+          if (state.settings.transcriptionModel.startsWith('whisper')) ...[
+            const SizedBox(height: 12),
+            _WhisperModelCard(
+              selectedModel: state.settings.transcriptionModel,
+              modelStatuses: state.modelStatuses,
+              onModelChanged: (newModel) {
+                context.read<SettingsBloc>().add(
+                  UpdateTempSettingEvent(transcriptionModel: newModel),
+                );
+              },
+            ),
+          ],
+        ],
       ),
     ],
   );

@@ -1,20 +1,23 @@
 import 'package:equatable/equatable.dart';
 
 import 'package:omni_bridge/features/settings/domain/entities/app_settings.dart';
-import 'package:omni_bridge/features/settings/domain/entities/system_config.dart';
+import 'package:omni_bridge/features/settings/domain/entities/audio_device.dart';
 
 class SettingsState extends Equatable {
   final AppSettings settings;
-  final SystemConfig systemConfig;
 
   // UI State
   final int activeTabIndex;
   final bool isInitialized;
+  final bool isSaving;
+
+  // Snapshot of translation model statuses at settings-open time
+  final Map<String, dynamic> modelStatuses;
 
   // Devices Loading
   final bool devicesLoading;
-  final List<Map<String, dynamic>> inputDevices;
-  final List<Map<String, dynamic>> outputDevices;
+  final List<AudioDevice> inputDevices;
+  final List<AudioDevice> outputDevices;
   final String defaultInputDeviceName;
   final String defaultOutputDeviceName;
 
@@ -24,9 +27,10 @@ class SettingsState extends Equatable {
 
   const SettingsState({
     required this.settings,
-    required this.systemConfig,
     required this.activeTabIndex,
     required this.isInitialized,
+    required this.isSaving,
+    required this.modelStatuses,
     required this.devicesLoading,
     required this.inputDevices,
     required this.outputDevices,
@@ -38,12 +42,13 @@ class SettingsState extends Equatable {
   factory SettingsState.initial() {
     return SettingsState(
       settings: AppSettings.initial(),
-      systemConfig: SystemConfig.initial(),
       activeTabIndex: 0,
       isInitialized: false,
+      isSaving: false,
+      modelStatuses: const {},
       devicesLoading: false,
-      inputDevices: [],
-      outputDevices: [],
+      inputDevices: const [],
+      outputDevices: const [],
       defaultInputDeviceName: 'Default',
       defaultOutputDeviceName: 'Default',
     );
@@ -51,12 +56,13 @@ class SettingsState extends Equatable {
 
   SettingsState copyWith({
     AppSettings? settings,
-    SystemConfig? systemConfig,
     int? activeTabIndex,
     bool? isInitialized,
+    bool? isSaving,
+    Map<String, dynamic>? modelStatuses,
     bool? devicesLoading,
-    List<Map<String, dynamic>>? inputDevices,
-    List<Map<String, dynamic>>? outputDevices,
+    List<AudioDevice>? inputDevices,
+    List<AudioDevice>? outputDevices,
     String? defaultInputDeviceName,
     String? defaultOutputDeviceName,
     String? translationCompatibilityError,
@@ -64,9 +70,10 @@ class SettingsState extends Equatable {
   }) {
     return SettingsState(
       settings: settings ?? this.settings,
-      systemConfig: systemConfig ?? this.systemConfig,
       activeTabIndex: activeTabIndex ?? this.activeTabIndex,
       isInitialized: isInitialized ?? this.isInitialized,
+      isSaving: isSaving ?? this.isSaving,
+      modelStatuses: modelStatuses ?? this.modelStatuses,
       devicesLoading: devicesLoading ?? this.devicesLoading,
       inputDevices: inputDevices ?? this.inputDevices,
       outputDevices: outputDevices ?? this.outputDevices,
@@ -84,9 +91,10 @@ class SettingsState extends Equatable {
   @override
   List<Object?> get props => [
     settings,
-    systemConfig,
     activeTabIndex,
     isInitialized,
+    isSaving,
+    modelStatuses,
     devicesLoading,
     inputDevices,
     outputDevices,

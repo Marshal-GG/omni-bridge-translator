@@ -1,11 +1,11 @@
 import 'package:omni_bridge/features/translation/domain/repositories/i_translation_repository.dart';
 
-class GetDefaultTierUseCase {
+class UnloadModelUseCase {
   final ITranslationRepository repository;
 
-  GetDefaultTierUseCase(this.repository);
+  UnloadModelUseCase(this.repository);
 
-  String call() {
-    return repository.defaultTier;
+  Future<void> call() async {
+    return await repository.unloadModel();
   }
 }

@@ -64,55 +64,6 @@ class UpdateTempSettingEvent extends SettingsEvent {
 
 class LoadDevicesEvent extends SettingsEvent {}
 
-class SyncTempSettingsEvent extends SettingsEvent {
-  final String targetLang;
-  final String sourceLang;
-  final bool useMic;
-  final double fontSize;
-  final bool isBold;
-  final double opacity;
-  final int? inputDeviceIndex;
-  final int? outputDeviceIndex;
-  final double desktopVolume;
-  final double micVolume;
-  final String translationModel;
-  final String? nvidiaNimKey;
-  final String? transcriptionModel;
-
-  const SyncTempSettingsEvent({
-    required this.targetLang,
-    required this.sourceLang,
-    required this.useMic,
-    required this.fontSize,
-    required this.isBold,
-    required this.opacity,
-    this.inputDeviceIndex,
-    this.outputDeviceIndex,
-    required this.desktopVolume,
-    required this.micVolume,
-    required this.translationModel,
-    this.nvidiaNimKey,
-    this.transcriptionModel,
-  });
-
-  @override
-  List<Object?> get props => [
-    targetLang,
-    sourceLang,
-    useMic,
-    fontSize,
-    isBold,
-    opacity,
-    inputDeviceIndex,
-    outputDeviceIndex,
-    desktopVolume,
-    micVolume,
-    translationModel,
-    nvidiaNimKey,
-    transcriptionModel,
-  ];
-}
-
 class ResetIODefaultsEvent extends SettingsEvent {}
 
 class SaveSettingsEvent extends SettingsEvent {}
@@ -127,55 +78,16 @@ class SubscriptionStatusChangedEvent extends SettingsEvent {
 }
 
 class InitializeSettingsEvent extends SettingsEvent {
-  final String targetLang;
-  final String sourceLang;
-  final bool useMic;
-  final double fontSize;
-  final bool isBold;
-  final double opacity;
-  final int? inputDeviceIndex;
-  final int? outputDeviceIndex;
-  final double desktopVolume;
-  final double micVolume;
-  final String translationModel;
-  final String? nvidiaNimKey;
-  final String? transcriptionModel;
   final int initialTabIndex;
+  final Map<String, dynamic> modelStatuses;
 
   const InitializeSettingsEvent({
-    required this.targetLang,
-    required this.sourceLang,
-    required this.useMic,
-    required this.fontSize,
-    required this.isBold,
-    required this.opacity,
-    this.inputDeviceIndex,
-    this.outputDeviceIndex,
-    required this.desktopVolume,
-    required this.micVolume,
-    required this.translationModel,
-    this.nvidiaNimKey,
-    this.transcriptionModel,
-    required this.initialTabIndex,
+    this.initialTabIndex = 0,
+    this.modelStatuses = const {},
   });
 
   @override
-  List<Object?> get props => [
-    targetLang,
-    sourceLang,
-    useMic,
-    fontSize,
-    isBold,
-    opacity,
-    inputDeviceIndex,
-    outputDeviceIndex,
-    desktopVolume,
-    micVolume,
-    translationModel,
-    nvidiaNimKey,
-    transcriptionModel,
-    initialTabIndex,
-  ];
+  List<Object?> get props => [initialTabIndex, modelStatuses];
 }
 
 class SettingsTabIndexChanged extends SettingsEvent {
@@ -184,4 +96,36 @@ class SettingsTabIndexChanged extends SettingsEvent {
 
   @override
   List<Object?> get props => [index];
+}
+
+class LiveVolumeUpdateEvent extends SettingsEvent {
+  final double desktopVolume;
+  final double micVolume;
+
+  const LiveVolumeUpdateEvent({
+    required this.desktopVolume,
+    required this.micVolume,
+  });
+
+  @override
+  List<Object?> get props => [desktopVolume, micVolume];
+}
+
+class LiveDeviceUpdateEvent extends SettingsEvent {
+  final int? inputDeviceIndex;
+  final int? outputDeviceIndex;
+
+  const LiveDeviceUpdateEvent({this.inputDeviceIndex, this.outputDeviceIndex});
+
+  @override
+  List<Object?> get props => [inputDeviceIndex, outputDeviceIndex];
+}
+
+class LiveMicToggleEvent extends SettingsEvent {
+  final bool useMic;
+
+  const LiveMicToggleEvent({required this.useMic});
+
+  @override
+  List<Object?> get props => [useMic];
 }

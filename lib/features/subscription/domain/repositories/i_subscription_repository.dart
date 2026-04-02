@@ -53,6 +53,16 @@ abstract class ISubscriptionRepository {
   /// The ID of the default (free) tier.
   String get defaultTier;
 
+  /// Returns list of translation model IDs allowed for a given tier.
+  List<String> allowedTranslationModels([String? tier]);
+
+  /// Returns list of transcription model IDs allowed for a given tier.
+  List<String> allowedTranscriptionModels([String? tier]);
+
+  /// Returns true if this is the first time the engine limit was hit this session
+  /// (should show a dialog). Returns false on subsequent hits (silent fallback).
+  bool shouldShowEngineLimitNotice(String engineId);
+
   /// Disposes resources.
   void dispose();
 }

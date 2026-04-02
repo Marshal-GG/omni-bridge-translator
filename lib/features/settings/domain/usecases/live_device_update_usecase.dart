@@ -1,7 +1,7 @@
-import '../repositories/i_translation_repository.dart';
+import 'package:omni_bridge/features/settings/domain/repositories/i_audio_device_repository.dart';
 
 class LiveDeviceUpdateUseCase {
-  final ITranslationRepository _repository;
+  final IAudioDeviceRepository _repository;
 
   LiveDeviceUpdateUseCase(this._repository);
 

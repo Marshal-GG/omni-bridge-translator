@@ -4,7 +4,7 @@ class SystemConfig extends Equatable {
   final String rivaTranslationFunctionId;
   final String rivaAsrParakeetFunctionId;
   final String rivaAsrCanaryFunctionId;
-  final dynamic googleCredentials;
+  final Object? googleCredentials;
 
   const SystemConfig({
     required this.rivaTranslationFunctionId,

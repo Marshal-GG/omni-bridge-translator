@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import '../../domain/entities/caption_message.dart';
 import 'package:http/http.dart' as http;
@@ -22,7 +23,10 @@ class AsrWebSocketClient implements IResettable {
 
   Stream<CaptionMessage>? get captions => _service?.captions;
 
-  void Function(double inputLevel, double outputLevel)? onAudioLevel;
+  final _audioLevelController =
+      StreamController<(double, double)>.broadcast();
+
+  Stream<(double, double)> get audioLevelStream => _audioLevelController.stream;
 
   final AddHistoryEntryUseCase addHistoryEntry;
   final ConfigureHistoryUseCase configureHistory;
@@ -50,7 +54,9 @@ class AsrWebSocketClient implements IResettable {
     _service!.captions.listen((msg) {
       // Audio level update — dispatch via callback
       if (msg.inputLevel != null || msg.outputLevel != null) {
-        onAudioLevel?.call(msg.inputLevel ?? 0.0, msg.outputLevel ?? 0.0);
+        _audioLevelController.add(
+          (msg.inputLevel ?? 0.0, msg.outputLevel ?? 0.0),
+        );
         return;
       }
 
@@ -243,5 +249,6 @@ class AsrWebSocketClient implements IResettable {
   Future<void> dispose() async {
     await _service?.stop();
     _service = null;
+    await _audioLevelController.close();
   }
 }

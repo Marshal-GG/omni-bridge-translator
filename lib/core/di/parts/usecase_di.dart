@@ -19,11 +19,14 @@ void initUseCaseDI() {
   sl.registerLazySingleton(() => GetAppSettingsUseCase(sl()));
   sl.registerLazySingleton(() => UpdateAppSettingsUseCase(sl()));
   sl.registerLazySingleton(() => GetGoogleCredentialsUseCase(sl()));
-  sl.registerLazySingleton(() => LoadDevicesUseCase(sl()));
-  sl.registerLazySingleton(() => ObserveAudioLevelsUseCase(sl()));
   sl.registerLazySingleton(() => SyncSettingsUseCase(sl()));
   sl.registerLazySingleton(() => GetSystemConfigUseCase(sl()));
   sl.registerLazySingleton(() => LogEventUseCase(sl()));
+  sl.registerLazySingleton(() => LoadDevicesUseCase(sl<IAudioDeviceRepository>()));
+  sl.registerLazySingleton(() => ObserveAudioLevelsUseCase(sl<IAudioDeviceRepository>()));
+  sl.registerLazySingleton(() => UpdateVolumeUseCase(sl<IAudioDeviceRepository>()));
+  sl.registerLazySingleton(() => LiveDeviceUpdateUseCase(sl<IAudioDeviceRepository>()));
+  sl.registerLazySingleton(() => LiveMicToggleUseCase(sl<IAudioDeviceRepository>()));
 
   // History
   sl.registerLazySingleton(() => AddHistoryEntryUseCase(repository: sl()));
@@ -35,16 +38,13 @@ void initUseCaseDI() {
   // Translation
   sl.registerLazySingleton(() => StartTranslationUseCase(sl()));
   sl.registerLazySingleton(() => StopTranslationUseCase(sl()));
-  sl.registerLazySingleton(() => UpdateVolumeUseCase(sl()));
   sl.registerLazySingleton(() => GetModelStatusUseCase(sl()));
   sl.registerLazySingleton(() => ObserveQuotaStatusUseCase(sl()));
   sl.registerLazySingleton(() => GetInitialQuotaStatusUseCase(sl()));
-  sl.registerLazySingleton(() => GetDefaultTierUseCase(sl()));
   sl.registerLazySingleton(() => ObserveCaptionsUseCase(sl()));
   sl.registerLazySingleton(() => UpdateTranslationSettingsUseCase(sl()));
   sl.registerLazySingleton(() => CheckServerHealthUseCase(sl()));
-  sl.registerLazySingleton(() => LiveDeviceUpdateUseCase(sl()));
-  sl.registerLazySingleton(() => LiveMicToggleUseCase(sl()));
+  sl.registerLazySingleton(() => UnloadModelUseCase(sl()));
 
   // Subscription
   sl.registerLazySingleton(() => GetSubscriptionStatus(sl()));
@@ -52,6 +52,8 @@ void initUseCaseDI() {
   sl.registerLazySingleton(() => ActivateTrial(sl()));
   sl.registerLazySingleton(() => OpenCheckout(sl()));
   sl.registerLazySingleton(() => HasUsedTrial(sl()));
+  sl.registerLazySingleton(() => CheckModelAccessUseCase(sl()));
+  sl.registerLazySingleton(() => CheckEngineLimitUseCase(sl()));
 
   // About
   sl.registerLazySingleton(() => CheckForUpdate(sl()));

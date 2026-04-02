@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
-import 'package:omni_bridge/features/translation/data/datasources/translation_rest_datasource.dart';
+
+import 'package:omni_bridge/features/translation/domain/usecases/unload_model_usecase.dart';
+import 'package:omni_bridge/features/subscription/domain/usecases/check_model_access_usecase.dart';
+import 'package:omni_bridge/features/subscription/domain/usecases/check_engine_limit_usecase.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:window_manager/window_manager.dart';
@@ -12,23 +13,17 @@ import 'package:omni_bridge/core/device/asr_text_controller.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/get_model_status_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/start_translation_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/stop_translation_usecase.dart';
-import 'package:omni_bridge/features/translation/domain/usecases/update_volume_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/observe_captions_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/observe_quota_status_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/get_initial_quota_status_usecase.dart';
-import 'package:omni_bridge/features/translation/domain/usecases/get_default_tier_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/update_translation_settings_usecase.dart';
-import 'package:omni_bridge/features/translation/domain/usecases/live_device_update_usecase.dart';
-import 'package:omni_bridge/features/translation/domain/usecases/live_mic_toggle_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/check_server_health_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/get_current_user_usecase.dart';
-import 'package:omni_bridge/features/auth/domain/usecases/observe_auth_changes_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/entities/app_settings.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_app_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_google_credentials_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/sync_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.dart';
-import 'package:omni_bridge/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_system_config_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/entities/system_config.dart';
 import 'package:omni_bridge/core/utils/app_logger.dart';
@@ -36,26 +31,21 @@ import 'package:omni_bridge/core/utils/app_logger.dart';
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final StartTranslationUseCase startTranslationUseCase;
   final StopTranslationUseCase stopTranslationUseCase;
-  final UpdateVolumeUseCase updateVolumeUseCase;
   final GetModelStatusUseCase getModelStatusUseCase;
   final ObserveCaptionsUseCase observeCaptionsUseCase;
   final ObserveQuotaStatusUseCase observeQuotaStatusUseCase;
   final GetInitialQuotaStatusUseCase getInitialQuotaStatusUseCase;
-  final GetDefaultTierUseCase getDefaultTierUseCase;
   final UpdateTranslationSettingsUseCase updateTranslationSettingsUseCase;
   final CheckServerHealthUseCase checkServerHealthUseCase;
   final GetCurrentUserUseCase getCurrentUserUseCase;
-  final ObserveAuthChangesUseCase observeAuthChangesUseCase;
   final GetAppSettingsUseCase getAppSettingsUseCase;
   final GetGoogleCredentialsUseCase getGoogleCredentialsUseCase;
   final SyncSettingsUseCase syncSettingsUseCase;
   final LogEventUseCase logEventUseCase;
-  final LogoutUseCase logoutUseCase;
   final GetSystemConfigUseCase getSystemConfigUseCase;
-  final SubscriptionRemoteDataSource subscriptionDataSource;
-  final TranslationRestDatasource translationRestDatasource;
-  final LiveDeviceUpdateUseCase liveDeviceUpdateUseCase;
-  final LiveMicToggleUseCase liveMicToggleUseCase;
+  final UnloadModelUseCase unloadModelUseCase;
+  final CheckModelAccessUseCase checkModelAccessUseCase;
+  final CheckEngineLimitUseCase checkEngineLimitUseCase;
 
   StreamSubscription? _captionSub;
   StreamSubscription? _statusSub;
@@ -65,32 +55,28 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   TranslationBloc({
     required this.startTranslationUseCase,
     required this.stopTranslationUseCase,
-    required this.updateVolumeUseCase,
     required this.getModelStatusUseCase,
     required this.observeCaptionsUseCase,
     required this.observeQuotaStatusUseCase,
     required this.getInitialQuotaStatusUseCase,
-    required this.getDefaultTierUseCase,
     required this.updateTranslationSettingsUseCase,
     required this.checkServerHealthUseCase,
     required this.getCurrentUserUseCase,
-    required this.observeAuthChangesUseCase,
     required this.getAppSettingsUseCase,
     required this.getGoogleCredentialsUseCase,
     required this.syncSettingsUseCase,
     required this.logEventUseCase,
-    required this.logoutUseCase,
     required this.getSystemConfigUseCase,
-    required this.subscriptionDataSource,
-    required this.translationRestDatasource,
-    required this.liveDeviceUpdateUseCase,
-    required this.liveMicToggleUseCase,
+    required this.unloadModelUseCase,
+    required this.checkModelAccessUseCase,
+    required this.checkEngineLimitUseCase,
   }) : super(
          TranslationState.initial().copyWith(
            quotaStatus: getInitialQuotaStatusUseCase(),
            isQuotaExceeded: getInitialQuotaStatusUseCase()?.isExceeded ?? false,
          ),
        ) {
+    on<InitializeEvent>(_onInitialize);
     on<UpdateQuotaEvent>(_onUpdateQuota);
     on<QuotaExceededEvent>(_onQuotaExceeded);
     on<ToggleShrinkEvent>(_onToggleShrink);
@@ -105,7 +91,13 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     on<UpdateServerConnectionEvent>(_onUpdateServerConnection);
     on<EngineLimitReachedEvent>(_onEngineLimitReached);
     on<SwitchToFallbackEngineEvent>(_onSwitchToFallbackEngine);
+    on<RequestModelUnloadEvent>(_onRequestModelUnload);
+  }
 
+  void _onInitialize(
+    InitializeEvent event,
+    Emitter<TranslationState> emit,
+  ) {
     // Initial load of model statuses
     _fetchInitialModelStatuses();
 
@@ -150,25 +142,6 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   }
 
   void _initQuotaListener() {
-    final initialStatus = getInitialQuotaStatusUseCase();
-    if (initialStatus != null) {
-      add(UpdateQuotaEvent(initialStatus));
-    } else {
-      add(
-        UpdateQuotaEvent(
-          QuotaStatus(
-            tier: getDefaultTierUseCase(),
-            dailyTokensUsed: 0,
-            weeklyTokensUsed: 0,
-            monthlyTokensUsed: 0,
-            lifetimeTokensUsed: 0,
-            dailyLimit: 10000,
-            dailyResetAt: DateTime.now(),
-          ),
-        ),
-      );
-    }
-
     _statusSub = observeQuotaStatusUseCase().listen((status) {
       add(UpdateQuotaEvent(status));
     });
@@ -351,12 +324,10 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         tag: 'TranslationBloc',
       );
 
-      final bool isTranslationAllowed = subscriptionDataSource
-          .allowedTranslationModels(newTier)
-          .contains(state.activeTranslationModel);
-      final bool isTranscriptionAllowed = subscriptionDataSource
-          .allowedTranscriptionModels(newTier)
-          .contains(state.activeTranscriptionModel);
+      final bool isTranslationAllowed = checkModelAccessUseCase
+          .isTranslationModelAllowed(state.activeTranslationModel, newTier);
+      final bool isTranscriptionAllowed = checkModelAccessUseCase
+          .isTranscriptionModelAllowed(state.activeTranscriptionModel, newTier);
 
       if (!isTranslationAllowed || !isTranscriptionAllowed) {
         if (state.isRunning) {
@@ -364,7 +335,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         }
 
         try {
-          await translationRestDatasource.unloadModel();
+          await unloadModelUseCase();
         } catch (e) {
           AppLogger.e(
             'Error unloading model',
@@ -430,7 +401,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     EngineLimitReachedEvent event,
     Emitter<TranslationState> emit,
   ) {
-    final shouldShowDialog = subscriptionDataSource.shouldShowEngineLimitNotice(
+    final shouldShowDialog = checkEngineLimitUseCase.shouldShowNotice(
       event.engineId,
     );
 
@@ -453,6 +424,17 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         tag: 'TranslationBloc',
       );
       add(SwitchToFallbackEngineEvent());
+    }
+  }
+
+  Future<void> _onRequestModelUnload(
+    RequestModelUnloadEvent event,
+    Emitter<TranslationState> emit,
+  ) async {
+    try {
+      await unloadModelUseCase();
+    } catch (e) {
+      AppLogger.e('Error unloading model', error: e, tag: 'TranslationBloc');
     }
   }
 
@@ -585,23 +567,6 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     }
   }
 
-  void liveVolumeUpdate({
-    required double desktopVolume,
-    required double micVolume,
-  }) {
-    updateVolumeUseCase(desktopVolume: desktopVolume, micVolume: micVolume);
-  }
-
-  void liveDeviceUpdate({int? inputDeviceIndex, int? outputDeviceIndex}) {
-    liveDeviceUpdateUseCase(
-      inputDeviceIndex: inputDeviceIndex,
-      outputDeviceIndex: outputDeviceIndex,
-    );
-  }
-
-  void liveMicToggle(bool useMic) {
-    liveMicToggleUseCase(useMic);
-  }
 
   Future<void> _onCaptionTextChanged(
     CaptionTextChangedEvent event,

@@ -11,7 +11,7 @@ class SettingsRepositoryImpl implements ISettingsRepository {
   SettingsRepositoryImpl(this._remoteDataSource);
 
   @override
-  Future<Either<Failure, dynamic>> getGoogleCredentials() async {
+  Future<Either<Failure, Object?>> getGoogleCredentials() async {
     try {
       final credentials = await _remoteDataSource.getGoogleCredentials();
       return Right(credentials);

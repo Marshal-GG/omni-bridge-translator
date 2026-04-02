@@ -10,7 +10,7 @@ import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 
 abstract class ISettingsRemoteDataSource {
   Future<Map<String, dynamic>> getSystemConfig();
-  Future<dynamic> getGoogleCredentials();
+  Future<Object?> getGoogleCredentials();
   Future<void> syncSettings(Map<String, dynamic> settings);
   Future<Map<String, dynamic>?> getSettings();
   Future<void> logEvent(String name, {Map<String, dynamic>? parameters});

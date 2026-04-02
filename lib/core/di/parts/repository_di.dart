@@ -16,6 +16,9 @@ void initRepositoryDI() {
   sl.registerLazySingleton<ITranslationRepository>(
     () => TranslationRepositoryImpl(sl(), sl(), sl()),
   );
+  sl.registerLazySingleton<IAudioDeviceRepository>(
+    () => AudioDeviceRepositoryImpl(sl<AsrWebSocketClient>()),
+  );
   sl.registerLazySingleton<ISubscriptionRepository>(
     () => SubscriptionRepositoryImpl(service: sl()),
   );

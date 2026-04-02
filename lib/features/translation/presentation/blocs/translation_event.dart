@@ -8,6 +8,8 @@ abstract class TranslationEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+class InitializeEvent extends TranslationEvent {}
+
 class ToggleShrinkEvent extends TranslationEvent {}
 
 class ToggleRunningEvent extends TranslationEvent {}
@@ -149,3 +151,7 @@ class EngineLimitReachedEvent extends TranslationEvent {
 /// User chose to switch to the free fallback engine after seeing the dialog,
 /// or the system is performing a silent fallback on repeat occurrences.
 class SwitchToFallbackEngineEvent extends TranslationEvent {}
+
+/// Requests the backend to unload the currently loaded model from GPU/RAM.
+/// Used when the user switches models in Settings before saving.
+class RequestModelUnloadEvent extends TranslationEvent {}

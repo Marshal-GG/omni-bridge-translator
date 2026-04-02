@@ -81,6 +81,18 @@ class SubscriptionRepositoryImpl implements ISubscriptionRepository {
   String get defaultTier => _service.defaultTier;
 
   @override
+  List<String> allowedTranslationModels([String? tier]) =>
+      _service.allowedTranslationModels(tier);
+
+  @override
+  List<String> allowedTranscriptionModels([String? tier]) =>
+      _service.allowedTranscriptionModels(tier);
+
+  @override
+  bool shouldShowEngineLimitNotice(String engineId) =>
+      _service.shouldShowEngineLimitNotice(engineId);
+
+  @override
   void dispose() {
     // Managed externally
   }

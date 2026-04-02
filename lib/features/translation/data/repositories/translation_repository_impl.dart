@@ -31,16 +31,6 @@ class TranslationRepositoryImpl implements ITranslationRepository {
   @override
   String get defaultTier => _subscriptionService.defaultTier;
 
-  @override
-  set onAudioLevel(
-    void Function(double inputLevel, double outputLevel)? callback,
-  ) {
-    _asrClient.onAudioLevel = callback;
-  }
-
-  @override
-  void Function(double inputLevel, double outputLevel)? get onAudioLevel =>
-      _asrClient.onAudioLevel;
 
   @override
   void start({
@@ -108,32 +98,6 @@ class TranslationRepositoryImpl implements ITranslationRepository {
     );
   }
 
-  @override
-  void liveVolumeUpdate({
-    required double desktopVolume,
-    required double micVolume,
-  }) {
-    _asrClient.liveVolumeUpdate(
-      desktopVolume: desktopVolume,
-      micVolume: micVolume,
-    );
-  }
-
-  @override
-  void liveDeviceUpdate({int? inputDeviceIndex, int? outputDeviceIndex}) {
-    _asrClient.liveDeviceUpdate(
-      inputDeviceIndex: inputDeviceIndex,
-      outputDeviceIndex: outputDeviceIndex,
-    );
-  }
-
-  @override
-  void liveMicToggle(bool useMic) {
-    _asrClient.liveMicToggle(useMic);
-  }
-
-  @override
-  Future<Map<String, dynamic>> loadDevices() => _asrClient.loadDevices();
 
   @override
   Future<List<dynamic>> getModelStatuses() =>
@@ -141,6 +105,11 @@ class TranslationRepositoryImpl implements ITranslationRepository {
 
   @override
   Future<bool> checkServerHealth() => _restDatasource.checkHealth();
+
+  @override
+  Future<void> unloadModel() async {
+    await _restDatasource.unloadModel();
+  }
 
   @override
   Future<void> stop() async {

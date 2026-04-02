@@ -7,3 +7,4 @@ export 'domain/usecases/get_usage_history.dart';
 export 'domain/usecases/get_usage_stats.dart';
 export 'presentation/bloc/usage_bloc.dart';
 export 'presentation/screens/usage_screen.dart';
+export 'presentation/widgets/quota_usage_bar.dart';

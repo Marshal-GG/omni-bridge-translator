@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:omni_bridge/features/settings/presentation/widgets/settings_helpers.dart';
+import 'package:omni_bridge/core/widgets/model_status_indicator.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_event.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';

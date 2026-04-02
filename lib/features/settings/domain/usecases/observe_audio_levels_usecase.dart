@@ -1,11 +1,9 @@
-import 'package:omni_bridge/features/translation/domain/repositories/i_translation_repository.dart';
+import 'package:omni_bridge/features/settings/domain/repositories/i_audio_device_repository.dart';
 
 class ObserveAudioLevelsUseCase {
-  final ITranslationRepository repository;
+  final IAudioDeviceRepository repository;
 
   ObserveAudioLevelsUseCase(this.repository);
 
-  void call(void Function(double inputLevel, double outputLevel) onAudioLevel) {
-    repository.onAudioLevel = onAudioLevel;
-  }
+  Stream<(double, double)> call() => repository.audioLevelStream;
 }

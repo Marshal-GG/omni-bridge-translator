@@ -6,5 +6,7 @@ export 'domain/usecases/get_available_plans.dart';
 export 'domain/usecases/get_subscription_status.dart';
 export 'domain/usecases/has_used_trial.dart';
 export 'domain/usecases/open_checkout.dart';
+export 'domain/usecases/check_model_access_usecase.dart';
+export 'domain/usecases/check_engine_limit_usecase.dart';
 export 'presentation/bloc/subscription_bloc.dart';
 export 'presentation/screens/subscription_screen.dart';

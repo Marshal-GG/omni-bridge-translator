@@ -2,8 +2,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_app_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/update_app_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_google_credentials_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/usecases/live_device_update_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/usecases/live_mic_toggle_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/load_devices_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/usecases/update_volume_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/entities/app_settings.dart';
 import 'package:omni_bridge/core/constants/model_language_support.dart';
 import 'package:omni_bridge/features/subscription/domain/usecases/get_subscription_status.dart';
@@ -20,6 +23,9 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   final LoadDevicesUseCase loadDevicesUseCase;
   final LogEventUseCase logEventUseCase;
   final GetSubscriptionStatus getSubscriptionStatus;
+  final UpdateVolumeUseCase updateVolumeUseCase;
+  final LiveDeviceUpdateUseCase liveDeviceUpdateUseCase;
+  final LiveMicToggleUseCase liveMicToggleUseCase;
   StreamSubscription<QuotaStatus>? _subscriptionStatusSubscription;
 
   SettingsBloc({
@@ -29,53 +35,51 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     required this.loadDevicesUseCase,
     required this.logEventUseCase,
     required this.getSubscriptionStatus,
+    required this.updateVolumeUseCase,
+    required this.liveDeviceUpdateUseCase,
+    required this.liveMicToggleUseCase,
   }) : super(SettingsState.initial()) {
     on<UpdateTempSettingEvent>(_onUpdateTempSetting);
-    on<SyncTempSettingsEvent>(_onSyncTempSettings);
     on<LoadDevicesEvent>(_onLoadDevices);
     on<ResetIODefaultsEvent>(_onResetIODefaults);
     on<SaveSettingsEvent>(_onSaveSettings);
     on<SubscriptionStatusChangedEvent>(_onSubscriptionStatusChanged);
     on<InitializeSettingsEvent>(_onInitializeSettings);
     on<SettingsTabIndexChanged>(_onSettingsTabIndexChanged);
+    on<LiveVolumeUpdateEvent>(_onLiveVolumeUpdate);
+    on<LiveDeviceUpdateEvent>(_onLiveDeviceUpdate);
+    on<LiveMicToggleEvent>(_onLiveMicToggle);
 
     _subscriptionStatusSubscription = getSubscriptionStatus().listen((status) {
       add(SubscriptionStatusChangedEvent(status));
     });
   }
 
-  void _onInitializeSettings(
+  Future<void> _onInitializeSettings(
     InitializeSettingsEvent event,
     Emitter<SettingsState> emit,
-  ) {
+  ) async {
     if (state.isInitialized) return;
 
-    final newSettings = state.settings.copyWith(
-      targetLang: event.targetLang,
-      sourceLang: event.sourceLang,
-      useMic: event.useMic,
-      fontSize: event.fontSize,
-      isBold: event.isBold,
-      opacity: event.opacity,
-      translationModel: event.translationModel,
-      nvidiaNimKey: event.nvidiaNimKey,
-      transcriptionModel: event.transcriptionModel,
-      inputDeviceIndex: event.inputDeviceIndex,
-      outputDeviceIndex: event.outputDeviceIndex,
-      desktopVolume: event.desktopVolume,
-      micVolume: event.micVolume,
+    AppSettings settings = AppSettings.initial();
+    final result = await getAppSettingsUseCase();
+    result.fold(
+      (failure) {},
+      (loaded) { if (loaded != null) settings = loaded; },
     );
+
     final error = translationCompatibilityError(
-      newSettings.translationModel,
-      newSettings.sourceLang,
-      newSettings.targetLang,
+      settings.translationModel,
+      settings.sourceLang,
+      settings.targetLang,
     );
     emit(
       state.copyWith(
-        settings: newSettings,
+        settings: settings,
         translationCompatibilityError: error,
         clearCompatibilityError: error == null,
         activeTabIndex: event.initialTabIndex,
+        modelStatuses: event.modelStatuses,
         isInitialized: true,
       ),
     );
@@ -87,39 +91,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) {
     emit(state.copyWith(activeTabIndex: event.index));
-  }
-
-  void _onSyncTempSettings(
-    SyncTempSettingsEvent event,
-    Emitter<SettingsState> emit,
-  ) {
-    final newSettings = state.settings.copyWith(
-      targetLang: event.targetLang,
-      sourceLang: event.sourceLang,
-      useMic: event.useMic,
-      fontSize: event.fontSize,
-      isBold: event.isBold,
-      opacity: event.opacity,
-      translationModel: event.translationModel,
-      nvidiaNimKey: event.nvidiaNimKey,
-      transcriptionModel: event.transcriptionModel,
-      inputDeviceIndex: event.inputDeviceIndex,
-      outputDeviceIndex: event.outputDeviceIndex,
-      desktopVolume: event.desktopVolume,
-      micVolume: event.micVolume,
-    );
-    final error = translationCompatibilityError(
-      newSettings.translationModel,
-      newSettings.sourceLang,
-      newSettings.targetLang,
-    );
-    emit(
-      state.copyWith(
-        settings: newSettings,
-        translationCompatibilityError: error,
-        clearCompatibilityError: error == null,
-      ),
-    );
   }
 
   void _onUpdateTempSetting(
@@ -169,14 +140,10 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
     emit(
       state.copyWith(
-        inputDevices:
-            (result['input'] as List?)?.cast<Map<String, dynamic>>() ?? [],
-        outputDevices:
-            (result['output'] as List?)?.cast<Map<String, dynamic>>() ?? [],
-        defaultInputDeviceName:
-            result['default_input_name'] as String? ?? 'Default',
-        defaultOutputDeviceName:
-            result['default_output_name'] as String? ?? 'Default',
+        inputDevices: result.inputDevices,
+        outputDevices: result.outputDevices,
+        defaultInputDeviceName: result.defaultInputName,
+        defaultOutputDeviceName: result.defaultOutputName,
         devicesLoading: false,
       ),
     );
@@ -186,7 +153,16 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     SaveSettingsEvent event,
     Emitter<SettingsState> emit,
   ) async {
-    // handled elsewhere by syncing to TranslationBloc using BlocListener or by letting TranslationBloc handle save directly
+    emit(state.copyWith(isSaving: true));
+    final result = await updateAppSettingsUseCase(state.settings.toJson());
+    result.fold(
+      (failure) => logEventUseCase(
+        'settings_save_failed',
+        parameters: {'error': failure.message},
+      ),
+      (_) {},
+    );
+    emit(state.copyWith(isSaving: false));
   }
 
   void _onResetIODefaults(
@@ -246,6 +222,33 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         },
       );
     }
+  }
+
+  void _onLiveVolumeUpdate(
+    LiveVolumeUpdateEvent event,
+    Emitter<SettingsState> emit,
+  ) {
+    updateVolumeUseCase(
+      desktopVolume: event.desktopVolume,
+      micVolume: event.micVolume,
+    );
+  }
+
+  void _onLiveDeviceUpdate(
+    LiveDeviceUpdateEvent event,
+    Emitter<SettingsState> emit,
+  ) {
+    liveDeviceUpdateUseCase(
+      inputDeviceIndex: event.inputDeviceIndex,
+      outputDeviceIndex: event.outputDeviceIndex,
+    );
+  }
+
+  void _onLiveMicToggle(
+    LiveMicToggleEvent event,
+    Emitter<SettingsState> emit,
+  ) {
+    liveMicToggleUseCase(event.useMic);
   }
 
   @override

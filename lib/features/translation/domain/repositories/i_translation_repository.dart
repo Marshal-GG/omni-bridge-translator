@@ -2,9 +2,9 @@ import '../entities/caption_message.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/core/data/interfaces/resettable.dart';
 
+
 abstract class ITranslationRepository implements IResettable {
   Stream<CaptionMessage>? get captions;
-  void Function(double inputLevel, double outputLevel)? onAudioLevel;
 
   // Quota support
   QuotaStatus? get currentQuotaStatus;
@@ -43,16 +43,9 @@ abstract class ITranslationRepository implements IResettable {
     String rivaAsrCanaryFunctionId,
   });
 
-  void liveVolumeUpdate({
-    required double desktopVolume,
-    required double micVolume,
-  });
-  void liveDeviceUpdate({int? inputDeviceIndex, int? outputDeviceIndex});
-  void liveMicToggle(bool useMic);
-
-  Future<Map<String, dynamic>> loadDevices();
   Future<List<dynamic>> getModelStatuses();
   Future<bool> checkServerHealth();
+  Future<void> unloadModel();
   Future<void> stop();
   Future<void> dispose();
 }

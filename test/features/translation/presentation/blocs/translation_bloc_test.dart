@@ -6,25 +6,22 @@ import 'package:omni_bridge/features/translation/presentation/blocs/translation_
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_state.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/start_translation_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/stop_translation_usecase.dart';
-import 'package:omni_bridge/features/translation/domain/usecases/update_volume_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/get_model_status_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/observe_captions_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/observe_quota_status_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/get_initial_quota_status_usecase.dart';
-import 'package:omni_bridge/features/translation/domain/usecases/get_default_tier_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/update_translation_settings_usecase.dart';
-import 'package:omni_bridge/features/translation/domain/usecases/live_device_update_usecase.dart';
-import 'package:omni_bridge/features/translation/domain/usecases/live_mic_toggle_usecase.dart';
+import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.dart';
+import 'package:omni_bridge/features/translation/domain/usecases/unload_model_usecase.dart';
+import 'package:omni_bridge/features/subscription/domain/usecases/check_model_access_usecase.dart';
+import 'package:omni_bridge/features/subscription/domain/usecases/check_engine_limit_usecase.dart';
 import 'package:omni_bridge/features/translation/domain/usecases/check_server_health_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/get_current_user_usecase.dart';
-import 'package:omni_bridge/features/auth/domain/usecases/observe_auth_changes_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_app_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_google_credentials_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/sync_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_system_config_usecase.dart';
-import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/entities/system_config.dart';
-import 'package:omni_bridge/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:dartz/dartz.dart';
@@ -39,8 +36,6 @@ class MockStartTranslationUseCase extends Mock
 class MockStopTranslationUseCase extends Mock
     implements StopTranslationUseCase {}
 
-class MockUpdateVolumeUseCase extends Mock implements UpdateVolumeUseCase {}
-
 class MockGetModelStatusUseCase extends Mock implements GetModelStatusUseCase {}
 
 class MockObserveCaptionsUseCase extends Mock
@@ -52,8 +47,6 @@ class MockObserveQuotaStatusUseCase extends Mock
 class MockGetInitialQuotaStatusUseCase extends Mock
     implements GetInitialQuotaStatusUseCase {}
 
-class MockGetDefaultTierUseCase extends Mock implements GetDefaultTierUseCase {}
-
 class MockUpdateTranslationSettingsUseCase extends Mock
     implements UpdateTranslationSettingsUseCase {}
 
@@ -61,9 +54,6 @@ class MockCheckServerHealthUseCase extends Mock
     implements CheckServerHealthUseCase {}
 
 class MockGetCurrentUserUseCase extends Mock implements GetCurrentUserUseCase {}
-
-class MockObserveAuthChangesUseCase extends Mock
-    implements ObserveAuthChangesUseCase {}
 
 class MockGetAppSettingsUseCase extends Mock implements GetAppSettingsUseCase {}
 
@@ -74,8 +64,6 @@ class MockSyncSettingsUseCase extends Mock implements SyncSettingsUseCase {}
 
 class MockLogEventUseCase extends Mock implements LogEventUseCase {}
 
-class MockLogoutUseCase extends Mock implements LogoutUseCase {}
-
 class MockGetSystemConfigUseCase extends Mock
     implements GetSystemConfigUseCase {}
 
@@ -85,10 +73,13 @@ class MockSubscriptionRemoteDataSource extends Mock
 class MockTranslationRestDatasource extends Mock
     implements TranslationRestDatasource {}
 
-class MockLiveDeviceUpdateUseCase extends Mock
-    implements LiveDeviceUpdateUseCase {}
+class MockUnloadModelUseCase extends Mock implements UnloadModelUseCase {}
 
-class MockLiveMicToggleUseCase extends Mock implements LiveMicToggleUseCase {}
+class MockCheckModelAccessUseCase extends Mock
+    implements CheckModelAccessUseCase {}
+
+class MockCheckEngineLimitUseCase extends Mock
+    implements CheckEngineLimitUseCase {}
 
 void main() {
   setUpAll(() {
@@ -108,56 +99,62 @@ void main() {
 
   late MockStartTranslationUseCase mockStartTranslationUseCase;
   late MockStopTranslationUseCase mockStopTranslationUseCase;
-  late MockUpdateVolumeUseCase mockUpdateVolumeUseCase;
   late MockGetModelStatusUseCase mockGetModelStatusUseCase;
   late MockObserveCaptionsUseCase mockObserveCaptionsUseCase;
   late MockObserveQuotaStatusUseCase mockObserveQuotaStatusUseCase;
   late MockGetInitialQuotaStatusUseCase mockGetInitialQuotaStatusUseCase;
-  late MockGetDefaultTierUseCase mockGetDefaultTierUseCase;
   late MockUpdateTranslationSettingsUseCase
   mockUpdateTranslationSettingsUseCase;
   late MockCheckServerHealthUseCase mockCheckServerHealthUseCase;
   late MockGetCurrentUserUseCase mockGetCurrentUserUseCase;
-  late MockObserveAuthChangesUseCase mockObserveAuthChangesUseCase;
   late MockGetAppSettingsUseCase mockGetAppSettingsUseCase;
   late MockGetGoogleCredentialsUseCase mockGetGoogleCredentialsUseCase;
   late MockSyncSettingsUseCase mockSyncSettingsUseCase;
   late MockLogEventUseCase mockLogEventUseCase;
-  late MockLogoutUseCase mockLogoutUseCase;
   late MockGetSystemConfigUseCase mockGetSystemConfigUseCase;
   late MockSubscriptionRemoteDataSource mockSubscriptionDataSource;
-  late MockTranslationRestDatasource mockTranslationRestDatasource;
-  late MockLiveDeviceUpdateUseCase mockLiveDeviceUpdateUseCase;
-  late MockLiveMicToggleUseCase mockLiveMicToggleUseCase;
+
+  late MockUnloadModelUseCase mockUnloadModelUseCase;
+  late MockCheckModelAccessUseCase mockCheckModelAccessUseCase;
+  late MockCheckEngineLimitUseCase mockCheckEngineLimitUseCase;
 
   setUp(() {
     mockStartTranslationUseCase = MockStartTranslationUseCase();
     mockStopTranslationUseCase = MockStopTranslationUseCase();
-    mockUpdateVolumeUseCase = MockUpdateVolumeUseCase();
     mockGetModelStatusUseCase = MockGetModelStatusUseCase();
     mockObserveCaptionsUseCase = MockObserveCaptionsUseCase();
     mockObserveQuotaStatusUseCase = MockObserveQuotaStatusUseCase();
     mockGetInitialQuotaStatusUseCase = MockGetInitialQuotaStatusUseCase();
-    mockGetDefaultTierUseCase = MockGetDefaultTierUseCase();
     mockUpdateTranslationSettingsUseCase =
         MockUpdateTranslationSettingsUseCase();
     mockCheckServerHealthUseCase = MockCheckServerHealthUseCase();
     mockGetCurrentUserUseCase = MockGetCurrentUserUseCase();
-    mockObserveAuthChangesUseCase = MockObserveAuthChangesUseCase();
     mockGetAppSettingsUseCase = MockGetAppSettingsUseCase();
     mockGetGoogleCredentialsUseCase = MockGetGoogleCredentialsUseCase();
     mockSyncSettingsUseCase = MockSyncSettingsUseCase();
     mockLogEventUseCase = MockLogEventUseCase();
-    mockLogoutUseCase = MockLogoutUseCase();
     mockGetSystemConfigUseCase = MockGetSystemConfigUseCase();
     mockSubscriptionDataSource = MockSubscriptionRemoteDataSource();
-    mockTranslationRestDatasource = MockTranslationRestDatasource();
-    mockLiveDeviceUpdateUseCase = MockLiveDeviceUpdateUseCase();
-    mockLiveMicToggleUseCase = MockLiveMicToggleUseCase();
 
-    // Default stubs
+    mockUnloadModelUseCase = MockUnloadModelUseCase();
+    mockCheckModelAccessUseCase = MockCheckModelAccessUseCase();
+    mockCheckEngineLimitUseCase = MockCheckEngineLimitUseCase();
+
     when(() => mockGetInitialQuotaStatusUseCase.call()).thenReturn(null);
-    when(() => mockGetDefaultTierUseCase.call()).thenReturn('free');
+    when(() => mockStopTranslationUseCase.call()).thenAnswer((_) async {});
+    when(
+      () => mockStartTranslationUseCase.call(
+        sourceLang: any(named: 'sourceLang'),
+        targetLang: any(named: 'targetLang'),
+        useMic: any(named: 'useMic'),
+        inputDeviceIndex: any(named: 'inputDeviceIndex'),
+        outputDeviceIndex: any(named: 'outputDeviceIndex'),
+        translationModel: any(named: 'translationModel'),
+        nvidiaNimKey: any(named: 'nvidiaNimKey'),
+        googleCredentials: any(named: 'googleCredentials'),
+        transcriptionModel: any(named: 'transcriptionModel'),
+      ),
+    ).thenAnswer((_) async {});
     when(
       () => mockObserveQuotaStatusUseCase.call(),
     ).thenAnswer((_) => Stream.empty());
@@ -175,10 +172,7 @@ void main() {
       () => mockGetGoogleCredentialsUseCase.call(),
     ).thenAnswer((_) async => const Right(''));
     when(
-      () => mockObserveAuthChangesUseCase.call(),
-    ).thenAnswer((_) => Stream.empty());
-    when(
-      () => mockTranslationRestDatasource.unloadModel(),
+      () => mockUnloadModelUseCase.call(),
     ).thenAnswer((_) async => true);
     when(
       () => mockCheckServerHealthUseCase.call(),
@@ -186,38 +180,48 @@ void main() {
     when(
       () => mockGetSystemConfigUseCase.call(),
     ).thenAnswer((_) async => Right(SystemConfig.initial()));
+    when(
+      () => mockCheckModelAccessUseCase.isTranslationModelAllowed(any(), any()),
+    ).thenReturn(true);
+    when(
+      () => mockCheckModelAccessUseCase.isTranscriptionModelAllowed(any(), any()),
+    ).thenReturn(true);
+    when(
+      () => mockCheckEngineLimitUseCase.shouldShowNotice(any()),
+    ).thenReturn(false);
+    when(
+      () => mockSubscriptionDataSource.allowedTranslationModels(any()),
+    ).thenReturn(['google']);
+    when(
+      () => mockSubscriptionDataSource.allowedTranscriptionModels(any()),
+    ).thenReturn(['online']);
   });
 
   TranslationBloc createBloc() {
     return TranslationBloc(
       startTranslationUseCase: mockStartTranslationUseCase,
       stopTranslationUseCase: mockStopTranslationUseCase,
-      updateVolumeUseCase: mockUpdateVolumeUseCase,
       getModelStatusUseCase: mockGetModelStatusUseCase,
       observeCaptionsUseCase: mockObserveCaptionsUseCase,
       observeQuotaStatusUseCase: mockObserveQuotaStatusUseCase,
       getInitialQuotaStatusUseCase: mockGetInitialQuotaStatusUseCase,
-      getDefaultTierUseCase: mockGetDefaultTierUseCase,
       updateTranslationSettingsUseCase: mockUpdateTranslationSettingsUseCase,
       checkServerHealthUseCase: mockCheckServerHealthUseCase,
       getCurrentUserUseCase: mockGetCurrentUserUseCase,
-      observeAuthChangesUseCase: mockObserveAuthChangesUseCase,
       getAppSettingsUseCase: mockGetAppSettingsUseCase,
       getGoogleCredentialsUseCase: mockGetGoogleCredentialsUseCase,
       syncSettingsUseCase: mockSyncSettingsUseCase,
       logEventUseCase: mockLogEventUseCase,
-      logoutUseCase: mockLogoutUseCase,
       getSystemConfigUseCase: mockGetSystemConfigUseCase,
-      subscriptionDataSource: mockSubscriptionDataSource,
-      translationRestDatasource: mockTranslationRestDatasource,
-      liveDeviceUpdateUseCase: mockLiveDeviceUpdateUseCase,
-      liveMicToggleUseCase: mockLiveMicToggleUseCase,
+      unloadModelUseCase: mockUnloadModelUseCase,
+      checkModelAccessUseCase: mockCheckModelAccessUseCase,
+      checkEngineLimitUseCase: mockCheckEngineLimitUseCase,
     );
   }
 
   group('Initialization', () {
     blocTest<TranslationBloc, TranslationState>(
-      'emits initial states during construction',
+      'emits states during initialization',
       build: () {
         when(
           () => mockSubscriptionDataSource.allowedTranslationModels(any()),
@@ -225,20 +229,18 @@ void main() {
         when(
           () => mockSubscriptionDataSource.allowedTranscriptionModels(any()),
         ).thenReturn(['online']);
+        when(
+          () => mockObserveQuotaStatusUseCase.call(),
+        ).thenAnswer((_) => Stream.empty());
+        when(
+          () => mockObserveCaptionsUseCase.call(),
+        ).thenAnswer((_) => Stream.empty());
         return createBloc();
       },
+      act: (bloc) => bloc.add(InitializeEvent()),
       expect: () => [
-        isA<TranslationState>().having(
-          (s) => s.isSettingsLoading,
-          'isSettingsLoading',
-          true,
-        ),
-        isA<TranslationState>(), // UpdateQuotaEvent
-        isA<TranslationState>().having(
-          (s) => s.isSettingsLoading,
-          'isSettingsLoading',
-          false,
-        ),
+        // UpdateQuotaEvent
+        isA<TranslationState>().having((s) => s.quotaStatus, 'quotaStatus', isNotNull),
       ],
     );
   });
@@ -265,12 +267,11 @@ void main() {
             googleCredentials: any(named: 'googleCredentials'),
             transcriptionModel: any(named: 'transcriptionModel'),
           ),
-        ).thenReturn(null);
+        ).thenAnswer((_) async {});
 
         return createBloc();
       },
       act: (bloc) => bloc.add(ToggleRunningEvent()),
-      skip: 3,
       expect: () => [
         isA<TranslationState>().having((s) => s.isRunning, 'isRunning', true),
       ],
@@ -298,16 +299,12 @@ void main() {
             googleCredentials: any(named: 'googleCredentials'),
             transcriptionModel: any(named: 'transcriptionModel'),
           ),
-        ).thenReturn(null);
+        ).thenAnswer((_) async {});
 
         return createBloc();
       },
-      act: (bloc) async {
-        bloc.add(ToggleRunningEvent());
-        await Future.delayed(Duration.zero);
-        bloc.add(ToggleRunningEvent());
-      },
-      skip: 4,
+      seed: () => TranslationState.initial().copyWith(isRunning: true),
+      act: (bloc) => bloc.add(ToggleRunningEvent()),
       expect: () => [
         isA<TranslationState>().having((s) => s.isRunning, 'isRunning', false),
       ],
@@ -348,7 +345,6 @@ void main() {
       build: () => createBloc(),
       act: (bloc) =>
           bloc.add(const UpdateServerConnectionEvent(isConnected: false)),
-      skip: 3, // Skip init events
       expect: () => [
         isA<TranslationState>().having(
           (s) => s.isServerConnected,
@@ -393,9 +389,15 @@ void main() {
           () => mockSubscriptionDataSource.allowedTranscriptionModels('free'),
         ).thenReturn(['online']);
         when(
-          () => mockTranslationRestDatasource.unloadModel(),
+          () => mockUnloadModelUseCase.call(),
         ).thenAnswer((_) async => true);
         when(() => mockStopTranslationUseCase.call()).thenAnswer((_) async {});
+        when(
+          () => mockObserveQuotaStatusUseCase.call(),
+        ).thenAnswer((_) => Stream.empty());
+        when(
+          () => mockObserveCaptionsUseCase.call(),
+        ).thenAnswer((_) => Stream.empty());
         when(
           () => mockUpdateTranslationSettingsUseCase.call(
             targetLang: any(named: 'targetLang'),
@@ -410,7 +412,7 @@ void main() {
             googleCredentials: any(named: 'googleCredentials'),
             transcriptionModel: any(named: 'transcriptionModel'),
           ),
-        ).thenReturn(null);
+        ).thenAnswer((_) async {});
 
         // Return llama/whisper first, then defaults on subsequent calls
         var callCount = 0;
@@ -440,7 +442,6 @@ void main() {
         bloc.add(UpdateQuotaEvent(freeStatus));
       },
       wait: const Duration(milliseconds: 200),
-      skip: 4,
       expect: () => [
         // 1. Quota update only (tier changed to free)
         isA<TranslationState>()
@@ -486,7 +487,7 @@ void main() {
       ],
       verify: (_) {
         verify(() => mockStopTranslationUseCase.call()).called(2);
-        verify(() => mockTranslationRestDatasource.unloadModel()).called(1);
+        verify(() => mockUnloadModelUseCase.call()).called(1);
         verify(
           () => mockUpdateTranslationSettingsUseCase.call(
             targetLang: any(named: 'targetLang'),
