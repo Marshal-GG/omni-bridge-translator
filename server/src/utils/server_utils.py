@@ -2,6 +2,43 @@ import os
 import logging
 import sys
 
+
+def estimate_tokens(text: str) -> int:
+    """Estimate token count for a string using script-aware heuristics.
+
+    Latin/ASCII text compresses well (BPE ~4 chars/token).
+    Indic scripts (Devanagari, Bengali, Tamil, etc.) and CJK compress poorly
+    (~1-1.5 chars/token) because BPE rarely merges non-Latin codepoints.
+
+    Unicode ranges checked:
+      Devanagari:  0x0900–0x097F  (Hindi, Marathi, Sanskrit)
+      Bengali:     0x0980–0x09FF
+      Tamil:       0x0B80–0x0BFF
+      Telugu:      0x0C00–0x0C7F
+      Kannada:     0x0C80–0x0CFF
+      Malayalam:   0x0D00–0x0D7F
+      CJK Unified: 0x4E00–0x9FFF
+      Arabic:      0x0600–0x06FF
+      Cyrillic:    0x0400–0x04FF  (Russian etc. — ~2 chars/token)
+    """
+    if not text:
+        return 0
+
+    dense_chars = 0
+    medium_chars = 0
+    latin_chars = 0
+
+    for ch in text:
+        cp = ord(ch)
+        if (0x0900 <= cp <= 0x0D7F) or (0x4E00 <= cp <= 0x9FFF) or (0x0600 <= cp <= 0x06FF):
+            dense_chars += 1        # ~1 token/char
+        elif 0x0400 <= cp <= 0x04FF:
+            medium_chars += 1       # ~2 chars/token
+        else:
+            latin_chars += 1        # ~4 chars/token
+
+    return dense_chars + (medium_chars + 1) // 2 + (latin_chars + 3) // 4
+
 try:
     import psutil
     HAS_PSUTIL = True

@@ -1,11 +1,6 @@
-class UsageConstants {
-  static const List<String> knownAsrEngines = ['online', 'riva-asr', 'whisper'];
+import 'package:omni_bridge/core/constants/engine_registry.dart';
 
-  static const List<String> knownTranslationEngines = [
-    'google',
-    'google_api',
-    'mymemory',
-    'riva-nmt',
-    'llama',
-  ];
+class UsageConstants {
+  static List<String> get knownAsrEngines => EngineRegistry.knownAsrStatsKeys;
+  static List<String> get knownTranslationEngines => EngineRegistry.knownTranslationStatsKeys;
 }

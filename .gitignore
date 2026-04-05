@@ -111,3 +111,6 @@ server/build/
 server/dist/
 # Credentials must never be stored in server/json/ — use GOOGLE_APPLICATION_CREDENTIALS env var instead
 server/json/
+
+# Internal dev notes
+docs/CLAUDECODE_ADAPTATIONS.md

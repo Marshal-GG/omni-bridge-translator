@@ -25,6 +25,9 @@ class SettingsState extends Equatable {
   /// chosen source/target language pair. Blocks saving.
   final String? translationCompatibilityError;
 
+  /// True when the NVIDIA API key is present but failed validation. Blocks saving.
+  final bool invalidApiKey;
+
   const SettingsState({
     required this.settings,
     required this.activeTabIndex,
@@ -37,6 +40,7 @@ class SettingsState extends Equatable {
     required this.defaultInputDeviceName,
     required this.defaultOutputDeviceName,
     this.translationCompatibilityError,
+    this.invalidApiKey = false,
   });
 
   factory SettingsState.initial() {
@@ -67,6 +71,7 @@ class SettingsState extends Equatable {
     String? defaultOutputDeviceName,
     String? translationCompatibilityError,
     bool clearCompatibilityError = false,
+    bool? invalidApiKey,
   }) {
     return SettingsState(
       settings: settings ?? this.settings,
@@ -85,6 +90,7 @@ class SettingsState extends Equatable {
           ? null
           : (translationCompatibilityError ??
                 this.translationCompatibilityError),
+      invalidApiKey: invalidApiKey ?? this.invalidApiKey,
     );
   }
 
@@ -101,5 +107,6 @@ class SettingsState extends Equatable {
     defaultInputDeviceName,
     defaultOutputDeviceName,
     translationCompatibilityError,
+    invalidApiKey,
   ];
 }

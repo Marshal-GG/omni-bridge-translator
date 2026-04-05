@@ -19,7 +19,12 @@ This guide provides a detailed walkthrough for adding a new screen (and its asso
 6. [UI Structure & Premium Aesthetics](#6-ui-structure--premium-aesthetics)
 7. [Dependency Injection (DI) Registration](#7-dependency-injection-di-registration)
 8. [Navigation & Routing](#8-navigation--routing)
-9. [Checklist](#9-checklist)
+9. [Error Handling & Failures](#9-error-handling--failures-functional-approach)
+10. [Testing Template](#10-testing-template)
+11. [Assets & Localization](#11-assets--localization)
+12. [UI Design Language & Consistency](#12-ui-design-language--consistency)
+13. [Lint Compliance](#13-lint-compliance)
+14. [End-to-End Implementation Checklist](#14-end-to-end-implementation-checklist)
 
 ---
 
@@ -135,6 +140,29 @@ class MyBloc extends Bloc<MyEvent, MyState> {
     });
   }
 }
+```
+
+#### Event Transformers (`bloc_concurrency`)
+
+For events that can fire concurrently, use `bloc_concurrency` transformers to prevent race conditions:
+
+```dart
+import 'package:bloc_concurrency/bloc_concurrency.dart';
+
+MyBloc(...) : super(MyInitial()) {
+  // Save events queue — never overlap
+  on<SaveEvent>(_onSave, transformer: sequential());
+
+  // Refresh events drop if already loading
+  on<RefreshEvent>(_onRefresh, transformer: droppable());
+}
+```
+
+| Transformer | Use when |
+|-------------|----------|
+| `sequential()` | User can trigger multiple saves/submits — process in order, never overlap |
+| `droppable()` | Rapid triggers (auth changes, tab switches) — only the first matters |
+| *(default)* | Independent events with no concurrency concern |
 ```
 
 ### B. Screen
@@ -467,7 +495,66 @@ Always center the core content within a **1020px fixed-width container** for des
 
 ---
 
-## 13. End-to-End Implementation Checklist
+## 13. Lint Compliance
+
+The project enforces a custom `analysis_options.yaml`. New code **must** pass `flutter analyze` before merging. Key rules to follow:
+
+### Always use `Future<void>` for async functions
+```dart
+// ❌ triggers avoid_void_async
+void _onSave(SaveEvent event, Emitter<MyState> emit) async { ... }
+
+// ✅ correct
+Future<void> _onSave(SaveEvent event, Emitter<MyState> emit) async { ... }
+```
+
+> [!NOTE]
+> Exception: override methods whose parent class declares `void` (e.g., `WindowListener.onWindowClose`, `TrayListener.onTrayIconMouseDown`) — suppress with `// ignore: avoid_void_async`.
+
+### Await or explicitly discard Futures
+```dart
+// ❌ triggers unawaited_futures
+someAsyncCall();
+
+// ✅ option 1 — await it
+await someAsyncCall();
+
+// ✅ option 2 — intentional fire-and-forget
+unawaited(someAsyncCall());  // import 'dart:async'
+
+// ✅ option 3 — fire-and-forget inside a fold/callback (any Future<T>)
+someAsyncCall().ignore();
+```
+
+### Cancel subscriptions
+```dart
+// ❌ triggers cancel_subscriptions
+StreamSubscription<X> _sub = stream.listen(...);
+// (never cancelled)
+
+// ✅ cancel in dispose / BLoC close
+@override
+Future<void> close() {
+  _sub.cancel();
+  return super.close();
+}
+```
+
+### Use `AppLogger`, not `print()`
+```dart
+// ❌ triggers avoid_print
+print('Debug info');
+
+// ✅
+AppLogger.i('Debug info', tag: 'MyFeature');
+```
+
+### `unused_import` is an error (blocks CI)
+Remove all unused imports immediately — the analyzer treats them as errors and CI will fail.
+
+---
+
+## 14. End-to-End Implementation Checklist
 
 - [ ] **Directory structure**: Files placed in `lib/features/[name]/{data, domain, presentation}`.
 - [ ] **Data layer**: `RepositoryImpl` and `DataSource` implemented.
@@ -482,3 +569,5 @@ Always center the core content within a **1020px fixed-width container** for des
 - [ ] **Design Language**: Colors match feature category (ASR: Indigo, Trans: Teal). Model names match standard nomenclature.
 - [ ] **Performance**: Vertical dead space minimized using `MainAxisSize.min` and high-density padding.
 - [ ] **Testing**: Unit tests for UseCases and BLoC tests implemented in `test/features/[name]/`.
+- [ ] **Lint**: `flutter analyze` passes with no issues — no unused imports, `Future<void>` on async functions, `unawaited()` or `await` on all Futures, `AppLogger` not `print()`.
+- [ ] **Concurrency**: Events that can fire simultaneously use `sequential()` or `droppable()` from `bloc_concurrency`.

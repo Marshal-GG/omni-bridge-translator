@@ -379,11 +379,11 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
         'description': 'Basic translation for casual use',
         'display_features': [
           'Google Translate only',
-          'Google Online ASR',
+          'Google Online ASR · NVIDIA Riva ASR',
           'Desktop audio capture',
-          '20,000 tokens/day · 300K/month',
+          '40,000 characters/day · 750K/month',
         ],
-        'allowed_transcription_models': ['online'],
+        'allowed_transcription_models': ['online', 'riva-asr'],
         'allowed_translation_models': ['google'],
         'features': {
           'mic_audio': false,
@@ -392,7 +392,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'simultaneous_sessions': 1,
           'session_duration_hours': 1,
         },
-        'quotas': {'daily_tokens': 20000, 'monthly_tokens': 300000},
+        'quotas': {'daily_tokens': 40000, 'monthly_tokens': 750000},
         'engine_limits': {},
         'rate_limits': {'requests_per_minute': 20, 'concurrent_sessions': 1},
       },
@@ -405,7 +405,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
         'display_features': [
           'All translation & transcription engines',
           'Microphone + desktop audio',
-          '50,000 tokens for 24 hours',
+          '75,000 characters for 24 hours',
           'One-time per account',
         ],
         'allowed_transcription_models': [
@@ -430,7 +430,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'simultaneous_sessions': 1,
           'session_duration_hours': 24,
         },
-        'quotas': {'daily_tokens': 50000, 'monthly_tokens': 50000},
+        'quotas': {'daily_tokens': 75000, 'monthly_tokens': 75000},
         'engine_limits': {},
         'rate_limits': {'requests_per_minute': 60, 'concurrent_sessions': 1},
       },
@@ -440,18 +440,16 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
         'description': 'All engines with generous limits',
         'display_features': [
           'All translation engines',
-          'Whisper transcription (tiny–medium)',
+          'Whisper transcription (tiny, base)',
           'Microphone + desktop audio',
           'Caption history (7 days)',
-          '100,000 tokens/day · 1.5M/month',
-          '500K tokens/month per paid engine',
+          '75,000 characters/day · 3.75M/month',
+          '250K characters/month per paid engine · 375K for Whisper',
         ],
         'allowed_transcription_models': [
           'online',
           'whisper-tiny',
           'whisper-base',
-          'whisper-small',
-          'whisper-medium',
           'riva-asr',
         ],
         'allowed_translation_models': [
@@ -468,12 +466,12 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'simultaneous_sessions': 2,
           'session_duration_hours': 4,
         },
-        'quotas': {'daily_tokens': 100000, 'monthly_tokens': 1500000},
+        'quotas': {'daily_tokens': 75000, 'monthly_tokens': 3750000},
         'engine_limits': {
-          'google_api': 500000,
-          'riva-nmt': 500000,
-          'riva-asr': 500000,
-          'llama': 500000,
+          'google_api': 250000,
+          'riva-nmt': 250000,
+          'llama': 250000,
+          'whisper-asr': 375000,
         },
         'rate_limits': {'requests_per_minute': 60, 'concurrent_sessions': 2},
       },
@@ -483,11 +481,11 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
         'description': 'Maximum capacity for power users',
         'display_features': [
           'Everything in Pro',
-          'Whisper medium + Riva transcription',
+          'Whisper transcription (tiny–medium)',
           'Caption history (30 days)',
           'Up to 5 simultaneous sessions',
-          '500,000 tokens/day · 10M/month',
-          '3.3M tokens/month per paid engine',
+          '250,000 characters/day · 9M/month',
+          '750K characters/month per paid engine · 1.1M for Whisper',
         ],
         'allowed_transcription_models': [
           'online',
@@ -511,12 +509,12 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
           'simultaneous_sessions': 5,
           'session_duration_hours': 12,
         },
-        'quotas': {'daily_tokens': 500000, 'monthly_tokens': 10000000},
+        'quotas': {'daily_tokens': 250000, 'monthly_tokens': 9000000},
         'engine_limits': {
-          'google_api': 3300000,
-          'riva-nmt': 3300000,
-          'riva-asr': 3300000,
-          'llama': 3300000,
+          'google_api': 750000,
+          'riva-nmt': 750000,
+          'llama': 750000,
+          'whisper-asr': 1125000,
         },
         'rate_limits': {'requests_per_minute': 120, 'concurrent_sessions': 5},
       },
@@ -526,7 +524,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
     'payment_links': {'trial': '', 'pro': '', 'enterprise': ''},
 
     // ── Global Settings ───────────────────────────────────────────────
-    'usage_poll_interval_seconds': 30,
+    'usage_poll_interval_seconds': 10,
     'fallback_engine': 'google',
 
     // ── Model Kill Switches, Display Names & Type (SSOT) ────────────
@@ -547,7 +545,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
         'type': 'translation',
       },
       'mymemory': {
-        'enabled': true,
+        'enabled': false,
         'display_name': 'MyMemory',
         'type': 'translation',
       },
@@ -648,7 +646,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
       'feature_locked': {
         'title': 'Upgrade Your Plan',
         'message':
-            'Get more daily tokens and unlock exclusive features like premium translation engines.',
+            'Get more daily characters and unlock exclusive features like premium translation engines.',
         'highlights': ['Priority Support'],
       },
     },

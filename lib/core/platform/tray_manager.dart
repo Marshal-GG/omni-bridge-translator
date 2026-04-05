@@ -5,7 +5,7 @@ class TrayManager with TrayListener {
   Future<void> initializeTray() async {
     // Set the tray icon and tooltip
     await trayManager.setIcon('assets/app/icons/icon.ico');
-    trayManager.setToolTip("Omni Bridge: Live AI Translator");
+    await trayManager.setToolTip("Omni Bridge: Live AI Translator");
 
     // Set up the context menu
     final trayMenu = Menu(
@@ -23,6 +23,7 @@ class TrayManager with TrayListener {
   }
 
   @override
+  // ignore: avoid_void_async
   void onTrayIconMouseDown() async {
     bool isVisible = await windowManager.isVisible();
     if (isVisible) {
@@ -38,6 +39,7 @@ class TrayManager with TrayListener {
   }
 
   @override
+  // ignore: avoid_void_async
   void onTrayMenuItemClick(MenuItem menuItem) async {
     switch (menuItem.key) {
       case 'show':

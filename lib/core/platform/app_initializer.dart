@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -172,7 +174,7 @@ class AppInitializer {
     }
 
     // Log App Launch Strategy
-    UsageMetricsRemoteDataSource.instance.logEvent('App Started (Dart Main)');
+    unawaited(UsageMetricsRemoteDataSource.instance.logEvent('App Started (Dart Main)'));
 
     // Determine initial route
 

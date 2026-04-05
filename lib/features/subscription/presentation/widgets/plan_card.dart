@@ -212,12 +212,14 @@ Widget buildPlanCard({
           Wrap(
             spacing: 4,
             runSpacing: 4,
-            children: plan.allowedTranscriptionModels.map((m) {
-              return _ModelChip(
-                label: SubscriptionRemoteDataSource.instance
-                    .getModelDisplayName(m),
-              );
-            }).toList(),
+            children: _collapseWhisperModels(plan.allowedTranscriptionModels)
+                .map((m) => _ModelChip(
+                      label: m == 'whisper'
+                          ? 'Whisper'
+                          : SubscriptionRemoteDataSource.instance
+                              .getModelDisplayName(m),
+                    ))
+                .toList(),
           ),
         ],
 
@@ -337,4 +339,21 @@ class _ModelChip extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Collapses all whisper-* variants into a single 'whisper' entry.
+List<String> _collapseWhisperModels(List<String> models) {
+  final result = <String>[];
+  var whisperAdded = false;
+  for (final m in models) {
+    if (m.startsWith('whisper-')) {
+      if (!whisperAdded) {
+        result.add('whisper');
+        whisperAdded = true;
+      }
+    } else {
+      result.add(m);
+    }
+  }
+  return result;
 }

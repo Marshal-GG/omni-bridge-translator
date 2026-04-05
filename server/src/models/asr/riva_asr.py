@@ -69,6 +69,24 @@ class RivaASRModel:
     def is_ready(self) -> bool:
         return not self._is_loading and getattr(self, "asr_parakeet", None) is not None and bool(self.api_key)
 
+    def warmup(self, sample_rate: int = 16000, lang: str = "en-US") -> None:
+        """Send a silent dummy chunk to pre-establish the gRPC TLS connection.
+        The first real offline_recognize call otherwise pays ~5-6s cold-start
+        overhead for TLS handshake + auth on grpc.nvcf.nvidia.com:443.
+        Runs in a background thread so it doesn't block session start."""
+        if not self.is_ready():
+            return
+        import threading
+        def _do_warmup():
+            try:
+                silence = bytes(int(sample_rate * 0.1) * 2)  # 100ms of silence (int16)
+                config = self.make_config(sample_rate, lang)
+                self.transcribe(silence, config)
+                logging.info("[RivaASR] gRPC warmup complete.")
+            except Exception as e:
+                logging.debug(f"[RivaASR] Warmup error (expected on silence): {e}")
+        threading.Thread(target=_do_warmup, daemon=True, name="RivaWarmup").start()
+
     def transcribe(self, audio_bytes: bytes, config) -> tuple[str | None, dict | None]:
         """Run offline ASR and return the transcript, or None if empty."""
         start = time.monotonic()
@@ -84,10 +102,24 @@ class RivaASRModel:
         if not service:
             return None, None
 
-        try:
-            response = service.offline_recognize(audio_bytes, config)
-        except Exception as e:
-            logging.warning(f"[RivaASR] offline_recognize failed ({model_name}, lang={lang}): {type(e).__name__}: {e}")
+        max_attempts = 3
+        response = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                response = service.offline_recognize(audio_bytes, config)
+                break
+            except Exception as e:
+                err_str = str(e)
+                # 502 / 503 are transient NVIDIA gateway errors — worth retrying
+                is_transient = "502" in err_str or "503" in err_str or "UNAVAILABLE" in err_str
+                if is_transient and attempt < max_attempts:
+                    wait = attempt * 0.5  # 0.5s, 1.0s
+                    logging.warning(f"[RivaASR] offline_recognize transient error (attempt {attempt}/{max_attempts}, retrying in {wait}s): {err_str[:120]}")
+                    time.sleep(wait)
+                else:
+                    logging.warning(f"[RivaASR] offline_recognize failed ({model_name}, lang={lang}): {type(e).__name__}: {e}")
+                    return None, None
+        if response is None:
             return None, None
 
         transcript = None
@@ -117,14 +149,13 @@ class RivaASRModel:
             safe_lang = ""
             if detected_lang:
                 safe_lang = str(detected_lang).split("-")[0].lower()
-
             stats = {
                 "engine": "riva-asr",
                 "model": model_name,
                 "latency_ms": int((time.monotonic() - start) * 1000),
-                "input_tokens": (len(transcript) + 3) // 4,
+                "input_tokens": len(transcript),
                 "output_tokens": 0,
-                "detected_lang": safe_lang
+                "detected_lang": safe_lang,
             }
         return transcript, stats
 

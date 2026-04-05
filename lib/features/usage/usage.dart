@@ -1,8 +1,10 @@
 export 'data/datasources/usage_remote_datasource.dart';
 export 'data/repositories/usage_repository_impl.dart';
 export 'domain/repositories/usage_repository.dart';
+export 'domain/repositories/i_engine_selection_source.dart';
 export 'domain/usecases/check_usage_rollover.dart';
 export 'domain/usecases/get_quota_status.dart';
+export 'domain/usecases/get_selected_engines_usecase.dart';
 export 'domain/usecases/get_usage_history.dart';
 export 'domain/usecases/get_usage_stats.dart';
 export 'presentation/bloc/usage_bloc.dart';

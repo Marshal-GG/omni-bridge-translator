@@ -156,6 +156,8 @@ class AsrWebSocketClient implements IResettable {
     String rivaAsrParakeetFunctionId = '',
     String rivaAsrCanaryFunctionId = '',
   }) {
+    // Reset backoff so the backend-reload disconnect reconnects at 2s, not higher.
+    _service?.resetReconnectBackoff();
     _service?.updateSettings(
       sourceLang: sourceLang,
       targetLang: targetLang,

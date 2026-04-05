@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -76,10 +78,10 @@ class SettingsRemoteDataSourceImpl
       AppLogger.i('User settings successfully synced to Firestore.', tag: _tag);
     } catch (e) {
       AppLogger.e('Critical error syncing user settings', tag: _tag, error: e);
-      UsageMetricsRemoteDataSource.instance.logEvent(
+      unawaited(UsageMetricsRemoteDataSource.instance.logEvent(
         'Failed to sync user settings',
         {'error': e.toString()},
-      );
+      ));
     }
   }
 
@@ -108,10 +110,10 @@ class SettingsRemoteDataSourceImpl
       }
     } catch (e) {
       AppLogger.e('Critical error fetching user settings', tag: _tag, error: e);
-      UsageMetricsRemoteDataSource.instance.logEvent(
+      unawaited(UsageMetricsRemoteDataSource.instance.logEvent(
         'Failed to fetch user settings',
         {'error': e.toString()},
-      );
+      ));
     }
     return null;
   }

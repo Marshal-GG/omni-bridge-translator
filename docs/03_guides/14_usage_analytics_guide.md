@@ -33,14 +33,26 @@ The `usage` feature displays per-session and cumulative statistics for AI usage 
 ```
 lib/features/usage/
 ├── domain/
-│   ├── entities/           # Usage data entities
-│   └── repositories/       # UsageRepository (abstract interface)
+│   ├── entities/           # EngineUsage, DailyUsageRecord, QuotaStatus
+│   ├── repositories/
+│   │   ├── usage_repository.dart              # Abstract interface
+│   │   └── i_engine_selection_source.dart     # Re-exports core/interfaces/i_engine_selection_source.dart
+│   ├── usecases/
+│   │   ├── get_usage_stats.dart               # Aggregates engine stats from RTDB, checks plan access
+│   │   ├── get_usage_history.dart             # Fetches 30-day daily usage history
+│   │   ├── get_quota_status.dart              # Current daily/monthly quota snapshot
+│   │   ├── check_usage_rollover.dart          # Archives and resets expired periods
+│   │   └── get_selected_engines_usecase.dart  # Translates settings keys → RTDB stats keys via EngineRegistry
+│   └── utils/
+│       └── usage_constants.dart               # Delegates knownAsr/TranslationEngines to EngineRegistry
 ├── data/
+│   ├── datasources/        # UsageRemoteDataSource (Firestore + RTDB polling)
+│   ├── models/             # DTOs: EngineUsageDto, DailyUsageRecordDto
 │   └── repositories/       # UsageRepositoryImpl
 └── presentation/
-    ├── bloc/               # UsageBloc, Events, States
+    ├── bloc/               # UsageBloc, UsageEvent, UsageState
     ├── screens/            # UsageScreen (main analytics view)
-    └── widgets/            # Charts, stat cards, breakdown widgets
+    └── widgets/            # Charts, EngineUsageCard, quota bars, UsageUtils
 ```
 
 The `usage` feature follows the standard **Clean Architecture (Vertical Slice)** pattern established across all features. See [13 New Screen Setup Guide](../03_guides/13_new_screen_setup_guide.md) for the full pattern reference.
@@ -52,7 +64,22 @@ The `usage` feature follows the standard **Clean Architecture (Vertical Slice)**
 ### Repository Interface
 **File**: `lib/features/usage/domain/repositories/usage_repository.dart`
 
-Defines the contract for fetching usage data. The interface is kept deliberately minimal to stay decoupled from the underlying data source (Firestore / Realtime DB).
+Defines the contract for fetching engine stats and daily history. Kept deliberately minimal and decoupled from any data source.
+
+### `IEngineSelectionSource`
+**File**: `lib/core/interfaces/i_engine_selection_source.dart`
+
+A cross-feature interface (defined in `core`, not in `settings`) that exposes the two methods `getSelectedTranslationEngine()` and `getSelectedTranscriptionEngine()`. Implemented by `SettingsRepositoryImpl`. The usage feature depends only on this interface — never directly on `SettingsBloc` or `ISettingsRepository`.
+
+### `GetSelectedEnginesUseCase`
+**File**: `lib/features/usage/domain/usecases/get_selected_engines_usecase.dart`
+
+Reads the currently selected ASR and translation engines via `IEngineSelectionSource` (which returns settings keys such as `'google'` or `'whisper-tiny'`), then translates them to **RTDB stats keys** via `EngineRegistry.settingsKeyToStatsKey()`. Returns a `SelectedEngines` value object with `translationStatsKey` and `transcriptionStatsKey`. These stats keys match `EngineUsage.engine` so `UsageScreen` can compare directly without any conversion.
+
+### `UsageConstants`
+**File**: `lib/features/usage/domain/utils/usage_constants.dart`
+
+Delegates `knownAsrEngines` and `knownTranslationEngines` to `EngineRegistry.knownAsrStatsKeys` / `knownTranslationStatsKeys`. No hardcoded lists.
 
 ### Entities
 **Directory**: `lib/features/usage/domain/entities/`
@@ -86,22 +113,48 @@ sl.registerLazySingleton<UsageRepository>(
 **Directory**: `lib/features/usage/presentation/bloc/`
 
 Follows the standard BLoC pattern:
-- **Events**: Trigger data loads or refreshes
+- **Events**: `LoadUsageStats` (with optional `refresh: bool`)
 - **States**: `UsageInitial`, `UsageLoading`, `UsageLoaded`, `UsageError`
-- **BLoC**: Calls `UsageRepository` and emits states
+- **BLoC**: Calls use cases and emits states
+
+`UsageLoaded` carries the full dashboard state including:
+
+| Field | Type | Description |
+|---|---|---|
+| `engineUsage` | `List<EngineUsage>` | Per-engine stats grouped by display name |
+| `dailyHistory` | `List<DailyUsageRecord>` | Last 30 days of daily usage |
+| `lifetimeTokens` | `int` | All-time character count |
+| `monthlyTokens` | `int` | Current calendar-month character count |
+| `asrTokens` | `int` | Lifetime ASR character count |
+| `translationTokens` | `int` | Lifetime translation character count |
+| `tier` | `String` | User's current subscription tier (uppercased) |
+| `quotaStatus` | `QuotaStatus?` | Current daily/monthly quota snapshot |
+| `selectedTranslationEngine` | `String` | Active translation engine as RTDB stats key (e.g. `'google-translate'`) |
+| `selectedTranscriptionEngine` | `String` | Active ASR engine as RTDB stats key (e.g. `'whisper-asr'`) |
+
+`UsageBloc` dependencies: `GetUsageStats`, `GetUsageHistory`, `GetQuotaStatus`, `CheckUsageRollover`, `GetSelectedEnginesUseCase`.
 
 ### Screen
-**File**: `lib/features/usage/presentation/screens/`
+**File**: `lib/features/usage/presentation/screens/usage_screen.dart`
 
 Displays a high-density analytics dashboard consistent with the Omni Bridge design language:
-- **Color accent**: `Colors.orangeAccent` (reserved per the [Design Language Guide](../03_guides/13_new_screen_setup_guide.md#b-color-coding-system))
-- **Navigation icon**: `Icons.bar_chart_rounded`
+- **Color accent**: `Colors.tealAccent` for ASR, `Color(0xFF6366F1)` (indigo) for translation engines
+- **Navigation icon**: `Icons.analytics_rounded`
 - **Layout**: Standard `1020px` centered content width
+- **Engine highlighting**: The `EngineUsageCard` for the currently active ASR/translation engine is highlighted with a stronger border. `UsageScreen` reads `state.selectedTranslationEngine` and `state.selectedTranscriptionEngine` from `UsageLoaded` and passes `isSelected: e.engine == selectedEngine` to each `EngineUsageCard`. Both fields are already RTDB stats keys, matching `EngineUsage.engine` directly — no conversion needed in the screen.
 
 ### Widgets
 **Directory**: `lib/features/usage/presentation/widgets/`
 
-Encapsulates individual UI components (e.g., `fl_chart`-powered charts, quota progress bars, per-engine stat cards) to keep the Screen widget lean.
+| Widget | Purpose |
+|---|---|
+| `EngineUsageCard` | Per-engine stat card. Accepts `isSelected` param — highlights the border when the engine is currently active. |
+| `UsageUtils` | `getDisplayName(statsKey, type)` — delegates to `EngineRegistry.displayNameForStatsKey()`. |
+| `UsageDonutChart` | ASR vs translation breakdown pie chart |
+| `ModelUsageBarChart` | Per-engine bar chart for relative usage |
+| `UsageHistoryChart` | 30-day daily usage line chart |
+| `UsageHeader` | Top bar with refresh button |
+| `QuotaUsageBar` | Inline progress bar for daily quota |
 
 ---
 
@@ -109,13 +162,18 @@ Encapsulates individual UI components (e.g., `fl_chart`-powered charts, quota pr
 
 | Component | Role |
 |-----------|------|
-| `SubscriptionRemoteDataSource` | Populates quota and usage fields in Firebase (source of truth) |
-| `UsageMetricsRemoteDataSource` | Tracks per-session token counts and byte usage to Firebase Realtime DB |
-| `ISubscriptionRepository` | The shared repository that `UsageRepositoryImpl` reads from |
+| `SubscriptionRemoteDataSource` | Populates quota and usage fields in Firebase (source of truth for plan/tier) |
+| `UsageMetricsRemoteDataSource` | Buffers per-call stats (3s flush) and writes multi-path PATCH to RTDB `model_stats/{statsKey}` and `daily_usage/{date}/models/{statsKey}` |
+| `ISubscriptionRepository` | The shared repository that `UsageRepositoryImpl` reads from for engine stats and quota |
+| `IEngineSelectionSource` | Core interface implemented by `SettingsRepositoryImpl` — provides selected engine settings keys to `GetSelectedEnginesUseCase` without cross-feature BLoC coupling |
+| `EngineRegistry` | `lib/core/constants/engine_registry.dart` — single source of truth for all engine definitions: settings key, RTDB stats key, display name, type. Used by `GetSelectedEnginesUseCase`, `UsageUtils`, `UsageConstants`, `_isEngineInPlan`, and `_engineLimit`. |
 | `fl_chart` package | Powers usage visualizations (bar/line charts) |
 
 > [!TIP]
 > Because `UsageRepositoryImpl` wraps `ISubscriptionRepository`, there is no extra Firebase cost — the subscription listener is already open. The usage screen simply presents a different view of data already in memory.
+
+> [!IMPORTANT]
+> **Engine Key Spaces**: The Flutter settings system uses **settings keys** (e.g. `'google'`, `'riva-nmt'`) while the Python server writes **RTDB stats keys** (e.g. `'google-translate'`, `'riva-grpc-mt'`) to `model_stats/`. These two key spaces are different for every engine except `riva-asr`. All translation between these spaces must go through `EngineRegistry` — never hardcode both sides of this mapping in ad-hoc string comparisons.
 
 ---
 

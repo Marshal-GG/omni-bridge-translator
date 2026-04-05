@@ -43,6 +43,15 @@ class TranslationWebsocketClient implements IResettable {
   String _rivaAsrParakeetFunctionId = '';
   String _rivaAsrCanaryFunctionId = '';
 
+  // Last model-level settings sent to the backend — used to compute model_changed flag.
+  String _lastSentTranslationModel = '';
+  String _lastSentTranscriptionModel = '';
+  String _lastSentNvidiaNimKey = '';
+  dynamic _lastSentGoogleCredentials = '';
+  String _lastSentRivaTranslationId = '';
+  String _lastSentRivaParakeetId = '';
+  String _lastSentRivaCanaryId = '';
+
   String get _wsUrl => 'ws://$serverHost:$serverPort/captions';
 
   TranslationWebsocketClient({
@@ -243,6 +252,13 @@ class TranslationWebsocketClient implements IResettable {
   }
 
   /// Update active translation settings without reconnecting socket
+  /// Resets the exponential reconnect backoff counter.
+  /// Call this before a deliberate settings update so the next
+  /// disconnect (from backend model reload) reconnects at 2s, not higher.
+  void resetReconnectBackoff() {
+    _reconnectAttempt = 0;
+  }
+
   void updateSettings({
     required String sourceLang,
     required String targetLang,
@@ -259,6 +275,14 @@ class TranslationWebsocketClient implements IResettable {
     String rivaAsrParakeetFunctionId = '',
     String rivaAsrCanaryFunctionId = '',
   }) {
+    final modelChanged = translationModel != _lastSentTranslationModel ||
+        transcriptionModel != _lastSentTranscriptionModel ||
+        nvidiaNimKey != _lastSentNvidiaNimKey ||
+        googleCredentials.toString() != _lastSentGoogleCredentials.toString() ||
+        rivaTranslationFunctionId != _lastSentRivaTranslationId ||
+        rivaAsrParakeetFunctionId != _lastSentRivaParakeetId ||
+        rivaAsrCanaryFunctionId != _lastSentRivaCanaryId;
+
     _sourceLang = sourceLang;
     _targetLang = targetLang;
     _useMic = useMic;
@@ -271,6 +295,16 @@ class TranslationWebsocketClient implements IResettable {
     _rivaTranslationFunctionId = rivaTranslationFunctionId;
     _rivaAsrParakeetFunctionId = rivaAsrParakeetFunctionId;
     _rivaAsrCanaryFunctionId = rivaAsrCanaryFunctionId;
+
+    if (modelChanged) {
+      _lastSentTranslationModel = translationModel;
+      _lastSentTranscriptionModel = transcriptionModel;
+      _lastSentNvidiaNimKey = nvidiaNimKey;
+      _lastSentGoogleCredentials = googleCredentials;
+      _lastSentRivaTranslationId = rivaTranslationFunctionId;
+      _lastSentRivaParakeetId = rivaAsrParakeetFunctionId;
+      _lastSentRivaCanaryId = rivaAsrCanaryFunctionId;
+    }
 
     if (_channel != null) {
       final payload = <String, dynamic>{
@@ -287,6 +321,7 @@ class TranslationWebsocketClient implements IResettable {
         'riva_translation_function_id': rivaTranslationFunctionId,
         'riva_asr_parakeet_function_id': rivaAsrParakeetFunctionId,
         'riva_asr_canary_function_id': rivaAsrCanaryFunctionId,
+        'model_changed': modelChanged,
       };
       if (inputDeviceIndex != null) {
         payload['input_device_index'] = inputDeviceIndex;
@@ -360,7 +395,7 @@ class TranslationWebsocketClient implements IResettable {
     _isRunning = false;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
-    _sub?.cancel();
+    await _sub?.cancel();
     _sub = null;
     _channel?.sink.add(jsonEncode({'cmd': 'stop'}));
     await Future.delayed(const Duration(milliseconds: 300));

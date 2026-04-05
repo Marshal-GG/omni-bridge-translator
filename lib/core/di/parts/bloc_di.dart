@@ -105,6 +105,7 @@ void initBlocDI() {
       getUsageHistory: sl(),
       getQuotaStatus: sl(),
       checkUsageRollover: sl(),
+      getSelectedEngines: sl(),
     ),
   );
 

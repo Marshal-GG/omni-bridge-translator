@@ -6,6 +6,7 @@
 |----------|-----------|---------|---------|
 | **Framework** | Flutter | SDK ^3.10.7 | Desktop UI (Windows) |
 | **State Management** | flutter_bloc + bloc | ^9.1.1 | BLoC pattern |
+| **BLoC Concurrency** | bloc_concurrency | ^0.3.0 | Event transformers: `sequential()` (settings save), `droppable()` (settings load) |
 | **DI** | get_it | ^7.7.0 | Service locator / dependency injection |
 | **Navigation** | go_router | (via core/router) | Declarative routing |
 | **Firebase** | firebase_core, firebase_auth, cloud_firestore, firebase_database | ^4.5.0 / ^6.2.0 / ^6.1.3 / ^12.1.4 | Auth, settings sync, usage tracking |
@@ -64,6 +65,7 @@
 | flutter_launcher_icons | App icon generation |
 | bloc_test + mocktail | BLoC unit testing |
 | pytest | Python server unit testing (server/ tests/) |
+| `analysis_options.yaml` | Custom lint config: `unused_import` as error, safety rules (`unawaited_futures`, `cancel_subscriptions`, `avoid_print`, etc.) |
 | `flutter_ci.yml` | GitHub Actions: analyze + BLoC unit tests + Codecov coverage + Windows build verification |
 | `release.yml` | GitHub Actions: full installer build (PyInstaller + Inno Setup) + GitHub Release creation |
 
@@ -78,3 +80,7 @@
 | BLoC over Provider | Explicit event/state contracts; better for testability and debugging |
 | flutter_secure_storage | Prevents debug/release session cross-contamination (see `08_session_isolation_guide.md`) |
 | Firebase on desktop | Handles auth + cloud sync without a custom backend |
+| `model_changed` flag in settings sync | Backend skips expensive model reinitialization when only non-model settings change (volume, VAD, etc.) |
+| Script-aware `estimate_tokens()` | Accurate BPE token estimation per script (CJK/Devanagari ≈1 tok/char vs Latin ≈1/4); used for token quota tracking |
+| gRPC warmup on session start | Pre-establishes TLS connection to NVIDIA NIM on first session start, eliminating 5–6s first-caption delay |
+| `ThreadPoolExecutor` for ASR | Parallel chunk submission with ordered `deque[Future]` drain preserves caption order without blocking |

@@ -14,6 +14,15 @@ class LlamaModel:
 
     MODEL_ID = "meta/llama-3.1-8b-instruct"
 
+    @staticmethod
+    def build_system_prompt(target_lang: str) -> str:
+        return (
+            f"You are a live speech translator. Translate the following spoken text into {target_lang}. "
+            "The input may be a partial sentence, mid-thought, or contain mixed scripts — translate it anyway. "
+            f"NEVER transliterate. NEVER skip. ALWAYS output the {target_lang} translation and nothing else. "
+            "No explanations, no labels, no original text."
+        )
+
     def __init__(self, api_key: str):
         self.api_key = api_key.strip() if api_key else ""
         self.client = None
@@ -81,18 +90,11 @@ class LlamaModel:
             raise RuntimeError("Llama client not initialized (missing API key).")
         start = time.monotonic()
         try:
+            system_prompt = self.build_system_prompt(target_lang)
             completion = self.client.chat.completions.create(
                 model=self.MODEL_ID,
                 messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            f"You are a live speech translator. Translate the following spoken text into {target_lang}. "
-                            "The input may be a partial sentence, mid-thought, or contain mixed scripts — translate it anyway. "
-                            f"NEVER transliterate. NEVER skip. ALWAYS output the {target_lang} translation and nothing else. "
-                            "No explanations, no labels, no original text."
-                        ),
-                    },
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": text},
                 ],
                 temperature=0,
@@ -114,8 +116,8 @@ class LlamaModel:
                 "latency_ms": latency_ms,
                 "api_prompt_tokens": usage.prompt_tokens if usage else 0,
                 "api_completion_tokens": usage.completion_tokens if usage else 0,
-                "input_tokens": (len(text) + 3) // 4,
-                "output_tokens": (len(result) + 3) // 4,
+                "input_tokens": len(text) + len(system_prompt),
+                "output_tokens": len(result),
             }
             return result, stats
         except Exception as e:

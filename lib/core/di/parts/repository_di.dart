@@ -13,6 +13,9 @@ void initRepositoryDI() {
   sl.registerLazySingleton<ISettingsRepository>(
     () => SettingsRepositoryImpl(sl()),
   );
+  sl.registerLazySingleton<IEngineSelectionSource>(
+    () => sl<ISettingsRepository>() as SettingsRepositoryImpl,
+  );
   sl.registerLazySingleton<ITranslationRepository>(
     () => TranslationRepositoryImpl(sl(), sl(), sl()),
   );

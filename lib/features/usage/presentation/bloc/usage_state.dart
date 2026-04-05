@@ -23,6 +23,8 @@ class UsageLoaded extends UsageState {
   final int translationTokens;
   final String tier;
   final QuotaStatus? quotaStatus;
+  final String selectedTranslationEngine;
+  final String selectedTranscriptionEngine;
 
   const UsageLoaded({
     required this.engineUsage,
@@ -33,6 +35,8 @@ class UsageLoaded extends UsageState {
     required this.translationTokens,
     required this.tier,
     this.quotaStatus,
+    this.selectedTranslationEngine = 'google',
+    this.selectedTranscriptionEngine = 'online',
   });
 
   @override
@@ -45,6 +49,8 @@ class UsageLoaded extends UsageState {
     translationTokens,
     tier,
     quotaStatus,
+    selectedTranslationEngine,
+    selectedTranscriptionEngine,
   ];
 }
 

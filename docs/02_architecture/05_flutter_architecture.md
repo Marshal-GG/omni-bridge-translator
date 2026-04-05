@@ -28,10 +28,11 @@ The project follows a clean, modular 3-layer architecture to ensure scalability 
 lib/
 ├── core/                        # Shared Framework & Infrastructure
 │   ├── config/                  # AppConfig, ServerConfig
-│   ├── constants/               # Strings, Colors, Model Language Support
+│   ├── constants/               # Strings, Colors, Model Language Support, EngineRegistry
 │   ├── data/                    # App-level DataSources (Sessions, Usage, Maintenance)
 │   ├── device/                  # Device info utilities
 │   ├── di/                      # Dependency Injection (injection.dart)
+│   ├── interfaces/              # Cross-feature abstractions (IEngineSelectionSource)
 │   ├── error/                   # Failure classes
 │   ├── infrastructure/          # PythonServerManager (process lifecycle)
 │   ├── navigation/              # AppRouter (Centralized) & GlobalNavigator
@@ -59,12 +60,26 @@ lib/
 | BLoC | Responsibility | Depends On |
 |------|----------------|------------|
 | `AuthBloc` | Firebase Auth state management | `IAuthRepository` |
-| `SettingsBloc` | User preferences, device selection, and audio monitoring | `GetAppSettingsUseCase`, `UpdateAppSettingsUseCase`, `GetGoogleCredentialsUseCase`, `LoadDevicesUseCase`, `ObserveAudioLevelsUseCase`, `LogEventUseCase`, `GetSubscriptionStatus` |
+| `SettingsBloc` | User preferences, device selection, audio monitoring, and API key validation gating | `GetAppSettingsUseCase`, `UpdateAppSettingsUseCase`, `GetGoogleCredentialsUseCase`, `LoadDevicesUseCase`, `ObserveAudioLevelsUseCase`, `LogEventUseCase`, `GetSubscriptionStatus` |
 | `TranslationBloc` | Live translation session control, caption streaming, server health, model status, quota reactivity, and auth-aware settings sync | `StartTranslationUseCase`, `StopTranslationUseCase`, `UpdateVolumeUseCase`, `GetModelStatusUseCase`, `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `GetInitialQuotaStatusUseCase`, `GetDefaultTierUseCase`, `UpdateTranslationSettingsUseCase`, `CheckServerHealthUseCase`, `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, `GetAppSettingsUseCase`, `GetGoogleCredentialsUseCase`, `SyncSettingsUseCase`, `LogEventUseCase`, `LogoutUseCase`, `GetSystemConfigUseCase`, `SubscriptionRemoteDataSource`, `TranslationRestDatasource` |
 | `HistoryBloc` | Live and chunked transcription history | `GetLiveHistoryUseCase`, `GetChunkedHistoryUseCase`, `ClearHistoryUseCase`, `AddHistoryEntryUseCase`, `ConfigureHistoryUseCase`, `SubscriptionRemoteDataSource` |
 | `AboutBloc` | App versioning and updates | `CheckForUpdate` |
 | `StartupBloc` | Bootstrapping, auth check, and routing | `IAuthRepository` |
 | `SubscriptionBloc` | Real-time subscription status and plan management | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial`, `OpenCheckout`, `HasUsedTrial` |
+| `UsageBloc` | Analytics dashboard: engine stats, quota, and history. Emits `UsageLoaded` which includes `selectedTranslationEngine` and `selectedTranscriptionEngine` (RTDB stats keys) for highlighting the active engine card | `GetUsageStats`, `GetUsageHistory`, `GetQuotaStatus`, `CheckUsageRollover`, `GetSelectedEnginesUseCase` |
+
+### BLoC Concurrency (Event Transformers)
+
+`TranslationBloc` uses [`bloc_concurrency`](https://pub.dev/packages/bloc_concurrency) to prevent race conditions without custom queuing logic:
+
+| Event | Transformer | Behaviour |
+|-------|-------------|-----------|
+| `ApplySettingsEvent` | `sequential()` | Queues concurrent saves — no settings call ever overtakes another |
+| `LoadSettingsEvent` | `droppable()` | Drops duplicate load triggers (rapid auth state changes emit multiple) |
+
+### API Key Validation Gate (`SettingsBloc`)
+
+`SettingsBloc` owns an `invalidApiKey: bool` state field (default `false`). The `languages_tab.dart` widget fires `SetApiKeyValidityEvent` after validating the NVIDIA NIM key against the live endpoint. `settings_footer.dart` blocks the Save button whenever `state.invalidApiKey == true` or a `translationCompatibilityError` exists.
 
 ---
 
@@ -80,7 +95,7 @@ UseCases are the brain of the feature. They encapsulate a single business logic 
 | **History** | `GetLiveHistory`, `GetChunkedHistory`, `AddHistoryEntry`, `ConfigureHistory`, `ClearHistory` |
 | **Subscription** | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial`, `OpenCheckout`, `HasUsedTrial` |
 | **About** | `CheckForUpdate` |
-| **Usage** | *(Delegates to `UsageRepository` which wraps `ISubscriptionRepository`)* |
+| **Usage** | `GetUsageStats`, `GetUsageHistory`, `GetQuotaStatus`, `CheckUsageRollover`, `GetSelectedEnginesUseCase` |
 
 ### Design System (AppTheme)
 
@@ -185,6 +200,9 @@ Launch
 Settings
  └─ SettingsBloc syncs preferences to Firestore on save
  └─ TranslationBloc triggers initial sync to Python server on app launch to populate model statuses
+ └─ TranslationWebsocketClient computes `model_changed` flag — only true when model/key/credentials actually changed
+     └─ Backend skips model reinitialization when flag is false (volume, VAD, language-only changes)
+ └─ NIM key changed while session is running → TranslationBloc auto stop+start to reinitialize backend NIM client
 
 Start Translation
  └─ TranslationBloc sends `start` command via AsrWsClient
@@ -208,5 +226,6 @@ To handle heavy AI models (like Whisper Medium or Llama), the app implements a r
     - **Ready**: UI enables the "Start" button and shows "Ready" status.
     - **Fallback**: If a primary model fails to load, `TranslationBloc` reflects the switch to a fallback engine (e.g., Google Online).
 5.  **Connection Resilience**: If the server WebSocket disconnects, `TranslationBloc` detects the disconnect event, auto-pauses the stream, and the underlying `TranslationWebsocketClient` continuously attempts exponential backoff reconnection.
+6.  **Immediate Health Check**: `_startHealthCheck()` fires `_checkHealthOnce()` immediately on start (instead of waiting for the first 3-second tick), then polls every 3s. This means the UI recovers from a backend reload within 2–5s instead of up to 8s.
 6.  **Subscription Tier Reactivity**: The `TranslationBloc` validates model selections against real-time subscription quotas. If a tier downgrade occurs, it transparently unloads premium models, fallback-switches to default models, and updates the UI.
 ```

@@ -18,20 +18,28 @@ class ConfigHandler(BaseHandler):
         new_riva_asr_p_id = msg.get("riva_asr_parakeet_function_id", self.ctx.config["riva_asr_parakeet_function_id"]) or msg.get("rivaAsrParakeetFunctionId")
         new_riva_asr_c_id = msg.get("riva_asr_canary_function_id", self.ctx.config["riva_asr_canary_function_id"]) or msg.get("rivaAsrCanaryFunctionId")
  
+        # Whether model-level settings changed (requires full pipeline restart + model reinit)
+        has_model_changed = (
+            msg.get("model_changed", True) and (  # Flutter sends False when only lang/device changed
+                self.ctx.config["nvidia_nim_key"] != new_key or
+                self.ctx.config["transcription_model"] != new_trans or
+                self.ctx.config["translation_model"] != new_tl or
+                self.ctx.config["google_credentials"] != new_google_creds or
+                self.ctx.config["riva_translation_function_id"] != new_riva_tl_id or
+                self.ctx.config["riva_asr_parakeet_function_id"] != new_riva_asr_p_id or
+                self.ctx.config["riva_asr_canary_function_id"] != new_riva_asr_c_id
+            )
+        )
+
+        # Whether any config changed at all (lang, mic, device, model, etc.)
         has_changed = (
+            has_model_changed or
             self.ctx.config["source_lang"] != new_source or
             self.ctx.config["target_lang"] != new_target or
             self.ctx.config["ai_engine"] != new_engine or
-            self.ctx.config["use_mic"] != new_mic or
-            self.ctx.config["nvidia_nim_key"] != new_key or
-            self.ctx.config["transcription_model"] != new_trans or
-            self.ctx.config["translation_model"] != new_tl or
-            self.ctx.config["google_credentials"] != new_google_creds or
-            self.ctx.config["riva_translation_function_id"] != new_riva_tl_id or
-            self.ctx.config["riva_asr_parakeet_function_id"] != new_riva_asr_p_id or
-            self.ctx.config["riva_asr_canary_function_id"] != new_riva_asr_c_id
+            self.ctx.config["use_mic"] != new_mic
         )
- 
+
         self.ctx.config.update({
             "source_lang": new_source,
             "target_lang": new_target,
@@ -47,9 +55,12 @@ class ConfigHandler(BaseHandler):
         })
 
         if self.ctx.is_running and has_changed:
-            logging.info("[Handler] Settings changed while running. Restarting...")
+            if has_model_changed:
+                logging.info("[Handler] Model settings changed while running. Full restart...")
+            else:
+                logging.info("[Handler] Config-only change (lang/device). Light restart, skipping model reinit...")
             from .session_handler import SessionHandler
-            await SessionHandler(self.ctx).start(websocket, self.ctx.config)
+            await SessionHandler(self.ctx).start(websocket, self.ctx.config, reload_models=has_model_changed)
         elif not self.ctx.is_running:
             if self.ctx.orchestrator:
                 self.ctx.orchestrator.set_api_keys(

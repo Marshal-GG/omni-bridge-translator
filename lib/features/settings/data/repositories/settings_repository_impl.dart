@@ -4,8 +4,9 @@ import 'package:omni_bridge/features/settings/data/datasources/settings_remote_d
 import 'package:omni_bridge/features/settings/domain/entities/app_settings.dart';
 import 'package:omni_bridge/features/settings/domain/entities/system_config.dart';
 import 'package:omni_bridge/features/settings/domain/repositories/i_settings_repository.dart';
+import 'package:omni_bridge/core/interfaces/i_engine_selection_source.dart';
 
-class SettingsRepositoryImpl implements ISettingsRepository {
+class SettingsRepositoryImpl implements ISettingsRepository, IEngineSelectionSource {
   final ISettingsRemoteDataSource _remoteDataSource;
 
   SettingsRepositoryImpl(this._remoteDataSource);
@@ -64,5 +65,17 @@ class SettingsRepositoryImpl implements ISettingsRepository {
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
+  }
+
+  @override
+  Future<String> getSelectedTranslationEngine() async {
+    final result = await getSettings();
+    return result.fold((_) => 'google', (s) => s?.translationModel ?? 'google');
+  }
+
+  @override
+  Future<String> getSelectedTranscriptionEngine() async {
+    final result = await getSettings();
+    return result.fold((_) => 'online', (s) => s?.transcriptionModel ?? 'online');
   }
 }

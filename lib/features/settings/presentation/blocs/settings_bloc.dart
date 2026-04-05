@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/get_app_settings_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/update_app_settings_usecase.dart';
@@ -14,7 +16,6 @@ import 'package:omni_bridge/features/subscription/data/datasources/subscription_
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'settings_event.dart';
 import 'settings_state.dart';
-import 'dart:async';
 
 class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   final GetAppSettingsUseCase getAppSettingsUseCase;
@@ -49,6 +50,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<LiveVolumeUpdateEvent>(_onLiveVolumeUpdate);
     on<LiveDeviceUpdateEvent>(_onLiveDeviceUpdate);
     on<LiveMicToggleEvent>(_onLiveMicToggle);
+    on<SetApiKeyValidityEvent>(_onSetApiKeyValidity);
 
     _subscriptionStatusSubscription = getSubscriptionStatus().listen((status) {
       add(SubscriptionStatusChangedEvent(status));
@@ -159,7 +161,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       (failure) => logEventUseCase(
         'settings_save_failed',
         parameters: {'error': failure.message},
-      ),
+      ).ignore(),
       (_) {},
     );
     emit(state.copyWith(isSaving: false));
@@ -220,7 +222,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
           'was_translation_reset': needsTranslationReset,
           'was_transcription_reset': needsTranscriptionReset,
         },
-      );
+      ).ignore();
     }
   }
 
@@ -249,6 +251,13 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     Emitter<SettingsState> emit,
   ) {
     liveMicToggleUseCase(event.useMic);
+  }
+
+  void _onSetApiKeyValidity(
+    SetApiKeyValidityEvent event,
+    Emitter<SettingsState> emit,
+  ) {
+    emit(state.copyWith(invalidApiKey: !event.isValid));
   }
 
   @override

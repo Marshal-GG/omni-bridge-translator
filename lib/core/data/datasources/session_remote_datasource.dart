@@ -125,7 +125,7 @@ class SessionRemoteDataSource implements IResettable {
       _pingSession();
     });
 
-    _sessionSub?.cancel();
+    await _sessionSub?.cancel();
     _sessionSub = sessionRef?.snapshots().listen((snapshot) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (snapshot.exists) {
@@ -141,7 +141,7 @@ class SessionRemoteDataSource implements IResettable {
       });
     });
 
-    _userSub?.cancel();
+    await _userSub?.cancel();
     _userSub = _firestore
         .collection(FirebasePaths.users)
         .doc(uid)
@@ -178,7 +178,7 @@ class SessionRemoteDataSource implements IResettable {
     }
   }
 
-  void _handleRemoteLogout() async {
+  Future<void> _handleRemoteLogout() async {
     final userUid = uid;
     if (userUid != null) {
       await _secureStorage.delete(

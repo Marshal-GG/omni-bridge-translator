@@ -7,8 +7,14 @@ import 'package:omni_bridge/features/usage/presentation/widgets/usage_utils.dart
 class EngineUsageCard extends StatelessWidget {
   final EngineUsage usage;
   final double? maxTokens;
+  final bool isSelected;
 
-  const EngineUsageCard({super.key, required this.usage, this.maxTokens});
+  const EngineUsageCard({
+    super.key,
+    required this.usage,
+    this.maxTokens,
+    this.isSelected = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +30,12 @@ class EngineUsageCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: UsageColors.cardBackground,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: themeColor.withValues(alpha: 0.15)),
+          border: Border.all(
+            color: isSelected
+                ? themeColor.withValues(alpha: 0.75)
+                : themeColor.withValues(alpha: 0.15),
+            width: isSelected ? 1.5 : 1.0,
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: IntrinsicHeight(
@@ -83,7 +94,27 @@ class EngineUsageCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (!hasAccess)
+                          if (isSelected)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: themeColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'ACTIVE',
+                                style: TextStyle(
+                                  color: themeColor,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            )
+                          else if (!hasAccess)
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 6,

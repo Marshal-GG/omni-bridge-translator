@@ -6,7 +6,7 @@ import 'package:omni_bridge/features/settings/presentation/blocs/settings_state.
 
 Widget buildSettingsFooter(BuildContext context, SettingsState state) {
   final isSaving = state.isSaving;
-  final isBlocked = state.translationCompatibilityError != null;
+  final isBlocked = state.translationCompatibilityError != null || state.invalidApiKey;
 
   return Container(
     padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),

@@ -133,6 +133,7 @@ class _UsageScreenState extends State<UsageScreen> {
                                           .toList(),
                                       state.engineUsage,
                                       constraints.maxWidth,
+                                      state.selectedTranscriptionEngine,
                                     ),
                                     const SizedBox(height: 16),
                                     _buildEngineSection(
@@ -148,6 +149,7 @@ class _UsageScreenState extends State<UsageScreen> {
                                           .toList(),
                                       state.engineUsage,
                                       constraints.maxWidth,
+                                      state.selectedTranslationEngine,
                                     ),
                                     const SizedBox(height: 32),
 
@@ -336,6 +338,7 @@ class _UsageScreenState extends State<UsageScreen> {
     List<EngineUsage> engines,
     List<EngineUsage> allEngines,
     double maxWidth,
+    String selectedEngine,
   ) {
     if (engines.isEmpty) return const SizedBox.shrink();
 
@@ -385,7 +388,11 @@ class _UsageScreenState extends State<UsageScreen> {
                   .map(
                     (e) => SizedBox(
                       width: cardWidth,
-                      child: EngineUsageCard(usage: e, maxTokens: maxTokens),
+                      child: EngineUsageCard(
+                        usage: e,
+                        maxTokens: maxTokens,
+                        isSelected: e.engine == selectedEngine,
+                      ),
                     ),
                   )
                   .toList(),

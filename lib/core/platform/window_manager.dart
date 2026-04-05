@@ -31,7 +31,7 @@ Future<void> initializeWindow() async {
   });
 }
 
-void configureMainWindow() async {
+Future<void> configureMainWindow() async {
   appWindow.title = "Omni Bridge: Live AI Translator";
 
   // Use FirebaseAuth through AuthRemoteDataSource for named instance isolation
@@ -152,6 +152,7 @@ Future<void> setToDashboardPosition() async {
 
 class _AppWindowListener extends WindowListener {
   @override
+  // ignore: avoid_void_async
   void onWindowClose() async {
     // End the Firebase tracing session gracefully before closing
     await SessionRemoteDataSource.instance.endSession();

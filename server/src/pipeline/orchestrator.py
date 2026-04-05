@@ -17,6 +17,8 @@ import time
 import structlog
 import pysbd
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor, Future
+from collections import deque
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from src.models.asr import RivaASRModel, WhisperModel, get_gpu_info, SpeechRecognitionModel
@@ -64,6 +66,10 @@ class InferenceOrchestrator:
         self.audio_queue: queue.Queue = queue.Queue()
         self._translation_queue: queue.Queue = queue.Queue()
         self._reloader_lock = threading.Lock()
+        # ThreadPoolExecutor for parallel ASR — max 2 workers so we never
+        # double the RPM budget (chunks are still produced at the same rate,
+        # but a slow Riva call won't stall the next chunk from starting).
+        self._asr_executor: Optional[ThreadPoolExecutor] = None
         
         # Models
         self._init_models()
@@ -173,9 +179,20 @@ class InferenceOrchestrator:
         self.is_running = True
         self.audio_clear()
 
+        # ASR thread pool — 2 workers so a slow Riva call (network jitter)
+        # doesn't stall the next chunk from starting immediately.
+        self._asr_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="ASRWorker")
+
         # Start Workers
         threading.Thread(target=self._asr_worker, name="ASRWorker", daemon=True).start()
         threading.Thread(target=self._translation_worker, name="TranslationWorker", daemon=True).start()
+
+        # Warm up Riva gRPC connection in background so the first real chunk
+        # doesn't pay the ~5-6s TLS cold-start cost.
+        if self.asr_dispatcher.transcription_model == "riva-asr" and self.riva_asr:
+            from src.utils import LANG_TO_BCP47
+            warmup_lang = "multi" if source_lang == "auto" else LANG_TO_BCP47.get(source_lang, "en-US")
+            self.riva_asr.warmup(sample_rate=sample_rate, lang=warmup_lang)
 
         logging.info(f"[Orchestrator] Stream started: ASR={self.asr_dispatcher.transcription_model}, Translat={self.translation_dispatcher.translation_model}")
 
@@ -184,7 +201,11 @@ class InferenceOrchestrator:
         self.is_running = False
         self.audio_queue.put(None)
         self._translation_queue.put(None)
-        
+
+        if self._asr_executor:
+            self._asr_executor.shutdown(wait=False)
+            self._asr_executor = None
+
         # Unload Whisper to free up VRAM when not in use
         if self.whisper:
             self.whisper.unload_model()
@@ -262,29 +283,56 @@ class InferenceOrchestrator:
     # ── Workers ──────────────────────────────────────────────────────────────
 
     def _asr_worker(self):
-        """Processes audio chunks into text transcripts via ASRDispatcher."""
+        """Processes audio chunks into text transcripts via ASRDispatcher.
+
+        Uses a ThreadPoolExecutor so a slow Riva gRPC call (network jitter)
+        doesn't stall the next chunk from starting. Results are collected in
+        submission order via a deque of Futures so captions are never reordered.
+        """
         use_auto = self.asr_dispatcher.source_lang == "auto"
         asr_lang = "multi" if use_auto else _LANG_MAP.get(self.asr_dispatcher.source_lang, "en-US")
-        
-        # Prepare model-specific config (like Riva gRPC config)
         config = self.riva_asr.make_config(self._sample_rate, asr_lang) if self.asr_dispatcher.transcription_model == "riva-asr" else None
+
+        pending: deque[Future] = deque()
+
+        def _drain_ordered():
+            """Flush completed futures from the front of the deque in order."""
+            while pending and pending[0].done():
+                fut = pending.popleft()
+                try:
+                    asr_result = fut.result()
+                    if asr_result:
+                        self._translation_queue.put(asr_result)
+                except Exception as e:
+                    logging.error(f"[ASRWorker] Future error: {e}")
 
         while self.is_running:
             try:
-                chunk = self.audio_queue.get(timeout=1.0)
-                if chunk is None: break
+                chunk = self.audio_queue.get(timeout=0.1)
+                if chunk is None:
+                    break
 
-                # ASRDispatcher now handles byte/ndarray conversion
-                asr_result = self.asr_dispatcher.process_chunk(chunk, config)
-                
-                if asr_result:
-                    self._translation_queue.put(asr_result)
+                executor = self._asr_executor
+                if executor is None:
+                    break
+
+                fut = executor.submit(self.asr_dispatcher.process_chunk, chunk, config)
+                pending.append(fut)
+                _drain_ordered()
 
             except queue.Empty:
+                _drain_ordered()
                 continue
             except Exception as e:
                 logging.error(f"[ASRWorker] Error: {e}")
                 self._emit_error(f"ASR Failure: {e}")
+
+        # Drain remaining futures — but session is already stopped so discard results
+        for fut in pending:
+            try:
+                fut.result(timeout=10)
+            except Exception:
+                pass
 
     def _translation_worker(self):
         """Processes transcripts into translations via TranslationDispatcher."""

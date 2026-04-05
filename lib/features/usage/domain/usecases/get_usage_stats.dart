@@ -1,3 +1,4 @@
+import 'package:omni_bridge/core/constants/engine_registry.dart';
 import 'package:omni_bridge/features/usage/domain/entities/engine_usage.dart';
 import 'package:omni_bridge/features/usage/domain/repositories/usage_repository.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/usage_utils.dart';
@@ -60,8 +61,8 @@ class GetUsageStats {
       final groupKey = '${s.type.name}::$displayName';
 
       final monthlyUsed = monthlyPerEngine[s.engine] ?? 0;
-      final monthlyLimit = limits[s.engine] ?? -1;
-      final inPlan = _subscriptionRepository.canUseModel(s.engine);
+      final monthlyLimit = _engineLimit(limits, s.engine);
+      final inPlan = _isEngineInPlan(s.engine);
 
       if (groupedStats.containsKey(groupKey)) {
         final existing = groupedStats[groupKey]!;
@@ -117,17 +118,13 @@ class GetUsageStats {
   void _injectMissingEngines(List<EngineUsage> stats) {
     for (final engine in UsageConstants.knownAsrEngines) {
       if (!stats.any((s) => s.engine == engine)) {
-        if (_subscriptionRepository.isModelEnabled(engine)) {
-          stats.add(_emptyUsage(engine, UsageType.asr));
-        }
+        stats.add(_emptyUsage(engine, UsageType.asr));
       }
     }
 
     for (final engine in UsageConstants.knownTranslationEngines) {
       if (!stats.any((s) => s.engine == engine)) {
-        if (_subscriptionRepository.isModelEnabled(engine)) {
-          stats.add(_emptyUsage(engine, UsageType.translation));
-        }
+        stats.add(_emptyUsage(engine, UsageType.translation));
       }
     }
   }
@@ -142,6 +139,20 @@ class GetUsageStats {
       totalLatencyMs: 0,
       type: type,
     );
+  }
+
+  int _engineLimit(Map<String, int> limits, String statsKey) {
+    if (limits.containsKey(statsKey)) return limits[statsKey]!;
+    for (final settingsKey in EngineRegistry.settingsKeysForStatsKey(statsKey)) {
+      if (limits.containsKey(settingsKey)) return limits[settingsKey]!;
+    }
+    return -1;
+  }
+
+  bool _isEngineInPlan(String statsKey) {
+    final settingsKeys = EngineRegistry.settingsKeysForStatsKey(statsKey);
+    if (settingsKeys.isEmpty) return _subscriptionRepository.canUseModel(statsKey);
+    return settingsKeys.any((k) => _subscriptionRepository.canUseModel(k));
   }
 
   DateTime? _latestDate(DateTime? a, DateTime? b) {

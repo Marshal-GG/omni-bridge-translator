@@ -171,7 +171,7 @@ class SupportBloc extends Bloc<SupportEvent, SupportState> {
   }
 
   Future<void> _onOpenChat(OpenChat event, Emitter<SupportState> emit) async {
-    _messagesSubscription?.cancel();
+    await _messagesSubscription?.cancel();
     emit(
       state.copyWith(
         activeTicketId: event.ticketId,

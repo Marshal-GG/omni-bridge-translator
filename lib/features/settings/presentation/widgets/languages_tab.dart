@@ -605,20 +605,20 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
       _downloadedModels[_currentSize] = s['downloaded'] == true;
     });
     _startPollingIfNeeded();
-    _refreshAll();
+    unawaited(_refreshAll());
   }
 
   Future<void> _refreshAll() async {
     final sizes = ['tiny', 'base', 'small', 'medium'];
     for (final s in sizes) {
       if (s != _currentSize) {
-        _svc.getStatus(s).then((stats) {
+        unawaited(_svc.getStatus(s).then((stats) {
           if (mounted) {
             setState(() {
               _downloadedModels[s] = stats['downloaded'] == true;
             });
           }
-        });
+        }));
       }
     }
   }
@@ -1076,6 +1076,8 @@ class _NvidiaApiKeySectionState extends State<_NvidiaApiKeySection> {
         _status = ApiKeyStatus.missing;
         _isEditing = true;
       });
+      // Empty key — not invalid, just missing; don't block save
+      context.read<SettingsBloc>().add(const SetApiKeyValidityEvent(isValid: true));
       return;
     }
 
@@ -1084,6 +1086,7 @@ class _NvidiaApiKeySectionState extends State<_NvidiaApiKeySection> {
         _status = ApiKeyStatus.invalidFormat;
         _isEditing = true;
       });
+      context.read<SettingsBloc>().add(const SetApiKeyValidityEvent(isValid: false));
       return;
     }
 
@@ -1096,15 +1099,12 @@ class _NvidiaApiKeySectionState extends State<_NvidiaApiKeySection> {
           headers: {'Authorization': 'Bearer ${key.trim()}'},
         );
         if (mounted) {
+          final isValid = res.statusCode == 200;
           setState(() {
-            if (res.statusCode == 200) {
-              _status = ApiKeyStatus.valid;
-              _isEditing = false;
-            } else {
-              _status = ApiKeyStatus.invalidKey;
-              _isEditing = true;
-            }
+            _status = isValid ? ApiKeyStatus.valid : ApiKeyStatus.invalidKey;
+            _isEditing = !isValid;
           });
+          context.read<SettingsBloc>().add(SetApiKeyValidityEvent(isValid: isValid));
         }
       } catch (e) {
         if (mounted) {
@@ -1112,12 +1112,13 @@ class _NvidiaApiKeySectionState extends State<_NvidiaApiKeySection> {
             _status = ApiKeyStatus.invalidKey;
             _isEditing = true;
           });
+          context.read<SettingsBloc>().add(const SetApiKeyValidityEvent(isValid: false));
         }
       }
     }
 
     if (immediate) {
-      action();
+      unawaited(action());
     } else {
       _debounce = Timer(const Duration(milliseconds: 800), action);
     }

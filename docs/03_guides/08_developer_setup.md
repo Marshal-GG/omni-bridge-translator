@@ -116,6 +116,23 @@ flutter run -d windows
 > [!NOTE]
 > **Windows Build Fix**: A known issue where `firebase_core` fails to find specific CMake files on Windows has been resolved in the project's root `windows/CMakeLists.txt`. No manual intervention is required.
 
+### Static Analysis
+
+The project uses a custom `analysis_options.yaml` that extends `flutter_lints/flutter.yaml` with additional safety rules:
+
+| Rule | Severity | What it catches |
+|------|----------|----------------|
+| `unused_import` | **Error** | Fails CI — must be fixed before merging |
+| `unused_local_variable` | Warning | Dead variables |
+| `unawaited_futures` | Info | Fire-and-forget Futures that could silently fail |
+| `cancel_subscriptions` | Info | `StreamSubscription` not cancelled |
+| `avoid_print` | Info | Use `AppLogger` instead of `print()` |
+| `avoid_void_async` | Info | `Future<void>` preferred over `void` for async functions |
+
+```powershell
+flutter analyze
+```
+
 ### Running Flutter Unit Tests
 
 The Flutter app has a comprehensive unit test suite covering all core BLoCs. No device, Firebase, or network connection is required to run them.

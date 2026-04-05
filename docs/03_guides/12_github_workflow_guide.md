@@ -49,7 +49,7 @@ on:
 | `actions/checkout@v4` | Downloads your code onto GitHub's server |
 | `subosito/flutter-action@v2` | Installs Flutter (cached for speed) |
 | `flutter pub get` | Installs all packages |
-| `flutter analyze --fatal-infos` | Checks for lints, warnings, errors — fails if any found |
+| `flutter analyze --fatal-infos` | Checks for lints, warnings, errors — fails if any found. Rules come from `analysis_options.yaml` (custom config: `unused_import` is an error, safety rules like `unawaited_futures` are infos) |
 | `flutter test --coverage` | Runs all unit tests and generates a coverage report |
 | `codecov/codecov-action@v4` | Uploads `coverage/lcov.info` to Codecov for % visualization |
 

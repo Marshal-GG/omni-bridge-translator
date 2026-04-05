@@ -91,15 +91,15 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
 {
   "order": ["free", "trial", "pro", "enterprise"],
   "popular": "pro",
-  "usage_poll_interval_seconds": 30,
+  "usage_poll_interval_seconds": 10,
   "fallback_engine": "google",
   "tiers": {
     "free": {
       "name": "Free",
       "price": "₹0",
       "description": "Basic translation for casual use",
-      "display_features": ["Google Translate only", "Google Online ASR", "Desktop audio capture", "20,000 tokens/day · 300K/month"],
-      "allowed_transcription_models": ["online"],
+      "display_features": ["Google Translate only", "Google Online ASR · NVIDIA Riva ASR", "Desktop audio capture", "40,000 characters/day · 750K/month"],
+      "allowed_transcription_models": ["online", "riva-asr"],
       "allowed_translation_models": ["google"],
       "features": {
         "mic_audio": false,
@@ -108,7 +108,7 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
         "simultaneous_sessions": 1,
         "session_duration_hours": 1
       },
-      "quotas": { "daily_tokens": 20000, "monthly_tokens": 300000 },
+      "quotas": { "daily_tokens": 40000, "monthly_tokens": 750000 },
       "engine_limits": {},
       "rate_limits": { "requests_per_minute": 20, "concurrent_sessions": 1 }
     },
@@ -118,7 +118,7 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
       "description": "Free one-time 24-hour pass — full engine access",
       "is_trial": true,
       "trial_duration_hours": 24,
-      "display_features": ["All translation & transcription engines", "Microphone + desktop audio", "50,000 tokens for 24 hours", "One-time per account"],
+      "display_features": ["All translation & transcription engines", "Microphone + desktop audio", "75,000 characters for 24 hours", "One-time per account"],
       "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small", "whisper-medium", "riva"],
       "allowed_translation_models": ["google", "mymemory", "google_api", "riva", "llama"],
       "features": {
@@ -128,7 +128,7 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
         "simultaneous_sessions": 1,
         "session_duration_hours": 24
       },
-      "quotas": { "daily_tokens": 50000, "monthly_tokens": 50000 },
+      "quotas": { "daily_tokens": 75000, "monthly_tokens": 75000 },
       "engine_limits": {},
       "rate_limits": { "requests_per_minute": 60, "concurrent_sessions": 1 }
     },
@@ -136,8 +136,8 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
       "name": "Pro",
       "price": "₹799/mo",
       "description": "All engines with generous limits",
-      "display_features": ["All translation engines", "Whisper transcription (tiny–medium)", "Microphone + desktop audio", "Caption history (7 days)", "100,000 tokens/day · 1.5M/month", "500K tokens/month per paid engine"],
-      "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small", "whisper-medium", "riva"],
+      "display_features": ["All translation engines", "Whisper transcription (tiny, base)", "Microphone + desktop audio", "Caption history (7 days)", "75,000 characters/day · 3.75M/month", "250K characters/month per paid engine · 375K for Whisper"],
+      "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "riva"],
       "allowed_translation_models": ["google", "mymemory", "google_api", "riva", "llama"],
       "features": {
         "mic_audio": true,
@@ -146,15 +146,15 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
         "simultaneous_sessions": 2,
         "session_duration_hours": 4
       },
-      "quotas": { "daily_tokens": 100000, "monthly_tokens": 1500000 },
-      "engine_limits": { "google_api": 500000, "riva": 500000, "llama": 500000 },
+      "quotas": { "daily_tokens": 75000, "monthly_tokens": 3750000 },
+      "engine_limits": { "google_api": 250000, "riva-nmt": 250000, "llama": 250000, "whisper-asr": 375000 },
       "rate_limits": { "requests_per_minute": 60, "concurrent_sessions": 2 }
     },
     "enterprise": {
       "name": "Enterprise",
       "price": "₹2,499/mo",
       "description": "Maximum capacity for power users",
-      "display_features": ["Everything in Pro", "Whisper medium + Riva transcription", "Caption history (30 days)", "Up to 5 simultaneous sessions", "500,000 tokens/day · 10M/month", "3.3M tokens/month per paid engine"],
+      "display_features": ["Everything in Pro", "Whisper transcription (tiny–medium)", "Caption history (30 days)", "Up to 5 simultaneous sessions", "250,000 characters/day · 9M/month", "750K characters/month per paid engine · 1.1M for Whisper"],
       "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small", "whisper-medium", "riva"],
       "allowed_translation_models": ["google", "mymemory", "google_api", "riva", "llama"],
       "features": {
@@ -164,22 +164,23 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
         "simultaneous_sessions": 5,
         "session_duration_hours": 12
       },
-      "quotas": { "daily_tokens": 500000, "monthly_tokens": 10000000 },
-      "engine_limits": { "google_api": 3300000, "riva": 3300000, "llama": 3300000 },
+      "quotas": { "daily_tokens": 250000, "monthly_tokens": 9000000 },
+      "engine_limits": { "google_api": 750000, "riva-nmt": 750000, "llama": 750000, "whisper-asr": 1125000 },
       "rate_limits": { "requests_per_minute": 120, "concurrent_sessions": 5 }
     }
   },
   "model_overrides": {
-    "online":         { "enabled": true, "display_name": "Google Speech" },
-    "google":         { "enabled": true, "display_name": "Google Translate" },
-    "mymemory":       { "enabled": true, "display_name": "MyMemory" },
-    "google_api":     { "enabled": true, "display_name": "Google Cloud" },
-    "riva":           { "enabled": true, "display_name": "NVIDIA Riva" },
-    "llama":          { "enabled": true, "display_name": "Llama 3.1" },
-    "whisper-tiny":   { "enabled": true, "display_name": "Whisper Tiny" },
-    "whisper-base":   { "enabled": true, "display_name": "Whisper Base" },
-    "whisper-small":  { "enabled": true, "display_name": "Whisper Small" },
-    "whisper-medium": { "enabled": true, "display_name": "Whisper Medium" }
+    "online":         { "enabled": true,  "display_name": "Google Speech" },
+    "google":         { "enabled": true,  "display_name": "Google Translate" },
+    "mymemory":       { "enabled": false, "display_name": "MyMemory" },
+    "google_api":     { "enabled": true,  "display_name": "Google Cloud" },
+    "riva-nmt":       { "enabled": true,  "display_name": "NVIDIA Riva NMT" },
+    "riva-asr":       { "enabled": true,  "display_name": "NVIDIA Riva ASR" },
+    "llama":          { "enabled": true,  "display_name": "Llama 3.1" },
+    "whisper-tiny":   { "enabled": true,  "display_name": "Whisper Tiny" },
+    "whisper-base":   { "enabled": true,  "display_name": "Whisper Base" },
+    "whisper-small":  { "enabled": true,  "display_name": "Whisper Small" },
+    "whisper-medium": { "enabled": true,  "display_name": "Whisper Medium" }
   },
   "announcements": {
     "active": false,
@@ -195,7 +196,7 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
     "promo_message": "",
     "feature_locked": {
       "title": "Upgrade Your Plan",
-      "message": "Get more daily tokens and unlock exclusive features like premium translation engines.",
+      "message": "Get more daily **characters** and unlock exclusive features like premium translation engines.",
       "highlights": ["Priority Support"]
     }
   },
@@ -207,7 +208,7 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
 |---|---|---|
 | `order` | `array` | Tier IDs in rank order (index 0 = free/default) |
 | `popular` | `string` | The ID of the tier to highlight as "Popular" |
-| `usage_poll_interval_seconds` | `number` | RTDB usage polling interval (default: 30) |
+| `usage_poll_interval_seconds` | `number` | RTDB usage polling interval in seconds (default: 10) |
 | `tiers` | `map` | Per-tier config (see below) |
 | `model_overrides` | `map` | Global kill switches per model (`enabled: false` disables for all tiers) |
 | `announcements` | `map` | Banner config: `active`, `message`, `type`, `dismiss_key`, `target_tiers` |
@@ -226,7 +227,7 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
 | `allowed_translation_models` | `array` | Model IDs allowed for translation (e.g., `["google", "mymemory", "google_api"]`) |
 | `features` | `map` | Feature flags: `mic_audio`, `history_enabled`, `caption_retention_days`, `simultaneous_sessions`, `session_duration_hours` |
 | `quotas` | `map` | Token limits: `daily_tokens`, `monthly_tokens` |
-| `engine_limits` | `map` | Per-engine monthly token caps (e.g., `{"google_api": 500000}`). Engines not listed (`google`, `online`) are exempt. When exceeded, hybrid fallback is triggered. |
+| `engine_limits` | `map` | Per-engine monthly character caps keyed by **settings key** (e.g., `{"google_api": 250000, "riva-nmt": 250000, "llama": 250000, "whisper-asr": 375000}`). The Flutter client resolves these against RTDB stats keys via `EngineRegistry`. Engines not listed (`google`, `online`) are exempt. When exceeded, hybrid fallback is triggered. |
 | `rate_limits` | `map` | Rate limiting: `requests_per_minute`, `concurrent_sessions` |
 | `is_trial` | `bool?` | `true` if this tier is a one-time trial |
 | `trial_duration_hours` | `number?` | Duration in hours (only relevant when `is_trial` is `true`, default: 24) |
@@ -353,12 +354,12 @@ Created automatically on first login by `SubscriptionService._initializeUserDoc(
 
 | Tier | Daily | Monthly | Engine Limits (per month) | Sessions | Duration |
 |---|---|---|---|---|---|
-| `free` | 20,000 | 300,000 | None (Google Translate only) | 1 | 1 hour |
-| `trial` | 50,000 | 50,000 (one-time) | None | 1 | 24 hours |
-| `pro` | 100,000 | 1,500,000 | google_api/riva/llama: 500k each | 2 | 4 hours |
-| `enterprise` | 500,000 | 10,000,000 | google_api/riva/llama: 3.3M each | 5 | 12 hours |
+| `free` | 40,000 | 750,000 | None (Google Translate only) | 1 | 1 hour |
+| `trial` | 75,000 | 75,000 (one-time) | None | 1 | 24 hours |
+| `pro` | 75,000 | 3,750,000 | google_api/riva-nmt/llama: 250k · whisper: 375k | 2 | 4 hours |
+| `enterprise` | 250,000 | 9,000,000 | google_api/riva-nmt/llama: 750k · whisper: 1.1M | 5 | 12 hours |
 
-> **Token-to-time estimate**: ~20,000 tokens ≈ 30 minutes of active translation usage.
+> **Character-to-time estimate**: ~53,000 characters ≈ 30 minutes of English→Hindi translation (Riva NMT). Units are exact source + output character counts — no estimation.
  
 > Quota limits, pricing, and feature gate requirements are fetched dynamically from `system/monetization`. Payment links are handled via Razorpay (see `SubscriptionService.openCheckout()`). Setting the `tier` field directly in Firestore (or via a backend function) upgrades the user; the Firestore listener in `_listenToUserDoc()` detects the change and fires a `subscription_events` log automatically.
 
@@ -502,9 +503,9 @@ Single document synced whenever the user saves settings.
 | `fontSize` | `number` | Caption font size in px |
 | `isBold` | `bool` | Caption bold toggle |
 | `opacity` | `number` | Window background opacity (0–1) |
-| `translationModel` | `string` | Selected engine: `google` (default) \| `riva` \| `llama` \| `mymemory` |
+| `translationModel` | `string` | Selected engine: `google` (default) \| `google_api` \| `riva-nmt` \| `llama` \| `mymemory` |
 | `apiKey` | `string` | NVIDIA NIM API key (empty for Google Translate / MyMemory). Stored as plaintext; readable only by the owner via Firestore security rules. |
-| `transcriptionModel` | `string` | ASR backend: `google` (default) \| `whisper-tiny` \| `whisper-base` \| `whisper-small` \| `whisper-medium` |
+| `transcriptionModel` | `string` | ASR backend: `online` (default) \| `whisper-tiny` \| `whisper-base` \| `whisper-small` \| `whisper-medium` \| `riva-asr` |
 | `inputDeviceIndex` | `number?` | Mic device index (null = system default) |
 | `outputDeviceIndex` | `number?` | Desktop audio device index (null = default) |
 | `micVolume` | `number` | Mic capture gain (0–2) |
@@ -517,7 +518,7 @@ Written via RTDB REST multi-path `PATCH` or `POST` requests. Avoids Firestore wr
 
 ### 1. Cumulative Usage (Totals) — `users/{uid}/usage/totals`
 
-The **Single Source of Truth** for current user usage. Polled at an interval sourced from `system/monetization → usage_poll_interval_seconds` (default 30s) by `SubscriptionService`.
+The **Single Source of Truth** for current user usage. Polled at an interval sourced from `system/monetization → usage_poll_interval_seconds` (default 10s) by `SubscriptionService`.
 
 ```json
 {
@@ -564,9 +565,9 @@ One node written **per translation call**. Never updated after creation.
 }
 ```
 
-> For all text-based engines, `total_tokens` is populated (estimated dynamically via heuristical character sizing as `((len(text) + 3) // 4)` where actual token counts aren't available).
+> For all text-based engines, `total_tokens` is the exact character count (`input_tokens + output_tokens`). No estimation — every model reports exact characters via `len()`. Llama additionally includes the system prompt character count in `input_tokens`.
 
-**Engines:** `riva` | `llama` | `google` | `google_api` | `mymemory` | `whisper`
+**Engine values (RTDB stats key):** `google-asr` | `whisper-asr` | `riva-asr` | `google-translate` | `google-cloud-v3-grpc` | `riva-grpc-mt` | `llama-translate` | `mymemory-translate`
 
 | Field | Type | Notes |
 |---|---|---|
@@ -588,61 +589,111 @@ One node written **per translation call**. Never updated after creation.
 One node **per engine**, updated atomically on every translation. Use this to answer *"how much has this user used each engine?"*
 
 ```json
-// users/{uid}/model_stats/riva
+// users/{uid}/model_stats/riva-asr
 {
-  "engine": "riva",
+  "engine": "riva-asr",
   "total_calls": 1482,
-  "total_tokens": 0,
+  "total_tokens": 268140,
   "total_latency_ms": 622440,
   "total_input_tokens": 128940,
   "total_output_tokens": 139200,
   "last_used": 1741244995000
 }
 
-// users/{uid}/model_stats/llama
+// users/{uid}/model_stats/whisper-asr
 {
-  "engine": "llama",
-  "total_calls": 34,
-  "total_tokens": 41200,
-  "total_latency_ms": 306000,
-  "total_input_tokens": 2890,
-  "total_output_tokens": 3100,
-  "last_used": 1741243330000
+  "engine": "whisper-asr",
+  "total_calls": 120,
+  "total_tokens": 12000,
+  "total_latency_ms": 96000,
+  "total_input_tokens": 12000,
+  "total_output_tokens": 0,
+  "last_used": 1741251600000
 }
 
-// users/{uid}/model_stats/google
+// users/{uid}/model_stats/google-asr
 {
-  "engine": "google",
+  "engine": "google-asr",
+  "total_calls": 88,
+  "total_tokens": 8200,
+  "total_latency_ms": 41000,
+  "total_input_tokens": 8200,
+  "total_output_tokens": 0,
+  "last_used": 1741250000000
+}
+
+// users/{uid}/model_stats/google-translate
+{
+  "engine": "google-translate",
   "total_calls": 210,
-  "total_tokens": 0,
+  "total_tokens": 37700,
   "total_latency_ms": 89040,
   "total_input_tokens": 18200,
   "total_output_tokens": 19500,
   "last_used": 1741240530000
 }
 
-// users/{uid}/model_stats/mymemory
+// users/{uid}/model_stats/google-cloud-v3-grpc
 {
-  "engine": "mymemory",
+  "engine": "google-cloud-v3-grpc",
+  "total_calls": 75,
+  "total_tokens": 14800,
+  "total_latency_ms": 31500,
+  "total_input_tokens": 7200,
+  "total_output_tokens": 7600,
+  "last_used": 1741248000000
+}
+
+// users/{uid}/model_stats/riva-grpc-mt
+{
+  "engine": "riva-grpc-mt",
+  "total_calls": 340,
+  "total_tokens": 69200,
+  "total_latency_ms": 142800,
+  "total_input_tokens": 33500,
+  "total_output_tokens": 35700,
+  "last_used": 1741247000000
+}
+
+// users/{uid}/model_stats/llama-translate
+{
+  "engine": "llama-translate",
+  "total_calls": 34,
+  "total_tokens": 41200,
+  "total_latency_ms": 306000,
+  "total_input_tokens": 22890,
+  "total_output_tokens": 18310,
+  "last_used": 1741243330000
+}
+
+// users/{uid}/model_stats/mymemory-translate
+{
+  "engine": "mymemory-translate",
   "total_calls": 45,
-  "total_tokens": 0,
+  "total_tokens": 9050,
   "total_latency_ms": 32000,
   "total_input_tokens": 4500,
   "total_output_tokens": 4550,
   "last_used": 1741249800000
 }
-
-// users/{uid}/model_stats/whisper
-{
-  "engine": "whisper",
-  "total_calls": 120,
-  "total_tokens": 0,
-  "total_latency_ms": 96000,
-  "total_input_tokens": 12000,
-  "total_output_tokens": 0,
-  "last_used": 1741251600000
-}
 ```
+
+> **Key format**: The path key and the `engine` field are both the **RTDB stats key** — the exact value the server writes in each model's `stats["engine"]` field. These differ from the **settings keys** stored in `app_preferences.translationModel` / `transcriptionModel`. See the [Engine Key Mapping](#engine-key-mapping) table below.
+
+#### Engine Key Mapping
+
+| Settings key (`app_preferences`) | RTDB stats key (`model_stats/`) | Type |
+|---|---|---|
+| `online` | `google-asr` | ASR |
+| `whisper-tiny` / `whisper-base` / `whisper-small` / `whisper-medium` | `whisper-asr` | ASR |
+| `riva-asr` | `riva-asr` | ASR |
+| `google` | `google-translate` | Translation |
+| `google_api` | `google-cloud-v3-grpc` | Translation |
+| `riva-nmt` | `riva-grpc-mt` | Translation |
+| `llama` | `llama-translate` | Translation |
+| `mymemory` | `mymemory-translate` | Translation |
+
+> The canonical mapping is defined in [`lib/core/constants/engine_registry.dart`](../../lib/core/constants/engine_registry.dart) (`EngineRegistry`). All engine key lookups in the Flutter client must go through this registry.
 
 > All counters are aggregated and updated via client-side total fetching and writing. Atomic increments were removed due to REST API multi-path constraints.
 

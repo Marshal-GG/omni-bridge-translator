@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:omni_bridge/features/startup/presentation/widgets/startup_header.dart';
@@ -71,7 +73,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _finishOnboarding() async {
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed('/login');
+    unawaited(Navigator.of(context).pushReplacementNamed('/login'));
   }
 
   @override

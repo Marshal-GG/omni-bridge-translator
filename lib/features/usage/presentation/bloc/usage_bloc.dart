@@ -3,6 +3,7 @@ import 'package:omni_bridge/features/usage/domain/usecases/get_usage_stats.dart'
 import 'package:omni_bridge/features/usage/domain/usecases/get_usage_history.dart';
 import 'package:omni_bridge/features/usage/domain/usecases/get_quota_status.dart';
 import 'package:omni_bridge/features/usage/domain/usecases/check_usage_rollover.dart';
+import 'package:omni_bridge/features/usage/domain/usecases/get_selected_engines_usecase.dart';
 import 'package:omni_bridge/features/usage/presentation/bloc/usage_event.dart';
 import 'package:omni_bridge/features/usage/presentation/bloc/usage_state.dart';
 
@@ -11,16 +12,19 @@ class UsageBloc extends Bloc<UsageEvent, UsageState> {
   final GetUsageHistory _getUsageHistory;
   final GetQuotaStatus _getQuotaStatus;
   final CheckUsageRollover _checkUsageRollover;
+  final GetSelectedEnginesUseCase _getSelectedEngines;
 
   UsageBloc({
     required GetUsageStats getUsageStats,
     required GetUsageHistory getUsageHistory,
     required GetQuotaStatus getQuotaStatus,
     required CheckUsageRollover checkUsageRollover,
+    required GetSelectedEnginesUseCase getSelectedEngines,
   }) : _getUsageStats = getUsageStats,
        _getUsageHistory = getUsageHistory,
        _getQuotaStatus = getQuotaStatus,
        _checkUsageRollover = checkUsageRollover,
+       _getSelectedEngines = getSelectedEngines,
        super(UsageInitial()) {
     on<LoadUsageStats>(_onLoadUsageStats);
   }
@@ -37,6 +41,7 @@ class UsageBloc extends Bloc<UsageEvent, UsageState> {
       final summary = await _getUsageStats();
       final history = await _getUsageHistory();
       final quotaStatus = _getQuotaStatus.current;
+      final engines = await _getSelectedEngines();
 
       emit(
         UsageLoaded(
@@ -48,6 +53,8 @@ class UsageBloc extends Bloc<UsageEvent, UsageState> {
           translationTokens: summary.translationTokens,
           tier: quotaStatus?.tier.toUpperCase() ?? 'FREE',
           quotaStatus: quotaStatus,
+          selectedTranslationEngine: engines.translationStatsKey,
+          selectedTranscriptionEngine: engines.transcriptionStatsKey,
         ),
       );
     } catch (e) {

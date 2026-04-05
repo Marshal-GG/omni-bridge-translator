@@ -129,3 +129,12 @@ class LiveMicToggleEvent extends SettingsEvent {
   @override
   List<Object?> get props => [useMic];
 }
+
+class SetApiKeyValidityEvent extends SettingsEvent {
+  final bool isValid;
+
+  const SetApiKeyValidityEvent({required this.isValid});
+
+  @override
+  List<Object?> get props => [isValid];
+}

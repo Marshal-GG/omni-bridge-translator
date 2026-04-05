@@ -73,4 +73,5 @@ void initUseCaseDI() {
   sl.registerLazySingleton(() => GetUsageHistory(sl()));
   sl.registerLazySingleton(() => GetQuotaStatus(sl()));
   sl.registerLazySingleton(() => CheckUsageRollover(sl(), sl()));
+  sl.registerLazySingleton(() => GetSelectedEnginesUseCase(sl<IEngineSelectionSource>()));
 }

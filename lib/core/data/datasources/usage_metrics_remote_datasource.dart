@@ -42,8 +42,11 @@ class UsageMetricsRemoteDataSource implements IResettable {
   void logModelUsage(Map<String, dynamic> stats) {
     try {
       final engine = stats['engine'] as String? ?? 'unknown';
-      final inputTokens = (stats['input_tokens'] as num?)?.toInt() ?? 0;
-      final outputTokens = (stats['output_tokens'] as num?)?.toInt() ?? 0;
+      // Prefer real API token counts (Llama/NIM) over char-based estimates.
+      final apiPrompt = (stats['api_prompt_tokens'] as num?)?.toInt();
+      final apiCompletion = (stats['api_completion_tokens'] as num?)?.toInt();
+      final inputTokens = apiPrompt ?? (stats['input_tokens'] as num?)?.toInt() ?? 0;
+      final outputTokens = apiCompletion ?? (stats['output_tokens'] as num?)?.toInt() ?? 0;
       final latencyMs = (stats['latency_ms'] as num?)?.toInt() ?? 0;
 
       _usageBuffer[engine] ??= {

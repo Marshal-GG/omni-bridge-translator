@@ -89,8 +89,8 @@ class RivaNMTModel:
             "engine": "riva-grpc-mt",
             "model": "nvidia/riva-translate-4b",
             "latency_ms": latency_ms,
-            "input_tokens": (len(text) + 3) // 4,
-            "output_tokens": (len(result) + 3) // 4,
+            "input_tokens": len(text),
+            "output_tokens": len(result),
         }
 
     def get_status(self) -> dict:

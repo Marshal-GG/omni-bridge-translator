@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -91,7 +92,7 @@ class PythonServerManager {
         }
 
         // Auto-restart logic for unexpected crashes
-        _serverProcess!.exitCode.then((code) {
+        unawaited(_serverProcess!.exitCode.then((code) {
           AppLogger.i('Process exited with code: $code', tag: _tag);
           if (!_isIntentionalStop) {
             _serverProcess = null;
@@ -107,7 +108,7 @@ class PythonServerManager {
               }
             });
           }
-        });
+        }));
       } else {
         AppLogger.w(
           'Bundled server not found at $pyPath. Ensure the server is running manually in dev mode.',

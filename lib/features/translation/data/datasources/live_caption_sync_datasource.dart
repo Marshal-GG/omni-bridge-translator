@@ -77,7 +77,7 @@ class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
         );
         if (interimUrl != null) {
           // Fire and forget delete so we don't block
-          http.delete(interimUrl).catchError((_) => http.Response('', 500));
+          unawaited(http.delete(interimUrl).catchError((_) => http.Response('', 500)));
         }
 
         _lastCaptionTimestamp = now;
@@ -126,7 +126,7 @@ class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
       if (_pendingInterim != null) {
         final nextData = _pendingInterim!;
         _pendingInterim = null;
-        _syncInterimSequentially(nextData);
+        unawaited(_syncInterimSequentially(nextData));
       }
     }
   }

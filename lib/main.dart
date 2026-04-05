@@ -6,6 +6,8 @@
  * See the LICENSE file in the project root for full license terms.
  */
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:omni_bridge/app.dart';
@@ -27,16 +29,16 @@ void main(List<String> args) async {
 
   // Configure the main window once it is ready
   doWhenWindowReady(() {
-    configureMainWindow();
+    unawaited(configureMainWindow());
   });
 
   // Silent background update check — fire and forget
-  UpdateRemoteDataSource.instance.checkForUpdate().then((result) {
+  unawaited(UpdateRemoteDataSource.instance.checkForUpdate().then((result) {
     if (result.status == UpdateStatus.available) {
       UpdateNotifier.instance.setAvailable(
         result.latestVersion ?? '',
         result.releaseUrl ?? '',
       );
     }
-  });
+  }));
 }

@@ -21,6 +21,7 @@ class SubscriptionRepositoryImpl implements ISubscriptionRepository {
 
   @override
   Stream<void> get configChangeStream {
+    // ignore: close_sinks — controller lifetime is tied to the listener; GC'd when stream is no longer listened to
     final controller = StreamController<void>.broadcast();
     _service.configNotifier.addListener(() {
       if (!controller.isClosed) {

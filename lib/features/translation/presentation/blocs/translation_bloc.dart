@@ -5,6 +5,7 @@ import 'package:omni_bridge/features/translation/domain/usecases/unload_model_us
 import 'package:omni_bridge/features/subscription/domain/usecases/check_model_access_usecase.dart';
 import 'package:omni_bridge/features/subscription/domain/usecases/check_engine_limit_usecase.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_event.dart';
@@ -84,8 +85,8 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     on<CaptionTextChangedEvent>(_onCaptionTextChanged);
     on<SourceLangOverrideEvent>(_onSourceLangOverride);
     on<ModelStatusChangedEvent>(_onModelStatusChanged);
-    on<ApplySettingsEvent>(_onApplySettings);
-    on<LoadSettingsEvent>(_onLoadSettings);
+    on<ApplySettingsEvent>(_onApplySettings, transformer: sequential());
+    on<LoadSettingsEvent>(_onLoadSettings, transformer: droppable());
     on<ResetSettingsEvent>(_onResetSettings);
     on<LangErrorEvent>(_onLangError);
     on<UpdateServerConnectionEvent>(_onUpdateServerConnection);
@@ -235,7 +236,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     }
 
     if (state.isRunning) {
-      stopTranslationUseCase();
+      unawaited(stopTranslationUseCase());
       final newState = state.copyWith(isRunning: false);
       emit(newState);
     } else {
@@ -306,7 +307,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         'Quota exceeded, stopping translation.',
         tag: 'TranslationBloc',
       );
-      stopTranslationUseCase();
+      unawaited(stopTranslationUseCase());
       emit(
         state.copyWith(
           isRunning: false,
@@ -331,7 +332,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
       if (!isTranslationAllowed || !isTranscriptionAllowed) {
         if (state.isRunning) {
-          stopTranslationUseCase();
+          unawaited(stopTranslationUseCase());
         }
 
         try {
@@ -638,6 +639,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     ApplySettingsEvent event,
     Emitter<TranslationState> emit,
   ) async {
+    final wasRunning = state.isRunning;
+    final previousNimKey = state.activeNvidiaNimKey;
+
     emit(
       state.copyWith(
         activeTargetLang: event.targetLang,
@@ -669,6 +673,14 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           ? result.getOrElse(() => '')
           : '';
 
+      // Only pass the NIM key when an NVIDIA model is actually selected
+      // (either NIM translation or Riva ASR transcription).
+      // Sending it unconditionally causes the backend to validate the key
+      // on every settings update, including at startup.
+      final needsNimKey = event.translationModel == 'nvidia-nim' ||
+          event.transcriptionModel == 'riva-asr';
+      final nimKeyOnApply = needsNimKey ? event.nvidiaNimKey : '';
+
       final systemConfigResult = await getSystemConfigUseCase();
       final systemConfig = systemConfigResult.getOrElse(
         () => SystemConfig.empty(),
@@ -683,7 +695,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         desktopVolume: event.desktopVolume,
         micVolume: event.micVolume,
         translationModel: event.translationModel,
-        nvidiaNimKey: event.nvidiaNimKey,
+        nvidiaNimKey: nimKeyOnApply,
         googleCredentials: googleCredentialsOnApply,
         transcriptionModel: event.transcriptionModel,
         rivaTranslationFunctionId: systemConfig.rivaTranslationFunctionId,
@@ -702,6 +714,28 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         'nvidiaNimKey': event.nvidiaNimKey,
         'transcriptionModel': event.transcriptionModel,
       });
+
+      // If the NIM key was entered or changed while translation is running,
+      // the backend needs a full stop+start to reinitialize the NIM client.
+      final nimKeyChanged = nimKeyOnApply.isNotEmpty &&
+          nimKeyOnApply != previousNimKey;
+      if (nimKeyChanged && wasRunning) {
+        unawaited(stopTranslationUseCase());
+        startTranslationUseCase(
+          sourceLang: event.sourceLang,
+          targetLang: event.targetLang,
+          useMic: event.useMic,
+          inputDeviceIndex: event.inputDeviceIndex,
+          outputDeviceIndex: event.outputDeviceIndex,
+          translationModel: event.translationModel,
+          nvidiaNimKey: nimKeyOnApply,
+          googleCredentials: googleCredentialsOnApply,
+          transcriptionModel: event.transcriptionModel,
+          rivaTranslationFunctionId: systemConfig.rivaTranslationFunctionId,
+          rivaAsrParakeetFunctionId: systemConfig.rivaAsrParakeetFunctionId,
+          rivaAsrCanaryFunctionId: systemConfig.rivaAsrCanaryFunctionId,
+        );
+      }
     } finally {
       emit(state.copyWith(isSettingsSaving: false));
     }
@@ -728,14 +762,21 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
   void _startHealthCheck() {
     if (_healthCheckTimer != null) return;
-    _healthCheckTimer = Timer.periodic(const Duration(seconds: 5), (
+    // Check immediately, then every 3s — avoids waiting up to 5s after a
+    // settings-update-triggered backend reload which typically takes 2-5s.
+    _checkHealthOnce();
+    _healthCheckTimer = Timer.periodic(const Duration(seconds: 3), (
       timer,
     ) async {
-      final isHealthy = await checkServerHealthUseCase();
-      if (isHealthy && !isClosed) {
-        add(const UpdateServerConnectionEvent(isConnected: true));
-      }
+      await _checkHealthOnce();
     });
+  }
+
+  Future<void> _checkHealthOnce() async {
+    final isHealthy = await checkServerHealthUseCase();
+    if (isHealthy && !isClosed) {
+      add(const UpdateServerConnectionEvent(isConnected: true));
+    }
   }
 
   void _stopHealthCheck() {

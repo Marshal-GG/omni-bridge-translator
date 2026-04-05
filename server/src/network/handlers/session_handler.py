@@ -16,7 +16,7 @@ from src.audio.handler import (
 )
 
 class SessionHandler(BaseHandler):
-    async def start(self, websocket, msg: Dict[str, Any]):
+    async def start(self, websocket, msg: Dict[str, Any], reload_models: bool = True):
         # Update config from message
         updates = {
             "source_lang": msg.get("source"),
@@ -70,9 +70,11 @@ class SessionHandler(BaseHandler):
                     riva_asr_parakeet_id=self.ctx.config["riva_asr_parakeet_function_id"],
                     riva_asr_canary_id=self.ctx.config["riva_asr_canary_function_id"]
                 )
-            else:
+            elif reload_models:
+                # Only reinitialize models when model/key settings actually changed.
+                # Skipping this for lang/device-only changes avoids the 5-20s Riva reinit delay.
                 self.ctx.orchestrator.set_api_keys(
-                    self.ctx.config["nvidia_nim_key"], 
+                    self.ctx.config["nvidia_nim_key"],
                     self.ctx.config["google_credentials"],
                     riva_translation_id=self.ctx.config["riva_translation_function_id"],
                     riva_asr_parakeet_id=self.ctx.config["riva_asr_parakeet_function_id"],

@@ -151,8 +151,8 @@ class GoogleCloudTranslationModel:
                 "latency_ms": latency_ms,
                 "input_chars": len(text),
                 "output_chars": len(result) if result else 0,
-                "input_tokens": (len(text) + 3) // 4,
-                "output_tokens": (len(result) + 3) // 4 if result else 0,
+                "input_tokens": len(text),
+                "output_tokens": len(result) if result else 0,
                 "detected_language": str(detected),
             }
 

@@ -59,8 +59,8 @@ The server uses a **Dependency Injection**-like pattern via `ServerContext`.
 
 ### Command Routing (`router.py` & Modular Handlers)
 Incoming JSON commands are dispatched by the `CommandRouter` to specialized modular handlers in `src/network/handlers/`:
-- **SessionHandler** (`session_handler.py`): Manages the lifecycle of an audio session (`start`/`stop`). It calculates the optimal audio chunk duration based on the selected AI engines to balance latency vs. API rate limits.
-- **ConfigHandler** (`config_handler.py`): Updates settings (languages, keys, devices, dynamic function IDs) in real-time. If settings change during an active session, it triggers a seamless restart. It handles API key and credential reloading asynchronously in a background thread (`threading.Thread`) via the Orchestrator to prevent blocking the WebSocket event loop.
+- **SessionHandler** (`session_handler.py`): Manages the lifecycle of an audio session (`start`/`stop`). It calculates the optimal audio chunk duration based on the selected AI engines to balance latency vs. API rate limits. Accepts `reload_models: bool` parameter — only calls `set_api_keys()` and reinitializes models when `True`.
+- **ConfigHandler** (`config_handler.py`): Updates settings (languages, keys, devices, dynamic function IDs) in real-time. Separates `has_model_changed` (model/key/credential fields changed) from `has_changed` (any field changed). Passes `reload_models=has_model_changed` to `SessionHandler.start()` — skips expensive model reinitialization when only volume, VAD, or language fields were updated. Respects the `model_changed` flag sent by the Flutter client.
 - **DeviceHandler** (`device_handler.py`): Enumerates WASAPI input and loopback devices for the Flutter UI.
 - **StatusHandler** (`status_handler.py`): Manages real-time health reporting. It polls the `InferenceOrchestrator` for model readiness and provides standardized `model_status` payloads.
 
@@ -68,6 +68,23 @@ Incoming JSON commands are dispatched by the `CommandRouter` to specialized modu
 - **Adaptive Chunking**: `AudioCapture` uses a combination of **Voice Activity Detection (VAD)** and time-based flushing. It flushes early when silence follows speech (lowering latency) but guarantees a flush at `MAX_CHUNK_DURATION` to ensure constant feedback.
 - **Volume Scaling**: Real-time gain application for both Mic and Desktop audio before mixing.
 - **Dual Metering**: `AudioMeter` runs independent threads to provide RMS levels for both microphone and system output, used by the UI volume visualizers.
+
+### Character-Based Usage Counting
+
+Every ASR and translation model populates `usage_stats` with exact character counts — no estimation:
+
+```python
+"input_tokens":  len(source_text)   # exact source characters
+"output_tokens": len(result_text)   # exact output characters
+```
+
+For Llama, the system prompt character count is added to `input_tokens` since it is a real cost incurred per chunk:
+
+```python
+"input_tokens": len(text) + len(system_prompt)  # user text + prompt overhead
+```
+
+The system prompt is built via `LlamaModel.build_system_prompt(target_lang)` — a single source of truth, so the char count is always accurate if the prompt changes.
 
 ### Language Support (`utils/language_support.py`)
 Single source of truth for all model language capabilities — imported by both models and the orchestrator. No model defines its own language sets.
@@ -91,12 +108,15 @@ Acts as a high-level coordinator that delegates specialized tasks to dedicated d
 - **`TranslationDispatcher`** (`src/translation/translation_dispatcher.py`):
   - **Fallback Trees**: Implements the multi-stage fallback logic (e.g., Riva -> Llama -> Google Free).
   - **Language Detection**: Orchestrates detection using specialized scripts or model-native capabilities.
+- **Parallel ASR Workers**: `start_stream` creates a `ThreadPoolExecutor(max_workers=2)` so consecutive audio chunks are submitted concurrently. Results are collected in a `deque[Future]` and drained in submission order — parallelism without breaking caption sequence.
+- **gRPC Warmup**: On `start_stream`, `riva_asr.warmup()` sends a 100ms silent chunk in a background thread to pre-establish the TLS connection to `grpc.nvcf.nvidia.com:443`. Eliminates the 5–6s cold-start latency on the first real ASR call.
+- **502/503 Retry**: `RivaASRModel.transcribe()` retries up to 3 times (0.5s, 1.0s backoff) on transient NVIDIA gateway errors before dropping the chunk.
 - **Background Thread Stability**: Implements a "Thread-Safe Queue" pattern ensuring background worker threads (ASR/Translation) can safely communicate results back to the FastAPI event loop.
 - **Speech Polishing**: Employs `pysbd` for sentence segmentation and a custom deduplication algorithm to remove stutters and repetitive phrases.
 - **Queue Resilience**: Worker threads use non-blocking queue polling with timeouts to prevent deadlock or high CPU usage during idle periods.
 ### Audio Handler (`handler.py`)
 Bridges the async FastAPI event loop with background worker threads:
-- **`caption_callback()`** — Called by orchestrator for each transcript/translation. Broadcasts caption JSON to all WebSocket clients and calculates total tokens based on a standardized 4-characters-per-token heuristic (`(len(text) + 3) // 4`), overriding model-specific token counters to ensure uniform quota tracking across all AI engines.
+- **`caption_callback()`** — Called by orchestrator for each transcript/translation. Broadcasts caption JSON to all WebSocket clients. Character counts come from the per-engine `usage_stats` dict (`input_tokens` = exact `len(text)` per model), ensuring language-neutral, cost-accurate usage tracking.
 - **`audio_poll_loop()`** — Background thread that polls audio chunks from `AudioCapture` and feeds them to the orchestrator. Detects session superseding for clean restarts.
 - **`audio_level_broadcast_loop()`** — Async coroutine broadcasting RMS audio levels to clients (~13 fps).
 - **`status_broadcast_loop()`** — Async coroutine broadcasting model health status every 2 seconds.
@@ -122,7 +142,7 @@ Bridges the async FastAPI event loop with background worker threads:
 |---|---|---|
 | `start` | Begin audio session | `source`, `target`, `transcription_model`, `translation_model`, `use_mic`, `api_key`, `google_credentials`, plus dynamic `riva_` function IDs. |
 | `stop` | End audio session | (none) |
-| `settings_update` | Change settings mid-session | Same as `start` (triggers restart if running) |
+| `settings_update` | Change settings mid-session | Same as `start` plus `model_changed: bool` — if `false`, backend skips model reinitialization |
 | `volume_update` | Adjust gain in real-time | `desktop_volume`, `mic_volume` |
 | `list_devices` | Enumerate WASAPI devices | (none) |
 
