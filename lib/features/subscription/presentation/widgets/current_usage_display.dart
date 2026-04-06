@@ -3,6 +3,7 @@ import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/core/widgets/omni_progress_bar.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:intl/intl.dart';
+import 'package:omni_bridge/core/utils/duration_utils.dart';
 
 Widget buildCurrentUsageDisplay({
   required QuotaStatus status,
@@ -73,6 +74,20 @@ Widget buildCurrentUsageDisplay({
         '${formatter.format(status.dailyTokensUsed)} / ${formatter.format(status.dailyLimit)} today',
         style: const TextStyle(color: Colors.white38, fontSize: 10),
       ),
+      if (status.tier == 'trial' && status.trialExpiresAt != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Row(
+            children: [
+              const Icon(Icons.timer_outlined, size: 12, color: Colors.amber),
+              const SizedBox(width: 4),
+              Text(
+                formatTimeRemaining(status.trialExpiresAt!),
+                style: const TextStyle(color: Colors.amber, fontSize: 10),
+              ),
+            ],
+          ),
+        ),
       const SizedBox(height: 16),
       Wrap(
         spacing: 8,

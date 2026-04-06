@@ -14,6 +14,9 @@ class QuotaStatus extends Equatable {
   /// 0 = not applicable (use daily limit instead).
   final int periodLimit;
 
+  /// When the trial expires (null for non-trial tiers).
+  final DateTime? trialExpiresAt;
+
   const QuotaStatus({
     required this.tier,
     required this.dailyTokensUsed,
@@ -25,6 +28,7 @@ class QuotaStatus extends Equatable {
     this.monthlyResetAt,
     this.monthlyLimit = 0,
     this.periodLimit = 0,
+    this.trialExpiresAt,
   });
 
   /// The next date/time the monthly subscription quota will reset (paid only).
@@ -73,6 +77,7 @@ class QuotaStatus extends Equatable {
     int? monthlyLimit,
     DateTime? dailyResetAt,
     int? periodLimit,
+    DateTime? trialExpiresAt,
   }) {
     return QuotaStatus(
       tier: tier ?? this.tier,
@@ -84,6 +89,7 @@ class QuotaStatus extends Equatable {
       monthlyLimit: monthlyLimit ?? this.monthlyLimit,
       dailyResetAt: dailyResetAt ?? this.dailyResetAt,
       periodLimit: periodLimit ?? this.periodLimit,
+      trialExpiresAt: trialExpiresAt ?? this.trialExpiresAt,
     );
   }
 
@@ -99,5 +105,6 @@ class QuotaStatus extends Equatable {
     dailyResetAt,
     monthlyResetAt,
     periodLimit,
+    trialExpiresAt,
   ];
 }

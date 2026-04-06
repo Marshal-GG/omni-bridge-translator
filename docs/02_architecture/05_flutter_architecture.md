@@ -172,6 +172,12 @@ A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically run
 | `RTDBClient` | Singleton HTTP client for Firebase RTDB REST operations (all datasources that write to RTDB route through it). Handles transient retries with exponential backoff. On a 401/403 response it calls `getIdToken(true)` to force-refresh the Firebase ID token so the next request (which re-fetches the URL) carries a valid token. Firestore SDK manages its own token refresh internally. |
 | `ServerConfig` | Single source of truth for the local Python server address (`127.0.0.1:8765`). `wsUrl` and `httpUrl` automatically use `ws://`/`http://` for loopback and upgrade to `wss://`/`https://` for any non-localhost host. The server always binds to loopback so plain WebSocket is intentional and secure. |
 
+### Shared Utilities (`core/utils/`)
+
+| Utility | Purpose |
+|---|---|
+| `duration_utils.dart` | `formatTimeRemaining(DateTime)` — formats a future expiry timestamp as a human-readable countdown ("2d 3h remaining", "45m remaining", "Trial expired"). Used by trial countdown displays on the Usage and Plan screens. |
+
 ---
 
 ## Language Compatibility Validation

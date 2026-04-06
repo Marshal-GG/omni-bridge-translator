@@ -12,6 +12,7 @@ import 'package:omni_bridge/core/widgets/omni_version_chip.dart';
 import '../widgets/subscription_header.dart';
 import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
 import 'package:omni_bridge/core/navigation/app_router.dart';
+import 'package:omni_bridge/core/utils/duration_utils.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -134,6 +135,22 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                                   ),
                                                 );
                                               }).toList(),
+                                            ),
+                                          if (status?.tier == 'trial' &&
+                                              status?.trialExpiresAt != null)
+                                            Padding(
+                                              padding: const EdgeInsets.only(top: 16),
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  const Icon(Icons.timer_outlined, size: 13, color: Colors.amber),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    formatTimeRemaining(status!.trialExpiresAt!),
+                                                    style: const TextStyle(color: Colors.amber, fontSize: 12),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                         ],
                                       ),

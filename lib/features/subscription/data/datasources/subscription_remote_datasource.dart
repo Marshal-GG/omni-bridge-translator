@@ -256,7 +256,7 @@ class SubscriptionRemoteDataSource implements IResettable {
     return _monetizationConfig?['upgrade_prompts'] as Map<String, dynamic>?;
   }
 
-  void _updateCurrentStatus({String? tier, DateTime? resetAt}) {
+  void _updateCurrentStatus({String? tier, DateTime? resetAt, DateTime? trialExpiresAt}) {
     if (_currentStatus == null && tier == null) return;
 
     final newTier = tier ?? _currentStatus?.tier ?? defaultTier;
@@ -271,6 +271,7 @@ class SubscriptionRemoteDataSource implements IResettable {
       lifetimeTokensUsed: _currentStatus?.lifetimeTokensUsed ?? 0,
       dailyLimit: getLimitForTier(newTier),
       dailyResetAt: newReset,
+      trialExpiresAt: newTier == 'trial' ? (trialExpiresAt ?? _currentStatus?.trialExpiresAt) : null,
     );
     _statusController.add(_currentStatus!);
   }
@@ -313,6 +314,9 @@ class SubscriptionRemoteDataSource implements IResettable {
               _checkTrialExpiry(uid, data);
             }
 
+            final trialExpiresAt =
+                (data['trialExpiresAt'] as Timestamp?)?.toDate();
+
             if (_lastKnownTier != null && _lastKnownTier != tier) {
               _logSubscriptionEvent(
                 uid: uid,
@@ -322,7 +326,7 @@ class SubscriptionRemoteDataSource implements IResettable {
             }
             _lastKnownTier = tier;
 
-            _updateCurrentStatus(tier: tier, resetAt: resetAt);
+            _updateCurrentStatus(tier: tier, resetAt: resetAt, trialExpiresAt: trialExpiresAt);
           });
         });
   }
