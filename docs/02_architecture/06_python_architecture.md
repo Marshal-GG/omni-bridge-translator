@@ -54,12 +54,13 @@ server/
 
 ### `flutter_server.py` & `ServerContext`
 The server uses a **Dependency Injection**-like pattern via `ServerContext`.
-- **ServerContext**: Encapsulates all global state (orchestrator, audio capture, metering, active config). This prevents "global variable hell" and ensures thread safety.
+- **ServerContext**: Encapsulates all global state (orchestrator, audio capture, metering, active config, and `quota_remaining`). This prevents "global variable hell" and ensures thread safety.
+- **`quota_remaining`**: Set on every `start` command from Flutter (`quota_daily_limit - quota_daily_used`). `-1` means unlimited. Decremented per translation chunk in `wrap_callback`. Triggers session stop when it reaches 0.
 - **Capabilities Handshake**: Upon WebSocket connection, the server immediately emits a `capabilities` message detailing GPU availability, VRAM, and authenticated AI engines.
 
 ### Command Routing (`router.py` & Modular Handlers)
 Incoming JSON commands are dispatched by the `CommandRouter` to specialized modular handlers in `src/network/handlers/`:
-- **SessionHandler** (`session_handler.py`): Manages the lifecycle of an audio session (`start`/`stop`). It calculates the optimal audio chunk duration based on the selected AI engines to balance latency vs. API rate limits. Accepts `reload_models: bool` parameter — only calls `set_api_keys()` and reinitializes models when `True`.
+- **SessionHandler** (`session_handler.py`): Manages the lifecycle of an audio session (`start`/`stop`). It calculates the optimal audio chunk duration based on the selected AI engines to balance latency vs. API rate limits. Accepts `reload_models: bool` parameter — only calls `set_api_keys()` and reinitializes models when `True`. On every `start` command it enforces the daily character quota received from Flutter: if already exceeded, broadcasts `quota_exceeded` and returns without starting; otherwise stores `quota_remaining` in `ServerContext` and deducts characters per chunk in `wrap_callback`, stopping the session mid-session if the budget runs out.
 - **ConfigHandler** (`config_handler.py`): Updates settings (languages, keys, devices, dynamic function IDs) in real-time. Separates `has_model_changed` (model/key/credential fields changed) from `has_changed` (any field changed). Passes `reload_models=has_model_changed` to `SessionHandler.start()` — skips expensive model reinitialization when only volume, VAD, or language fields were updated. Respects the `model_changed` flag sent by the Flutter client.
 - **DeviceHandler** (`device_handler.py`): Enumerates WASAPI input and loopback devices for the Flutter UI.
 - **StatusHandler** (`status_handler.py`): Manages real-time health reporting. It polls the `InferenceOrchestrator` for model readiness and provides standardized `model_status` payloads.
@@ -135,12 +136,13 @@ Bridges the async FastAPI event loop with background worker threads:
 | `audio_levels` | Real-time RMS levels | `input_level` (0.0–1.0), `output_level` (0.0–1.0) |
 | `model_status` | Model health broadcast | `models[]` with `name`, `status`, `ready`, `progress`, `_is_loading`. Sent immediately upon connection and then periodically. States include `ready`, `error`, `loading`, and `fallback`. |
 | `error` | Error message | `text`, `is_final`, `original` |
+| `quota_exceeded` | Daily character quota reached — session stopped by server | `text` (user-facing reason) |
 
 ### Commands Received from Clients
 
 | Command | Purpose | Key Fields |
 |---|---|---|
-| `start` | Begin audio session | `source`, `target`, `transcription_model`, `translation_model`, `use_mic`, `api_key`, `google_credentials`, plus dynamic `riva_` function IDs. |
+| `start` | Begin audio session | `source`, `target`, `transcription_model`, `translation_model`, `use_mic`, `api_key`, `google_credentials`, plus dynamic `riva_` function IDs. Also `quota_daily_used` (chars used today) and `quota_daily_limit` (daily cap, `-1` = unlimited) for server-side quota enforcement. |
 | `stop` | End audio session | (none) |
 | `settings_update` | Change settings mid-session | Same as `start` plus `model_changed: bool` — if `false`, backend skips model reinitialization |
 | `volume_update` | Adjust gain in real-time | `desktop_volume`, `mic_volume` |
@@ -197,6 +199,32 @@ The `InferenceOrchestrator` implements a priority-based fallback system:
    - **Google Cloud (v3 gRPC)**: Enterprise-grade translation. Falls back to Google Free on quota/auth issues.
    - **MyMemory / Google Free**: Public REST API fallbacks used when API keys are missing or premium quotas are exhausted.
    - **Silent Drop**: If all models in the chain fail, the caption is discarded rather than broadcasting broken/untranslated text.
+
+---
+
+## Production Build (PyInstaller)
+
+The server ships as a standalone Windows executable built with PyInstaller.
+
+```powershell
+cd server
+pyinstaller omni_bridge_server.spec
+# output: server/dist/omni_bridge_server.exe (~234 MB)
+```
+
+**`omni_bridge_server.spec`** — key configuration:
+- `datas=[('src', 'src')]` — copies the entire `src/` package tree into the bundle so submodule discovery works at runtime
+- `hiddenimports` — lists all `src.*` submodules plus third-party packages (PyInstaller cannot auto-discover them because obfuscation masks the import graph)
+- `console=True` — keeps the console window so crashes are visible; Flutter launches the exe hidden anyway
+
+**Optional obfuscated build** (PyArmor):
+```powershell
+cd server
+pyarmor gen --output dist_obfuscated .
+pyinstaller omni_bridge_server.spec   # spec auto-detects dist_obfuscated/
+```
+
+The spec checks `os.path.exists('dist_obfuscated')` at build time and switches the entry script and `pathex` automatically.
 
 ---
 

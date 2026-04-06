@@ -150,6 +150,14 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
   void _initAsr() {
     _captionSub = observeCaptionsUseCase()?.listen((msg) {
+      if (msg.isQuotaExceeded && state.isRunning && !isClosed) {
+        AppLogger.w(
+          'Server quota_exceeded received. Stopping session.',
+          tag: 'TranslationBloc',
+        );
+        add(ToggleRunningEvent());
+      }
+
       if (msg.isDisconnect) {
         if (!isClosed) {
           add(UpdateServerConnectionEvent(isConnected: false));
@@ -273,6 +281,8 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
         rivaTranslationFunctionId: systemConfig.rivaTranslationFunctionId,
         rivaAsrParakeetFunctionId: systemConfig.rivaAsrParakeetFunctionId,
         rivaAsrCanaryFunctionId: systemConfig.rivaAsrCanaryFunctionId,
+        quotaDailyUsed: state.quotaStatus?.dailyTokensUsed ?? 0,
+        quotaDailyLimit: state.quotaStatus?.dailyLimit ?? -1,
       );
       final newState = state.copyWith(isRunning: true);
       emit(newState);
@@ -734,6 +744,8 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
           rivaTranslationFunctionId: systemConfig.rivaTranslationFunctionId,
           rivaAsrParakeetFunctionId: systemConfig.rivaAsrParakeetFunctionId,
           rivaAsrCanaryFunctionId: systemConfig.rivaAsrCanaryFunctionId,
+          quotaDailyUsed: state.quotaStatus?.dailyTokensUsed ?? 0,
+          quotaDailyLimit: state.quotaStatus?.dailyLimit ?? -1,
         );
       }
     } finally {

@@ -102,7 +102,7 @@ class LlamaModel:
             )
             latency_ms = int((time.monotonic() - start) * 1000)
             usage = completion.usage
-            result = completion.choices[0].message.content.strip()
+            result = (completion.choices[0].message.content or "").strip()
             # Strip common model preamble artifacts
             result = re.sub(
                 r'^(translation[:\s]+|translated text[:\s]+|here is.*?:|output[:\s]+|prompt[:\s]+|notes[:\s]+|p[:\s]+|in [a-z]+[:\s]+|sure[!,\s]+)',

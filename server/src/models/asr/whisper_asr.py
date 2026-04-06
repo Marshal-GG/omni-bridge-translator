@@ -7,7 +7,7 @@ Each size is downloaded/cached independently to ~/.cache/whisper/
 import os
 import threading
 import logging
-from typing import Literal, Any
+from typing import Literal, Any, Optional
 
 import numpy as np
 
@@ -202,7 +202,7 @@ class WhisperModel:
             self._size = size
             # Note: We no longer need to nullify self._model here as we use global cache
 
-    def is_downloaded(self, size: str = None) -> bool:
+    def is_downloaded(self, size: Optional[str] = None) -> bool:
         target_size = size if size else self._size
         return os.path.exists(_model_file(target_size))
 

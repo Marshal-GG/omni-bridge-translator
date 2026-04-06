@@ -17,7 +17,11 @@ class ServerContext:
         self.session_id = 0
         self.pyaudio_lock = asyncio.Lock()
         self.meter_task: Optional[asyncio.Task] = None
-        
+
+        # Quota enforcement: characters remaining in the current day's budget.
+        # -1 = unlimited (no enforcement). Set on each `start` command from Flutter.
+        self.quota_remaining: int = -1
+
         # Current Configuration
         self.config = {
             "source_lang": "auto",
@@ -39,6 +43,7 @@ class ServerContext:
 
     def reset(self):
         """Clears user-specific configuration and the orchestrator to ensure a fresh session."""
+        self.quota_remaining = -1
         self.orchestrator = None
         self.config["nvidia_nim_key"] = ""
         self.config["google_credentials"] = {}

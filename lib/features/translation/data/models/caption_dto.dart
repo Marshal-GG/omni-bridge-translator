@@ -13,6 +13,7 @@ class CaptionDto extends CaptionMessage {
     super.usageStats,
     super.modelStatuses,
     super.isReset = false,
+    super.isQuotaExceeded = false,
   });
 
   factory CaptionDto.fromJson(Map<String, dynamic> json) {
@@ -47,6 +48,17 @@ class CaptionDto extends CaptionMessage {
         isError: false,
         isFinal: false,
         usageStats: Map<String, dynamic>.from(json),
+      );
+    }
+
+    // Quota exceeded — server stopped the session due to daily limit
+    if (json['type'] == 'quota_exceeded') {
+      return CaptionDto(
+        text: json['text'] as String? ?? 'Daily character quota reached.',
+        original: '',
+        isError: true,
+        isFinal: true,
+        isQuotaExceeded: true,
       );
     }
 

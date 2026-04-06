@@ -29,7 +29,7 @@ class TranslationDispatcher:
         self.google_api = google_api
 
         self.source_lang = "auto"
-        self.target_lang = None
+        self.target_lang: Optional[str] = None
         self.translation_model = "google"
 
     def translate(self, text: str, source_hint: Optional[str] = None) -> Tuple[Optional[str], Optional[Dict]]:
@@ -102,7 +102,7 @@ class TranslationDispatcher:
 
     def _llama_fallback(self, text: str, original_engine: str) -> Tuple[Optional[str], Optional[Dict]]:
         try:
-            res, stats = self.llama.translate(text, self.target_lang)
+            res, stats = self.llama.translate(text, self.target_lang or "")
             if stats:
                 stats["fallback_from"] = original_engine
             return res, stats

@@ -37,7 +37,7 @@ def resample_audio(audio_data, orig_sr, target_sr=16000):
             return np.round(audio_new).astype(np.int16)
 
 class AudioCapture:
-    def __init__(self, sample_rate=16000, chunk_duration=3, use_mic=False,
+    def __init__(self, sample_rate=16000, chunk_duration=3.0, use_mic=False,
                  input_device_index=None, output_device_index=None,
                  desktop_volume=1.0, mic_volume=1.0,
                  first_chunk_duration=None):

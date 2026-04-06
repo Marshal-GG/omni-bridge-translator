@@ -119,6 +119,8 @@ class AsrWebSocketClient implements IResettable {
     String rivaTranslationFunctionId = '',
     String rivaAsrParakeetFunctionId = '',
     String rivaAsrCanaryFunctionId = '',
+    int quotaDailyUsed = 0,
+    int quotaDailyLimit = -1,
   }) {
     // Reuse the existing service + connection if already live.
     // This avoids the WebSocket handshake + WASAPI cold-start on every toggle.
@@ -137,6 +139,8 @@ class AsrWebSocketClient implements IResettable {
       rivaTranslationFunctionId: rivaTranslationFunctionId,
       rivaAsrParakeetFunctionId: rivaAsrParakeetFunctionId,
       rivaAsrCanaryFunctionId: rivaAsrCanaryFunctionId,
+      quotaDailyUsed: quotaDailyUsed,
+      quotaDailyLimit: quotaDailyLimit,
     );
   }
 

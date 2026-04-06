@@ -6,19 +6,7 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 
 ## BLOCKERS — Must complete before any public user
 
-### 1. Windows Installer / PyInstaller Build
-**What:** The installer (`installer_setup.iss`) requires `server/dist/omni_bridge_server.exe` to exist. This is produced by running `pyinstaller omni_bridge_server.spec` inside `/server`. It is not automated.
-
-**Steps:**
-1. `cd server && pyinstaller omni_bridge_server.spec`
-2. Verify `server/dist/omni_bridge_server.exe` exists and runs standalone
-3. Run the Inno Setup compiler against `installer_setup.iss`
-4. Test full install/uninstall on a clean Windows 10/11 VM
-5. Verify Python server auto-starts and auto-restarts on crash after install
-
----
-
-### 2. Razorpay Payment Links
+### 1. Razorpay Payment Links
 **What:** `openCheckout()` reads payment links from Firestore `system/monetization → payment_links`. Currently empty — users cannot upgrade.
 
 **Steps:**
@@ -36,20 +24,7 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 
 ## HIGH — Fix before first real user
 
-### 3. Server-Side Quota Enforcement
-**What:** The Python server never checks quotas. It will translate indefinitely even if a user is over their daily/monthly limit. Client-side enforcement is easily bypassed.
-
-**File:** `server/src/pipeline/orchestrator.py` or `server/src/network/handlers/session_handler.py`
-
-**What to implement:**
-- On `start` command, server reads user's current quota from RTDB `users/{uid}/daily_usage/{today}/tokens`
-- Compares against the tier's `daily_tokens` limit from Firestore `system/monetization`
-- If exceeded, returns error and refuses to start the session
-- Optionally check again mid-session at a configurable interval
-
----
-
-### 4. Trial Auto-Downgrade — Verify and Test
+### 3. Trial Auto-Downgrade — Verify and Test
 **What:** `_checkTrialExpiry()` is called when tier is `'trial'`, but whether it actually writes `tier: 'free'` back to Firestore on expiry has not been end-to-end tested.
 
 **Steps:**
@@ -142,6 +117,8 @@ The `if self.whisper_suspended: return None, None` check exists but the flag is 
 | GitHub Actions CI/release pipeline | ✅ Not using automated CI — manual release process |
 | Firebase `system/monetization` seed | ✅ Seeded via admin panel (minor adjustments pending) |
 | `forceLogout` listener | ✅ Fully implemented in `SessionRemoteDataSource` (`_userSub` + `_sessionSub`). On trigger: resets flag to `false`, then calls `AuthRemoteDataSource.signOut()` via injected callback — runs the full IResettable reset chain identically to manual logout. |
+| Server-side quota enforcement | ✅ `SessionHandler` checks `quota_daily_used`/`quota_daily_limit` from `start` payload — refuses if exceeded. `wrap_callback` deducts chars per chunk and stops mid-session when `quota_remaining` hits 0, broadcasting `quota_exceeded`. Flutter passes live `QuotaStatus` fields on every start and stops `TranslationBloc` on `quota_exceeded` receipt. |
+| Windows installer / PyInstaller build | ✅ `omni_bridge_server.spec` updated with correct module paths for current codebase. `pyinstaller omni_bridge_server.spec` produces `server/dist/omni_bridge_server.exe` (234 MB). Still needs: Inno Setup compile + clean VM test. |
 | Engine key mapping (EngineRegistry) | ✅ Complete |
 | MyMemory disabled in settings | ✅ Works once DB is seeded |
 | Retry count on WS disconnect UI | ⏭ Skipped — not needed |

@@ -46,6 +46,8 @@ class TranslationRepositoryImpl implements ITranslationRepository {
     String rivaTranslationFunctionId = '',
     String rivaAsrParakeetFunctionId = '',
     String rivaAsrCanaryFunctionId = '',
+    int quotaDailyUsed = 0,
+    int quotaDailyLimit = -1,
   }) {
     _asrClient.start(
       sourceLang: sourceLang,
@@ -60,6 +62,8 @@ class TranslationRepositoryImpl implements ITranslationRepository {
       rivaTranslationFunctionId: rivaTranslationFunctionId,
       rivaAsrParakeetFunctionId: rivaAsrParakeetFunctionId,
       rivaAsrCanaryFunctionId: rivaAsrCanaryFunctionId,
+      quotaDailyUsed: quotaDailyUsed,
+      quotaDailyLimit: quotaDailyLimit,
     );
   }
 

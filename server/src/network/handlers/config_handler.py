@@ -14,9 +14,9 @@ class ConfigHandler(BaseHandler):
         new_trans = msg.get("transcription_model", self.ctx.config["transcription_model"])
         new_tl = msg.get("translation_model", self.ctx.config["translation_model"])
         new_google_creds = msg.get("google_credentials", self.ctx.config["google_credentials"])
-        new_riva_tl_id = msg.get("riva_translation_function_id", self.ctx.config["riva_translation_function_id"]) or msg.get("rivaTranslationFunctionId")
-        new_riva_asr_p_id = msg.get("riva_asr_parakeet_function_id", self.ctx.config["riva_asr_parakeet_function_id"]) or msg.get("rivaAsrParakeetFunctionId")
-        new_riva_asr_c_id = msg.get("riva_asr_canary_function_id", self.ctx.config["riva_asr_canary_function_id"]) or msg.get("rivaAsrCanaryFunctionId")
+        new_riva_tl_id = msg.get("riva_translation_function_id", self.ctx.config["riva_translation_function_id"]) or msg.get("rivaTranslationFunctionId") or ""
+        new_riva_asr_p_id = msg.get("riva_asr_parakeet_function_id", self.ctx.config["riva_asr_parakeet_function_id"]) or msg.get("rivaAsrParakeetFunctionId") or ""
+        new_riva_asr_c_id = msg.get("riva_asr_canary_function_id", self.ctx.config["riva_asr_canary_function_id"]) or msg.get("rivaAsrCanaryFunctionId") or ""
  
         # Whether model-level settings changed (requires full pipeline restart + model reinit)
         has_model_changed = (

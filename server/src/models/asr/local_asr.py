@@ -75,7 +75,7 @@ class SpeechRecognitionModel:
 
             # Google's recognize_google requires a string for language, so default to en-US for "auto"
             lang_tag = "en-US" if source_lang == "auto" else _LANG_MAP.get(source_lang, "en-US")
-            result = self._recognizer.recognize_google(audio, language=lang_tag)
+            result = self._recognizer.recognize_google(audio, language=lang_tag)  # type: ignore[attr-defined]
             transcript = result.strip() if result else None
             stats = None
             if transcript:

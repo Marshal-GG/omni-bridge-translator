@@ -18,6 +18,8 @@ class StartTranslationUseCase {
     String rivaTranslationFunctionId = '',
     String rivaAsrParakeetFunctionId = '',
     String rivaAsrCanaryFunctionId = '',
+    int quotaDailyUsed = 0,
+    int quotaDailyLimit = -1,
   }) {
     _repository.start(
       sourceLang: sourceLang,
@@ -32,6 +34,8 @@ class StartTranslationUseCase {
       rivaTranslationFunctionId: rivaTranslationFunctionId,
       rivaAsrParakeetFunctionId: rivaAsrParakeetFunctionId,
       rivaAsrCanaryFunctionId: rivaAsrCanaryFunctionId,
+      quotaDailyUsed: quotaDailyUsed,
+      quotaDailyLimit: quotaDailyLimit,
     );
   }
 }

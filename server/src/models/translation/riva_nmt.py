@@ -82,7 +82,7 @@ class RivaNMTModel:
             source_language=src,
             target_language=target_lang,
         )
-        result = response.translations[0].text.strip()
+        result = response.translations[0].text.strip()  # type: ignore[attr-defined]
         latency_ms = int((time.monotonic() - start) * 1000)
         
         return result, {

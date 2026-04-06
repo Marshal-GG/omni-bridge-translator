@@ -123,6 +123,7 @@ class GoogleCloudTranslationModel:
 
         if not self.is_ready():
             return None, {"error": "Google Cloud credentials not configured"}
+        assert self._client is not None
 
         # Same-language passthrough
         src = source_lang if source_lang != "auto" else None

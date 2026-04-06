@@ -14,6 +14,8 @@ class CaptionMessage {
   final List<dynamic>? modelStatuses;
   final bool isReset;
   final bool isDisconnect;
+  /// True when the server sends a `quota_exceeded` message — daily budget reached.
+  final bool isQuotaExceeded;
 
   const CaptionMessage({
     required this.text,
@@ -28,5 +30,6 @@ class CaptionMessage {
     this.modelStatuses,
     this.isReset = false,
     this.isDisconnect = false,
+    this.isQuotaExceeded = false,
   });
 }

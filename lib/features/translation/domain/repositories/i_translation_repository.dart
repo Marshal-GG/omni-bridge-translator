@@ -24,6 +24,8 @@ abstract class ITranslationRepository implements IResettable {
     String rivaTranslationFunctionId = '',
     String rivaAsrParakeetFunctionId = '',
     String rivaAsrCanaryFunctionId = '',
+    int quotaDailyUsed = 0,
+    int quotaDailyLimit = -1,
   });
 
   void updateSettings({

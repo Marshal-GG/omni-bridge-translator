@@ -46,6 +46,24 @@ class SessionHandler(BaseHandler):
             f"Canary={self.ctx.config['riva_asr_canary_function_id']}"
         )
         
+        # Quota enforcement: reject start if the daily limit is already exceeded.
+        quota_daily_limit: int = msg.get("quota_daily_limit", -1)
+        quota_daily_used: int = msg.get("quota_daily_used", 0)
+        if quota_daily_limit > 0 and quota_daily_used >= quota_daily_limit:
+            await self.ctx.manager.broadcast({
+                "type": "quota_exceeded",
+                "text": "Daily character quota exceeded. Upgrade your plan to continue.",
+                "is_final": True,
+                "original": "",
+            })
+            logging.warning(
+                f"[Handler] Start refused — quota exceeded: used={quota_daily_used}, limit={quota_daily_limit}"
+            )
+            return
+
+        # Store remaining chars for mid-session enforcement (-1 = unlimited).
+        self.ctx.quota_remaining = (quota_daily_limit - quota_daily_used) if quota_daily_limit > 0 else -1
+
         # Validations
         tl_model = str(self.ctx.config.get("translation_model") or "unknown")
         if self.ctx.config.get("translation_model") in ("riva-nmt", "llama") and not self.ctx.config.get("nvidia_nim_key"):
@@ -114,13 +132,43 @@ class SessionHandler(BaseHandler):
 
             loop = asyncio.get_running_loop()
 
-            def wrap_callback(*args, **kwargs):
-                caption_callback(*args, **kwargs, 
-                                 event_loop=loop, 
-                                 manager=self.ctx.manager, 
-                                 session_id=self.ctx.session_id,
-                                 source_lang=self.ctx.config["source_lang"],
-                                 target_lang=self.ctx.config["target_lang"])
+            def wrap_callback(text, is_error, is_final=True, original_text=None, usage_stats=None):
+                # Mid-session quota enforcement: deduct chars consumed by this chunk.
+                # quota_remaining == -1 means unlimited — skip tracking entirely.
+                if not is_error and is_final and self.ctx.quota_remaining >= 0 and usage_stats:
+                    stats_list = usage_stats if isinstance(usage_stats, list) else [usage_stats]
+                    chars_used = sum(
+                        (s.get("input_tokens", 0) + s.get("output_tokens", 0))
+                        for s in stats_list if s
+                    )
+                    self.ctx.quota_remaining -= chars_used
+                    if self.ctx.quota_remaining <= 0:
+                        asyncio.run_coroutine_threadsafe(
+                            self.ctx.manager.broadcast({
+                                "type": "quota_exceeded",
+                                "text": "Daily character quota reached. Session stopped.",
+                                "is_final": True,
+                                "original": "",
+                            }),
+                            loop,
+                        )
+                        self.ctx.is_running = False
+                        if self.ctx.orchestrator:
+                            self.ctx.orchestrator.stop_stream()
+                        logging.warning("[Handler] Session stopped — daily quota reached mid-session.")
+                        return
+
+                caption_callback(
+                    text, is_error,
+                    is_final=is_final,
+                    original_text=original_text,
+                    usage_stats=usage_stats,
+                    event_loop=loop,
+                    manager=self.ctx.manager,
+                    session_id=self.ctx.session_id,
+                    source_lang=self.ctx.config["source_lang"],
+                    target_lang=self.ctx.config["target_lang"],
+                )
 
             threading.Thread(
                 target=audio_poll_loop,

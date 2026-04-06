@@ -7,9 +7,5 @@
         "${workspaceFolder}/.venv"
     ],
     "python.languageServer": "Default",
-    "python.analysis.extraPaths": [
-        "${workspaceFolder}/server",
-        "${workspaceFolder}/server/src"
-    ],
-    "chatgpt.commentCodeLensEnabled": false
+"chatgpt.commentCodeLensEnabled": false
 }

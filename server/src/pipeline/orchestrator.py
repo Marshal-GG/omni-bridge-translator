@@ -73,6 +73,8 @@ class InferenceOrchestrator:
         
         # Models
         self._init_models()
+        assert self.riva_asr and self.whisper and self.local_asr
+        assert self.riva_nmt and self.llama and self.google_free and self.mymemory
 
         # Dispatchers
         self.asr_dispatcher = ASRDispatcher(
@@ -291,7 +293,9 @@ class InferenceOrchestrator:
         """
         use_auto = self.asr_dispatcher.source_lang == "auto"
         asr_lang = "multi" if use_auto else _LANG_MAP.get(self.asr_dispatcher.source_lang, "en-US")
-        config = self.riva_asr.make_config(self._sample_rate, asr_lang) if self.asr_dispatcher.transcription_model == "riva-asr" else None
+        config = (self.riva_asr.make_config(self._sample_rate, asr_lang)
+                  if self.asr_dispatcher.transcription_model == "riva-asr" and self.riva_asr
+                  else None)
 
         pending: deque[Future] = deque()
 
@@ -372,12 +376,14 @@ class InferenceOrchestrator:
 
     def whisper_unload(self):
         """Unload Whisper model from memory."""
-        self.whisper.unload_model()
+        if self.whisper:
+            self.whisper.unload_model()
 
     def get_all_statuses(self) -> List[Dict]:
         """Collect statuses from all internal models."""
         statuses = []
-        statuses.extend(self.whisper.get_all_statuses())
+        if self.whisper:
+            statuses.extend(self.whisper.get_all_statuses())
         
         # GPU Info
         gpu = get_gpu_info()

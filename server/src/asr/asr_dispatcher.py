@@ -13,9 +13,9 @@ class ASRDispatcher:
     Handles ASR model selection and audio chunk processing.
     """
     def __init__(
-        self, 
-        riva: RivaASRModel, 
-        whisper: WhisperModel, 
+        self,
+        riva: RivaASRModel,
+        whisper: WhisperModel,
         google_free: SpeechRecognitionModel,
         sample_rate: int = 16000
     ):

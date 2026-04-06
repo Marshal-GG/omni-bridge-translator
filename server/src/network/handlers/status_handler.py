@@ -34,13 +34,11 @@ class StatusHandler(BaseHandler):
             return {"status": "unloaded"}
         return {"status": "no_orchestrator"}
 
-    async def reset_session(self, websocket, data):
+    async def reset_session(self, websocket, data) -> None:
         """Resets the server context and informs all clients."""
         self.ctx.reset()
-        # Broadcast a reset message if needed, or just let clients know via status
         if self.ctx.manager:
             await self.ctx.manager.broadcast({
                 "type": "server_reset",
                 "message": "Server state has been reset due to session change."
             })
-        return {"type": "reset_success"}

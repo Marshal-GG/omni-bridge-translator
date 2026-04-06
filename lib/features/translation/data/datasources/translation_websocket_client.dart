@@ -42,6 +42,8 @@ class TranslationWebsocketClient implements IResettable {
   String _rivaTranslationFunctionId = '';
   String _rivaAsrParakeetFunctionId = '';
   String _rivaAsrCanaryFunctionId = '';
+  int _quotaDailyUsed = 0;
+  int _quotaDailyLimit = -1;
 
   // Last model-level settings sent to the backend — used to compute model_changed flag.
   String _lastSentTranslationModel = '';
@@ -86,6 +88,8 @@ class TranslationWebsocketClient implements IResettable {
     String rivaTranslationFunctionId = '',
     String rivaAsrParakeetFunctionId = '',
     String rivaAsrCanaryFunctionId = '',
+    int quotaDailyUsed = 0,
+    int quotaDailyLimit = -1,
   }) async {
     _intentionallyStopped = false;
     _isRunning = true;
@@ -101,6 +105,8 @@ class TranslationWebsocketClient implements IResettable {
     _rivaTranslationFunctionId = rivaTranslationFunctionId;
     _rivaAsrParakeetFunctionId = rivaAsrParakeetFunctionId;
     _rivaAsrCanaryFunctionId = rivaAsrCanaryFunctionId;
+    _quotaDailyUsed = quotaDailyUsed;
+    _quotaDailyLimit = quotaDailyLimit;
     _reconnectAttempt = 0;
 
     if (_channel != null) {
@@ -241,6 +247,8 @@ class TranslationWebsocketClient implements IResettable {
       'riva_translation_function_id': _rivaTranslationFunctionId,
       'riva_asr_parakeet_function_id': _rivaAsrParakeetFunctionId,
       'riva_asr_canary_function_id': _rivaAsrCanaryFunctionId,
+      'quota_daily_used': _quotaDailyUsed,
+      'quota_daily_limit': _quotaDailyLimit,
     };
     if (_inputDeviceIndex != null) {
       payload['input_device_index'] = _inputDeviceIndex;
