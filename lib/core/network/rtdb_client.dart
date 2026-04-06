@@ -43,6 +43,11 @@ class RTDBClient implements IResettable {
   }
 
   /// Makes an RTDB request with transient error retries.
+  ///
+  /// On a 401 response the Firebase ID token is force-refreshed so the
+  /// next call (which re-fetches the URL via [getRTDBUrl]/[getAbsoluteUrl])
+  /// will carry a fresh token. The current request is returned as-is; for
+  /// background writes (usage metrics, session tracking) this is acceptable.
   Future<http.Response?> request(
     Future<http.Response> Function(http.Client client) requestFunc, {
     int maxRetries = 3,
@@ -54,8 +59,12 @@ class RTDBClient implements IResettable {
         final response = await requestFunc(
           _httpClient,
         ).timeout(const Duration(seconds: 5));
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          return response;
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          AppLogger.w(
+            '[RTDBClient] ${response.statusCode} on $context — forcing token refresh.',
+            tag: 'RTDB',
+          );
+          await _auth.currentUser?.getIdToken(true);
         }
         return response;
       } catch (e) {

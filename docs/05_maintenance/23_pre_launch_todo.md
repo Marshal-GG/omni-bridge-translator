@@ -37,13 +37,6 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 
 ## MEDIUM — Before scaling up users
 
-### 6. Firebase Auth Token Expiry Handling
-**What:** If a session runs long enough for the Firebase ID token to expire, Firestore/RTDB writes fail silently. No token refresh is currently implemented.
-
-**What to implement:**
-- Ensure `FirebaseAuth.instance.currentUser?.getIdToken(true)` (force refresh) is called when a 401/permission denied is returned from Firestore or RTDB
-- Or rely on Firebase SDK auto-refresh — verify this is happening correctly in the current auth flow
-
 ---
 
 ### 7. Trial Expiry Warning UI
@@ -122,3 +115,4 @@ The `if self.whisper_suspended: return None, None` check exists but the flag is 
 | Engine key mapping (EngineRegistry) | ✅ Complete |
 | MyMemory disabled in settings | ✅ Works once DB is seeded |
 | Retry count on WS disconnect UI | ⏭ Skipped — not needed |
+| Firebase Auth token expiry | ✅ Firestore SDK auto-refreshes internally. RTDB REST client (`RTDBClient.request`) now detects 401/403 and calls `getIdToken(true)` so the next request (which re-fetches the URL via `getRTDBUrl`) carries a fresh token. |

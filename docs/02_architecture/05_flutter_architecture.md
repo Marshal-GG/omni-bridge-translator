@@ -169,6 +169,7 @@ A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically run
 | `UpdateRemoteDataSource` | Checks for new versions via GitHub API. Also triggers a silent background update check on app launch (see `main.dart`). |
 | `AuthRemoteDataSource` | Handles Firebase Auth and Google Sign-In redirects. |
 | `PythonServerManager` | Manages local Python process lifecycle (auto-restart, backoff). Lives in `core/infrastructure/`. |
+| `RTDBClient` | Singleton HTTP client for Firebase RTDB REST operations (all datasources that write to RTDB route through it). Handles transient retries with exponential backoff. On a 401/403 response it calls `getIdToken(true)` to force-refresh the Firebase ID token so the next request (which re-fetches the URL) carries a valid token. Firestore SDK manages its own token refresh internally. |
 
 ---
 
@@ -227,5 +228,6 @@ To handle heavy AI models (like Whisper Medium or Llama), the app implements a r
     - **Fallback**: If a primary model fails to load, `TranslationBloc` reflects the switch to a fallback engine (e.g., Google Online).
 5.  **Connection Resilience**: If the server WebSocket disconnects, `TranslationBloc` detects the disconnect event, auto-pauses the stream, and the underlying `TranslationWebsocketClient` continuously attempts exponential backoff reconnection.
 6.  **Immediate Health Check**: `_startHealthCheck()` fires `_checkHealthOnce()` immediately on start (instead of waiting for the first 3-second tick), then polls every 3s. This means the UI recovers from a backend reload within 2–5s instead of up to 8s.
-6.  **Subscription Tier Reactivity**: The `TranslationBloc` validates model selections against real-time subscription quotas. If a tier downgrade occurs, it transparently unloads premium models, fallback-switches to default models, and updates the UI.
+7.  **Subscription Tier Reactivity**: The `TranslationBloc` validates model selections against real-time subscription quotas. If a tier downgrade occurs, it transparently unloads premium models, fallback-switches to default models, and updates the UI.
+8.  **Server-Side Quota Enforcement**: On every `start` command, `TranslationBloc` reads `quotaStatus` from `UsageBloc` state and passes `quotaDailyUsed` and `quotaDailyLimit` through the usecase/repository/datasource chain to the server. The server decrements a `quota_remaining` counter per translation chunk and broadcasts a `quota_exceeded` message when the limit is reached. `TranslationBloc` listens for `isQuotaExceeded` on incoming `CaptionMessage` objects and calls `ToggleRunningEvent` to stop the session.
 ```
