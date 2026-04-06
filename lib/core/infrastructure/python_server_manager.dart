@@ -10,12 +10,16 @@ import 'package:omni_bridge/core/utils/app_logger.dart';
 class PythonServerManager {
   static Process? _serverProcess;
   static bool _isIntentionalStop = false;
+  static bool _isStarting = false;
   static int _restartCount = 0;
   static const String _tag = 'PythonManager';
 
   static Future<void> startServer() async {
-    _isIntentionalStop = false;
+    if (_isIntentionalStop) return;
     if (_serverProcess != null) return;
+    if (_isStarting) return;
+    _isStarting = true;
+    _isIntentionalStop = false;
 
     try {
       // 1. Check if a server is already running externally (e.g. manually in dev mode)
@@ -117,6 +121,8 @@ class PythonServerManager {
       }
     } catch (e) {
       AppLogger.e('Failed to start Python server', error: e, tag: _tag);
+    } finally {
+      _isStarting = false;
     }
   }
 

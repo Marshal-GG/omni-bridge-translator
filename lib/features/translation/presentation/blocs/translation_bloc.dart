@@ -28,6 +28,7 @@ import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.
 import 'package:omni_bridge/features/settings/domain/usecases/get_system_config_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/entities/system_config.dart';
 import 'package:omni_bridge/core/utils/app_logger.dart';
+import 'package:omni_bridge/core/infrastructure/python_server_manager.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final StartTranslationUseCase startTranslationUseCase;
@@ -786,8 +787,13 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
   Future<void> _checkHealthOnce() async {
     final isHealthy = await checkServerHealthUseCase();
-    if (isHealthy && !isClosed) {
+    if (isClosed) return;
+    if (isHealthy) {
       add(const UpdateServerConnectionEvent(isConnected: true));
+    } else {
+      // Server is not responding — attempt to restart the bundled process.
+      // PythonServerManager guards against concurrent/redundant starts internally.
+      unawaited(PythonServerManager.startServer());
     }
   }
 

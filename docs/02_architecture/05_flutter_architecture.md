@@ -168,7 +168,7 @@ A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically run
 | `DataMaintenanceRemoteDataSource` | App-level scheduled cleanup for legacy data, stale sessions, and cache. |
 | `UpdateRemoteDataSource` | Checks for new versions via GitHub API. Also triggers a silent background update check on app launch (see `main.dart`). |
 | `AuthRemoteDataSource` | Handles Firebase Auth and Google Sign-In redirects. |
-| `PythonServerManager` | Manages local Python process lifecycle (auto-restart, backoff). Lives in `core/infrastructure/`. |
+| `PythonServerManager` | Manages local Python process lifecycle. Starts the bundled `omni_bridge_server.exe` on app launch, monitors its `exitCode` for unexpected crashes, and auto-restarts with exponential backoff (3s → 10s after 3 failures). An `_isStarting` flag prevents concurrent restart attempts. `TranslationBloc._checkHealthOnce()` also calls `startServer()` on every failed HTTP health poll — covering the case where `_serverProcess` is null (no process handle). |
 | `RTDBClient` | Singleton HTTP client for Firebase RTDB REST operations (all datasources that write to RTDB route through it). Handles transient retries with exponential backoff. On a 401/403 response it calls `getIdToken(true)` to force-refresh the Firebase ID token so the next request (which re-fetches the URL) carries a valid token. Firestore SDK manages its own token refresh internally. |
 | `ServerConfig` | Single source of truth for the local Python server address (`127.0.0.1:8765`). `wsUrl` and `httpUrl` automatically use `ws://`/`http://` for loopback and upgrade to `wss://`/`https://` for any non-localhost host. The server always binds to loopback so plain WebSocket is intentional and secure. |
 

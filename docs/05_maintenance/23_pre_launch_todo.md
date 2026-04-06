@@ -58,15 +58,6 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 
 ---
 
-### 10. Server Restart Recovery — End-to-End Test
-**What:** If the Python server crashes mid-session, Flutter reconnects with exponential backoff. This has not been tested end-to-end.
-
-**Steps:**
-1. Start a live translation session
-2. Kill the Python server process externally
-3. Verify Flutter shows "Reconnecting…" and retries
-4. Restart the server, verify session resumes without requiring a manual restart of the app
-
 ---
 
 ## LOW — Polish / post-launch
@@ -107,3 +98,4 @@ The `if self.whisper_suspended: return None, None` check exists but the flag is 
 | Retry count on WS disconnect UI | ⏭ Skipped — not needed |
 | Firebase Auth token expiry | ✅ Firestore SDK auto-refreshes internally. RTDB REST client (`RTDBClient.request`) now detects 401/403 and calls `getIdToken(true)` so the next request (which re-fetches the URL via `getRTDBUrl`) carries a fresh token. |
 | WebSocket transport security | ✅ `flutter_server.py` always binds to `127.0.0.1` — loopback traffic never leaves the machine so `ws://` is correct. `ServerConfig` and `TranslationWebsocketClient` now auto-select `wss://`/`https://` if the host is ever changed to a non-loopback address. |
+| Server restart recovery | ✅ `PythonServerManager` already had an `exitCode` listener for crash restarts. Gap fixed: `_checkHealthOnce()` in `TranslationBloc` now calls `PythonServerManager.startServer()` when the HTTP health check fails — covers the case where `_serverProcess` is null (externally-started server). Added `_isStarting` flag to guard against concurrent restart attempts from the 3-second health poll. |
