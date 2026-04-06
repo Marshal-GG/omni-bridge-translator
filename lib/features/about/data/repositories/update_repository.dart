@@ -14,6 +14,7 @@ class UpdateRepositoryImpl implements IUpdateRepository {
       status: domain.UpdateStatus.values[result.status.index],
       latestVersion: result.latestVersion,
       releaseUrl: result.releaseUrl,
+      downloadUrl: result.downloadUrl,
       errorMessage: result.errorMessage,
     );
   }

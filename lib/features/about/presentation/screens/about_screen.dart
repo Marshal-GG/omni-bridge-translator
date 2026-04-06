@@ -15,6 +15,7 @@ import 'package:omni_bridge/core/widgets/omni_header.dart';
 import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
 import 'package:omni_bridge/core/widgets/omni_chip.dart';
 import 'package:omni_bridge/core/navigation/app_router.dart';
+import 'package:omni_bridge/features/startup/presentation/widgets/update_download_button.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -28,14 +29,6 @@ class _AboutScreenState extends State<AboutScreen> {
 
   Future<void> _handleUpdateCheck(BuildContext context) async {
     context.read<AboutBloc>().add(const AboutCheckUpdateEvent());
-  }
-
-  Future<void> _openRelease(String url) async {
-    if (url.isEmpty) return;
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
   }
 
   @override
@@ -183,25 +176,21 @@ class _AboutScreenState extends State<AboutScreen> {
                                                 )
                                               else if (state.updateStatus ==
                                                   UpdateStatus.available)
-                                                GestureDetector(
-                                                  onTap: () => _openRelease(
-                                                    state
-                                                            .updateResult
-                                                            ?.releaseUrl ??
-                                                        '',
-                                                  ),
-                                                  child: Text(
-                                                    'v${state.updateResult?.latestVersion} available — Download',
-                                                    style: const TextStyle(
-                                                      color:
-                                                          Colors.orangeAccent,
-                                                      fontSize: 10,
-                                                      decoration: TextDecoration
-                                                          .underline,
-                                                      decorationColor:
-                                                          Colors.orangeAccent,
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      'v${state.updateResult?.latestVersion} available — ',
+                                                      style: const TextStyle(
+                                                        color: Colors.orangeAccent,
+                                                        fontSize: 10,
+                                                      ),
                                                     ),
-                                                  ),
+                                                    UpdateDownloadButton(
+                                                      releaseUrl: state.updateResult?.releaseUrl ?? '',
+                                                      downloadUrl: state.updateResult?.downloadUrl,
+                                                    ),
+                                                  ],
                                                 )
                                               else if (state.updateStatus ==
                                                   UpdateStatus.error)

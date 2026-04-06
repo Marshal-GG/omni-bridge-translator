@@ -68,7 +68,7 @@ Incoming JSON commands are dispatched by the `CommandRouter` to specialized modu
 ### Audio Pipeline (`capture.py` & `meter.py`)
 - **Adaptive Chunking**: `AudioCapture` uses a combination of **Voice Activity Detection (VAD)** and time-based flushing. It flushes early when silence follows speech (lowering latency) but guarantees a flush at `MAX_CHUNK_DURATION` to ensure constant feedback.
 - **Volume Scaling**: Real-time gain application for both Mic and Desktop audio before mixing.
-- **Dual Metering**: `AudioMeter` runs independent threads to provide RMS levels for both microphone and system output, used by the UI volume visualizers.
+- **Dual Metering**: `AudioMeter` runs independent threads to provide RMS levels for both microphone and system output, used by the UI volume visualizers. Errors in the inner read loop are logged at `WARNING` before breaking so meter failures are visible in operator logs.
 
 ### Character-Based Usage Counting
 
@@ -180,7 +180,7 @@ The `google_cloud_model.py` module uses the **Google Cloud Translation gRPC v3**
 1. Flutter sends the service account credentials as a native Map/Dict object via WebSocket (`google_credentials` key).
 2. `ConfigHandler` passes it to `InferenceOrchestrator.set_api_keys()`.
 3. `GoogleCloudModel.reload()` receives the dictionary directly, extracts `project_id`, and creates a gRPC client via `service_account.Credentials.from_service_account_info()`.
-4. Error handling is sanitized — invalid dictionary structures log only `type(e).__name__` to prevent credential leakage in logs.
+4. Error handling is sanitized — invalid dictionary structures log only `type(e).__name__` to prevent credential leakage in logs. Credential loading success messages are logged at `DEBUG` level (not `INFO`) so they never appear in shipped operator logs.
 
 ---
 

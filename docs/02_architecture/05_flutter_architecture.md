@@ -166,10 +166,10 @@ A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically run
 | `SessionRemoteDataSource` | App-level tracking for user session lifecycle and total duration. |
 | `UsageMetricsRemoteDataSource` | App-level tracking for translation bytes and AI usage quotas. |
 | `DataMaintenanceRemoteDataSource` | App-level scheduled cleanup for legacy data, stale sessions, and cache. |
-| `UpdateRemoteDataSource` | Checks for new versions via GitHub API. Also triggers a silent background update check on app launch (see `main.dart`). |
+| `UpdateRemoteDataSource` | Reads `system/app_version` from Firestore on launch and on manual "Check for updates". Compares semver against the running build; populates `UpdateNotifier` with `latestVersion`, `releaseUrl`, and `downloadUrl`. **Firestore fields:** `latest` (semver), `min_supported` (semver), `update_url` (GitHub releases page — browser fallback), `download_url` (direct `.exe` asset link — e.g. `https://github.com/.../releases/download/v1.2.0/OmniBridgeSetup.exe`), `force_update_message` (optional string). `download_url` must be updated manually in Firestore on each release. If absent, `UpdateDownloadButton` falls back to opening `update_url` in the browser. |
 | `AuthRemoteDataSource` | Handles Firebase Auth and Google Sign-In redirects. |
 | `PythonServerManager` | Manages local Python process lifecycle. Starts the bundled `omni_bridge_server.exe` on app launch, monitors its `exitCode` for unexpected crashes, and auto-restarts with exponential backoff (3s → 10s after 3 failures). An `_isStarting` flag prevents concurrent restart attempts. `TranslationBloc._checkHealthOnce()` also calls `startServer()` on every failed HTTP health poll — covering the case where `_serverProcess` is null (no process handle). |
-| `RTDBClient` | Singleton HTTP client for Firebase RTDB REST operations (all datasources that write to RTDB route through it). Handles transient retries with exponential backoff. On a 401/403 response it calls `getIdToken(true)` to force-refresh the Firebase ID token so the next request (which re-fetches the URL) carries a valid token. Firestore SDK manages its own token refresh internally. |
+| `RTDBClient` | Singleton HTTP client for Firebase RTDB REST operations (all datasources that write to RTDB route through it). Handles transient retries with exponential backoff. `request(makeRequest, buildUrl)` takes a URL-builder lambda alongside the request lambda — the token is baked into the URL query string, so on a 401/403 it force-refreshes the Firebase ID token via `getIdToken(true)`, calls `buildUrl()` again to get a fresh-token URL, and retries the request exactly once. Firestore SDK manages its own token refresh internally. |
 | `ServerConfig` | Single source of truth for the local Python server address (`127.0.0.1:8765`). `wsUrl` and `httpUrl` automatically use `ws://`/`http://` for loopback and upgrade to `wss://`/`https://` for any non-localhost host. The server always binds to loopback so plain WebSocket is intentional and secure. |
 
 ### Shared Utilities (`core/utils/`)
@@ -177,6 +177,7 @@ A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically run
 | Utility | Purpose |
 |---|---|
 | `duration_utils.dart` | `formatTimeRemaining(DateTime)` — formats a future expiry timestamp as a human-readable countdown ("2d 3h remaining", "45m remaining", "Trial expired"). Used by trial countdown displays on the Usage and Plan screens. |
+| `UpdateDownloadButton` | Stateful widget (`startup/presentation/widgets/`). If `downloadUrl` is set: streams the `.exe` installer to `Directory.systemTemp` with a progress indicator, then launches it detached. Falls back to opening `releaseUrl` in the browser. Supports `primary` (full-width `ElevatedButton`) and inline text-link styles. |
 
 ---
 
@@ -200,7 +201,9 @@ Launch
  └─ AppInitializer: Firebase init, single-instance check, protocol registration
      ├─ Version Update Check (via UpdateRemoteDataSource -> system/app_version)
      │   ├─ If Forced Update  → Routes directly to Force Update screen (Blocks app access)
+     │   │     └─ UpdateDownloadButton: streams installer (download_url) → launches .exe, or opens releaseUrl in browser
      │   └─ If Optional Update → Sets visual badge via UpdateNotifier, continues boot sequence
+     │         └─ About screen shows inline UpdateDownloadButton with same download/fallback logic
      ├─ Deep links (OAuth redirects) routed to AuthService
       ├─ New user (Logged out) → AppInitializer → Splash → Onboarding → Login
       └─ Return user (Logged in) → AppInitializer → Translation Overlay (Direct)

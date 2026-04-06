@@ -249,18 +249,20 @@ A singleton document used to manage application updates and forced upgrades.
 ```json
 {
   "min_supported": "1.0.0",
-  "latest": "1.0.0",
-  "update_url": "",
-  "force_update_message": "A new version of Omni Bridge is available. Please update to continue."
+  "latest": "1.2.0",
+  "update_url": "https://github.com/Marshal-GG/omni-bridge-translator/releases",
+  "download_url": "https://github.com/Marshal-GG/omni-bridge-translator/releases/download/v1.2.0/OmniBridgeSetup.exe",
+  "force_update_message": null
 }
 ```
 
 | Field | Type | Notes |
 |---|---|---|
-| `min_supported` | `string` | The minimum semver required to run the app. If client version is lower, force update screen is shown. |
-| `latest` | `string` | The latest available version. Triggers a soft update prompt if client is lower but above `min_supported`. |
-| `update_url` | `string` | The URL to open for downloading the new version (e.g. GitHub releases page). |
-| `force_update_message` | `string` | Custom message shown on the force update screen. |
+| `min_supported` | `string` | Minimum semver required to run. If client version is lower, the force-update screen blocks the app. |
+| `latest` | `string` | Latest available version. Triggers a soft update prompt if client is below this but above `min_supported`. |
+| `update_url` | `string` | GitHub releases page URL — opened in the browser when `download_url` is absent. |
+| `download_url` | `string` | **Direct `.exe` asset link** (e.g. the GitHub release asset URL). `UpdateDownloadButton` streams this to `Directory.systemTemp` and launches the installer in-app. Must be updated manually in Firestore on each release. If empty or absent, falls back to opening `update_url` in the browser. |
+| `force_update_message` | `string?` | Optional custom message shown on the force-update screen. `null` shows the default message. |
 
 ---
 

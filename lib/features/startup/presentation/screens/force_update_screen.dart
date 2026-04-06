@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:omni_bridge/core/theme/app_theme.dart';
 import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
+import 'package:omni_bridge/features/startup/presentation/widgets/update_download_button.dart';
 
 class ForceUpdateScreen extends StatelessWidget {
   const ForceUpdateScreen({super.key});
@@ -153,43 +153,10 @@ class ForceUpdateScreen extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accentTeal,
-                          foregroundColor:
-                              Colors.black, // Dark text on bright background
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                        ),
-                        onPressed: () async {
-                          final uri = Uri.parse(url);
-                          if (await canLaunchUrl(uri)) {
-                            await launchUrl(
-                              uri,
-                              mode: LaunchMode.externalApplication,
-                            );
-                          }
-                        },
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.download_rounded, size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'Download Update',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    UpdateDownloadButton(
+                      releaseUrl: url,
+                      downloadUrl: notifier.downloadUrl,
+                      primary: true,
                     ),
                   ],
                 ),

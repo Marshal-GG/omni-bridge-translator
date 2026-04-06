@@ -48,7 +48,7 @@ class SubscriptionRemoteDataSource implements IResettable {
 
   // Track the notified engines for the current session to avoid spamming the user
   final Set<String> _notifiedEngines = {};
-  final activeEngineFallbacks = ValueNotifier<Set<String>>({});
+  ValueNotifier<Set<String>> activeEngineFallbacks = ValueNotifier<Set<String>>({});
 
   void init() {
     _listenToMonetizationConfig();
@@ -84,7 +84,8 @@ class SubscriptionRemoteDataSource implements IResettable {
     _currentStatus = null;
 
     _notifiedEngines.clear();
-    activeEngineFallbacks.value = {};
+    activeEngineFallbacks.dispose();
+    activeEngineFallbacks = ValueNotifier<Set<String>>({});
 
     // Also cancel monetization sub to be safe, though it's system-wide
     // _monetizationSub?.cancel();

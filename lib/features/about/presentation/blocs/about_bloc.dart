@@ -28,6 +28,7 @@ class AboutBloc extends Bloc<AboutEvent, AboutState> {
         status: status,
         latestVersion: UpdateNotifier.instance.latestVersion,
         releaseUrl: UpdateNotifier.instance.releaseUrl,
+        downloadUrl: UpdateNotifier.instance.downloadUrl,
       );
     }
 

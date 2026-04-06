@@ -10,8 +10,6 @@ import 'package:omni_bridge/features/history/presentation/screens/history/compon
 import 'package:omni_bridge/features/history/presentation/screens/history/components/history_list_components.dart';
 import 'package:omni_bridge/features/history/presentation/screens/history/components/history_entry_item.dart';
 
-import 'package:omni_bridge/features/subscription/presentation/widgets/upgrade_sheet.dart';
-
 class HistoryPanel extends StatelessWidget {
   const HistoryPanel({super.key});
 
@@ -40,21 +38,6 @@ class _HistoryPanelBody extends StatefulWidget {
 }
 
 class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
-  @override
-  void initState() {
-    super.initState();
-    if (SubscriptionRemoteDataSource.instance.getTierRank(
-          widget.state.subscriptionStatus.tier,
-        ) ==
-        0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          showUpgradeSheet(context);
-        }
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final tier = widget.state.subscriptionStatus.tier;

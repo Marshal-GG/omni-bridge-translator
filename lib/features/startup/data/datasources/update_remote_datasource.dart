@@ -66,6 +66,7 @@ class UpdateRemoteDataSource implements IResettable {
       final latest = data['latest'] as String? ?? '1.0.0';
       final minSupported = data['min_supported'] as String? ?? '1.0.0';
       final updateUrl = data['update_url'] as String? ?? '';
+      final downloadUrl = data['download_url'] as String?;
       final forceUpdateMessage = data['force_update_message'] as String?;
 
       UpdateResult result;
@@ -75,6 +76,7 @@ class UpdateRemoteDataSource implements IResettable {
           status: UpdateStatus.forced,
           latestVersion: latest,
           releaseUrl: updateUrl,
+          downloadUrl: downloadUrl,
           forceUpdateMessage: forceUpdateMessage,
         );
       } else if (_isNewer(current, latest)) {
@@ -82,6 +84,7 @@ class UpdateRemoteDataSource implements IResettable {
           status: UpdateStatus.available,
           latestVersion: latest,
           releaseUrl: updateUrl,
+          downloadUrl: downloadUrl,
         );
       } else {
         result = UpdateResult(
@@ -96,6 +99,7 @@ class UpdateRemoteDataSource implements IResettable {
         UpdateNotifier.instance.setAvailable(
           result.latestVersion ?? '',
           result.releaseUrl ?? '',
+          download: result.downloadUrl,
           forced: result.status == UpdateStatus.forced,
           message: result.forceUpdateMessage,
         );

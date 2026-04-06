@@ -6,6 +6,7 @@ class UpdateResult extends Equatable {
   final UpdateStatus status;
   final String? latestVersion;
   final String? releaseUrl;
+  final String? downloadUrl;
   final String? errorMessage;
   final String? forceUpdateMessage;
 
@@ -13,6 +14,7 @@ class UpdateResult extends Equatable {
     required this.status,
     this.latestVersion,
     this.releaseUrl,
+    this.downloadUrl,
     this.errorMessage,
     this.forceUpdateMessage,
   });
@@ -22,6 +24,7 @@ class UpdateResult extends Equatable {
     status,
     latestVersion,
     releaseUrl,
+    downloadUrl,
     errorMessage,
     forceUpdateMessage,
   ];
