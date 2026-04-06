@@ -46,6 +46,10 @@ class AuthRemoteDataSource implements IResettable {
     // Immediate initialization of currentUser for route determination
     currentUser.value = _auth.currentUser;
 
+    // Wire the force-logout callback so SessionRemoteDataSource can trigger
+    // the full signOut flow without a circular import.
+    SessionRemoteDataSource.instance.setForceLogoutHandler(signOut);
+
     // We delay the full initialization until after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initialize();

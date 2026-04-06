@@ -464,11 +464,11 @@ Archived on the subscription reset date for paid members.
 | `appReopenedAt` | `Timestamp?` | Timestamp when an existing session is resumed |
 | `durationSeconds` | `number` | `endTime - startTime` in seconds (updated on app exit) |
 | `isEnded` | `bool` | `false` while running, `true` after user logs out |
-| `forceLogout` | `bool` | **Per-session** logout flag. Setting `true` kicks only this specific session (e.g. remotely revoking one device). Detected by `TrackingService` session-doc listener. |
+| `forceLogout` | `bool` | **Per-session** logout flag. Setting `true` kicks only this specific session (e.g. remotely revoking one device). Detected by `SessionRemoteDataSource` session-doc listener. |
 | `device.*` | `map` | OS + network snapshot at session start |
 
 > [!NOTE]
-> Two `forceLogout` flags exist at different levels: `users/{uid}.forceLogout` (global — kicks all devices at once) and `users/{uid}/sessions/{sessionId}.forceLogout` (per-session — kicks a single device). Both are monitored by `TrackingService` and call `_handleRemoteLogout()` when triggered.
+> Two `forceLogout` flags exist at different levels: `users/{uid}.forceLogout` (global — kicks all devices at once) and `users/{uid}/sessions/{sessionId}.forceLogout` (per-session — kicks a single device). Both are monitored by `SessionRemoteDataSource` (`_userSub` and `_sessionSub`) and call `_handleRemoteLogout()` when triggered. `_handleRemoteLogout()` resets both flags to `false`, then delegates to `AuthRemoteDataSource.signOut()` via a pre-registered callback — ensuring the full IResettable reset chain runs identically to a manual logout.
 
 ---
 
@@ -701,13 +701,13 @@ One node **per engine**, updated atomically on every translation. Use this to an
 
 ### 3. Event Logs — `users/{uid}/logs/{push-id}` *(REMOVED)*
 
-> **No longer written to RTDB.** All operational logging is now console-only via `debugPrint`. The `logEvent()` method in `TrackingService` writes to the console, not RTDB. Server logs go to `logs/server.log` on disk.
+> **No longer written to RTDB.** All operational logging is now console-only via `debugPrint`. The `logEvent()` method in `UsageMetricsRemoteDataSource` writes to the console, not RTDB. Server logs go to `logs/server.log` on disk.
 
 ---
 
 ### 4. Error Logs — `users/{uid}/error_logs/{push-id}` *(REMOVED)*
 
-> **No longer written to RTDB.** All error logging is now console-only via `debugPrint`. The `logError()` method in `TrackingService` writes to the console, not RTDB.
+> **No longer written to RTDB.** All error logging is now console-only via `debugPrint`. The `logError()` method in `SessionRemoteDataSource` writes to the console, not RTDB.
 
 ---
 

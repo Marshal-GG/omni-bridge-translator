@@ -47,7 +47,7 @@ To prevent "Session Bleed" (where logging into one version affects the other), w
 **Mechanism**: We use Named Firebase Apps (`OmniBridge-Debug` and `OmniBridge-Release`) instead of the default singleton.
 - **Why it matters**: Firebase's default app uses a shared persistent data store for authentication and Firestore caching. By using a named app, Firebase creates completely isolated storage for each build mode.
 - **Implementation**:
-  - `AuthService`, `TrackingService`, and `SubscriptionService` all use `FirebaseAuth.instanceFor(app: ...)` and `FirebaseFirestore.instanceFor(app: ...)` referencing the mode-specific app name.
+  - `AuthRemoteDataSource`, `UsageMetricsRemoteDataSource`, and `SubscriptionRemoteDataSource` all use `FirebaseAuth.instanceFor(app: ...)` and `FirebaseFirestore.instanceFor(app: ...)` referencing the mode-specific app name.
   - This ensures that logging in as User A in Debug DOES NOT affect the Release version, even if they share the same OS-level product name (though they don't).
 
 ## The Two-App Strategy

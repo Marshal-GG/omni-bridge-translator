@@ -43,6 +43,7 @@
 | 20 | [20_google_auth_troubleshooting.md](05_maintenance/20_google_auth_troubleshooting.md) | Developers | Google OAuth / Sign-In troubleshooting |
 | 21 | [21_python_interpreter_troubleshooting.md](05_maintenance/21_python_interpreter_troubleshooting.md) | Developers | Python environment issues |
 | 22 | [22_token_estimation.md](02_architecture/22_token_estimation.md) | Developers | Token counting logic for all ASR and translation engines |
+| 23 | [23_pre_launch_todo.md](05_maintenance/23_pre_launch_todo.md) | Maintainers | Remaining work before public launch — blockers, high, medium, low |
 
 ---
 

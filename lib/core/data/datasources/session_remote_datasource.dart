@@ -178,13 +178,19 @@ class SessionRemoteDataSource implements IResettable {
     }
   }
 
+  /// Called by [AuthRemoteDataSource] during init to wire up the full logout
+  /// flow. This avoids a circular import: AuthRemoteDataSource → Session, but
+  /// Session cannot import Auth. The callback is set once and never changes.
+  Future<void> Function()? _onForceLogout;
+
+  void setForceLogoutHandler(Future<void> Function() handler) {
+    _onForceLogout = handler;
+  }
+
   Future<void> _handleRemoteLogout() async {
     final userUid = uid;
     if (userUid != null) {
-      await _secureStorage.delete(
-        key: '${_sessionKeyPrefix}current_session_id_$userUid',
-      );
-
+      // Reset forceLogout flag before signing out so listeners don't re-fire
       try {
         await _firestore.collection(FirebasePaths.users).doc(userUid).update({
           'forceLogout': false,
@@ -202,8 +208,15 @@ class SessionRemoteDataSource implements IResettable {
       }
     }
 
-    await _auth.signOut();
-    await GlobalNavigator.pushNamedAndRemoveUntil('/splash', (route) => false);
+    // Delegate to the full signOut flow (resets all IResettables, ends the
+    // session in Firestore, flushes usage, navigates to /splash).
+    // Falls back to a direct Firebase sign-out if the handler was never set.
+    if (_onForceLogout != null) {
+      await _onForceLogout!();
+    } else {
+      await _auth.signOut();
+      await GlobalNavigator.pushNamedAndRemoveUntil('/splash', (route) => false);
+    }
   }
 
   /// Resets the singleton state. Called on logout to prevent session leakage.

@@ -140,11 +140,11 @@ This enables LTV calculations and churn analysis over time.
 | Field | Written By | Notes |
 |---|---|---|
 | `tier` | Webhook / manual | **Admin-Protected.** Source of truth for tier. |
-| `usage/totals/weekly` | `TrackingService` | Atomic RTDB increment. Reset weekly. |
-| `usage/totals/calendar_monthly`| `TrackingService` | Atomic RTDB increment. Reset on 1st of month. |
-| `usage/totals/subscription_monthly`| `TrackingService` | Atomic RTDB increment. Reset by `SubscriptionService`. |
+| `usage/totals/weekly` | `UsageMetricsRemoteDataSource` | Atomic RTDB increment. Reset weekly. |
+| `usage/totals/calendar_monthly`| `UsageMetricsRemoteDataSource` | Atomic RTDB increment. Reset on 1st of month. |
+| `usage/totals/subscription_monthly`| `UsageMetricsRemoteDataSource` | Atomic RTDB increment. Reset by `SubscriptionRemoteDataSource`. |
 | `monthlyResetAt` | `SubscriptionService._resetMonthlyQuota()` | Advanced by 30 days on reset (Firestore anchor). |
-| `usage/totals/lifetime` | `TrackingService` | Atomic RTDB increment, never resets. |
+| `usage/totals/lifetime` | `UsageMetricsRemoteDataSource` | Atomic RTDB increment, never resets. |
 | `subscriptionSince` | `SubscriptionService._logSubscriptionEvent()` | Set once on first paid upgrade |
 | `paymentProvider` | `SubscriptionService._logSubscriptionEvent()` | Set once on first paid upgrade |
 | `lastQuotaExceededAt` | `SubscriptionService._logQuotaExceeded()` | Updated each time quota is first crossed |
@@ -153,7 +153,7 @@ This enables LTV calculations and churn analysis over time.
 | `trialExpiresAt` | `SubscriptionService.activateTrial()` | Timestamp when trial auto-expires |
 
 ### Token Counting
-The Python server sends token counts for both **Input** (from ASR) and **Output** (from Translator) in translation metadata payloads. The Flutter client passes these to `TrackingService.logModelUsage()` to track against limits in RTDB.
+The Python server sends token counts for both **Input** (from ASR) and **Output** (from Translator) in translation metadata payloads. The Flutter client passes these to `UsageMetricsRemoteDataSource.logModelUsage()` to track against limits in RTDB.
 
 ### Enforcement
 - **Client-Side Polling**: `SubscriptionService` polls RTDB `daily_usage/tokens` and `usage/totals` at an interval sourced from `system/monetization → usage_poll_interval_seconds` (default **30s**). An initial fetch runs immediately on sign-in. If the interval is updated in Firestore, the timer restarts automatically.
