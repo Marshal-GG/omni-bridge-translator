@@ -343,7 +343,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
       if (!isTranslationAllowed || !isTranscriptionAllowed) {
         if (state.isRunning) {
-          unawaited(stopTranslationUseCase());
+          await stopTranslationUseCase();
         }
 
         try {

@@ -76,6 +76,7 @@ class QuotaStatus extends Equatable {
     int? dailyLimit,
     int? monthlyLimit,
     DateTime? dailyResetAt,
+    DateTime? monthlyResetAt,
     int? periodLimit,
     DateTime? trialExpiresAt,
   }) {
@@ -88,6 +89,7 @@ class QuotaStatus extends Equatable {
       dailyLimit: dailyLimit ?? this.dailyLimit,
       monthlyLimit: monthlyLimit ?? this.monthlyLimit,
       dailyResetAt: dailyResetAt ?? this.dailyResetAt,
+      monthlyResetAt: monthlyResetAt ?? this.monthlyResetAt,
       periodLimit: periodLimit ?? this.periodLimit,
       trialExpiresAt: trialExpiresAt ?? this.trialExpiresAt,
     );

@@ -48,12 +48,16 @@ class PythonServerManager {
             'Killing stale server instances before start...',
             tag: _tag,
           );
-          Process.runSync('taskkill', [
-            '/F',
-            '/IM',
-            'omni_bridge_server.exe',
-            '/T',
-          ]);
+          try {
+            Process.runSync('taskkill', [
+              '/F',
+              '/IM',
+              'omni_bridge_server.exe',
+              '/T',
+            ]);
+          } catch (_) {
+            // Expected on first boot — no stale process to kill
+          }
         }
 
         AppLogger.i('Starting bundled Python server: $pyPath', tag: _tag);

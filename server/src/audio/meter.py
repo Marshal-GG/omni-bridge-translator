@@ -11,6 +11,7 @@ Runs two separate pyaudio input streams (mic/loopback) in background threads
 and exposes the latest normalised level (0.0–1.0) for each.
 """
 
+import logging
 import threading
 import numpy as np
 import pyaudiowpatch as pyaudio
@@ -136,14 +137,14 @@ class AudioMeter:
                         self._input_level = level
                     else:
                         self._output_level = level
-                except Exception:
+                except Exception as e:
+                    logging.warning(f"[AudioMeter] {'input' if is_input else 'output'} read error: {e}")
                     break
 
             stream.stop_stream()
             stream.close()
 
         except Exception as e:
-            import logging
             logging.error(f"[AudioMeter] {'input' if is_input else 'output'} error: {e}")
         finally:
             if is_input:
@@ -215,6 +216,5 @@ class AudioMeter:
                     return lb
                 return None
         except Exception as e:
-            import logging
             logging.error(f"[AudioMeter] resolve_device error: {e}")
             return None

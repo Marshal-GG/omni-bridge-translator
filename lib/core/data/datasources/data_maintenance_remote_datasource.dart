@@ -40,11 +40,9 @@ class DataMaintenanceRemoteDataSource
           .subtract(Duration(days: retentionDays))
           .millisecondsSinceEpoch;
 
-      final url = await _rtdbClient.getRTDBUrl(FirebasePaths.captions);
-      if (url == null) return;
-
       final response = await _rtdbClient.request(
-        (client) => client.get(url),
+        (client, url) => client.get(url),
+        () => _rtdbClient.getRTDBUrl(FirebasePaths.captions),
         context: 'cleanupOldCaptions:fetch',
         maxRetries: 1,
       );
@@ -66,21 +64,16 @@ class DataMaintenanceRemoteDataSource
 
       final user = FirebaseAuth.instanceFor(app: _app).currentUser;
       if (user == null) return;
-      final deleteUrl = await _rtdbClient.getAbsoluteUrl(
-        FirebasePaths.userCaptions(userUid),
+      await _rtdbClient.request(
+        (client, url) => client.patch(url, body: jsonEncode(deletions)),
+        () => _rtdbClient.getAbsoluteUrl(FirebasePaths.userCaptions(userUid)),
+        context: 'cleanupOldCaptions:delete',
+        maxRetries: 1,
       );
-
-      if (deleteUrl != null) {
-        await _rtdbClient.request(
-          (client) => client.patch(deleteUrl, body: jsonEncode(deletions)),
-          context: 'cleanupOldCaptions:delete',
-          maxRetries: 1,
-        );
-        AppLogger.i(
-          'Cleaned up ${deletions.length} old captions (>${retentionDays}d).',
-          tag: _tag,
-        );
-      }
+      AppLogger.i(
+        'Cleaned up ${deletions.length} old captions (>${retentionDays}d).',
+        tag: _tag,
+      );
     } catch (e) {
       AppLogger.e('Caption cleanup failed', tag: _tag, error: e);
     }
@@ -94,14 +87,14 @@ class DataMaintenanceRemoteDataSource
     try {
       final cutoffDate = DateTime.now().subtract(const Duration(days: 90));
 
-      final url = await _rtdbClient.getAbsoluteUrl(
-        FirebasePaths.userDailyUsage(userUid),
-      );
-      if (url == null) return;
-
-      final shallowUrl = Uri.parse('${url.toString()}&shallow=true');
       final response = await _rtdbClient.request(
-        (client) => client.get(shallowUrl),
+        (client, url) => client.get(url),
+        () async {
+          final base = await _rtdbClient.getAbsoluteUrl(
+            FirebasePaths.userDailyUsage(userUid),
+          );
+          return base != null ? Uri.parse('$base&shallow=true') : null;
+        },
         context: 'cleanupOldDailyUsage:fetch',
         maxRetries: 1,
       );
@@ -125,7 +118,8 @@ class DataMaintenanceRemoteDataSource
       if (deletions.isEmpty) return;
 
       await _rtdbClient.request(
-        (client) => client.patch(url, body: jsonEncode(deletions)),
+        (client, url) => client.patch(url, body: jsonEncode(deletions)),
+        () => _rtdbClient.getAbsoluteUrl(FirebasePaths.userDailyUsage(userUid)),
         context: 'cleanupOldDailyUsage:delete',
         maxRetries: 1,
       );

@@ -256,7 +256,7 @@ class SubscriptionRemoteDataSource implements IResettable {
     return _monetizationConfig?['upgrade_prompts'] as Map<String, dynamic>?;
   }
 
-  void _updateCurrentStatus({String? tier, DateTime? resetAt, DateTime? trialExpiresAt}) {
+  void _updateCurrentStatus({String? tier, DateTime? resetAt, DateTime? monthlyResetAt, DateTime? trialExpiresAt}) {
     if (_currentStatus == null && tier == null) return;
 
     final newTier = tier ?? _currentStatus?.tier ?? defaultTier;
@@ -271,6 +271,7 @@ class SubscriptionRemoteDataSource implements IResettable {
       lifetimeTokensUsed: _currentStatus?.lifetimeTokensUsed ?? 0,
       dailyLimit: getLimitForTier(newTier),
       dailyResetAt: newReset,
+      monthlyResetAt: monthlyResetAt ?? _currentStatus?.monthlyResetAt,
       trialExpiresAt: newTier == 'trial' ? (trialExpiresAt ?? _currentStatus?.trialExpiresAt) : null,
     );
     _statusController.add(_currentStatus!);
@@ -309,9 +310,11 @@ class SubscriptionRemoteDataSource implements IResettable {
               return;
             }
 
-            // Auto-expire trial
+            // Auto-expire trial — return immediately so the next Firestore
+            // snapshot (with tier: 'free') drives the status update.
             if (tier == 'trial') {
               _checkTrialExpiry(uid, data);
+              return;
             }
 
             final trialExpiresAt =
@@ -326,7 +329,7 @@ class SubscriptionRemoteDataSource implements IResettable {
             }
             _lastKnownTier = tier;
 
-            _updateCurrentStatus(tier: tier, resetAt: resetAt, trialExpiresAt: trialExpiresAt);
+            _updateCurrentStatus(tier: tier, resetAt: resetAt, monthlyResetAt: monthlyResetAt, trialExpiresAt: trialExpiresAt);
           });
         });
   }
@@ -439,6 +442,7 @@ class SubscriptionRemoteDataSource implements IResettable {
       'trial_used': true,
       'trialExpiresAt': Timestamp.fromDate(expiresAt),
       'trialActivatedAt': FieldValue.serverTimestamp(),
+      'monthlyResetAt': Timestamp.fromDate(_getNextMonthlyReset()),
     });
 
     AppLogger.i('Trial activated for $uid, expires at $expiresAt', tag: _tag);

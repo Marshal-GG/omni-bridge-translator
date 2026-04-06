@@ -321,7 +321,9 @@ class AuthRemoteDataSource implements IResettable {
     await UsageMetricsRemoteDataSource.instance.logEvent('User Signed Out');
     try {
       await SessionRemoteDataSource.instance.endSession();
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.e('Failed to end session during logout', error: e, tag: _tag);
+    }
 
     // Phase 2: Comprehensive Reset of all registered IResettable Components
     final resettables = [

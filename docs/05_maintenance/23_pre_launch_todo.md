@@ -22,44 +22,44 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 
 ---
 
+---
+
+---
+
 ## HIGH — Fix before first real user
 
-### 3. Trial Auto-Downgrade — Verify and Test
-**What:** `_checkTrialExpiry()` is called when tier is `'trial'`, but whether it actually writes `tier: 'free'` back to Firestore on expiry has not been end-to-end tested.
+### 4. History Panel — Free Tier Hard-Block
+**File:** `lib/features/history/presentation/screens/history/history_panel.dart`
 
-**Steps:**
-1. Read `subscription_remote_datasource.dart` → find `_checkTrialExpiry()`
-2. Confirm it writes `tier: 'free'` to `users/{uid}` when `trialExpiresAt` is in the past
-3. Manual test: activate trial, set `trialExpiresAt` to 1 minute in the future, wait, verify auto-downgrade
-4. Verify the UI reflects the tier change without requiring app restart
+**What:** Free tier users trigger `showUpgradeSheet()` from `initState()` which shows a modal over a duplicate "History Unavailable" empty state — two overlapping UX flows. Should show only the gated empty state with an inline upgrade prompt.
+
+**Fix:** Remove the `showUpgradeSheet()` `addPostFrameCallback` and let the existing gated view render naturally.
+
+---
+
+---
 
 ---
 
 ## MEDIUM — Before scaling up users
 
----
+### 7. `_updateCurrentStatus()` Does Not Preserve `monthlyResetAt`
+**File:** `lib/features/subscription/data/datasources/subscription_remote_datasource.dart`
+
+**What:** Every status broadcast constructs a fresh `QuotaStatus` without forwarding the existing `monthlyResetAt`. Paid tier users lose their reset date on every Firestore snapshot.
+
+**Fix:** Pass `monthlyResetAt: _currentStatus?.monthlyResetAt` in the `QuotaStatus(...)` constructor inside `_updateCurrentStatus()`. Also read it from the Firestore snapshot when available.
 
 ---
 
----
 
-### 9. History Panel — Free Tier UX
-**What:** Free tier users are blocked from history entirely (upgrade sheet shown immediately). Should show an empty state with an upgrade prompt instead of hard-blocking.
-
-**File:** `lib/features/history/presentation/screens/history/history_panel.dart`
-
----
-
----
 
 ## LOW — Polish / post-launch
 
-### 11. App Update Auto-Download
+### 12. App Update Auto-Download
 **What:** Update check reads `system/app_version` from Firestore and shows a prompt, but users must manually open GitHub releases to download. No in-app download.
 
-**Consideration:** Low priority for desktop app — manual download is acceptable for v1.
-
----
+**Consideration:** Acceptable for v1 — manual download is standard for desktop apps.
 
 ---
 
@@ -67,6 +67,27 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 **File:** `lib/features/auth/presentation/screens/account/components/account_name_editor.dart:41`
 
 `// TODO: Refine size, currently perceived as too big compared to TextField` — cosmetic fix.
+
+---
+
+### 14. `activeEngineFallbacks` `ValueNotifier` Never Disposed
+**File:** `lib/features/subscription/data/datasources/subscription_remote_datasource.dart`
+
+**What:** `activeEngineFallbacks = ValueNotifier<Set<String>>({})` is never disposed on logout. Low risk but violates lifecycle discipline.
+
+**Fix:** Add `activeEngineFallbacks.dispose()` to `reset()`.
+
+---
+
+### 15. CORS `allow_origins=["*"]` on Local Server
+**File:** `server/flutter_server.py`
+
+**What:** Server binds to `127.0.0.1` so wildcard CORS is safe in practice, but bad practice.
+
+**Fix:** Scope to loopback:
+```python
+allow_origins=["http://127.0.0.1", "http://localhost"],
+```
 
 ---
 
@@ -84,7 +105,15 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 | MyMemory disabled in settings | ✅ Works once DB is seeded |
 | Retry count on WS disconnect UI | ⏭ Skipped — not needed |
 | Firebase Auth token expiry | ✅ Firestore SDK auto-refreshes internally. RTDB REST client (`RTDBClient.request`) now detects 401/403 and calls `getIdToken(true)` so the next request (which re-fetches the URL via `getRTDBUrl`) carries a fresh token. |
+| RTDBClient 401 without retry | ✅ `request()` now takes a `buildUrl` lambda alongside `makeRequest(client, url)`. On 401/403: force-refreshes token, calls `buildUrl()` again for a fresh-token URL, retries once. All 11 call sites updated to pass URL builders. |
+| Google credentials logged at INFO | ✅ Downgraded two `logging.info` calls in `google_api_translation.py` to `logging.debug`. Removed credential key names and string prefix from the log messages. |
+| `taskkill` no try-catch on first boot | ✅ Wrapped `Process.runSync('taskkill', ...)` in `startServer()` with `try/catch(_)`. |
+| Audio meter exceptions swallowed | ✅ Moved `import logging` to module top. Inner read-loop `except Exception: break` now logs a warning before breaking. Redundant local `import logging` stmts in `_measure_loop` and `_resolve_device` removed. |
 | WebSocket transport security | ✅ `flutter_server.py` always binds to `127.0.0.1` — loopback traffic never leaves the machine so `ws://` is correct. `ServerConfig` and `TranslationWebsocketClient` now auto-select `wss://`/`https://` if the host is ever changed to a non-loopback address. |
 | Server restart recovery | ✅ `PythonServerManager` already had an `exitCode` listener for crash restarts. Gap fixed: `_checkHealthOnce()` in `TranslationBloc` now calls `PythonServerManager.startServer()` when the HTTP health check fails — covers the case where `_serverProcess` is null (externally-started server). Added `_isStarting` flag to guard against concurrent restart attempts from the 3-second health poll. |
 | `whisper_suspended` dead code | ✅ Removed: flag was never set to `True` (Flutter never sent it, `base_handler.py` hardcoded `False`). Deleted `whisper_suspended` from `ASRDispatcher`, the guarded early-return in `process_chunk`, the `suspended` param from `start_stream`, `initial_suspension` from `get_server_context`, and the pass-through in `audio/handler.py`. |
 | Trial expiry warning UI | ✅ Scoped down from banners/snackbars to a passive countdown timer. `QuotaStatus` now carries `trialExpiresAt: DateTime?` (populated from Firestore in `subscription_remote_datasource`). Usage screen and Plan screen both show "Xd Yh remaining" (amber, timer icon) when tier is `'trial'`. Formatter lives in `core/utils/duration_utils.dart`. |
+| `QuotaStatus.copyWith()` missing `monthlyResetAt` | ✅ Added `monthlyResetAt?` param to `copyWith()`. `_updateCurrentStatus()` now accepts and forwards `monthlyResetAt` from the Firestore snapshot, falling back to the preserved value on `_currentStatus`. |
+| Trial auto-downgrade code bug + missing data | ✅ Added `return` after `_checkTrialExpiry()` in `_listenToUserDoc` — status now waits for the next Firestore snapshot (with `tier: 'free'`) instead of broadcasting stale trial data. Added `monthlyResetAt` to `activateTrial()` Firestore write so upgrade from trial to paid tier has a valid reset date. |
+| Race condition — model unload on tier downgrade | ✅ `stopTranslationUseCase()` is now awaited before `unloadModelUseCase()` in the tier-downgrade path of `TranslationBloc`. Prevents model unload while audio streams are still draining. |
+| `endSession()` errors swallowed on logout | ✅ `catch (_) {}` replaced with `catch (e) { AppLogger.e(...) }` in `AuthRemoteDataSource.signOut()`. Logout failures are now visible in logs. |

@@ -44,14 +44,14 @@ class GoogleCloudTranslationModel:
 
             if isinstance(self._credentials, dict):
                 info = self._credentials
-                logging.info(f"[GoogleCloudTranslationModel] Received credentials as dict (keys: {list(info.keys())})")
+                logging.debug(f"[GoogleCloudTranslationModel] Received credentials as dict")
             elif isinstance(self._credentials, str):
                 # Clean up the string (strip whitespace, handles potential double-quotes)
                 cred_str = self._credentials.strip()
                 if cred_str.startswith('"') and cred_str.endswith('"'):
                     cred_str = cred_str[1:-1]
-                
-                logging.info(f"[GoogleCloudTranslationModel] Parsing credentials string (len: {len(cred_str)}, starts with: {cred_str[:20]}...)")
+
+                logging.debug(f"[GoogleCloudTranslationModel] Parsing credentials string (len: {len(cred_str)})")
                 
                 # Using strict=False allows raw control characters (like newlines)
                 # which are common in service account JSONs pasted into configurations.

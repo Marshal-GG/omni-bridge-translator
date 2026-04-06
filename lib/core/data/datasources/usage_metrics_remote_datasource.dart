@@ -100,11 +100,9 @@ class UsageMetricsRemoteDataSource implements IResettable {
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
       // 1. Fetch current totals to perform client-side increments (REST API limitation)
-      final rootUrl = await _rtdbClient.getRTDBUrl('');
-      if (rootUrl == null) return;
-
       final getResp = await _rtdbClient.request(
-        (client) => client.get(rootUrl),
+        (client, url) => client.get(url),
+        () => _rtdbClient.getRTDBUrl(''),
         context: 'flushUsage:fetch',
       );
 
@@ -207,11 +205,9 @@ class UsageMetricsRemoteDataSource implements IResettable {
       }
 
       if (updates.isNotEmpty) {
-        final patchUrl = await _rtdbClient.getRTDBUrl('');
-        if (patchUrl == null) return;
-
         await _rtdbClient.request(
-          (client) => client.patch(patchUrl, body: jsonEncode(updates)),
+          (client, url) => client.patch(url, body: jsonEncode(updates)),
+          () => _rtdbClient.getRTDBUrl(''),
           context: 'flushUsage:patch',
         );
         AppLogger.i(

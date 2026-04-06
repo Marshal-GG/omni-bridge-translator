@@ -42,40 +42,53 @@ class RTDBClient implements IResettable {
     return Uri.parse('$rtdbBaseUrl/$path.json?auth=$idToken');
   }
 
-  /// Makes an RTDB request with transient error retries.
+  /// Makes an RTDB request with transient error retries and a single
+  /// automatic 401/403 retry.
   ///
-  /// On a 401 response the Firebase ID token is force-refreshed so the
-  /// next call (which re-fetches the URL via [getRTDBUrl]/[getAbsoluteUrl])
-  /// will carry a fresh token. The current request is returned as-is; for
-  /// background writes (usage metrics, session tracking) this is acceptable.
+  /// [makeRequest] receives the resolved [Uri] each time it is called.
+  /// [buildUrl] is called once up-front and again after a 401/403 so the
+  /// fresh token baked into the URL query string is picked up automatically.
   Future<http.Response?> request(
-    Future<http.Response> Function(http.Client client) requestFunc, {
+    Future<http.Response> Function(http.Client client, Uri url) makeRequest,
+    Future<Uri?> Function() buildUrl, {
     int maxRetries = 3,
     String? context,
   }) async {
-    int attempts = 0;
-    while (attempts < maxRetries) {
+    Uri? url = await buildUrl();
+    if (url == null) return null;
+
+    bool tokenRefreshed = false;
+    int transientAttempts = 0;
+
+    while (true) {
       try {
-        final response = await requestFunc(
-          _httpClient,
-        ).timeout(const Duration(seconds: 5));
-        if (response.statusCode == 401 || response.statusCode == 403) {
+        final response = await makeRequest(_httpClient, url!)
+            .timeout(const Duration(seconds: 5));
+
+        if ((response.statusCode == 401 || response.statusCode == 403) &&
+            !tokenRefreshed) {
           AppLogger.w(
-            '[RTDBClient] ${response.statusCode} on $context — forcing token refresh.',
+            '[RTDBClient] ${response.statusCode} on $context — forcing token refresh and retrying.',
             tag: 'RTDB',
           );
           await _auth.currentUser?.getIdToken(true);
+          final refreshedUrl = await buildUrl();
+          if (refreshedUrl == null) return response;
+          url = refreshedUrl;
+          tokenRefreshed = true;
+          continue;
         }
+
         return response;
       } catch (e) {
-        attempts++;
+        transientAttempts++;
         final isTransient =
             e is HandshakeException ||
             e is SocketException ||
             e is http.ClientException ||
             e is TimeoutException;
-        if (isTransient && attempts < maxRetries) {
-          await Future.delayed(Duration(milliseconds: 500 * attempts));
+        if (isTransient && transientAttempts < maxRetries) {
+          await Future.delayed(Duration(milliseconds: 500 * transientAttempts));
           continue;
         }
         AppLogger.e(
@@ -86,7 +99,6 @@ class RTDBClient implements IResettable {
         return null;
       }
     }
-    return null;
   }
 
   @override

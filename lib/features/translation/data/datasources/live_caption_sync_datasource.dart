@@ -52,25 +52,23 @@ class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
     try {
       if (isFinal) {
         // 1. Permanent Log (Append)
-        final url = await _rtdbClient.getRTDBUrl(FirebasePaths.captions);
-        if (url != null) {
-          await _rtdbClient.request(
-            (client) => client.post(
-              url,
-              body: jsonEncode({
-                'originalText': originalText,
-                'translatedText': translatedText,
-                'sourceLang': sourceLang,
-                'targetLang': targetLang,
-                'translationModel': translationModel,
-                'isFinal': true,
-                'timestamp': {'.sv': 'timestamp'},
-                'sessionId': currentSessionId,
-              }),
-            ),
-            context: 'syncLiveCaption:Final',
-          );
-        }
+        await _rtdbClient.request(
+          (client, url) => client.post(
+            url,
+            body: jsonEncode({
+              'originalText': originalText,
+              'translatedText': translatedText,
+              'sourceLang': sourceLang,
+              'targetLang': targetLang,
+              'translationModel': translationModel,
+              'isFinal': true,
+              'timestamp': {'.sv': 'timestamp'},
+              'sessionId': currentSessionId,
+            }),
+          ),
+          () => _rtdbClient.getRTDBUrl(FirebasePaths.captions),
+          context: 'syncLiveCaption:Final',
+        );
         // 2. Clear interim node
         final interimUrl = await _rtdbClient.getRTDBUrl(
           FirebasePaths.currentCaption,
@@ -113,14 +111,12 @@ class LiveCaptionSyncDataSource implements ILiveCaptionSyncDataSource {
     _pendingInterim = null;
 
     try {
-      final url = await _rtdbClient.getRTDBUrl(FirebasePaths.currentCaption);
-      if (url != null) {
-        await _rtdbClient.request(
-          (client) => client.put(url, body: jsonEncode(data)),
-          context: 'syncLiveCaption:Interim',
-          maxRetries: 1,
-        );
-      }
+      await _rtdbClient.request(
+        (client, url) => client.put(url, body: jsonEncode(data)),
+        () => _rtdbClient.getRTDBUrl(FirebasePaths.currentCaption),
+        context: 'syncLiveCaption:Interim',
+        maxRetries: 1,
+      );
     } finally {
       _isSyncingInterim = false;
       if (_pendingInterim != null) {

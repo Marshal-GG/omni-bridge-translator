@@ -159,20 +159,18 @@ class SessionRemoteDataSource implements IResettable {
         });
 
     try {
-      final url = await _rtdbClient.getRTDBUrl(
-        '${FirebasePaths.activeSessions}/$_currentSessionId',
+      await _rtdbClient.request(
+        (client, url) => client.patch(
+          url,
+          body: jsonEncode({
+            'started_at': {'.sv': 'timestamp'},
+          }),
+        ),
+        () => _rtdbClient.getRTDBUrl(
+          '${FirebasePaths.activeSessions}/$_currentSessionId',
+        ),
+        context: 'startSession',
       );
-      if (url != null) {
-        await _rtdbClient.request(
-          (client) => client.patch(
-            url,
-            body: jsonEncode({
-              'started_at': {'.sv': 'timestamp'},
-            }),
-          ),
-          context: 'startSession',
-        );
-      }
     } catch (e) {
       AppLogger.e('Failed to sync session start to RTDB', error: e, tag: _tag);
     }
@@ -265,21 +263,19 @@ class SessionRemoteDataSource implements IResettable {
       }, SetOptions(merge: true));
 
       try {
-        final url = await _rtdbClient.getRTDBUrl(
-          '${FirebasePaths.activeSessions}/$_currentSessionId',
+        await _rtdbClient.request(
+          (client, url) => client.patch(
+            url,
+            body: jsonEncode({
+              'ended_at': {'.sv': 'timestamp'},
+              'duration_seconds': duration,
+            }),
+          ),
+          () => _rtdbClient.getRTDBUrl(
+            '${FirebasePaths.activeSessions}/$_currentSessionId',
+          ),
+          context: 'endSession',
         );
-        if (url != null) {
-          await _rtdbClient.request(
-            (client) => client.patch(
-              url,
-              body: jsonEncode({
-                'ended_at': {'.sv': 'timestamp'},
-                'duration_seconds': duration,
-              }),
-            ),
-            context: 'endSession',
-          );
-        }
       } catch (e) {
         AppLogger.e('Failed to sync session end to RTDB', error: e, tag: _tag);
       }
@@ -299,21 +295,19 @@ class SessionRemoteDataSource implements IResettable {
           ? DateTime.now().difference(_sessionStartTime!)
           : Duration.zero;
       final duration = diff.inSeconds;
-      final url = await _rtdbClient.getRTDBUrl(
-        '${FirebasePaths.activeSessions}/$_currentSessionId',
+      await _rtdbClient.request(
+        (client, url) => client.patch(
+          url,
+          body: jsonEncode({
+            'last_ping_at': {'.sv': 'timestamp'},
+            'duration_seconds': duration,
+          }),
+        ),
+        () => _rtdbClient.getRTDBUrl(
+          '${FirebasePaths.activeSessions}/$_currentSessionId',
+        ),
+        context: 'pingSession',
       );
-      if (url != null) {
-        await _rtdbClient.request(
-          (client) => client.patch(
-            url,
-            body: jsonEncode({
-              'last_ping_at': {'.sv': 'timestamp'},
-              'duration_seconds': duration,
-            }),
-          ),
-          context: 'pingSession',
-        );
-      }
       AppLogger.d('Heartbeat ping sent.', tag: _tag);
     } catch (e) {
       AppLogger.e('Failed to send heartbeat ping', error: e, tag: _tag);
