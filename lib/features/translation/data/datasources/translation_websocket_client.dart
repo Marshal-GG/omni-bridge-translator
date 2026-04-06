@@ -54,7 +54,11 @@ class TranslationWebsocketClient implements IResettable {
   String _lastSentRivaParakeetId = '';
   String _lastSentRivaCanaryId = '';
 
-  String get _wsUrl => 'ws://$serverHost:$serverPort/captions';
+  bool get _isLocal =>
+      serverHost == '127.0.0.1' || serverHost == 'localhost';
+
+  String get _wsUrl =>
+      '${_isLocal ? 'ws' : 'wss'}://$serverHost:$serverPort/captions';
 
   TranslationWebsocketClient({
     required this.serverHost,

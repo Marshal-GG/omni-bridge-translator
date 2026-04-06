@@ -170,6 +170,7 @@ A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically run
 | `AuthRemoteDataSource` | Handles Firebase Auth and Google Sign-In redirects. |
 | `PythonServerManager` | Manages local Python process lifecycle (auto-restart, backoff). Lives in `core/infrastructure/`. |
 | `RTDBClient` | Singleton HTTP client for Firebase RTDB REST operations (all datasources that write to RTDB route through it). Handles transient retries with exponential backoff. On a 401/403 response it calls `getIdToken(true)` to force-refresh the Firebase ID token so the next request (which re-fetches the URL) carries a valid token. Firestore SDK manages its own token refresh internally. |
+| `ServerConfig` | Single source of truth for the local Python server address (`127.0.0.1:8765`). `wsUrl` and `httpUrl` automatically use `ws://`/`http://` for loopback and upgrade to `wss://`/`https://` for any non-localhost host. The server always binds to loopback so plain WebSocket is intentional and secure. |
 
 ---
 

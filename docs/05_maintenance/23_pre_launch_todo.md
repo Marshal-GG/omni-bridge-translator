@@ -49,16 +49,6 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 
 ---
 
-### 8. WebSocket Transport Security
-**What:** The NVIDIA API key is transmitted over the WebSocket from Flutter to the Python server. Ensure the connection uses `wss://` (TLS) in production, not `ws://`.
-
-**File:** `lib/core/config/server_config.dart` or wherever the WebSocket URL is built
-
-**Steps:**
-1. Confirm the WebSocket URL scheme in the config
-2. Ensure the Python server's `flutter_server.py` supports TLS when deployed outside localhost
-3. Document the expected transport configuration
-
 ---
 
 ### 9. History Panel — Free Tier UX
@@ -116,3 +106,4 @@ The `if self.whisper_suspended: return None, None` check exists but the flag is 
 | MyMemory disabled in settings | ✅ Works once DB is seeded |
 | Retry count on WS disconnect UI | ⏭ Skipped — not needed |
 | Firebase Auth token expiry | ✅ Firestore SDK auto-refreshes internally. RTDB REST client (`RTDBClient.request`) now detects 401/403 and calls `getIdToken(true)` so the next request (which re-fetches the URL via `getRTDBUrl`) carries a fresh token. |
+| WebSocket transport security | ✅ `flutter_server.py` always binds to `127.0.0.1` — loopback traffic never leaves the machine so `ws://` is correct. `ServerConfig` and `TranslationWebsocketClient` now auto-select `wss://`/`https://` if the host is ever changed to a non-loopback address. |
