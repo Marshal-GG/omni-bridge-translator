@@ -69,11 +69,6 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 
 ---
 
-### 12. Remove Dead Code: `whisper_suspended` Flag
-**File:** `server/src/asr/asr_dispatcher.py`
-
-The `if self.whisper_suspended: return None, None` check exists but the flag is never set. Either implement the suspend/unload flow or remove the dead code.
-
 ---
 
 ### 13. Account Name Editor Size
@@ -99,3 +94,4 @@ The `if self.whisper_suspended: return None, None` check exists but the flag is 
 | Firebase Auth token expiry | ✅ Firestore SDK auto-refreshes internally. RTDB REST client (`RTDBClient.request`) now detects 401/403 and calls `getIdToken(true)` so the next request (which re-fetches the URL via `getRTDBUrl`) carries a fresh token. |
 | WebSocket transport security | ✅ `flutter_server.py` always binds to `127.0.0.1` — loopback traffic never leaves the machine so `ws://` is correct. `ServerConfig` and `TranslationWebsocketClient` now auto-select `wss://`/`https://` if the host is ever changed to a non-loopback address. |
 | Server restart recovery | ✅ `PythonServerManager` already had an `exitCode` listener for crash restarts. Gap fixed: `_checkHealthOnce()` in `TranslationBloc` now calls `PythonServerManager.startServer()` when the HTTP health check fails — covers the case where `_serverProcess` is null (externally-started server). Added `_isStarting` flag to guard against concurrent restart attempts from the 3-second health poll. |
+| `whisper_suspended` dead code | ✅ Removed: flag was never set to `True` (Flutter never sent it, `base_handler.py` hardcoded `False`). Deleted `whisper_suspended` from `ASRDispatcher`, the guarded early-return in `process_chunk`, the `suspended` param from `start_stream`, `initial_suspension` from `get_server_context`, and the pass-through in `audio/handler.py`. |

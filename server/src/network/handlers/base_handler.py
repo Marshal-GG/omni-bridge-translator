@@ -68,7 +68,6 @@ class ServerContext:
             "ai_engine": self.config["ai_engine"],
             "transcription_model": self.config["transcription_model"],
             "translation_model": self.config["translation_model"],
-            "initial_suspension": False,
         }
 
 class BaseHandler:

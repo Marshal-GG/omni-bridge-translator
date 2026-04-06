@@ -26,7 +26,6 @@ class ASRDispatcher:
         
         self.transcription_model = "online"
         self.source_lang = "auto"
-        self.whisper_suspended = False
         
         self.seg = pysbd.Segmenter(language="en", clean=False)
         self._last_transcript: Optional[str] = None
@@ -81,8 +80,6 @@ class ASRDispatcher:
                 return self.riva.transcribe(audio_bytes, config)
             
             if model.startswith("whisper"):
-                if self.whisper_suspended:
-                    return None, None
                 return self.whisper.transcribe(audio_bytes, self.sample_rate, self.source_lang)
 
             # Default: Local/Google Online via SpeechRecognition

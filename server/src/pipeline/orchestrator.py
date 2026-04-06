@@ -148,7 +148,6 @@ class InferenceOrchestrator:
         transcription_model: str = "online",
         translation_model: str = "",        # empty → derive from ai_engine
         callback: Optional[Callable] = None,
-        suspended: bool = False,
     ):
         """Initialize and start background worker threads."""
         if self.is_running:
@@ -165,7 +164,6 @@ class InferenceOrchestrator:
         # Sync Dispatcher Config
         self.asr_dispatcher.transcription_model = transcription_model.lower().strip()
         self.asr_dispatcher.source_lang = source_lang
-        self.asr_dispatcher.whisper_suspended = suspended
         self.asr_dispatcher.sample_rate = sample_rate
         
         self.translation_dispatcher.source_lang = source_lang

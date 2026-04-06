@@ -97,7 +97,6 @@ def audio_poll_loop(session_id, is_running_func, audio_capture, orchestrator, ge
             transcription_model=ctx["transcription_model"],
             translation_model=ctx["translation_model"],
             callback=callback,
-            suspended=ctx["initial_suspension"],
         )
         while is_running_func() and session_id == get_context_func()["session_id"]:
             if audio_capture is None:
