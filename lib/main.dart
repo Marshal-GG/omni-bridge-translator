@@ -9,22 +9,24 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:bitsdojo_window/bitsdojo_window.dart';
 
 import 'package:omni_bridge/app.dart';
 import 'package:omni_bridge/core/platform/app_initializer.dart';
 import 'package:omni_bridge/core/platform/window_manager.dart';
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Phase 1: fast init — Firebase, window, tray, protocols. No network waits.
+  // Phase 1: fast init — Firebase, DI, window, tray, protocols. No network.
   await AppInitializer.initFast(args);
 
-  // Show the app immediately. The splash screen drives Phase 2 via StartupBloc.
-  runApp(const MyApp(initialRoute: '/splash'));
+  // Phase 2: resolve the initial route — checks auth state + forced updates.
+  // Returns '/translation-overlay', '/force_update', or '/onboarding'.
+  final String initialRoute = await AppInitializer.initAsync();
 
-  // Resize the OS window to the correct size once Flutter is ready.
+  runApp(MyApp(initialRoute: initialRoute));
+
   doWhenWindowReady(() {
     unawaited(configureMainWindow());
   });

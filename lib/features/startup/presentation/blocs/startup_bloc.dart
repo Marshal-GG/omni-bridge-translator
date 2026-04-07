@@ -19,7 +19,6 @@ class StartupBloc extends Bloc<StartupEvent, StartupState> {
     emit(const StartupLoading());
 
     try {
-      // Phase 2: auth validation + update check + server start (background).
       final route = await AppInitializer.initAsync();
 
       if (route == '/force_update') {

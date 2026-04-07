@@ -14,9 +14,10 @@ import 'package:omni_bridge/features/auth/presentation/screens/account/component
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_email_info.dart';
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_button.dart';
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/admin_panel.dart';
-import 'package:omni_bridge/core/widgets/omni_window_layout.dart';
 import 'package:omni_bridge/core/widgets/omni_progress_bar.dart';
 import 'package:omni_bridge/core/widgets/omni_card.dart';
+import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
+import 'package:omni_bridge/core/navigation/app_router.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -155,21 +156,13 @@ class _AccountScreenState extends State<AccountScreen> {
     final user = AuthRemoteDataSource.instance.currentUser.value;
     final isAnon = user?.isAnonymous ?? false;
 
-    return OmniWindowLayout(
-      child: Column(
-        children: [
-          // ── Draggable Header ──────────────────────────────────────────
-          buildAccountHeader(
-            context,
-            onBack: () {
-              Navigator.of(context).pop();
-            },
-          ),
-          const Divider(height: 1, color: Colors.white10),
-
-          // ── Content ───────────────────────────────────────────────────
-          Expanded(
-            child: SingleChildScrollView(
+    return AppDashboardShell(
+      currentRoute: AppRouter.account,
+      header: buildAccountHeader(
+        context,
+        onBack: () => Navigator.of(context).pop(),
+      ),
+      child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Center(
                 child: SizedBox(
@@ -447,9 +440,6 @@ class _AccountScreenState extends State<AccountScreen> {
                 ),
               ),
             ),
-          ),
-        ],
-      ),
     );
   }
 }

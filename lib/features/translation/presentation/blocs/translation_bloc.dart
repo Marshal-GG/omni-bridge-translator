@@ -502,85 +502,88 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     LoadSettingsEvent event,
     Emitter<TranslationState> emit,
   ) async {
-    final loadingState = state.copyWith(isSettingsLoading: true);
-    emit(loadingState);
+    emit(state.copyWith(isSettingsLoading: true));
     try {
       final result = await getAppSettingsUseCase();
-      result.fold(
-        (failure) => AppLogger.e(
-          'Error loading settings',
-          error: failure.message,
-          tag: 'TranslationBloc',
-        ),
-        (settings) async {
-          if (settings != null) {
-            final loadedState = state.copyWith(
-              activeTargetLang: settings.targetLang,
-              activeSourceLang: settings.sourceLang,
-              activeUseMic: settings.useMic,
-              activeFontSize: settings.fontSize,
-              activeIsBold: settings.isBold,
-              activeOpacity: settings.opacity,
-              activeInputDeviceIndex: settings.inputDeviceIndex,
-              activeOutputDeviceIndex: settings.outputDeviceIndex,
-              activeDesktopVolume: settings.desktopVolume,
-              activeMicVolume: settings.micVolume,
-              activeTranslationModel: settings.translationModel,
-              activeNvidiaNimKey: settings.nvidiaNimKey,
-              activeTranscriptionModel: settings.transcriptionModel,
-            );
-            emit(loadedState);
-
-            // Trigger status update in backend
-            add(
-              ApplySettingsEvent(
-                targetLang: settings.targetLang,
-                sourceLang: settings.sourceLang,
-                useMic: settings.useMic,
-                fontSize: settings.fontSize,
-                isBold: settings.isBold,
-                opacity: settings.opacity,
-                inputDeviceIndex: settings.inputDeviceIndex,
-                outputDeviceIndex: settings.outputDeviceIndex,
-                desktopVolume: settings.desktopVolume,
-                micVolume: settings.micVolume,
-                translationModel: settings.translationModel,
-                nvidiaNimKey: settings.nvidiaNimKey,
-                transcriptionModel: settings.transcriptionModel,
-              ),
-            );
-          } else {
-            final defaults = AppSettings.initial();
-            final defaultState = state.copyWith(
-              activeTargetLang: defaults.targetLang,
-              activeSourceLang: defaults.sourceLang,
-              activeUseMic: defaults.useMic,
-              activeFontSize: defaults.fontSize,
-              activeIsBold: defaults.isBold,
-              activeOpacity: defaults.opacity,
-              activeInputDeviceIndex: defaults.inputDeviceIndex,
-              activeOutputDeviceIndex: defaults.outputDeviceIndex,
-              activeDesktopVolume: defaults.desktopVolume,
-              activeMicVolume: defaults.micVolume,
-              activeTranslationModel: defaults.translationModel,
-              activeNvidiaNimKey: defaults.nvidiaNimKey,
-              activeTranscriptionModel: defaults.transcriptionModel,
-            );
-            if (defaultState != state) {
-              AppLogger.i(
-                '_onLoadSettings: emitted state with default settings',
-                tag: 'TranslationBloc',
-              );
-            }
-            emit(defaultState);
-          }
+      final settings = result.fold(
+        (failure) {
+          AppLogger.e(
+            'Error loading settings',
+            error: failure.message,
+            tag: 'TranslationBloc',
+          );
+          return null;
         },
+        (s) => s,
       );
+
+      if (settings != null) {
+        emit(
+          state.copyWith(
+            activeTargetLang: settings.targetLang,
+            activeSourceLang: settings.sourceLang,
+            activeUseMic: settings.useMic,
+            activeFontSize: settings.fontSize,
+            activeIsBold: settings.isBold,
+            activeOpacity: settings.opacity,
+            activeInputDeviceIndex: settings.inputDeviceIndex,
+            activeOutputDeviceIndex: settings.outputDeviceIndex,
+            activeDesktopVolume: settings.desktopVolume,
+            activeMicVolume: settings.micVolume,
+            activeTranslationModel: settings.translationModel,
+            activeNvidiaNimKey: settings.nvidiaNimKey,
+            activeTranscriptionModel: settings.transcriptionModel,
+          ),
+        );
+
+        // Trigger status update in backend
+        add(
+          ApplySettingsEvent(
+            targetLang: settings.targetLang,
+            sourceLang: settings.sourceLang,
+            useMic: settings.useMic,
+            fontSize: settings.fontSize,
+            isBold: settings.isBold,
+            opacity: settings.opacity,
+            inputDeviceIndex: settings.inputDeviceIndex,
+            outputDeviceIndex: settings.outputDeviceIndex,
+            desktopVolume: settings.desktopVolume,
+            micVolume: settings.micVolume,
+            translationModel: settings.translationModel,
+            nvidiaNimKey: settings.nvidiaNimKey,
+            transcriptionModel: settings.transcriptionModel,
+          ),
+        );
+      } else {
+        // No settings saved yet — apply defaults
+        final defaults = AppSettings.initial();
+        final defaultState = state.copyWith(
+          activeTargetLang: defaults.targetLang,
+          activeSourceLang: defaults.sourceLang,
+          activeUseMic: defaults.useMic,
+          activeFontSize: defaults.fontSize,
+          activeIsBold: defaults.isBold,
+          activeOpacity: defaults.opacity,
+          activeInputDeviceIndex: defaults.inputDeviceIndex,
+          activeOutputDeviceIndex: defaults.outputDeviceIndex,
+          activeDesktopVolume: defaults.desktopVolume,
+          activeMicVolume: defaults.micVolume,
+          activeTranslationModel: defaults.translationModel,
+          activeNvidiaNimKey: defaults.nvidiaNimKey,
+          activeTranscriptionModel: defaults.transcriptionModel,
+        );
+        if (defaultState != state) {
+          AppLogger.i(
+            '_onLoadSettings: emitted state with default settings',
+            tag: 'TranslationBloc',
+          );
+        }
+        emit(defaultState);
+      }
     } catch (e) {
       AppLogger.e('Error loading settings', error: e, tag: 'TranslationBloc');
     } finally {
-      final finishedState = state.copyWith(isSettingsLoading: false);
-      emit(finishedState);
+      emit(state.copyWith(isSettingsLoading: false));
     }
   }
 

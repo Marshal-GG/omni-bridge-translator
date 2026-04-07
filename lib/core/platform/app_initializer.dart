@@ -206,6 +206,6 @@ class AppInitializer {
 
     if (updateResult.status == UpdateStatus.forced) return '/force_update';
     if (isLoggedIn) return '/translation-overlay';
-    return '/splash_done'; // signals: not logged in, proceed to onboarding
+    return '/onboarding'; // not logged in → go straight to onboarding
   }
 }

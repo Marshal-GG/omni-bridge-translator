@@ -273,6 +273,16 @@ class AppNavigationRail extends StatelessWidget {
                 onTap: () => _navigate(context, AppRouter.usage),
               ),
 
+              // ── Account ──
+              _NavTile(
+                icon: Icons.manage_accounts_rounded,
+                label: 'Account',
+                isActive: currentRoute == AppRouter.account,
+                isExpanded: sidebarExpanded,
+                tooltip: 'Account',
+                onTap: () => _navigate(context, AppRouter.account),
+              ),
+
               // ── Support ──
               _NavTile(
                 icon: Icons.forum_rounded,
@@ -391,7 +401,7 @@ class AppNavigationRail extends StatelessWidget {
             AppSpacing.md,
           ),
           child: _HoverContainer(
-            onTap: () => Navigator.pushNamed(context, AppRouter.account),
+            onTap: () => _navigate(context, AppRouter.account),
             builder: (isHovered) => AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               padding: EdgeInsets.symmetric(
