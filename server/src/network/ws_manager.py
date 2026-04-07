@@ -30,7 +30,7 @@ class ConnectionManager:
             # Fallback: convert everything to string to at least send something
             try:
                 json_str = json.dumps(message, default=str)
-            except:
+            except Exception:
                 return
 
         dead = set()
@@ -52,7 +52,7 @@ class ConnectionManager:
             return list(obj)
         try:
             return str(obj)
-        except:
+        except Exception:
             return f"<unserializable {type(obj).__name__}>"
 
     async def broadcast_status(self, orchestrator):

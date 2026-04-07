@@ -4,6 +4,45 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 
 ---
 
+## CRITICAL — Must do before any build ships
+
+### 0b. Rebuild Server (pyarmor_runtime_000000 was missing)
+**What:** The previously built `server/dist/omni_bridge_server.exe` (234 MB) will crash at runtime with `ModuleNotFoundError: No module named 'pyarmor_runtime_000000'` — the PyArmor runtime directory was not included in the spec datas. **This is now fixed in the spec**, but the exe must be rebuilt.
+
+**Steps:**
+```bash
+cd server
+pyarmor gen --output dist_obfuscated .
+pyinstaller omni_bridge_server.spec
+```
+
+---
+
+### 0c. Rebuild Flutter App
+**What:** The existing Windows release build is compiled from old code (`1.2.4`, before the trial tier fix, per-engine cap enforcement, and parallel startup). Must rebuild with current code and version `2.0.0+2`.
+
+**Steps:**
+```bash
+flutter build windows --release
+```
+
+---
+
+### 0d. Update Firestore `system/app_version`
+**What:** Firestore `system/app_version` must reflect `2.0.0` as the latest version so existing installs prompt users to update.
+
+**Fields to set:**
+```json
+{
+  "latest": "2.0.0",
+  "min_supported": "<oldest version you still support>",
+  "update_url": "https://github.com/Marshal-GG/omni-bridge-translator/releases",
+  "download_url": "https://<direct installer download link>"
+}
+```
+
+---
+
 ## BLOCKERS — Must complete before any public user
 
 ### 1. Razorpay Payment Links
@@ -24,6 +63,35 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 ---
 
 ## LOW — Polish / post-launch
+
+### 15. Compile Inno Setup Installer
+**What:** Once both the server and Flutter app are rebuilt, compile the installer.
+
+**Steps:**
+1. Confirm `server/dist/omni_bridge_server.exe` exists (freshly built, obfuscated)
+2. Confirm `build/windows/x64/runner/Release/omni_bridge.exe` exists (freshly built, `2.0.0+2`)
+3. Open `installer_setup.iss` in Inno Setup 6.7.1 and Build → Compile
+4. Output: `installers/OmniBridge_Setup_v2.0.0.exe`
+5. Test on a clean VM before publishing
+
+---
+
+### 16. Graceful Riva Import Fallback
+**Files:** `server/src/models/asr/riva_asr.py:7` · `server/src/models/translation/riva_nmt.py:7`
+
+Both files have `import riva.client` at module top-level. If the riva package is not available (e.g., non-GPU build), the import failure crashes the entire server on startup rather than just disabling Riva engines.
+
+**Fix:** Wrap with try/except:
+```python
+try:
+    import riva.client  # type: ignore[import]
+    RIVA_AVAILABLE = True
+except ImportError:
+    RIVA_AVAILABLE = False
+```
+Then guard class instantiation / method bodies with `if not RIVA_AVAILABLE: raise RuntimeError("Riva not available")`.
+
+---
 
 ### 14. Remove Debug Tier Panel Before Release
 **What:** A `_DebugTierPanel` widget is rendered at the bottom of `SubscriptionScreen` behind a `kDebugMode` guard. It must be removed (or the whole block deleted) before shipping a release build — while it won't appear in release mode, the dead code and debug methods should be cleaned up.
@@ -61,7 +129,8 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 | Firebase `system/monetization` seed | ✅ Seeded via admin panel (minor adjustments pending) |
 | `forceLogout` listener | ✅ Fully implemented in `SessionRemoteDataSource` (`_userSub` + `_sessionSub`). On trigger: resets flag to `false`, then calls `AuthRemoteDataSource.signOut()` via injected callback — runs the full IResettable reset chain identically to manual logout. |
 | Server-side quota enforcement | ✅ `SessionHandler` checks `quota_daily_used`/`quota_daily_limit` from `start` payload — refuses if exceeded. `wrap_callback` deducts chars per chunk and stops mid-session when `quota_remaining` hits 0, broadcasting `quota_exceeded`. Flutter passes live `QuotaStatus` fields on every start and stops `TranslationBloc` on `quota_exceeded` receipt. |
-| Windows installer / PyInstaller build | ✅ `omni_bridge_server.spec` updated with correct module paths for current codebase. `pyinstaller omni_bridge_server.spec` produces `server/dist/omni_bridge_server.exe` (234 MB). Still needs: Inno Setup compile + clean VM test. |
+| Windows installer / PyInstaller build | ✅ `omni_bridge_server.spec` updated: correct module paths, `pyarmor_runtime_000000` now included in datas (was missing — would have caused runtime crash). Bare `except:` fixed in `ws_manager.py` and `asr_dispatcher.py`. Still needs: fresh rebuild + Inno Setup compile + clean VM test. |
+| RTDB security rules | ✅ `database.rules.json` created: `users/$uid` read/write locked to authenticated owner. Added `database` key to `firebase.json`. Deployed to `omni-bridge-ai-translator-default-rtdb`. |
 | Engine key mapping (EngineRegistry) | ✅ Complete |
 | MyMemory disabled in settings | ✅ Works once DB is seeded |
 | Retry count on WS disconnect UI | ⏭ Skipped — not needed |

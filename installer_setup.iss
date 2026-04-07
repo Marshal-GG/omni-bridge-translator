@@ -1,13 +1,18 @@
-; Omni Bridge - Inno Setup Installer Script
+; Omni Bridge — Inno Setup Installer Script
+; Build: Release  |  Target: Windows 10 x64+
 
-#define MyAppName "Omni Bridge - Live AI Translator"
-#define MyAppVersion "1.2.4"
-#define MyAppPublisher "Marshal"
-#define MyAppExeName "omni_bridge.exe"
-#define MyAppURL "https://github.com/Marshal-GG/omni-bridge-translator"
-#define MyAppCopyright "Copyright (C) 2026 Marshal. All rights reserved."
+#define MyAppName        "Omni Bridge - Live AI Translator"
+#define MyAppVersion     "2.0.0"
+#define MyAppPublisher   "Marshal"
+#define MyAppExeName     "omni_bridge.exe"
+#define MyAppServerExe   "omni_bridge_server.exe"
+#define MyAppURL         "https://github.com/Marshal-GG/omni-bridge-translator"
+#define MyAppCopyright   "Copyright (C) 2026 Marshal. All rights reserved."
+#define MyAppMutex       "OmniBridgeMutex"
+#define MyAppSetupMutex  "OmniBridgeSetupMutex"
 
 [Setup]
+; Stable GUID — never change this after first release or upgrades will break
 AppId={{D9BEBE4B-A480-4D46-A223-952F3DB6D5D1}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -17,28 +22,56 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 AppCopyright={#MyAppCopyright}
+AppReadmeFile={#MyAppURL}
+
+; Version info embedded into the installer .exe itself
+; Must be 4-part (N.N.N.N) — Inno Setup requires this format
+VersionInfoVersion=2.0.0.0
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoDescription={#MyAppName} Setup
+VersionInfoProductName={#MyAppName}
+VersionInfoProductVersion={#MyAppVersion}
+VersionInfoCopyright={#MyAppCopyright}
+
+; Install to Program Files (system-wide, consistent across users)
 DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
-; Restrict installer to 64-bit Windows only (required for Flutter x64 builds)
-ArchitecturesAllowed=x64
-ArchitecturesInstallIn64BitMode=x64
-SetupIconFile=assets\icon.ico
+
+; 64-bit Windows only — required for Flutter x64 and server .exe
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+
+; Minimum Windows 10 1809 (build 17763) — required for WebView2 and bitsdojo_window
+MinVersion=10.0.17763
+
+; Icons
+SetupIconFile=assets\app\icons\icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
-; Require admin so the app installs to C:\Program Files (system-wide)
+
+; Privileges — admin required; no downgrade option shown to user
 PrivilegesRequired=admin
-; Close any running instance before installing to prevent file-lock errors
+
+; Prevent running app and duplicate installer simultaneously
+AppMutex={#MyAppMutex}
+SetupMutex={#MyAppSetupMutex}
 CloseApplications=yes
 RestartApplications=no
+
+; Output
 OutputDir=installers
 OutputBaseFilename=OmniBridge_Setup_v{#MyAppVersion}
-Compression=lzma2
+
+; Compression
+Compression=lzma2/ultra64
 CompressionThreads=auto
 SolidCompression=yes
+LZMAUseSeparateProcess=yes
+
+; Wizard
 WizardStyle=modern
-AppMutex=OmniBridgeMutex
-SetupMutex=OmniBridgeSetupMutex
-; Minimum Windows 10 (1809 / RS5 — build 17763)
-MinVersion=10.0.17763
+WizardResizable=no
+
+; Legal
 LicenseFile=docs\legal\LICENSE
 
 [Languages]
@@ -49,59 +82,63 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "startupicon"; Description: "Launch Omni Bridge on Windows startup"; GroupDescription: "Startup:"; Flags: unchecked
 
 [Files]
-; All Flutter release DLLs, exe, and data (plugins, assets, etc.)
-Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Flutter app — all release DLLs, exe, data folders, plugins, assets
+; Exclude .lib/.exp build artifacts — not needed at runtime, just bloat
+Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Excludes: "*.lib,*.exp"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; Standalone Python backend server
-Source: "server\dist\omni_bridge_server.exe"; DestDir: "{app}"; Flags: ignoreversion
+; Python backend server (obfuscated + PyInstaller standalone)
+Source: "server\dist\{#MyAppServerExe}"; DestDir: "{app}"; Flags: ignoreversion
 
-; Legal documents
+; Legal documents (shown during install and accessible from app dir)
 Source: "docs\legal\*"; DestDir: "{app}\docs\legal"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-
-; (Optional) VC++ Redistributables — uncomment if users see "missing VCRUNTIME" errors:
+; (Uncomment if users see "VCRUNTIME140.dll missing" on clean machines)
 ; Source: "redist\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
-; Run after install: {tmp}\vc_redist.x64.exe /quiet /norestart
 
 [InstallDelete]
-; Wipe the entire app directory before installing so stale files never linger
+; Wipe existing install dir so stale DLLs, old server builds, and leftover
+; Whisper model files never conflict with the incoming version.
 Type: filesandordirs; Name: "{app}"
 
 [UninstallDelete]
-; Remove the entire app directory on uninstall (clears runtime files, Whisper models, logs)
+; Remove entire app dir on uninstall — clears runtime files, Whisper models, logs
 Type: filesandordirs; Name: "{app}"
 
 [Icons]
+; Start Menu
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyAppExeName}"
+; Desktop (optional, checked by default once)
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+; Startup (optional, unchecked by default)
 Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: startupicon
 
 [Run]
+; Launch app after install completes (skipped in silent mode)
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [Registry]
-; Register custom URL scheme for deep linking (omni-bridge://) - needed for Google Sign-In redirect
-Root: HKCR; Subkey: "omni-bridge"; ValueType: string; ValueData: "URL:omni-bridge Protocol"; Flags: uninsdeletekey
-Root: HKCR; Subkey: "omni-bridge"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
-Root: HKCR; Subkey: "omni-bridge\DefaultIcon"; ValueType: string; ValueData: "{app}\{#MyAppExeName},0"
-Root: HKCR; Subkey: "omni-bridge\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
+; ── Custom URL scheme: omni-bridge:// ─────────────────────────────────────────
+; Required for deep linking and Google Sign-In redirect on Windows.
+Root: HKCR; Subkey: "omni-bridge";                           ValueType: string; ValueData: "URL:Omni Bridge Protocol";  Flags: uninsdeletekey
+Root: HKCR; Subkey: "omni-bridge";                           ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCR; Subkey: "omni-bridge\DefaultIcon";               ValueType: string; ValueData: "{app}\{#MyAppExeName},0"
+Root: HKCR; Subkey: "omni-bridge\shell\open\command";        ValueType: string; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
-; Register the reversed Google Client ID as a second protocol
-; This is mandatory for Google OAuth redirect to trigger the "Open App" prompt in browsers
-Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-7c9m4sag4p7lubjsim25f76ha9oja77g"; ValueType: string; ValueData: "URL:Google Auth Protocol"; Flags: uninsdeletekey
-Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-7c9m4sag4p7lubjsim25f76ha9oja77g"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
-Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-7c9m4sag4p7lubjsim25f76ha9oja77g\DefaultIcon"; ValueType: string; ValueData: "{app}\{#MyAppExeName},0"
-Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-7c9m4sag4p7lubjsim25f76ha9oja77g\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
+; ── Reversed Google Client ID scheme ─────────────────────────────────────────
+; Required for the browser → app OAuth redirect to trigger the "Open App" dialog.
+Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-7c9m4sag4p7lubjsim25f76ha9oja77g";                             ValueType: string; ValueData: "URL:Google Auth Protocol"; Flags: uninsdeletekey
+Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-7c9m4sag4p7lubjsim25f76ha9oja77g";                             ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-7c9m4sag4p7lubjsim25f76ha9oja77g\DefaultIcon";                 ValueType: string; ValueData: "{app}\{#MyAppExeName},0"
+Root: HKCR; Subkey: "com.googleusercontent.apps.883780252017-7c9m4sag4p7lubjsim25f76ha9oja77g\shell\open\command";          ValueType: string; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
 [UninstallRun]
-; Kill the Python server process during uninstall
-Filename: "taskkill"; Parameters: "/F /IM omni_bridge_server.exe /T"; Flags: runhidden
+; Kill both processes before uninstaller removes files — prevents file-lock errors
+; Must use full path to taskkill — Inno Setup does not search PATH for [UninstallRun]
+Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM {#MyAppServerExe} /T"; Flags: runhidden; RunOnceId: "KillServer"
+Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM {#MyAppExeName} /T";   Flags: runhidden; RunOnceId: "KillApp"
 
 [Code]
-// ── Pre-install cleanup ─────────────────────────────────────────────────────
-// Runs the existing uninstaller silently (covers both HKLM and HKCU entries),
-// wipes Flutter SharedPreferences from the registry, and removes PyInstaller
-// %TEMP% extractions so a truly fresh version is always loaded.
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 procedure DeleteRegKeyIfExists(RootKey: Integer; SubKey: String);
 begin
@@ -112,12 +149,42 @@ end;
 procedure KillAppProcesses();
 var
   ResultCode: Integer;
+  Taskkill: String;
 begin
-  Exec('taskkill', '/F /IM omni_bridge_server.exe /T', '', SW_HIDE,
-       ewWaitUntilTerminated, ResultCode);
-  Exec('taskkill', '/F /IM {#MyAppExeName} /T', '', SW_HIDE,
-       ewWaitUntilTerminated, ResultCode);
+  // Use full path — Exec() does not search PATH
+  Taskkill := ExpandConstant('{sys}\taskkill.exe');
+  Exec(Taskkill, '/F /IM {#MyAppServerExe} /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec(Taskkill, '/F /IM {#MyAppExeName} /T',   '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
+
+procedure WipeUserData();
+begin
+  // Flutter SharedPreferences (registry) — all known key locations
+  DeleteRegKeyIfExists(HKCU, 'Software\omni_bridge');
+  DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\omni_bridge');
+  DeleteRegKeyIfExists(HKCU, 'Software\Marshal\omni_bridge');
+  DeleteRegKeyIfExists(HKCU, 'Software\Marshal\Omni Bridge: Live AI Translator');
+  DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\Omni Bridge');
+
+  // AppData Roaming + Local (com.marshal = CompanyName in Runner.rc)
+  DelTree(ExpandConstant('{userappdata}\com.marshal\{#MyAppName}'), True, True, True);
+  DelTree(ExpandConstant('{localappdata}\com.marshal\{#MyAppName}'), True, True, True);
+
+  // Firebase / Firestore / Auth caches (scoped to OmniBridge-Release app name)
+  DelTree(ExpandConstant('{localappdata}\firestore\OmniBridge-Release'),                    True, True, True);
+  DelTree(ExpandConstant('{localappdata}\firebase-heartbeat\OmniBridge-Release'),           True, True, True);
+  DelTree(ExpandConstant('{localappdata}\google-services-desktop-auth\OmniBridge-Release'), True, True, True);
+end;
+
+// ── Pre-install cleanup ───────────────────────────────────────────────────────
+// Runs before files are copied. Order matters:
+//   1. Kill processes (release file locks)
+//   2. Run existing uninstaller (HKLM = admin install, HKCU = legacy user install)
+//   3. Wipe SharedPreferences registry keys
+//   4. Remove outdated Google OAuth registry key from previous scheme
+//   5. Delete stale PyInstaller %TEMP%\omni_bridge* extractions
+//   6. Remove leftover user-level install dir (from old lowest-privilege builds)
+//   7. Wipe persistent session/auth data (prevents "still logged in after reinstall")
 
 procedure CurStepChanged(CurStep: TSetupStep);
 var
@@ -129,31 +196,25 @@ var
 begin
   if CurStep = ssInstall then
   begin
-    // 0. Kill stale processes early
+    // 1. Kill stale processes
     KillAppProcesses();
 
-    // 1. Run old uninstaller (HKLM = admin install, HKCU = old user-level install)
+    // 2. Run old uninstaller silently
     UninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1';
     if RegQueryStringValue(HKLM, UninstPath, 'UninstallString', UninstExe) or
        RegQueryStringValue(HKCU, UninstPath, 'UninstallString', UninstExe) then
     begin
-      // /VERYSILENT — no UI; /NORESTART — do not reboot
       Exec(RemoveQuotes(UninstExe), '/VERYSILENT /NORESTART', '', SW_HIDE,
            ewWaitUntilTerminated, ResultCode);
     end;
 
-    // 2. Wipe Flutter Windows SharedPreferences
-    // Flutter usually stores these in HKCU\Software\<company_name>\<app_name>
-    DeleteRegKeyIfExists(HKCU, 'Software\omni_bridge');
-    DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\omni_bridge');
-    DeleteRegKeyIfExists(HKCU, 'Software\Marshal\omni_bridge');
-    DeleteRegKeyIfExists(HKCU, 'Software\Marshal\Omni Bridge: Live AI Translator');
-    DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\Omni Bridge');
-    
-    // 3. Wipe OLD/OUTDATED Google Auth Registry Keys (manual cleanup not needed if done here)
+    // 3. Wipe Flutter SharedPreferences + AppData + Firebase caches
+    WipeUserData();
+
+    // 4. Remove outdated Google OAuth registry key (old Client ID scheme — no longer used)
     DeleteRegKeyIfExists(HKCR, 'com.googleusercontent.apps.883780252017-c3h4v2pha56t4939hld31sdhllg1tcc9');
 
-    // 4. Delete any PyInstaller %TEMP%\omni_bridge* extractions from old runs
+    // 5. Delete stale PyInstaller %TEMP%\omni_bridge* extractions
     TempDir := ExpandConstant('{%TEMP}\');
     if FindFirst(TempDir + 'omni_bridge*', FindRec) then
     begin
@@ -169,20 +230,12 @@ begin
       FindClose(FindRec);
     end;
 
-    // 5. Remove leftover user-level install dir (from old lowest-privilege installs)
+    // 6. Remove leftover user-level install dir (legacy builds installed to LocalAppData)
     DelTree(ExpandConstant('{localappdata}\Programs\{#MyAppName}'), True, True, True);
-
-    // 6. Wipe Persistent Session/Auth Data (Fixes "still logged in" issue)
-    // - AppData Roaming (com.marshal is the CompanyName from Runner.rc)
-    DelTree(ExpandConstant('{userappdata}\com.marshal\{#MyAppName}'), True, True, True);
-    // - LocalAppData
-    DelTree(ExpandConstant('{localappdata}\com.marshal\{#MyAppName}'), True, True, True);
-    // - Firebase/Firestore Caches (Isolated to OmniBridge-Release)
-    DelTree(ExpandConstant('{localappdata}\firestore\OmniBridge-Release'), True, True, True);
-    DelTree(ExpandConstant('{localappdata}\firebase-heartbeat\OmniBridge-Release'), True, True, True);
-    DelTree(ExpandConstant('{localappdata}\google-services-desktop-auth\OmniBridge-Release'), True, True, True);
   end;
 end;
+
+// ── Uninstall cleanup ─────────────────────────────────────────────────────────
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
@@ -190,19 +243,7 @@ begin
   begin
     // Kill processes before files are removed
     KillAppProcesses();
-
-    // Wipe user AppData and Firebase caches
-    DelTree(ExpandConstant('{userappdata}\com.marshal\{#MyAppName}'), True, True, True);
-    DelTree(ExpandConstant('{localappdata}\com.marshal\{#MyAppName}'), True, True, True);
-    DelTree(ExpandConstant('{localappdata}\firestore\OmniBridge-Release'), True, True, True);
-    DelTree(ExpandConstant('{localappdata}\firebase-heartbeat\OmniBridge-Release'), True, True, True);
-    DelTree(ExpandConstant('{localappdata}\google-services-desktop-auth\OmniBridge-Release'), True, True, True);
-
-    // Wipe Flutter SharedPreferences registry keys
-    DeleteRegKeyIfExists(HKCU, 'Software\omni_bridge');
-    DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\omni_bridge');
-    DeleteRegKeyIfExists(HKCU, 'Software\Marshal\omni_bridge');
-    DeleteRegKeyIfExists(HKCU, 'Software\Marshal\Omni Bridge: Live AI Translator');
-    DeleteRegKeyIfExists(HKCU, 'Software\com.marshal\Omni Bridge');
+    // Wipe all user data
+    WipeUserData();
   end;
 end;

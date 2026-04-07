@@ -53,7 +53,7 @@ class UpdateRemoteDataSource implements IResettable {
           .collection(FirebasePaths.system)
           .doc(FirebasePaths.appVersion.split('/').last)
           .get()
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 4));
 
       if (!docStr.exists) {
         return const UpdateResult(

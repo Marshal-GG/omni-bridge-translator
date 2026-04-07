@@ -1,0 +1,13 @@
+{
+  "rules": {
+    // All user data lives under users/{uid}/.
+    // Only the authenticated owner can read or write their own subtree.
+    // Everything else is denied by default (RTDB implicit default).
+    "users": {
+      "$uid": {
+        ".read":  "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    }
+  }
+}

@@ -185,49 +185,53 @@ class AppInitializer {
       app: Firebase.app(RTDBClient.appName),
     );
 
-    // Wait for initial auth state to be resolved (useful for desktop where it might take a moment to load from storage)
+    // Wait for auth state from local persistence — usually < 50 ms on desktop.
+    // 300 ms is enough headroom even on slow machines.
     try {
-      await auth.authStateChanges().first.timeout(const Duration(seconds: 1));
+      await auth.authStateChanges().first.timeout(
+        const Duration(milliseconds: 300),
+      );
     } catch (_) {
-      // Timeout, proceed with current state
+      // Timeout — proceed with whatever currentUser is cached.
     }
 
-    // Force a reload of the current user profile to ensure the session is still valid on the server.
-    // This handles cases where the user was deleted/disabled in the Firebase Console while the app was closed.
     User? currentUser = auth.currentUser;
-    if (currentUser != null) {
-      try {
-        await currentUser.reload();
-        // Refresh the local user object after reload
-        currentUser = auth.currentUser;
-      } catch (e) {
-        debugPrint('[AppInitializer] Auth Session Validation Failed: $e');
-        // If the user is not found or account is disabled, sign out locally
-        if (e is FirebaseAuthException &&
-            (e.code == 'user-not-found' || e.code == 'user-disabled')) {
-          await auth.signOut();
-          currentUser = null;
-        }
-      }
-    }
 
-    // Use the updated currentUser state for root navigation
-    final isLoggedIn = currentUser != null;
+    // Run server-session validation and update check in parallel —
+    // they are independent network calls with no ordering dependency.
+    final results = await Future.wait([
+      // 1. Validate server-side session (detects deleted/disabled accounts).
+      () async {
+        if (currentUser == null) return false; // not logged in
+        try {
+          await currentUser.reload();
+          return auth.currentUser != null; // still valid after reload
+        } catch (e) {
+          debugPrint('[AppInitializer] Auth Session Validation Failed: $e');
+          if (e is FirebaseAuthException &&
+              (e.code == 'user-not-found' || e.code == 'user-disabled')) {
+            await auth.signOut();
+          }
+          return false;
+        }
+      }(),
+
+      // 2. Check for forced update.
+      UpdateRemoteDataSource.instance.checkForUpdate().catchError((e) {
+        debugPrint('[AppInitializer] Failed to check for forced updates: $e');
+        return const UpdateResult(status: UpdateStatus.error);
+      }),
+    ]);
+
+    final isLoggedIn = results[0] as bool;
+    final updateResult = results[1] as UpdateResult;
 
     String initialRoute = '/splash';
     if (isLoggedIn) {
       initialRoute = '/translation-overlay';
     }
-
-    // Check for forced update before allowing the user into the app
-    try {
-      final updateResult = await UpdateRemoteDataSource.instance
-          .checkForUpdate();
-      if (updateResult.status == UpdateStatus.forced) {
-        initialRoute = '/force_update';
-      }
-    } catch (e) {
-      debugPrint('[AppInitializer] Failed to check for forced updates: $e');
+    if (updateResult.status == UpdateStatus.forced) {
+      initialRoute = '/force_update';
     }
 
     return initialRoute;

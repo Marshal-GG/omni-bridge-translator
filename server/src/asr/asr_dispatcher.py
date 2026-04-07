@@ -106,6 +106,6 @@ class ASRDispatcher:
         try:
             sentences = self.seg.segment(deduped_text)
             return " ".join(sentences)
-        except:
+        except Exception:
             return deduped_text
 
