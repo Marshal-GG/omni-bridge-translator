@@ -119,8 +119,8 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
       "is_trial": true,
       "trial_duration_hours": 24,
       "display_features": ["All translation & transcription engines", "Microphone + desktop audio", "75,000 characters for 24 hours", "One-time per account"],
-      "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small", "whisper-medium", "riva"],
-      "allowed_translation_models": ["google", "mymemory", "google_api", "riva", "llama"],
+      "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small", "whisper-medium", "riva-asr"],
+      "allowed_translation_models": ["google", "mymemory", "google_api", "riva-nmt", "llama"],
       "features": {
         "mic_audio": true,
         "history_enabled": false,
@@ -137,8 +137,8 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
       "price": "₹799/mo",
       "description": "All engines with generous limits",
       "display_features": ["All translation engines", "Whisper transcription (tiny, base)", "Microphone + desktop audio", "Caption history (7 days)", "75,000 characters/day · 3.75M/month", "250K characters/month per paid engine · 375K for Whisper"],
-      "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "riva"],
-      "allowed_translation_models": ["google", "mymemory", "google_api", "riva", "llama"],
+      "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "riva-asr"],
+      "allowed_translation_models": ["google", "mymemory", "google_api", "riva-nmt", "llama"],
       "features": {
         "mic_audio": true,
         "history_enabled": true,
@@ -155,8 +155,8 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
       "price": "₹2,499/mo",
       "description": "Maximum capacity for power users",
       "display_features": ["Everything in Pro", "Whisper transcription (tiny–medium)", "Caption history (30 days)", "Up to 5 simultaneous sessions", "250,000 characters/day · 9M/month", "750K characters/month per paid engine · 1.1M for Whisper"],
-      "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small", "whisper-medium", "riva"],
-      "allowed_translation_models": ["google", "mymemory", "google_api", "riva", "llama"],
+      "allowed_transcription_models": ["online", "whisper-tiny", "whisper-base", "whisper-small", "whisper-medium", "riva-asr"],
+      "allowed_translation_models": ["google", "mymemory", "google_api", "riva-nmt", "llama"],
       "features": {
         "mic_audio": true,
         "history_enabled": true,
@@ -170,17 +170,24 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
     }
   },
   "model_overrides": {
-    "online":         { "enabled": true,  "display_name": "Google Speech" },
-    "google":         { "enabled": true,  "display_name": "Google Translate" },
-    "mymemory":       { "enabled": false, "display_name": "MyMemory" },
-    "google_api":     { "enabled": true,  "display_name": "Google Cloud" },
-    "riva-nmt":       { "enabled": true,  "display_name": "NVIDIA Riva NMT" },
-    "riva-asr":       { "enabled": true,  "display_name": "NVIDIA Riva ASR" },
-    "llama":          { "enabled": true,  "display_name": "Llama 3.1" },
-    "whisper-tiny":   { "enabled": true,  "display_name": "Whisper Tiny" },
-    "whisper-base":   { "enabled": true,  "display_name": "Whisper Base" },
-    "whisper-small":  { "enabled": true,  "display_name": "Whisper Small" },
-    "whisper-medium": { "enabled": true,  "display_name": "Whisper Medium" }
+    "online":              { "enabled": true,  "display_name": "Google Speech",    "type": "asr" },
+    "google":              { "enabled": true,  "display_name": "Google Translate",  "type": "translation" },
+    "mymemory":            { "enabled": false, "display_name": "MyMemory",          "type": "translation" },
+    "google_api":          { "enabled": true,  "display_name": "Google Cloud",      "type": "translation" },
+    "riva-nmt":            { "enabled": true,  "display_name": "NVIDIA Riva NMT",   "type": "translation" },
+    "riva-asr":            { "enabled": true,  "display_name": "NVIDIA Riva ASR",   "type": "asr" },
+    "llama":               { "enabled": true,  "display_name": "Llama 3.1",         "type": "translation" },
+    "whisper-tiny":        { "enabled": true,  "display_name": "Whisper Tiny",      "type": "asr" },
+    "whisper-base":        { "enabled": true,  "display_name": "Whisper Base",      "type": "asr" },
+    "whisper-small":       { "enabled": true,  "display_name": "Whisper Small",     "type": "asr" },
+    "whisper-medium":      { "enabled": true,  "display_name": "Whisper Medium",    "type": "asr" },
+    "google-translate":    { "enabled": true,  "display_name": "Google Translate",  "type": "translation" },
+    "google-cloud-v3-grpc":{ "enabled": true,  "display_name": "Google Cloud",      "type": "translation" },
+    "mymemory-translate":  { "enabled": true,  "display_name": "MyMemory",          "type": "translation" },
+    "llama-translate":     { "enabled": true,  "display_name": "Llama 3.1",         "type": "translation" },
+    "riva-grpc-mt":        { "enabled": true,  "display_name": "NVIDIA Riva NMT",   "type": "translation" },
+    "google-asr":          { "enabled": true,  "display_name": "Google Speech",     "type": "asr" },
+    "whisper-asr":         { "enabled": true,  "display_name": "Whisper",           "type": "asr" }
   },
   "announcements": {
     "active": false,
@@ -196,11 +203,11 @@ A singleton document used to manage dynamic pricing, tier configs, model access 
     "promo_message": "",
     "feature_locked": {
       "title": "Upgrade Your Plan",
-      "message": "Get more daily **characters** and unlock exclusive features like premium translation engines.",
+      "message": "Get more daily characters and unlock exclusive features like premium translation engines.",
       "highlights": ["Priority Support"]
     }
   },
-  "payment_links": { "trial": "", "pro": "", "enterprise": "" }
+  "payment_links": { "pro": "", "enterprise": "" }
 }
 ```
 

@@ -311,11 +311,16 @@ class SubscriptionRemoteDataSource implements IResettable {
               return;
             }
 
-            // Auto-expire trial — return immediately so the next Firestore
-            // snapshot (with tier: 'free') drives the status update.
+            // Auto-expire trial if it has lapsed; otherwise fall through so
+            // _updateCurrentStatus is called and the UI reflects 'trial'.
             if (tier == 'trial') {
-              _checkTrialExpiry(uid, data);
-              return;
+              final expiresAt =
+                  (data['trialExpiresAt'] as Timestamp?)?.toDate();
+              if (expiresAt == null || DateTime.now().isAfter(expiresAt)) {
+                // Expired — write downgrade and wait for the next snapshot.
+                _checkTrialExpiry(uid, data);
+                return;
+              }
             }
 
             final trialExpiresAt =
@@ -468,6 +473,49 @@ class SubscriptionRemoteDataSource implements IResettable {
     await setTierForOtherUser(uid, tier);
   }
 
+  /// Debug only: resets trial_used so the trial can be activated again.
+  Future<void> resetTrialDebug() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    await _firestore.collection(FirebasePaths.users).doc(uid).update({
+      'trial_used': false,
+      'trialExpiresAt': FieldValue.delete(),
+      'trialActivatedAt': FieldValue.delete(),
+    });
+    AppLogger.d('Debug: trial reset for $uid', tag: _tag);
+  }
+
+  /// Debug only: activates a fresh trial ignoring trial_used, with a real
+  /// future expiry so the auto-expiry check doesn't immediately downgrade.
+  Future<void> activateFreshTrialDebug() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    final trialConfig = _tierConfig('trial');
+    final hours = (trialConfig?['trial_duration_hours'] as num?)?.toInt() ?? 24;
+    final expiresAt = DateTime.now().add(Duration(hours: hours));
+    await _firestore.collection(FirebasePaths.users).doc(uid).update({
+      'tier': 'trial',
+      'trial_used': true,
+      'trialExpiresAt': Timestamp.fromDate(expiresAt),
+      'trialActivatedAt': FieldValue.serverTimestamp(),
+    });
+    AppLogger.d('Debug: fresh trial activated, expires $expiresAt', tag: _tag);
+  }
+
+  /// Debug only: activates trial with an already-expired timestamp so the
+  /// auto-expiry logic fires on the next Firestore snapshot (~1–2 s).
+  Future<void> activateExpiredTrialDebug() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    await _firestore.collection(FirebasePaths.users).doc(uid).update({
+      'tier': 'trial',
+      'trialExpiresAt': Timestamp.fromDate(
+        DateTime.now().subtract(const Duration(minutes: 1)),
+      ),
+    });
+    AppLogger.d('Debug: trial activated with expired timestamp', tag: _tag);
+  }
+
   Future<void> setTierForOtherUser(String uid, String tier) async {
     await _firestore.collection(FirebasePaths.users).doc(uid).update({
       'tier': tier,
@@ -486,6 +534,11 @@ class SubscriptionRemoteDataSource implements IResettable {
     final now = DateTime.now();
     return DateTime(now.year, now.month + 1, 1);
   }
+
+  List<String> get tierOrder =>
+      (_monetizationConfig?['order'] as List<dynamic>? ?? [])
+          .map((e) => e.toString())
+          .toList();
 
   String get defaultTier {
     final order = _monetizationConfig?['order'] as List<dynamic>? ?? [];

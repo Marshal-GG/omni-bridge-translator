@@ -2,7 +2,7 @@
 
 ## Overview
 
-Omni Bridge uses a **tiered subscription model** (Free / Pro / Enterprise) with an optional one-time **Trial** to balance server costs with user accessibility. Subscriptions are purchased via Razorpay and reflected instantly in the app. **Real-time Monitoring**: Daily, **weekly**, and monthly usage is tracked in RTDB and streamed to the UI. All usage is tracked by **token count** (input + output) in RTDB, providing an engine-agnostic metric that scales across local and cloud models.
+Omni Bridge uses a **tiered subscription model** (Free / Trial / Pro / Enterprise) to balance server costs with user accessibility. Subscriptions are purchased via Razorpay and reflected instantly in the app. **Real-time Monitoring**: Daily, **weekly**, and monthly usage is tracked in RTDB and streamed to the UI. All usage is tracked by **token count** (input + output) in RTDB, providing an engine-agnostic metric that scales across local and cloud models.
 
 ---
 
@@ -10,32 +10,32 @@ Omni Bridge uses a **tiered subscription model** (Free / Pro / Enterprise) with 
 
 All values below are the defaults seeded via the Admin Panel's **System Config**. Every field is dynamically sourced from `system/monetization → tiers` in Firestore — changes take effect without an app update.
 
-| Feature | **Free** | **Pro** | **Enterprise** |
-| :--- | :--- | :--- | :--- |
-| **Price** | Free | ₹799/mo | ₹2,499/mo |
-| **Daily Quota** | 20,000 tokens | 100,000 tokens | 500,000 tokens |
-| **Monthly Quota** | 300,000 tokens | 1,500,000 tokens | 10,000,000 tokens |
-| **Transcription Models** | Google Online only | All (Google, Whisper tiny–medium, Riva) | All (Google, Whisper tiny–medium, Riva) |
-| **Translation Models** | Google Translate only | All (Google, MyMemory, Google Cloud gRPC, Riva, Llama) | All |
-| **Google Translate & ASR** | ✅ (only available engines) | ✅ Unlimited (no per-model cap) | ✅ Unlimited (no per-model cap) |
-| **Microphone Audio** | No | Yes | Yes |
-| **History Access** | None | 7-day retention | 30-day retention |
-| **Session Duration** | 1 hour | 4 hours | 12 hours |
-| **Concurrent Sessions** | 1 | 2 | 5 |
-| **Requests/min** | 20 | 60 | 120 |
+| Feature | **Free** | **Trial** | **Pro** | **Enterprise** |
+| :--- | :--- | :--- | :--- | :--- |
+| **Price** | ₹0 | ₹0 (one-time, 24h) | ₹799/mo | ₹2,499/mo |
+| **Daily Quota** | 40,000 tokens | 75,000 tokens | 75,000 tokens | 250,000 tokens |
+| **Monthly Quota** | 750,000 tokens | 75,000 tokens | 3,750,000 tokens | 9,000,000 tokens |
+| **Transcription Models** | Google Online, Riva ASR | All | Google Online, Whisper tiny–base, Riva | All (Whisper tiny–medium) |
+| **Translation Models** | Google Translate only | All | All | All |
+| **Microphone Audio** | No | Yes | Yes | Yes |
+| **History Access** | None | None | 7-day retention | 30-day retention |
+| **Session Duration** | 1 hour | 24 hours | 4 hours | 12 hours |
+| **Concurrent Sessions** | 1 | 1 | 2 | 5 |
+| **Requests/min** | 20 | 60 | 60 | 120 |
 
-> **Token-to-time estimate**: ~20,000 tokens ≈ 30 minutes of active translation usage.
+> **Token-to-time estimate**: ~40,000 tokens ≈ 30 minutes of active translation usage.
 
 ### Per-Engine Monthly Limits
 
 Paid tiers have per-engine monthly token caps. `google` (Translate) and `online` (ASR) are **exempt** from per-engine caps — they follow only the global daily/monthly quotas. When a paid engine's cap is exceeded, the client uses a **hybrid fallback behaviour** (see [Quota Exceeded Behaviour](#quota-exceeded-behaviour)).
 
-| Engine | Pro | Enterprise |
-|---|---|---|
-| `google_api` | 500,000 | 3,300,000 |
-| `riva` | 500,000 | 3,300,000 |
-| `llama` | 500,000 | 3,300,000 |
-| All other paid models | 500,000 / model | 3,300,000 / model |
+| Engine | Trial | Pro | Enterprise |
+|---|---|---|---|
+| `google_api` | no cap | 250,000 | 750,000 |
+| `riva-nmt` | no cap | 250,000 | 750,000 |
+| `llama` | no cap | 250,000 | 750,000 |
+| `whisper-asr` | no cap | 375,000 | 1,125,000 |
+| `google`, `online` (ASR) | no cap | no cap | no cap |
 
 Per-engine usage is tracked in RTDB at `daily_usage/{date}/models/{engine}/tokens`.
 
@@ -52,7 +52,7 @@ A **free, one-time 24-hour Trial** tier allows new users to test Pro-level featu
 ### Feature Details
 
 - **Tiered History**:
-  - **Free**: No history accessible. Clicking History triggers an automatic `UpgradeSheet`.
+  - **Free / Trial**: No history accessible. History panel shows an inline upsell wall with a "View Plans" button.
   - **Pro**: Caption history with 7-day retention.
   - **Enterprise**: Caption history with 30-day retention.
 - **Own API Key bypass**: Users who supply their own NVIDIA API Key in Settings bypass the daily quota for NVIDIA-backed engines.
@@ -173,26 +173,26 @@ Both must pass. All config is fetched dynamically from `system/monetization` —
 
 ### AI Translation Engines
 
-| Engine | Model ID | Free | Pro | Enterprise |
-|---|---|---|---|---|
-| Google Translate | `google` | Yes | Yes (unlimited) | Yes (unlimited) |
-| MyMemory | `mymemory` | - | Yes | Yes |
-| Google Cloud (gRPC) | `google_api` | - | Yes (500K/mo cap) | Yes (3.3M/mo cap) |
-| NVIDIA Riva | `riva` | - | Yes (500K/mo cap) | Yes (3.3M/mo cap) |
-| Llama 3.1 8B | `llama` | - | Yes (500K/mo cap) | Yes (3.3M/mo cap) |
+| Engine | Model ID | Free | Trial | Pro | Enterprise |
+|---|---|---|---|---|---|
+| Google Translate | `google` | Yes | Yes (unlimited) | Yes (unlimited) | Yes (unlimited) |
+| MyMemory | `mymemory` | - | Yes | Yes | Yes |
+| Google Cloud (gRPC) | `google_api` | - | Yes (no cap) | Yes (250K/mo) | Yes (750K/mo) |
+| NVIDIA Riva NMT | `riva-nmt` | - | Yes (no cap) | Yes (250K/mo) | Yes (750K/mo) |
+| Llama 3.1 8B | `llama` | - | Yes (no cap) | Yes (250K/mo) | Yes (750K/mo) |
 
 Locked engines are blocked via `onBeforeChange` in the dropdown — `canUseModel()` returns `false`, preventing selection.
 
 ### Transcription Models
 
-| Model | Model ID | Free | Pro | Enterprise |
-|---|---|---|---|---|
-| Google Online | `online` | Yes | Yes (unlimited) | Yes (unlimited) |
-| Whisper Tiny | `whisper-tiny` | - | Yes | Yes |
-| Whisper Base | `whisper-base` | - | Yes | Yes |
-| Whisper Small | `whisper-small` | - | Yes | Yes |
-| Whisper Medium | `whisper-medium` | - | Yes | Yes |
-| NVIDIA Riva | `riva` | - | Yes | Yes |
+| Model | Model ID | Free | Trial | Pro | Enterprise |
+|---|---|---|---|---|---|
+| Google Online | `online` | Yes | Yes (unlimited) | Yes (unlimited) | Yes (unlimited) |
+| Whisper Tiny | `whisper-tiny` | - | Yes | Yes | Yes |
+| Whisper Base | `whisper-base` | - | Yes | Yes | Yes |
+| Whisper Small | `whisper-small` | - | - | - | Yes |
+| Whisper Medium | `whisper-medium` | - | Yes | - | Yes |
+| NVIDIA Riva ASR | `riva-asr` | Yes | Yes | Yes | Yes |
 
 Locked transcription options render with reduced opacity and a lock icon. The `_TranscriptionOption` widget accepts a `locked` parameter that disables tap interaction.
 
@@ -204,8 +204,9 @@ Admins can disable any model globally via `model_overrides.{modelId}.enabled = f
 
 | Tier | History Access |
 |---|---|
-| Free | Blocked — upsell wall with "View Plans" button |
+| Free | Blocked — inline upsell wall with "View Plans" button |
+| Trial | Blocked — same upsell wall (history not included in trial) |
 | Pro | Caption history with 7-day retention |
 | Enterprise | Caption history with 30-day retention |
 
-The history button in the overlay header only opens `/history-panel` for Pro+ users; Free users see `UpgradeSheet` directly.
+The history button in the overlay header opens `/history-panel` for all tiers; Free and Trial users see the `_TierGateView` inline block instead of history content.

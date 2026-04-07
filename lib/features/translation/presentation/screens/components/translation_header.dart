@@ -380,11 +380,24 @@ class _QuotaUsageText extends StatelessWidget {
     final bool isUnlimited = status?.isUnlimited ?? false;
 
     final formatter = NumberFormat.compact();
-    final usedStr = status != null
-        ? formatter.format(status!.dailyTokensUsed)
-        : '...';
+
+    // Mirror the progress getter: period → monthly → daily
+    final int usedTokens = status == null
+        ? 0
+        : status!.hasPeriodLimit || status!.hasMonthlyLimit
+            ? status!.monthlyTokensUsed
+            : status!.dailyTokensUsed;
+    final int limitTokens = status == null
+        ? 0
+        : status!.hasPeriodLimit
+            ? status!.periodLimit
+            : status!.hasMonthlyLimit
+                ? status!.monthlyLimit
+                : status!.dailyLimit;
+
+    final usedStr = status != null ? formatter.format(usedTokens) : '...';
     final limitStr = status != null
-        ? (isUnlimited ? '∞' : formatter.format(status!.dailyLimit))
+        ? (isUnlimited ? '∞' : formatter.format(limitTokens))
         : '...';
 
     final double progress = status?.progress ?? 0.0;

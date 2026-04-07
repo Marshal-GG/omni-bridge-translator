@@ -10,6 +10,7 @@ import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/features/usage/data/models/quota_status_dto.dart';
 import 'package:omni_bridge/core/data/interfaces/resettable.dart';
+import 'package:omni_bridge/core/constants/engine_registry.dart';
 
 class UsageRemoteDataSource implements IResettable {
   final FirebaseAuth _auth;
@@ -36,14 +37,22 @@ class UsageRemoteDataSource implements IResettable {
 
   int Function()? _pollIntervalProvider;
   String Function()? _defaultTierProvider;
-  int Function(String engineId, [String? tier])? _limitProvider;
+  int Function(String tier)? _limitProvider;
   int Function(String tier)? _periodLimitProvider;
+  // engineId is the settings key (e.g. 'google_api'), limit is -1 if uncapped
+  int Function(String engineId)? _engineLimitProvider;
 
   Timer? _usagePollTimer;
   int? _currentPollInterval;
 
   final Map<String, int> _engineMonthlyUsages = {};
   Map<String, int> get engineMonthlyUsage => _engineMonthlyUsages;
+
+  // Tracks which engines have already fired the limit callback this session
+  final Set<String> _engineLimitFired = {};
+
+  final _engineLimitController = StreamController<String>.broadcast();
+  Stream<String> get engineLimitStream => _engineLimitController.stream;
 
   StreamSubscription? _authSub;
   StreamSubscription? _tierSub;
@@ -52,14 +61,16 @@ class UsageRemoteDataSource implements IResettable {
   void init({
     required int Function() pollIntervalProvider,
     required String Function() defaultTierProvider,
-    required int Function(String engineId, [String? tier]) limitProvider,
+    required int Function(String tier) limitProvider,
     required int Function(String tier) periodLimitProvider,
     required Stream<QuotaStatus> tierStream,
+    int Function(String engineId)? engineLimitProvider,
   }) {
     _pollIntervalProvider = pollIntervalProvider;
     _defaultTierProvider = defaultTierProvider;
     _limitProvider = limitProvider;
     _periodLimitProvider = periodLimitProvider;
+    _engineLimitProvider = engineLimitProvider;
 
     _authSub?.cancel();
     _authSub = _auth.authStateChanges().listen((user) {
@@ -77,6 +88,7 @@ class UsageRemoteDataSource implements IResettable {
     _tierSub?.cancel();
     _usagePollTimer?.cancel();
     _quotaStatusController.close();
+    _engineLimitController.close();
   }
 
   @override
@@ -87,6 +99,7 @@ class UsageRemoteDataSource implements IResettable {
     _tierSub = null;
     _currentQuotaStatus = null;
     _engineMonthlyUsages.clear();
+    _engineLimitFired.clear();
 
     // Emit a default status to clear UI
     if (_defaultTierProvider != null) {
@@ -191,6 +204,27 @@ class UsageRemoteDataSource implements IResettable {
           _engineMonthlyUsages[engine] = val.toInt();
         }
       });
+
+      // 3b. Check per-engine monthly limits and emit on stream if exceeded
+      if (_engineLimitProvider != null) {
+        for (final entry in _engineMonthlyUsages.entries) {
+          final statsKey = entry.key;
+          final used = entry.value;
+          // Translate RTDB stats key → settings key(s) for limit lookup
+          final settingsKeys = EngineRegistry.settingsKeysForStatsKey(statsKey);
+          for (final settingsKey in settingsKeys) {
+            final limit = _engineLimitProvider!(settingsKey);
+            if (limit > 0 && used >= limit && !_engineLimitFired.contains(settingsKey)) {
+              _engineLimitFired.add(settingsKey);
+              _engineLimitController.add(settingsKey);
+              AppLogger.i(
+                'Engine "$settingsKey" monthly limit exceeded ($used/$limit tokens)',
+                tag: _tag,
+              );
+            }
+          }
+        }
+      }
 
       // 4. Update via DTO
       final currentTier = _currentQuotaStatus?.tier ?? _defaultTierProvider!();

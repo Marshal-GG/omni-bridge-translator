@@ -108,13 +108,15 @@ class AppInitializer {
     // Initialize Usage Service
     UsageRemoteDataSource.instance.init(
       tierStream: SubscriptionRemoteDataSource.instance.statusStream,
-      limitProvider: SubscriptionRemoteDataSource.instance.engineMonthlyLimit,
+      limitProvider: SubscriptionRemoteDataSource.instance.getLimitForTier,
       periodLimitProvider:
           SubscriptionRemoteDataSource.instance.getPeriodLimitForTier,
       defaultTierProvider: () =>
           SubscriptionRemoteDataSource.instance.defaultTier,
       pollIntervalProvider: () =>
           SubscriptionRemoteDataSource.instance.pollIntervalSeconds,
+      engineLimitProvider:
+          SubscriptionRemoteDataSource.instance.engineMonthlyLimit,
     );
 
     // Initialize the window and tray manager

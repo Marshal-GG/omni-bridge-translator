@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -13,12 +14,93 @@ import '../widgets/subscription_header.dart';
 import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
 import 'package:omni_bridge/core/navigation/app_router.dart';
 import 'package:omni_bridge/core/utils/duration_utils.dart';
+import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
 
   @override
   State<SubscriptionScreen> createState() => _SubscriptionScreenState();
+}
+
+class _DebugTierPanel extends StatelessWidget {
+  final _src = SubscriptionRemoteDataSource.instance;
+
+  _DebugTierPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final tiers = _src.tierOrder;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          const Text(
+            'DEBUG — Tier Switcher',
+            style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            alignment: WrapAlignment.center,
+            children: tiers.map((t) => OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white70,
+                side: const BorderSide(color: Colors.white24),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: const TextStyle(fontSize: 11),
+              ),
+              onPressed: () => t == 'trial'
+                  ? _src.activateFreshTrialDebug()
+                  : _src.setTierDebug(t),
+              child: Text(t),
+            )).toList(),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            alignment: WrapAlignment.center,
+            children: [
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.orangeAccent,
+                  side: const BorderSide(color: Colors.orangeAccent),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  textStyle: const TextStyle(fontSize: 11),
+                ),
+                onPressed: () => _src.activateExpiredTrialDebug(),
+                child: const Text('Set trial → already expired'),
+              ),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.greenAccent,
+                  side: const BorderSide(color: Colors.greenAccent),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  textStyle: const TextStyle(fontSize: 11),
+                ),
+                onPressed: () => _src.resetTrialDebug(),
+                child: const Text('Reset trial'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen>
@@ -158,6 +240,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                     const SizedBox(height: 32),
                                     const OmniVersionChip(),
                                     const SizedBox(height: 16),
+                                    if (kDebugMode) _DebugTierPanel(),
                                   ],
                                 ),
                               ),

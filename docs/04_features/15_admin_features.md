@@ -40,7 +40,7 @@ The `AdminPanel` encapsulates all admin-related dashboards, accessible via the m
 
 The Admin Panel includes a **System Config** section that allows admins to seed or reset the `system/monetization` Firestore document with default tier configs, model overrides, announcements, and version control. This is the entry point for initializing a fresh Firebase project with the full monetization structure:
 
-- **Tiers**: Free, Pro, Enterprise (with quotas, engine limits, allowed models, features)
+- **Tiers**: Free, Trial, Pro, Enterprise (with quotas, engine limits, allowed models, features)
 - **Model Overrides**: Global kill switches for all models
 - **Announcements**: Banner config with targeting
 - **App Version**: Minimum/latest version control

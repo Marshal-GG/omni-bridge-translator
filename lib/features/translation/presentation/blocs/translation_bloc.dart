@@ -29,6 +29,7 @@ import 'package:omni_bridge/features/settings/domain/usecases/get_system_config_
 import 'package:omni_bridge/features/settings/domain/entities/system_config.dart';
 import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:omni_bridge/core/infrastructure/python_server_manager.dart';
+import 'package:omni_bridge/features/usage/data/datasources/usage_remote_datasource.dart';
 
 class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   final StartTranslationUseCase startTranslationUseCase;
@@ -51,6 +52,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
 
   StreamSubscription? _captionSub;
   StreamSubscription? _statusSub;
+  StreamSubscription? _engineLimitSub;
   Timer? _healthCheckTimer;
   int _lastLineCount = 0;
 
@@ -106,6 +108,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     _initAsr();
     _initQuotaListener();
     _initAuthListener();
+    _engineLimitSub = UsageRemoteDataSource.instance.engineLimitStream.listen(
+      (engineId) => add(EngineLimitReachedEvent(engineId)),
+    );
   }
 
   Future<void> _fetchInitialModelStatuses() async {
@@ -808,6 +813,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     getCurrentUserUseCase().removeListener(_onAuthChanged);
     _captionSub?.cancel();
     _statusSub?.cancel();
+    _engineLimitSub?.cancel();
     stopTranslationUseCase();
     return super.close();
   }
