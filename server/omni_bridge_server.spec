@@ -18,7 +18,7 @@ a = Analysis(
         # Include all src packages so submodule discovery works at runtime
         ('src', 'src'),
         # PyArmor runtime — required when building from dist_obfuscated/
-        *([('pyarmor_runtime_000000', 'pyarmor_runtime_000000')] if is_obfuscated else []),
+        *([('dist_obfuscated/pyarmor_runtime_000000', 'pyarmor_runtime_000000')] if is_obfuscated else []),
     ],
     hiddenimports=[
         # --- Internal src modules ---

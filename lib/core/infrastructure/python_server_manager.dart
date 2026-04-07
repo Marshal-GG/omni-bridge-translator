@@ -75,48 +75,29 @@ class PythonServerManager {
           AppLogger.e(data.trim(), tag: 'PythonStderr');
         });
 
-        // Wait for the server to be ready before allowing the app to proceed
-        AppLogger.i('Waiting for server boot...', tag: _tag);
-        bool isReady = false;
-        // Increase timeout to 30 attempts (15 seconds)
-        for (int i = 0; i < 30; i++) {
-          try {
-            final response = await http.get(
-              Uri.parse('${ServerConfig.httpUrl}/status'),
-            );
-            if (response.statusCode == 200) {
-              isReady = true;
-              break;
-            }
-          } catch (_) {}
-          await Future.delayed(const Duration(milliseconds: 500));
-        }
-
-        if (isReady) {
-          AppLogger.i('Python server is ready.', tag: _tag);
-          _restartCount = 0; // Reset counter on successful boot
-        } else {
-          AppLogger.w('Warning: Python server boot timed out.', tag: _tag);
-        }
+        AppLogger.i('Python server process started.', tag: _tag);
+        _restartCount = 0;
 
         // Auto-restart logic for unexpected crashes
-        unawaited(_serverProcess!.exitCode.then((code) {
-          AppLogger.i('Process exited with code: $code', tag: _tag);
-          if (!_isIntentionalStop) {
-            _serverProcess = null;
-            _restartCount++;
-            int delaySeconds = _restartCount > 3 ? 10 : 3; // Backoff
-            AppLogger.i(
-              'Unexpected exit. Restarting in $delaySeconds seconds... (Attempt $_restartCount)',
-              tag: _tag,
-            );
-            Future.delayed(Duration(seconds: delaySeconds), () {
-              if (!_isIntentionalStop) {
-                startServer();
-              }
-            });
-          }
-        }));
+        unawaited(
+          _serverProcess!.exitCode.then((code) {
+            AppLogger.i('Process exited with code: $code', tag: _tag);
+            if (!_isIntentionalStop) {
+              _serverProcess = null;
+              _restartCount++;
+              int delaySeconds = _restartCount > 3 ? 10 : 3; // Backoff
+              AppLogger.i(
+                'Unexpected exit. Restarting in $delaySeconds seconds... (Attempt $_restartCount)',
+                tag: _tag,
+              );
+              Future.delayed(Duration(seconds: delaySeconds), () {
+                if (!_isIntentionalStop) {
+                  startServer();
+                }
+              });
+            }
+          }),
+        );
       } else {
         AppLogger.w(
           'Bundled server not found at $pyPath. Ensure the server is running manually in dev mode.',

@@ -86,7 +86,8 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       },
       builder: (context, state) {
-        final isLoading = state is AuthLoading;
+        final isEmailLoading = state is AuthLoading;
+        final isGooglePending = state is AuthGoogleSignInPending;
         final error = state is AuthError ? state.message : null;
 
         return Scaffold(
@@ -116,7 +117,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                 buildLoginBranding(),
                                 const SizedBox(height: 48),
 
-                                if (isLoading)
+                                if (isGooglePending)
+                                  _GooglePendingView(
+                                    onCancel: () => context
+                                        .read<AuthBloc>()
+                                        .add(const AuthCancelGoogleEvent()),
+                                    onRetry: () => context
+                                        .read<AuthBloc>()
+                                        .add(const AuthLoginWithGoogleEvent()),
+                                  )
+                                else if (isEmailLoading)
                                   const CircularProgressIndicator(
                                     color: Colors.tealAccent,
                                   )
@@ -261,6 +271,56 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+/// Shown while the Google sign-in browser is open.
+class _GooglePendingView extends StatelessWidget {
+  const _GooglePendingView({required this.onCancel, required this.onRetry});
+
+  final VoidCallback onCancel;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const CircularProgressIndicator(color: Colors.tealAccent),
+        const SizedBox(height: 24),
+        Text(
+          'Browser opened — complete sign-in there.',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            OutlinedButton(
+              onPressed: onCancel,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white54,
+                side: const BorderSide(color: Colors.white24),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Cancel'),
+            ),
+            const SizedBox(width: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: Image.asset('assets/app/images/google-logo.png', width: 16, height: 16),
+              label: const Text('Try Again'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white70,
+                side: const BorderSide(color: Colors.white24),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

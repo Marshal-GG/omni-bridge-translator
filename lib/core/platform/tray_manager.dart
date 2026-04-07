@@ -1,35 +1,44 @@
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:omni_bridge/core/platform/window_manager.dart' show quitApp;
 
-class TrayManager with TrayListener {
+class OmniBridgeTrayManager with TrayListener {
   Future<void> initializeTray() async {
-    // Set the tray icon and tooltip
     await trayManager.setIcon('assets/app/icons/icon.ico');
-    await trayManager.setToolTip("Omni Bridge: Live AI Translator");
+    await trayManager.setToolTip('Omni Bridge — Live AI Translator');
+    await _rebuildMenu();
+    trayManager.addListener(this);
+  }
 
-    // Set up the context menu
-    final trayMenu = Menu(
+  Future<void> _rebuildMenu() async {
+    final menu = Menu(
       items: [
-        MenuItem(label: 'Show window', key: 'showWindow'),
-        MenuItem(label: 'Check for updates...', key: ''),
+        MenuItem(label: 'Show Omni Bridge', key: 'show'),
+        MenuItem.separator(),
         MenuItem(label: 'Settings', key: 'settings'),
-        MenuItem(label: 'Quit', key: 'quit'),
+        MenuItem(label: 'Check for Updates…', key: 'updates'),
+        MenuItem.separator(),
+        MenuItem(label: 'Quit Omni Bridge', key: 'quit'),
       ],
     );
-    await trayManager.setContextMenu(trayMenu);
-
-    // Add the tray manager listener
-    trayManager.addListener(this);
+    await trayManager.setContextMenu(menu);
   }
 
   @override
   // ignore: avoid_void_async
   void onTrayIconMouseDown() async {
-    bool isVisible = await windowManager.isVisible();
+    final isVisible = await windowManager.isVisible();
     if (isVisible) {
-      await windowManager.hide();
+      final isFocused = await windowManager.isFocused();
+      if (isFocused) {
+        await windowManager.hide();
+      } else {
+        await windowManager.show();
+        await windowManager.focus();
+      }
     } else {
       await windowManager.show();
+      await windowManager.focus();
     }
   }
 
@@ -44,22 +53,20 @@ class TrayManager with TrayListener {
     switch (menuItem.key) {
       case 'show':
         await windowManager.show();
+        await windowManager.focus();
         break;
       case 'settings':
-        // Navigator.push(
-        //   context,
-        //   MaterialPageRoute(builder: (context) => const SettingsOverlay()),
-        // );
+        await windowManager.show();
+        await windowManager.focus();
+        // Navigate to settings via global navigator if available
+        // (navigation is handled by the app when it becomes visible)
         break;
       case 'quit':
-        await windowManager.close();
-        break;
-      default:
+        await quitApp();
         break;
     }
   }
 }
 
-// Global instance of the TrayManager
-final trayManagerInstance = TrayManager();
-Future<void> initializeTray() => trayManagerInstance.initializeTray();
+final _trayManager = OmniBridgeTrayManager();
+Future<void> initializeTray() => _trayManager.initializeTray();

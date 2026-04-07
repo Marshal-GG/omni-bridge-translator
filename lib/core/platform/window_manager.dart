@@ -13,9 +13,6 @@ Future<void> initializeWindow() async {
   // Register window listener to catch close events
   windowManager.addListener(_AppWindowListener());
 
-  // Start the Python Server
-  await PythonServerManager.startServer();
-
   // 1. Define Window Options (HIDDEN HEADER)
   WindowOptions windowOptions = const WindowOptions(
     size: Size(800, 200),
@@ -150,20 +147,19 @@ Future<void> setToDashboardPosition() async {
   await windowManager.setAlwaysOnTop(false);
 }
 
+/// Called by the tray "Quit" item — exits the process cleanly.
+Future<void> quitApp() async {
+  await SessionRemoteDataSource.instance.endSession();
+  PythonServerManager.stopServer();
+  await windowManager.destroy();
+}
+
 class _AppWindowListener extends WindowListener {
   @override
   // ignore: avoid_void_async
   void onWindowClose() async {
-    // End the Firebase tracing session gracefully before closing
     await SessionRemoteDataSource.instance.endSession();
-
-    // Stop the Python server when the window is closed
     PythonServerManager.stopServer();
-
-    // Default close behavior
-    bool isPreventClose = await windowManager.isPreventClose();
-    if (!isPreventClose) {
-      await windowManager.destroy();
-    }
+    await windowManager.destroy();
   }
 }

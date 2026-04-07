@@ -11,6 +11,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLoginWithEmailPasswordEvent>(_onLoginWithEmailPassword);
     on<AuthRegisterWithEmailPasswordEvent>(_onRegisterWithEmailPassword);
     on<AuthLoginWithGoogleEvent>(_onLoginWithGoogle);
+    on<AuthCancelGoogleEvent>(_onCancelGoogle);
     on<AuthSendPasswordResetEvent>(_onSendPasswordReset);
     on<AuthLogoutEvent>(_onLogout);
   }
@@ -55,7 +56,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLoginWithGoogleEvent event,
     Emitter<AuthState> emit,
   ) async {
-    emit(const AuthLoading());
+    emit(const AuthGoogleSignInPending());
     try {
       await authRepository.signInWithGoogle();
       emit(const AuthAuthenticated());
@@ -64,6 +65,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       emit(AuthError('An unexpected error occurred: $e'));
     }
+  }
+
+  void _onCancelGoogle(AuthCancelGoogleEvent event, Emitter<AuthState> emit) {
+    emit(const AuthInitial());
   }
 
   Future<void> _onSendPasswordReset(

@@ -56,10 +56,11 @@ class _SplashScreenState extends State<SplashScreen>
       listener: (context, state) {
         if (state is StartupNavigateToHome) {
           Navigator.of(context).pushReplacementNamed('/translation-overlay');
+        } else if (state is StartupNavigateToForceUpdate) {
+          Navigator.of(context).pushReplacementNamed('/force_update');
         } else if (state is StartupNavigateToOnboarding) {
           Navigator.of(context).pushReplacementNamed('/onboarding');
         } else if (state is StartupFailure) {
-          // If there's an error, maybe fallback to onboarding or show a snackbar
           Navigator.of(context).pushReplacementNamed('/onboarding');
         }
       },

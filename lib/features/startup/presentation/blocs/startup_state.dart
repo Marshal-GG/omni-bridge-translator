@@ -23,6 +23,10 @@ class StartupNavigateToOnboarding extends StartupState {
   const StartupNavigateToOnboarding();
 }
 
+class StartupNavigateToForceUpdate extends StartupState {
+  const StartupNavigateToForceUpdate();
+}
+
 class StartupFailure extends StartupState {
   final String message;
 

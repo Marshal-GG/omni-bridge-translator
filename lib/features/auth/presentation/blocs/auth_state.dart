@@ -15,6 +15,12 @@ class AuthLoading extends AuthState {
   const AuthLoading();
 }
 
+/// Browser is open waiting for Google sign-in. The login screen shows a
+/// cancel button in this state so the user can go back and try again.
+class AuthGoogleSignInPending extends AuthState {
+  const AuthGoogleSignInPending();
+}
+
 class AuthAuthenticated extends AuthState {
   const AuthAuthenticated();
 }

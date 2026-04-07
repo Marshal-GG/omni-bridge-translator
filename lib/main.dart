@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2026 Omni Bridge. All rights reserved.
- * 
+ *
  * Licensed under the PERSONAL STUDY & LEARNING LICENSE v1.0.
  * Commercial use and public redistribution of modified versions are strictly prohibited.
  * See the LICENSE file in the project root for full license terms.
@@ -12,33 +12,20 @@ import 'package:flutter/material.dart';
 
 import 'package:omni_bridge/app.dart';
 import 'package:omni_bridge/core/platform/app_initializer.dart';
-import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
-import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
-import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 import 'package:omni_bridge/core/platform/window_manager.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Run all app initializations and determine initial route
-  String initialRoute = await AppInitializer.init(args);
+  // Phase 1: fast init — Firebase, window, tray, protocols. No network waits.
+  await AppInitializer.initFast(args);
 
-  // Run the app with the determined route
-  runApp(MyApp(initialRoute: initialRoute));
+  // Show the app immediately. The splash screen drives Phase 2 via StartupBloc.
+  runApp(const MyApp(initialRoute: '/splash'));
 
-  // Configure the main window once it is ready
+  // Resize the OS window to the correct size once Flutter is ready.
   doWhenWindowReady(() {
     unawaited(configureMainWindow());
   });
-
-  // Silent background update check — fire and forget
-  unawaited(UpdateRemoteDataSource.instance.checkForUpdate().then((result) {
-    if (result.status == UpdateStatus.available) {
-      UpdateNotifier.instance.setAvailable(
-        result.latestVersion ?? '',
-        result.releaseUrl ?? '',
-      );
-    }
-  }));
 }

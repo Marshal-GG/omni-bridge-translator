@@ -40,6 +40,10 @@ class AuthSendPasswordResetEvent extends AuthEvent {
   List<Object?> get props => [email];
 }
 
+class AuthCancelGoogleEvent extends AuthEvent {
+  const AuthCancelGoogleEvent();
+}
+
 class AuthLogoutEvent extends AuthEvent {
   const AuthLogoutEvent();
 }
