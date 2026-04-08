@@ -163,10 +163,17 @@ class AppInitializer {
   /// the splash screen is visible immediately. Starts the server in the
   /// background, validates the auth session, and checks for forced updates.
   /// Returns the resolved initial route.
-  static Future<String> initAsync() async {
-    // Start the Python server in the background — no need to wait for it.
-    unawaited(PythonServerManager.startServer());
+  static Future<String> initAsync({
+    void Function(String message, double progress)? onProgress,
+  }) async {
+    onProgress?.call("Starting background services...", 0.1);
+    await Future.delayed(const Duration(milliseconds: 400)); // Minimum visible delay
 
+    // Start the Python server. Now we wait for it to emit the initial start signal.
+    onProgress?.call("Starting Python AI engine...", 0.3);
+    await PythonServerManager.startServer();
+
+    onProgress?.call("Validating local session...", 0.5);
     final auth = FirebaseAuth.instanceFor(
       app: Firebase.app(RTDBClient.appName),
     );
@@ -179,6 +186,9 @@ class AppInitializer {
     } catch (_) {}
 
     User? currentUser = auth.currentUser;
+
+    onProgress?.call("Checking for updates...", 0.7);
+    await Future.delayed(const Duration(milliseconds: 300)); // Minimum visible delay
 
     final results = await Future.wait([
       () async {
@@ -204,7 +214,14 @@ class AppInitializer {
     final isLoggedIn = results[0] as bool;
     final updateResult = results[1] as UpdateResult;
 
-    if (updateResult.status == UpdateStatus.forced) return '/force_update';
+    if (updateResult.status == UpdateStatus.forced) {
+      onProgress?.call("Update required...", 1.0);
+      return '/force_update';
+    }
+
+    onProgress?.call("Ready...", 1.0);
+    await Future.delayed(const Duration(milliseconds: 200));
+
     if (isLoggedIn) return '/translation-overlay';
     return '/onboarding'; // not logged in → go straight to onboarding
   }

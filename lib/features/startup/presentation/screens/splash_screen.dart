@@ -3,7 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:omni_bridge/features/startup/presentation/blocs/startup_bloc.dart';
 import 'package:omni_bridge/features/startup/presentation/blocs/startup_state.dart';
-import 'package:omni_bridge/features/startup/presentation/widgets/startup_header.dart';
+import 'package:omni_bridge/features/startup/presentation/blocs/startup_event.dart';
+import 'package:omni_bridge/core/theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,8 +16,7 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
@@ -24,24 +24,18 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _pulseAnimation = Tween<double>(begin: 0.85, end: 1.05).animate(
       CurvedAnimation(
         parent: _animController,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
+        curve: Curves.easeInOut,
       ),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animController,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
-      ),
-    );
-
-    _animController.forward();
+    // Make sure we trigger the initialization event!
+    context.read<StartupBloc>().add(const StartupInitializeEvent());
   }
 
   @override
@@ -52,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<StartupBloc, StartupState>(
+    return BlocConsumer<StartupBloc, StartupState>(
       listener: (context, state) {
         if (state is StartupNavigateToHome) {
           Navigator.of(context).pushReplacementNamed('/translation-overlay');
@@ -64,87 +58,92 @@ class _SplashScreenState extends State<SplashScreen>
           Navigator.of(context).pushReplacementNamed('/onboarding');
         }
       },
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: WindowBorder(
-          color: Colors.white12,
-          width: 1,
-          child: Container(
-            color: const Color(0xFF121212), // Match login screen background
-            child: Column(
-              children: [
-                buildStartupHeader(),
-                Expanded(
-                  child: Center(
-                    child: AnimatedBuilder(
-                      animation: _animController,
-                      builder: (context, child) {
-                        return FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: ScaleTransition(
-                            scale: _scaleAnimation,
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Logo placeholder or text
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF3B82F6), Color(0xFF8B5CF6)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+      builder: (context, state) {
+        String statusText = "Starting up...";
+        double progressValue = 0.0;
+        bool isIndeterminate = true;
+
+        if (state is StartupProgress) {
+          statusText = state.message;
+          progressValue = state.progress;
+          isIndeterminate = false;
+        }
+
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: WindowBorder(
+            color: Colors.white12,
+            width: 1,
+            child: Container(
+            color: AppColors.bgDeep, // Match login screen background
+              child: Column(
+                children: [
+                  // Invisible drag area for the whole top section
+                  Expanded(
+                    child: WindowTitleBarBox(
+                      child: MoveWindow(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ScaleTransition(
+                              scale: _pulseAnimation,
+                              child: Image.asset(
+                                'assets/app/icons/icon.png',
+                                width: 96,
+                                height: 96,
+                                fit: BoxFit.contain,
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFF3B82F6,
-                                  ).withValues(alpha: 0.5),
-                                  blurRadius: 32,
-                                  spreadRadius: 8,
-                                ),
-                              ],
                             ),
-                            child: const Icon(
-                              Icons.translate_rounded,
-                              size: 64,
-                              color: Colors.white,
+                            const SizedBox(height: 32),
+                            const Text(
+                              'Omni Bridge',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 32),
-                          const Text(
-                            'Omni Bridge',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 1.2,
+                            const SizedBox(height: 8),
+                            Text(
+                              statusText,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.white.withValues(alpha: 0.6),
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Live AI Translator',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white.withValues(alpha: 0.7),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  // Progress bar at the bottom like Discord
+                  Padding(
+                    padding: const EdgeInsets.only(left: 32, right: 32, bottom: 40),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: SizedBox(
+                        height: 6,
+                        child: isIndeterminate
+                            ? const LinearProgressIndicator(
+                                backgroundColor: AppColors.bgElevated,
+                                valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentCyan),
+                              )
+                            : LinearProgressIndicator(
+                                value: progressValue,
+                                backgroundColor: AppColors.bgElevated,
+                                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accentCyan),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

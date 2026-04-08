@@ -102,6 +102,9 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
     InitializeEvent event,
     Emitter<TranslationState> emit,
   ) {
+    // Load saved settings (font size, opacity, languages, models, etc.)
+    add(LoadSettingsEvent());
+
     // Initial load of model statuses
     _fetchInitialModelStatuses();
 

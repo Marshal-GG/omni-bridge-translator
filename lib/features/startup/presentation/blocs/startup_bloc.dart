@@ -19,7 +19,11 @@ class StartupBloc extends Bloc<StartupEvent, StartupState> {
     emit(const StartupLoading());
 
     try {
-      final route = await AppInitializer.initAsync();
+      final route = await AppInitializer.initAsync(
+        onProgress: (message, progress) {
+          emit(StartupProgress(message, progress));
+        },
+      );
 
       if (route == '/force_update') {
         emit(const StartupNavigateToForceUpdate());

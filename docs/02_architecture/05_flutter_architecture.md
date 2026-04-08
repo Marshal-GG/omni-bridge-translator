@@ -64,7 +64,7 @@ lib/
 | `TranslationBloc` | Live translation session control, caption streaming, server health, model status, quota reactivity, and auth-aware settings sync | `StartTranslationUseCase`, `StopTranslationUseCase`, `UpdateVolumeUseCase`, `GetModelStatusUseCase`, `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `GetInitialQuotaStatusUseCase`, `GetDefaultTierUseCase`, `UpdateTranslationSettingsUseCase`, `CheckServerHealthUseCase`, `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, `GetAppSettingsUseCase`, `GetGoogleCredentialsUseCase`, `SyncSettingsUseCase`, `LogEventUseCase`, `LogoutUseCase`, `GetSystemConfigUseCase`, `SubscriptionRemoteDataSource`, `TranslationRestDatasource` |
 | `HistoryBloc` | Live and chunked transcription history | `GetLiveHistoryUseCase`, `GetChunkedHistoryUseCase`, `ClearHistoryUseCase`, `AddHistoryEntryUseCase`, `ConfigureHistoryUseCase`, `SubscriptionRemoteDataSource` |
 | `AboutBloc` | App versioning and updates | `CheckForUpdate` |
-| `StartupBloc` | Thin shell over `AppInitializer.initAsync()` — emits navigation states after the resolved route is returned. Exists to drive the Splash screen animation on explicit `/splash` navigation. | `IAuthRepository` (held but routing delegated to `AppInitializer`) |
+| `StartupBloc` | Thin shell over `AppInitializer.initAsync()`. Drives the default Splash Screen on launch and processes initial routing (`/translation-overlay` if authed, `/onboarding` if not, or `/force_update`). | `IAuthRepository` (held but routing delegated to `AppInitializer`) |
 | `SubscriptionBloc` | Real-time subscription status and plan management | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial`, `OpenCheckout`, `HasUsedTrial` |
 | `AppShellBloc` | **Root-level BLoC** (provided at app root in `app.dart`, not route-scoped). Manages: sidebar expand/collapse, settings & support sub-menu state, current user + subscription tier display in `AppNavigationRail`, OS window resize on sidebar toggle. Implements `RouteChangeNotifier` so `MyNavigatorObserver` can update sub-menu state on navigation events. | `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, `GetSubscriptionStatus` |
 | `UsageBloc` | Analytics dashboard: engine stats, quota, and history. Emits `UsageLoaded` which includes `selectedTranslationEngine` and `selectedTranscriptionEngine` (RTDB stats keys) for highlighting the active engine card | `GetUsageStats`, `GetUsageHistory`, `GetQuotaStatus`, `CheckUsageRollover`, `GetSelectedEnginesUseCase` |
@@ -213,26 +213,24 @@ main()
      └─ Protocol handler registration (omni-bridge:// + Google OAuth scheme)
          └─ AppLinks deep-link stream: OAuth redirects → AuthRemoteDataSource
 
- └─ AppInitializer.initAsync()             ← PHASE 2 (concurrent async)
-     ├─ unawaited(PythonServerManager.startServer())  ← server boots in background
-     ├─ Auth state resolves from local persistence (≤300 ms timeout)
-     └─ Future.wait([
-           currentUser.reload() → isLoggedIn,
-           UpdateRemoteDataSource.checkForUpdate() → updateResult,
-        ])
-        ├─ Forced update  → returns '/force_update'
-        ├─ Logged in      → returns '/translation-overlay'
-        └─ Logged out     → returns '/onboarding'
-
- └─ runApp(MyApp(initialRoute: resolvedRoute))
+ └─ runApp(MyApp(initialRoute: '/splash')) ← Renders `/splash` immediately
      └─ OS window renders immediately on the correct screen — no blank frame
-         ├─ '/force_update'        → ForceUpdateScreen (blocks app access)
-         ├─ '/translation-overlay' → TranslationScreen  (return user)
-         └─ '/onboarding'          → OnboardingScreen → LoginScreen → '/translation-overlay'
+     └─ StartupBloc triggers StartupVerifySessionEvent
+         └─ AppInitializer.initAsync()     ← PHASE 2 (concurrent async loading)
+             ├─ unawaited(PythonServerManager.startServer())  ← server boots in background
+             ├─ Auth state resolves from local persistence (≤300 ms timeout)
+             └─ Future.wait([
+                   currentUser.reload() → isLoggedIn,
+                   UpdateRemoteDataSource.checkForUpdate() → updateResult,
+                ])
+                ├─ Forced update  → emits `/force_update`
+                ├─ Logged in      → emits `/translation-overlay`
+                └─ Logged out     → emits `/onboarding`
 
-> NOTE: The SplashScreen (/splash route) still exists but is NOT part of the normal boot path.
-> It can be navigated to explicitly (e.g. future use). The StartupBloc is only instantiated
-> when the /splash route is requested via AppRouter.
+ └─ SplashScreen reacts to StartupState
+     ├─ StartupCompleted('/force_update')        → ForceUpdateScreen (blocks app access)
+     ├─ StartupCompleted('/translation-overlay') → TranslationScreen  (return user)
+     └─ StartupCompleted('/onboarding')          → OnboardingScreen → LoginScreen → '/translation-overlay'
 
 Settings
  └─ SettingsBloc syncs preferences to Firestore on save

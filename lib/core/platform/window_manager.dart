@@ -86,16 +86,15 @@ Future<void> setToLoginPosition() async {
   await windowManager.setAlwaysOnTop(false);
 }
 
-/// Sets the window to a centered dialog style for Startup/Splash
+/// Sets the window to a centered dialog style for Startup/Splash (Loader Size)
 Future<void> setToStartupPosition() async {
   if (_currentWindowMode == WindowMode.startup) return;
   _currentWindowMode = WindowMode.startup;
 
-  await windowManager.setResizable(true);
-  double addedWidth = _isNavRailExpanded ? _navRailExpandedDiff : 0.0;
-  appWindow.minSize = Size(600 + addedWidth, 500);
-  await windowManager.setMinimumSize(Size(600 + addedWidth, 500));
-  await windowManager.setSize(Size(880 + addedWidth, 700));
+  await windowManager.setResizable(false);
+  appWindow.minSize = const Size(300, 350);
+  await windowManager.setMinimumSize(const Size(300, 350));
+  await windowManager.setSize(const Size(300, 350));
   appWindow.alignment = Alignment.center;
   await windowManager.center();
   await windowManager.setAlwaysOnTop(true);

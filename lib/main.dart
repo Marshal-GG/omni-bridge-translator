@@ -21,11 +21,8 @@ void main(List<String> args) async {
   // Phase 1: fast init — Firebase, DI, window, tray, protocols. No network.
   await AppInitializer.initFast(args);
 
-  // Phase 2: resolve the initial route — checks auth state + forced updates.
-  // Returns '/translation-overlay', '/force_update', or '/onboarding'.
-  final String initialRoute = await AppInitializer.initAsync();
-
-  runApp(MyApp(initialRoute: initialRoute));
+  // Mount the Flutter app immediately with the Splash Screen acting as the Discord-style loader
+  runApp(const MyApp(initialRoute: '/splash'));
 
   doWhenWindowReady(() {
     unawaited(configureMainWindow());

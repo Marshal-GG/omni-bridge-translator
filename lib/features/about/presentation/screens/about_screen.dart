@@ -445,6 +445,16 @@ class _AboutScreenState extends State<AboutScreen> {
                                                                   .forceUpdate,
                                                             ),
                                                       ),
+                                                      _LinkButton(
+                                                        icon: Icons.rocket_launch_rounded,
+                                                        label: 'Test Splash',
+                                                        url: '',
+                                                        color: Colors.lightGreenAccent,
+                                                        onTap: () => Navigator.pushNamed(
+                                                          context,
+                                                          AppRouter.splash,
+                                                        ),
+                                                      ),
                                                     ],
                                                   ),
                                                 ),
