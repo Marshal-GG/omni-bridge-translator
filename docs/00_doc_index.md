@@ -60,9 +60,10 @@
 
 ```
 Flutter Desktop App (Windows)
- └─ Feature-Driven Vertical Slices: auth · translation · settings · history · subscription · startup · about · usage
+ └─ Feature-Driven Vertical Slices: auth · translation · settings · history · subscription · startup · about · usage · support
     └─ Each slice: Domain (Entities, UseCases, Repos) / Data (DataSources, Repo Impls) / Presentation (BLoC, Screens)
-    └─ Core: DI (get_it) · Navigation (AppRouter) · Platform (Window, Tray) · Infrastructure (PythonServerManager) · Theme · Utils
+    └─ Shell: AppShellBloc (root BLoC) · AppDashboardShell · AppNavigationRail · ShellOverlay
+    └─ Core: DI (get_it) · Navigation (AppRouter + RouteChangeNotifier) · Platform (Window, Tray) · Infrastructure (PythonServerManager) · Theme · Utils
 
 Python FastAPI Server (local, ws://127.0.0.1:8765)
  └─ Pipeline: InferenceOrchestrator → ASRDispatcher → TranslationDispatcher

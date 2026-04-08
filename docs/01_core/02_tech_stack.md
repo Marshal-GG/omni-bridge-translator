@@ -8,7 +8,7 @@
 | **State Management** | flutter_bloc + bloc | ^9.1.1 | BLoC pattern |
 | **BLoC Concurrency** | bloc_concurrency | ^0.3.0 | Event transformers: `sequential()` (settings save), `droppable()` (settings load) |
 | **DI** | get_it | ^7.7.0 | Service locator / dependency injection |
-| **Navigation** | go_router | (via core/router) | Declarative routing |
+| **Navigation** | AppRouter (custom) | (via `core/navigation/`) | Imperative routing via `Navigator.onGenerateRoute`; route-scoped BLoC injection |
 | **Firebase** | firebase_core, firebase_auth, cloud_firestore, firebase_database | ^4.5.0 / ^6.2.0 / ^6.1.3 / ^12.1.4 | Auth, settings sync, usage tracking |
 | **Auth** | google_sign_in_all_platforms, desktop_webview_auth, app_links, protocol_handler | ^2.0.2 / ^0.0.16 / ^7.0.0 / ^0.2.0 | Google OAuth & deep linking |
 | **WebSocket** | web_socket_channel | ^3.0.3 | Communication with local Python server |

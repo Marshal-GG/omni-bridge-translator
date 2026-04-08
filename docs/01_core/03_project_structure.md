@@ -50,13 +50,21 @@ omni_bridge/
 │       │   ├── data/                # SubscriptionRemoteDataSource, TrackingRemoteDataSource
 │       │   └── presentation/        # SubscriptionBloc, UpgradeSheet
 │       ├── startup/                 # Bootstrapping & onboarding
-│       │   ├── domain/              # StartupBloc dependencies
-│       │   ├── data/                # (minimal — delegates to auth/settings)
-│       │   └── presentation/        # StartupBloc, SplashScreen, OnboardingScreen
+│       │   ├── domain/              # (minimal — thin shell over AppInitializer)
+│       │   ├── data/                # UpdateRemoteDataSource (forced-update check)
+│       │   └── presentation/        # StartupBloc, SplashScreen, OnboardingScreen, ForceUpdateScreen
 │       ├── about/                   # Version info & updates
-│           ├── domain/              # UseCases (CheckForUpdate)
-│           ├── data/                # UpdateRemoteDataSource
-│           └── presentation/        # AboutBloc, AboutScreen
+│       │   ├── domain/              # UseCases (CheckForUpdate)
+│       │   ├── data/                # (delegates to UpdateRemoteDataSource)
+│       │   └── presentation/        # AboutBloc, AboutScreen
+│       ├── support/                 # Support ticketing & chat
+│       │   ├── domain/              # Support entities & repository interface
+│       │   ├── data/                # SupportRemoteDataSource
+│       │   └── presentation/        # SupportScreen
+│       ├── shell/                   # App-wide UI shell & navigation (no domain/data layer)
+│       │   └── presentation/
+│       │       ├── blocs/           # AppShellBloc (sidebar, auth/subscription reactivity, RouteChangeNotifier)
+│       │       └── widgets/         # AppDashboardShell, AppNavigationRail, ShellOverlay
 │       └── usage/                   # Usage analytics & statistics
 │           ├── domain/              # UsageRepository interface + entities
 │           ├── data/                # UsageRepositoryImpl (wraps SubscriptionRepository)

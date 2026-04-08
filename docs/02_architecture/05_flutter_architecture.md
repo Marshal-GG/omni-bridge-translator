@@ -64,8 +64,9 @@ lib/
 | `TranslationBloc` | Live translation session control, caption streaming, server health, model status, quota reactivity, and auth-aware settings sync | `StartTranslationUseCase`, `StopTranslationUseCase`, `UpdateVolumeUseCase`, `GetModelStatusUseCase`, `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `GetInitialQuotaStatusUseCase`, `GetDefaultTierUseCase`, `UpdateTranslationSettingsUseCase`, `CheckServerHealthUseCase`, `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, `GetAppSettingsUseCase`, `GetGoogleCredentialsUseCase`, `SyncSettingsUseCase`, `LogEventUseCase`, `LogoutUseCase`, `GetSystemConfigUseCase`, `SubscriptionRemoteDataSource`, `TranslationRestDatasource` |
 | `HistoryBloc` | Live and chunked transcription history | `GetLiveHistoryUseCase`, `GetChunkedHistoryUseCase`, `ClearHistoryUseCase`, `AddHistoryEntryUseCase`, `ConfigureHistoryUseCase`, `SubscriptionRemoteDataSource` |
 | `AboutBloc` | App versioning and updates | `CheckForUpdate` |
-| `StartupBloc` | Bootstrapping, auth check, and routing | `IAuthRepository` |
+| `StartupBloc` | Thin shell over `AppInitializer.initAsync()` — emits navigation states after the resolved route is returned. Exists to drive the Splash screen animation on explicit `/splash` navigation. | `IAuthRepository` (held but routing delegated to `AppInitializer`) |
 | `SubscriptionBloc` | Real-time subscription status and plan management | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial`, `OpenCheckout`, `HasUsedTrial` |
+| `AppShellBloc` | **Root-level BLoC** (provided at app root in `app.dart`, not route-scoped). Manages: sidebar expand/collapse, settings & support sub-menu state, current user + subscription tier display in `AppNavigationRail`, OS window resize on sidebar toggle. Implements `RouteChangeNotifier` so `MyNavigatorObserver` can update sub-menu state on navigation events. | `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, `GetSubscriptionStatus` |
 | `UsageBloc` | Analytics dashboard: engine stats, quota, and history. Emits `UsageLoaded` which includes `selectedTranslationEngine` and `selectedTranscriptionEngine` (RTDB stats keys) for highlighting the active engine card | `GetUsageStats`, `GetUsageHistory`, `GetQuotaStatus`, `CheckUsageRollover`, `GetSelectedEnginesUseCase` |
 
 ### BLoC Concurrency (Event Transformers)
@@ -108,6 +109,10 @@ The application uses `get_it` for dependency injection. All UseCases are registe
 
 > [!IMPORTANT]
 > **BLoC Scoping**: Feature-specific BLoCs are not registered as singletons. They are provided at the **Route Level** within `AppRouter.generateRoute` using `BlocProvider`. This ensures BLoCs are only instantiated when the user navigates to the feature and are correctly disposed of when the route is popped.
+>
+> **Exception — `AppShellBloc`**: This BLoC is root-scoped. It is provided in `app.dart` so it persists for the entire app lifetime and drives the global navigation shell.
+
+`MyNavigatorObserver` communicates with `AppShellBloc` via the `RouteChangeNotifier` interface (`lib/core/navigation/route_change_notifier.dart`), keeping the observer decoupled from the BLoC type.
 
 See `lib/core/di/injection.dart` and `lib/core/navigation/app_router.dart`.
 
@@ -197,16 +202,37 @@ All model language support is centralised in `lib/core/constants/model_language_
 ## Application Flow
 
 ```text
-Launch
- └─ AppInitializer: Firebase init, single-instance check, protocol registration
-     ├─ Version Update Check (via UpdateRemoteDataSource -> system/app_version)
-     │   ├─ If Forced Update  → Routes directly to Force Update screen (Blocks app access)
-     │   │     └─ UpdateDownloadButton: streams installer (download_url) → launches .exe, or opens releaseUrl in browser
-     │   └─ If Optional Update → Sets visual badge via UpdateNotifier, continues boot sequence
-     │         └─ About screen shows inline UpdateDownloadButton with same download/fallback logic
-     ├─ Deep links (OAuth redirects) routed to AuthService
-      ├─ New user (Logged out) → AppInitializer → Splash → Onboarding → Login
-      └─ Return user (Logged in) → AppInitializer → Translation Overlay (Direct)
+main()
+ └─ AppInitializer.initFast(args)          ← PHASE 1 (fast, no network)
+     ├─ DI setup (setupInjection)
+     ├─ ConnectivityService.init()
+     ├─ Single-instance guard (WindowsSingleInstance)
+     ├─ Firebase.initializeApp() — both default & named (RTDB) apps
+     ├─ AuthRemoteDataSource / SubscriptionRemoteDataSource / UsageRemoteDataSource .init()
+     ├─ initializeWindow() + initializeTray()
+     └─ Protocol handler registration (omni-bridge:// + Google OAuth scheme)
+         └─ AppLinks deep-link stream: OAuth redirects → AuthRemoteDataSource
+
+ └─ AppInitializer.initAsync()             ← PHASE 2 (concurrent async)
+     ├─ unawaited(PythonServerManager.startServer())  ← server boots in background
+     ├─ Auth state resolves from local persistence (≤300 ms timeout)
+     └─ Future.wait([
+           currentUser.reload() → isLoggedIn,
+           UpdateRemoteDataSource.checkForUpdate() → updateResult,
+        ])
+        ├─ Forced update  → returns '/force_update'
+        ├─ Logged in      → returns '/translation-overlay'
+        └─ Logged out     → returns '/onboarding'
+
+ └─ runApp(MyApp(initialRoute: resolvedRoute))
+     └─ OS window renders immediately on the correct screen — no blank frame
+         ├─ '/force_update'        → ForceUpdateScreen (blocks app access)
+         ├─ '/translation-overlay' → TranslationScreen  (return user)
+         └─ '/onboarding'          → OnboardingScreen → LoginScreen → '/translation-overlay'
+
+> NOTE: The SplashScreen (/splash route) still exists but is NOT part of the normal boot path.
+> It can be navigated to explicitly (e.g. future use). The StartupBloc is only instantiated
+> when the /splash route is requested via AppRouter.
 
 Settings
  └─ SettingsBloc syncs preferences to Firestore on save
@@ -218,7 +244,7 @@ Settings
 Start Translation
  └─ TranslationBloc sends `start` command via AsrWsClient
      ├─ Passes run-time configurations (dynamic Riva function IDs, Google credentials as JSON objects)
-     └─ TranslationBloc is provided at app root (BlocProvider) to ensure state persistence
+     └─ TranslationBloc is provided at route level (BlocProvider in AppRouter.generateRoute)
          └─ Overlay window opens (bitsdojo_window)
              └─ AsrTextController buffers caption events
                  └─ UI reacts via BlocBuilder (Handling `interim` vs `final`)
