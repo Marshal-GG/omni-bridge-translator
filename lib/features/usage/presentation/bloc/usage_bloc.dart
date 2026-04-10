@@ -1,9 +1,11 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:omni_bridge/features/usage/domain/entities/daily_usage_record.dart';
 import 'package:omni_bridge/features/usage/domain/usecases/get_usage_stats.dart';
 import 'package:omni_bridge/features/usage/domain/usecases/get_usage_history.dart';
 import 'package:omni_bridge/features/usage/domain/usecases/get_quota_status.dart';
 import 'package:omni_bridge/features/usage/domain/usecases/check_usage_rollover.dart';
 import 'package:omni_bridge/features/usage/domain/usecases/get_selected_engines_usecase.dart';
+import 'package:omni_bridge/features/usage/domain/usecases/clear_usage_cache.dart';
 import 'package:omni_bridge/features/usage/presentation/bloc/usage_event.dart';
 import 'package:omni_bridge/features/usage/presentation/bloc/usage_state.dart';
 
@@ -13,6 +15,7 @@ class UsageBloc extends Bloc<UsageEvent, UsageState> {
   final GetQuotaStatus _getQuotaStatus;
   final CheckUsageRollover _checkUsageRollover;
   final GetSelectedEnginesUseCase _getSelectedEngines;
+  final ClearUsageCache _clearUsageCache;
 
   UsageBloc({
     required GetUsageStats getUsageStats,
@@ -20,11 +23,13 @@ class UsageBloc extends Bloc<UsageEvent, UsageState> {
     required GetQuotaStatus getQuotaStatus,
     required CheckUsageRollover checkUsageRollover,
     required GetSelectedEnginesUseCase getSelectedEngines,
+    required ClearUsageCache clearUsageCache,
   }) : _getUsageStats = getUsageStats,
        _getUsageHistory = getUsageHistory,
        _getQuotaStatus = getQuotaStatus,
        _checkUsageRollover = checkUsageRollover,
        _getSelectedEngines = getSelectedEngines,
+       _clearUsageCache = clearUsageCache,
        super(UsageInitial()) {
     on<LoadUsageStats>(_onLoadUsageStats);
   }
@@ -35,13 +40,24 @@ class UsageBloc extends Bloc<UsageEvent, UsageState> {
   ) async {
     emit(UsageLoading());
     try {
-      // Perform rollover check before loading stats
+      // Pull-to-refresh bypasses the cache so the user always gets fresh data.
+      if (event.refresh) _clearUsageCache();
+
+      // Rollover must complete first — it may reset counters that stats reads.
       await _checkUsageRollover();
 
-      final summary = await _getUsageStats();
-      final history = await _getUsageHistory();
+      // Stats, history and engine selection are independent — run in parallel.
+      late UsageSummary summary;
+      late List<DailyUsageRecord> history;
+      late SelectedEngines engines;
+
+      await Future.wait([
+        _getUsageStats().then((v) => summary = v),
+        _getUsageHistory().then((v) => history = v),
+        _getSelectedEngines().then((v) => engines = v),
+      ]);
+
       final quotaStatus = _getQuotaStatus.current;
-      final engines = await _getSelectedEngines();
 
       emit(
         UsageLoaded(

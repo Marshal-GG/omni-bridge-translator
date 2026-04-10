@@ -23,7 +23,8 @@ Widget buildOverlayContent(BuildContext context) {
           return buildShrunkCaptionView(context, state, opacity);
         }
 
-        return Container(
+        return ClipRect(
+          child: Container(
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: opacity),
             border: Border.all(color: Colors.white12),
@@ -43,6 +44,7 @@ Widget buildOverlayContent(BuildContext context) {
                 ),
               ),
             ],
+          ),
           ),
         );
       },

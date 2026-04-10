@@ -85,13 +85,7 @@ class _UsageScreenState extends State<UsageScreen> {
                   }
 
                   if (state is UsageLoaded) {
-                    return RefreshIndicator(
-                      onRefresh: () async {
-                        context.read<UsageBloc>().add(
-                          const LoadUsageStats(refresh: true),
-                        );
-                      },
-                      child: SingleChildScrollView(
+                    return SingleChildScrollView(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
                           vertical: 32,
@@ -201,7 +195,6 @@ class _UsageScreenState extends State<UsageScreen> {
                             );
                           },
                         ),
-                      ),
                     );
                   }
 

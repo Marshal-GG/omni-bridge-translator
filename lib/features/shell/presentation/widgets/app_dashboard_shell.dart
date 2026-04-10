@@ -36,7 +36,19 @@ class AppDashboardShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OmniWindowLayout(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // During the window resize transition (e.g. navigating back to the
+        // translation overlay), the dashboard shell briefly receives a very
+        // small height constraint. Rendering at those constraints causes a
+        // RenderFlex overflow in the nav rail Column. Return nothing until
+        // the window is large enough to actually host the dashboard.
+        // Suppress rendering below 350px tall — the window is either in
+        // overlay territory (150px) or mid-transition. Avoids both the
+        // RenderFlex overflow AND the briefly-wrong layout flash.
+        if (constraints.maxHeight < 350) return const SizedBox.expand();
+
+        return OmniWindowLayout(
       child: ShellOverlay(
         child: Column(
           children: [
@@ -60,6 +72,8 @@ class AppDashboardShell extends StatelessWidget {
           ],
         ),
       ),
+        );
+      },
     );
   }
 }

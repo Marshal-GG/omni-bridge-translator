@@ -15,10 +15,18 @@ class TranslationScreen extends StatefulWidget {
 
 class _TranslationScreenState extends State<TranslationScreen> {
   final _focusNode = FocusNode();
+  bool _visible = false;
 
   @override
   void initState() {
     super.initState();
+    // Hide content while the window repositions itself to overlay size.
+    // The window resize is async (multiple OS calls), so for ~180ms the
+    // window is mid-transition — rendering content during that window
+    // causes a visible "glitch to wrong position" frame.
+    Future.delayed(const Duration(milliseconds: 180), () {
+      if (mounted) setState(() => _visible = true);
+    });
   }
 
   @override
@@ -61,7 +69,10 @@ class _TranslationScreenState extends State<TranslationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Focus(
+      body: AnimatedOpacity(
+        opacity: _visible ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 100),
+        child: Focus(
         focusNode: _focusNode,
         autofocus: true,
         onKeyEvent: _handleKey,
@@ -74,6 +85,7 @@ class _TranslationScreenState extends State<TranslationScreen> {
               Center(child: buildOverlayContent(context)),
             ],
           ),
+        ),
         ),
       ),
     );

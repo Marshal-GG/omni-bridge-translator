@@ -9,7 +9,7 @@
 ```
 omni_bridge/
 ├── lib/                             # Flutter source
-│   ├── main.dart                    # Entry point — Firebase init, window setup, server start
+│   ├── main.dart                    # Entry point — fast init (Firebase, window, tray); server start deferred to StartupBloc via initAsync()
 │   ├── app.dart                     # Root widget — MaterialApp + BLoC providers
 │   ├── firebase_options.dart        # Firebase config (generated)
 │   │

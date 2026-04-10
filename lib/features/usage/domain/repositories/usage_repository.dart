@@ -15,6 +15,9 @@ abstract class UsageRepository {
   /// Returns the complete usage totals Map from the data source.
   Future<Map<String, dynamic>> getUsageTotals();
 
+  /// Clears the in-memory cache so the next fetch goes to the network.
+  void clearCache();
+
   /// Performs a calendar month rollover.
   Future<void> rolloverCalendar(String month, int tokens);
 

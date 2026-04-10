@@ -28,12 +28,16 @@ class OmniHeader extends StatelessWidget {
   /// Custom close handler. Defaults to [appWindow.close] if omitted.
   final VoidCallback? onClose;
 
+  /// Optional action widgets rendered before the window buttons.
+  final List<Widget>? actions;
+
   const OmniHeader({
     super.key,
     required this.title,
     required this.icon,
     this.onBack,
     this.onClose,
+    this.actions,
   });
 
   @override
@@ -73,6 +77,7 @@ class OmniHeader extends StatelessWidget {
             ),
           ),
           Expanded(child: MoveWindow()),
+          if (actions != null) ...actions!,
           MinimizeWindowButton(
             colors: WindowButtonColors(iconNormal: Colors.white60),
           ),

@@ -13,8 +13,36 @@ class UsageRepositoryImpl implements UsageRepository {
   UsageRepositoryImpl({UsageRemoteDataSource? remoteDataSource})
     : _remoteDataSource = remoteDataSource ?? UsageRemoteDataSource.instance;
 
+  static const _cacheTtl = Duration(minutes: 3);
+
+  List<EngineUsage>? _cachedModelStats;
+  DateTime? _modelStatsCachedAt;
+
+  List<DailyUsageRecord>? _cachedHistory;
+  DateTime? _historyCachedAt;
+
+  Map<String, dynamic>? _cachedTotals;
+  DateTime? _totalsCachedAt;
+
+  @override
+  void clearCache() => _clearCache();
+
+  void _clearCache() {
+    _cachedModelStats = null;
+    _modelStatsCachedAt = null;
+    _cachedHistory = null;
+    _historyCachedAt = null;
+    _cachedTotals = null;
+    _totalsCachedAt = null;
+  }
+
+  bool _isFresh(DateTime? cachedAt) =>
+      cachedAt != null &&
+      DateTime.now().difference(cachedAt) < _cacheTtl;
+
   @override
   Future<List<EngineUsage>> getModelUsageStats() async {
+    if (_isFresh(_modelStatsCachedAt)) return _cachedModelStats!;
     try {
       final uid = _remoteDataSource.currentUid;
       if (uid == null) return [];
@@ -28,6 +56,8 @@ class UsageRepositoryImpl implements UsageRepository {
         }
       });
 
+      _cachedModelStats = stats;
+      _modelStatsCachedAt = DateTime.now();
       return stats;
     } catch (e) {
       AppLogger.e(
@@ -35,12 +65,13 @@ class UsageRepositoryImpl implements UsageRepository {
         tag: 'UsageRepository',
         error: e,
       );
-      return [];
+      return _cachedModelStats ?? [];
     }
   }
 
   @override
   Future<List<DailyUsageRecord>> getDailyUsageHistory({int days = 30}) async {
+    if (_isFresh(_historyCachedAt)) return _cachedHistory!;
     try {
       final uid = _remoteDataSource.currentUid;
       if (uid == null) return [];
@@ -57,22 +88,29 @@ class UsageRepositoryImpl implements UsageRepository {
         history.add(DailyUsageRecordDto.fromJson(dateStr, dayData));
       }
 
-      return history.reversed.toList();
+      final result = history.reversed.toList();
+      _cachedHistory = result;
+      _historyCachedAt = DateTime.now();
+      return result;
     } catch (e) {
       AppLogger.e(
         '[UsageRepositoryImpl] Error fetching daily history: $e',
         tag: 'UsageRepository',
         error: e,
       );
-      return [];
+      return _cachedHistory ?? [];
     }
   }
 
   @override
   Future<Map<String, dynamic>> getUsageTotals() async {
+    if (_isFresh(_totalsCachedAt)) return _cachedTotals!;
     final uid = _remoteDataSource.currentUid;
     if (uid == null) return {};
-    return _remoteDataSource.fetchUsageTotals(uid);
+    final result = await _remoteDataSource.fetchUsageTotals(uid);
+    _cachedTotals = result;
+    _totalsCachedAt = DateTime.now();
+    return result;
   }
 
   @override
@@ -82,12 +120,8 @@ class UsageRepositoryImpl implements UsageRepository {
     final currentMonthStr =
         '${now.year}_${now.month.toString().padLeft(2, '0')}';
     if (uid != null) {
-      await _remoteDataSource.rolloverCalendar(
-        uid,
-        month,
-        currentMonthStr,
-        tokens,
-      );
+      await _remoteDataSource.rolloverCalendar(uid, month, currentMonthStr, tokens);
+      _clearCache();
     }
   }
 
@@ -100,6 +134,7 @@ class UsageRepositoryImpl implements UsageRepository {
     final uid = _remoteDataSource.currentUid;
     if (uid != null) {
       await _remoteDataSource.rolloverWeekly(uid, oldWeek, currentWeek, tokens);
+      _clearCache();
     }
   }
 
@@ -111,12 +146,8 @@ class UsageRepositoryImpl implements UsageRepository {
   ) async {
     final uid = _remoteDataSource.currentUid;
     if (uid != null) {
-      await _remoteDataSource.rolloverSubscription(
-        uid,
-        cycleLabel,
-        tokens,
-        nextReset,
-      );
+      await _remoteDataSource.rolloverSubscription(uid, cycleLabel, tokens, nextReset);
+      _clearCache();
     }
   }
 

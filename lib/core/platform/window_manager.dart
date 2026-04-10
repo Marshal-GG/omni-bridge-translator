@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
-import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/core/infrastructure/python_server_manager.dart';
 import 'package:omni_bridge/core/data/datasources/session_remote_datasource.dart';
 
@@ -31,22 +30,14 @@ Future<void> initializeWindow() async {
 Future<void> configureMainWindow() async {
   appWindow.title = "Omni Bridge: Live AI Translator";
 
-  // Use FirebaseAuth through AuthRemoteDataSource for named instance isolation
-  if (AuthRemoteDataSource.instance.auth.currentUser != null) {
-    await windowManager.setResizable(true);
-    appWindow.minSize = const Size(300, 150);
-    await windowManager.setMinimumSize(const Size(300, 150));
-    await windowManager.setSize(const Size(730, 150));
-    appWindow.alignment = Alignment.bottomCenter;
-  } else {
-    await windowManager.setResizable(true);
-    appWindow.minSize = const Size(600, 500);
-    await windowManager.setMinimumSize(const Size(600, 500));
-    await windowManager.setSize(const Size(880, 700));
-    appWindow.alignment = Alignment.center;
-    await windowManager.center();
-  }
-
+  // Always start at startup size — app always boots through /splash.
+  // MyNavigatorObserver handles resizing when the real route is pushed.
+  await windowManager.setResizable(true);
+  appWindow.minSize = const Size(600, 500);
+  await windowManager.setMinimumSize(const Size(600, 500));
+  await windowManager.setSize(const Size(880, 700));
+  appWindow.alignment = Alignment.center;
+  await windowManager.center();
   await windowManager.setAlwaysOnTop(true);
   await windowManager.show();
 }
