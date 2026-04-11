@@ -156,7 +156,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                             ),
                             child: Center(
                               child: SizedBox(
-                                width: 1020,
+                                width: 900,
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [

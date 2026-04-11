@@ -175,11 +175,13 @@ Both must pass. All config is fetched dynamically from `system/monetization` —
 
 | Engine | Model ID | Free | Trial | Pro | Enterprise |
 |---|---|---|---|---|---|
+| Llama 3.1 8B ⭐ | `llama` | - | Yes (no cap) | Yes (250K/mo) | Yes (750K/mo) |
 | Google Translate | `google` | Yes | Yes (unlimited) | Yes (unlimited) | Yes (unlimited) |
 | MyMemory | `mymemory` | - | Yes | Yes | Yes |
 | Google Cloud (gRPC) | `google_api` | - | Yes (no cap) | Yes (250K/mo) | Yes (750K/mo) |
 | NVIDIA Riva NMT | `riva-nmt` | - | Yes (no cap) | Yes (250K/mo) | Yes (750K/mo) |
-| Llama 3.1 8B | `llama` | - | Yes (no cap) | Yes (250K/mo) | Yes (750K/mo) |
+
+<sub>⭐ Llama 3.1 8B is the recommended translation engine — AI-powered, context-aware, and accurate. Set as the default "Recommended" badge in the Settings dropdown.</sub>
 
 Locked engines are blocked via `onBeforeChange` in the dropdown — `canUseModel()` returns `false`, preventing selection.
 

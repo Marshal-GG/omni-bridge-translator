@@ -35,14 +35,15 @@ lib/features/usage/
 ├── domain/
 │   ├── entities/           # EngineUsage, DailyUsageRecord, QuotaStatus
 │   ├── repositories/
-│   │   ├── usage_repository.dart              # Abstract interface
+│   │   ├── usage_repository.dart              # Abstract interface (includes clearCache())
 │   │   └── i_engine_selection_source.dart     # Re-exports core/interfaces/i_engine_selection_source.dart
 │   ├── usecases/
 │   │   ├── get_usage_stats.dart               # Aggregates engine stats from RTDB, checks plan access
 │   │   ├── get_usage_history.dart             # Fetches 30-day daily usage history
 │   │   ├── get_quota_status.dart              # Current daily/monthly quota snapshot
 │   │   ├── check_usage_rollover.dart          # Archives and resets expired periods
-│   │   └── get_selected_engines_usecase.dart  # Translates settings keys → RTDB stats keys via EngineRegistry
+│   │   ├── get_selected_engines_usecase.dart  # Translates settings keys → RTDB stats keys via EngineRegistry
+│   │   └── clear_usage_cache.dart             # Invalidates the in-memory cache on demand
 │   └── utils/
 │       └── usage_constants.dart               # Delegates knownAsr/TranslationEngines to EngineRegistry
 ├── data/
@@ -76,6 +77,11 @@ A cross-feature interface (defined in `core`, not in `settings`) that exposes th
 
 Reads the currently selected ASR and translation engines via `IEngineSelectionSource` (which returns settings keys such as `'google'` or `'whisper-tiny'`), then translates them to **RTDB stats keys** via `EngineRegistry.settingsKeyToStatsKey()`. Returns a `SelectedEngines` value object with `translationStatsKey` and `transcriptionStatsKey`. These stats keys match `EngineUsage.engine` so `UsageScreen` can compare directly without any conversion.
 
+### `ClearUsageCache`
+**File**: `lib/features/usage/domain/usecases/clear_usage_cache.dart`
+
+Single-method use-case that calls `UsageRepository.clearCache()`. Injected into `UsageBloc` and called when `LoadUsageStats(refresh: true)` is dispatched (i.e. the user presses the refresh button in the header). Keeps the bloc free of any direct repository dependency.
+
 ### `UsageConstants`
 **File**: `lib/features/usage/domain/utils/usage_constants.dart`
 
@@ -93,17 +99,19 @@ Plain Dart classes representing usage snapshots. These have **zero dependencies*
 ### `UsageRepositoryImpl`
 **File**: `lib/features/usage/data/repositories/usage_repository_impl.dart`
 
-Implements `UsageRepository`. Rather than holding its own data source, it **delegates to `ISubscriptionRepository`**, which already holds real-time subscription and quota data populated by `SubscriptionRemoteDataSource`. This avoids duplicating Firebase listeners.
+Implements `UsageRepository`. Delegates to `UsageRemoteDataSource` for all RTDB REST calls.
 
-**DI Registration** (in `lib/core/di/injection.dart`):
-```dart
-sl.registerLazySingleton<UsageRepository>(
-  () => UsageRepositoryImpl(subscriptionRepository: sl()),
-);
-```
+**In-memory cache (3-minute TTL):** `getModelUsageStats()`, `getDailyUsageHistory()`, and `getUsageTotals()` all cache their RTDB responses in memory. On repeat visits within 3 minutes the results are returned instantly with no network round-trip. The cache is cleared automatically after any rollover write and on demand via `clearCache()` (called through `ClearUsageCache` when the user explicitly refreshes).
 
 > [!NOTE]
-> `UsageRepositoryImpl` depends on `ISubscriptionRepository` — ensure the subscription repository is registered **before** `UsageRepository` in `injection.dart`.
+> Live quota numbers (daily/monthly/lifetime tokens) are **not** affected by the cache — they come from `UsageRemoteDataSource`'s background polling timer, which updates independently of the screen.
+
+**DI Registration** (in `lib/core/di/parts/repository_di.dart`):
+```dart
+sl.registerLazySingleton<UsageRepository>(
+  () => UsageRepositoryImpl(),
+);
+```
 
 ---
 
@@ -132,7 +140,9 @@ Follows the standard BLoC pattern:
 | `selectedTranslationEngine` | `String` | Active translation engine as RTDB stats key (e.g. `'google-translate'`) |
 | `selectedTranscriptionEngine` | `String` | Active ASR engine as RTDB stats key (e.g. `'whisper-asr'`) |
 
-`UsageBloc` dependencies: `GetUsageStats`, `GetUsageHistory`, `GetQuotaStatus`, `CheckUsageRollover`, `GetSelectedEnginesUseCase`.
+`UsageBloc` dependencies: `GetUsageStats`, `GetUsageHistory`, `GetQuotaStatus`, `CheckUsageRollover`, `GetSelectedEnginesUseCase`, `ClearUsageCache`.
+
+**Load strategy:** After rollover completes, `GetUsageStats`, `GetUsageHistory`, and `GetSelectedEnginesUseCase` are fired in parallel via `Future.wait` — cutting load time from ~3 sequential RTDB round-trips to ~1. `LoadUsageStats(refresh: true)` calls `ClearUsageCache` before fetching, bypassing the 3-minute cache.
 
 ### Screen
 **File**: `lib/features/usage/presentation/screens/usage_screen.dart`
@@ -153,7 +163,7 @@ Displays a high-density analytics dashboard consistent with the Omni Bridge desi
 | `UsageDonutChart` | ASR vs translation breakdown pie chart |
 | `ModelUsageBarChart` | Per-engine bar chart for relative usage |
 | `UsageHistoryChart` | 30-day daily usage line chart |
-| `UsageHeader` | Top bar with refresh button |
+| `UsageHeader` | Top bar with refresh `IconButton` (dispatches `LoadUsageStats(refresh: true)`) |
 | `QuotaUsageBar` | Inline progress bar for daily quota |
 
 ---

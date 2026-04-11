@@ -67,6 +67,8 @@ class MyNavigatorObserver extends NavigatorObserver {
         name == AppRouter.splash ||
         name == AppRouter.forceUpdate) {
       setToStartupPosition();
+    } else if (name == AppRouter.subscription) {
+      setToSubscriptionPosition();
     } else {
       setToDashboardPosition();
     }

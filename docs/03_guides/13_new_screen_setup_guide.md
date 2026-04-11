@@ -312,15 +312,45 @@ Widget buildMyFeatureHeader(BuildContext context) {
 }
 ```
 
-### C. Layout Constraints
-For premium visual balance, center the main content in a fixed-width container (usually **1020px**) to avoid stretching on wide monitors.
+### C. Engine Status Badges (`ModelStatusIndicator`)
+
+The shared `ModelStatusIndicator` widget (`lib/core/widgets/model_status_indicator.dart`) renders a compact status badge (Ready / Loading / Error / etc.) for any model.
+
+| Param | Type | Default | Purpose |
+|---|---|---|---|
+| `status` | `Map<String, dynamic>?` | required | Model status map from the server (`status`, `ready`, `message`, `progress`). Pass `null` to render "Offline". |
+| `compact` | `bool` | `false` | When `true`, hides the text label and shows only the icon — used in tight spaces like the overlay header. |
+| `greyed` | `bool` | `false` | When `true`, forces all badge colours to `Colors.white24` and suppresses spinners — used for engines that are locked (DB kill switch) or unavailable on the user's current tier. |
+
+```dart
+// Fully visible status (settings panel)
+ModelStatusIndicator(status: state.modelStatuses['llama'])
+
+// Compact icon-only (overlay header)
+ModelStatusIndicator(status: state.modelStatuses['llama'], compact: true)
+
+// Greyed out — engine locked or not in user's plan
+ModelStatusIndicator(
+  status: state.modelStatuses['llama'],
+  compact: true,
+  greyed: isDbDisabled || !userHasAccess,
+)
+```
+
+### D. Layout Constraints
+For premium visual balance, center the main content in a fixed-width container to avoid stretching on wide monitors. The target width depends on the screen's content density:
+
+| Screen type | Typical content width |
+|---|---|
+| Standard dashboard screens (Settings, Usage, About) | `1020px` |
+| Card-heavy screens (Subscription) | `900px` — wider window (`WindowMode.subscription`, 1340×820) keeps cards compact |
 
 ```dart
 Widget _buildBody() {
   return SingleChildScrollView(
     child: Center(
       child: SizedBox(
-        width: 1020, // Standard wide layout
+        width: 1020, // adjust per screen type (see table above)
         child: Column(...),
       ),
     ),
@@ -491,7 +521,7 @@ Omni Bridge prioritizes a premium, info-dense interface over "airy" mobile-first
 - **Model Labels**: Descriptive, not just the engine name (e.g., "7B (Fastest)" instead of "llama").
 
 ### E. Layout Constraints
-Always center the core content within a **1020px fixed-width container** for desktop views. This prevents the UI from becoming unreadable on ultra-wide monitors.
+Always center the core content within a fixed-width container for desktop views. This prevents the UI from becoming unreadable on ultra-wide monitors. Standard screens use **1020px**; card-heavy screens like Subscription use **900px** paired with a wider `WindowMode` (see Section 5).
 
 ---
 

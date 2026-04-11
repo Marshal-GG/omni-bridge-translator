@@ -14,7 +14,8 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
   return SizedBox(
     height: 32,
     width: double.infinity,
-    child: Row(
+    child: ClipRect(
+      child: Row(
       children: [
         const SizedBox(width: 10),
         GestureDetector(
@@ -32,12 +33,9 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
           ),
         ),
         const SizedBox(width: 8),
-        const Flexible(
-          child: Text(
-            'Omni Bridge: Live AI Translator',
-            style: TextStyle(color: Colors.white70, fontSize: 12),
-            overflow: TextOverflow.ellipsis,
-          ),
+        const Text(
+          'Omni Bridge: Live AI Translator',
+          style: TextStyle(color: Colors.white70, fontSize: 12),
         ),
         const SizedBox(width: 8),
         _QuotaUsageText(status: state.quotaStatus),
@@ -170,6 +168,7 @@ Widget buildTranslationHeader(BuildContext context, TranslationState state) {
           onPressed: () => appWindow.close(),
         ),
       ],
+    ),
     ),
   );
 }

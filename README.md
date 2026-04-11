@@ -70,7 +70,7 @@
 | Engine | Best For |
 |--------|----------|
 | **Google Online** | Fast, no setup required |
-| **NVIDIA Riva** | High-accuracy multilingual (API key needed) |
+| **NVIDIA Riva** | ⭐ Recommended — High-accuracy multilingual (API key needed) |
 | **Whisper Offline** | Privacy-first, works without internet |
 
 <sub>Whisper comes in 4 sizes — **Tiny, Base, Small, and Medium** — downloadable directly from the Settings panel.</sub>
@@ -79,11 +79,11 @@
 
 | Engine | Notes |
 |--------|-------|
-| **Google Translate** | Recommended — free, fast, 100+ languages |
+| **Llama 3.1 8B** | ⭐ Recommended — AI-powered, context-aware, accurate |
+| **Google Translate** | Free, fast, 100+ languages, no setup required |
 | **Google Cloud (v3)** | Professional grade gRPC translation (Service Account needed) |
 | **MyMemory** | Free alternative, no key needed |
 | **NVIDIA Riva NMT** | High-quality neural translation |
-| **Llama 3.1 8B** | AI-powered, great for context-aware translations |
 
 **🪟 Transparent Always-on-Top Overlay** — Fully draggable and resizable. Collapse to **Mini Mode** for a single caption line. Adjustable opacity, font size, **bold toggle**, and **Uncensored Mode** to bypass profanity filters.
 

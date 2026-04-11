@@ -220,7 +220,11 @@ Widget buildTranslationModelSelector(
                     dropdownBuilder: (context, selectedItem) {
                       if (selectedItem == null) return const SizedBox();
 
-                      final isRecommended = selectedItem.key == 'google';
+                      final isRecommended = selectedItem.key == 'llama';
+                      final isDbDisabled = !SubscriptionRemoteDataSource
+                          .instance
+                          .isModelEnabled(selectedItem.key);
+                      final selectedHasAccess = hasAccess(selectedItem.key);
                       final statusKey = {
                         'google': 'google_translate',
                         'google_api': 'google_api',
@@ -246,9 +250,13 @@ Widget buildTranslationModelSelector(
                             ModelStatusIndicator(
                               status: state.modelStatuses[statusKey],
                               compact: true,
+                              greyed: isDbDisabled || !selectedHasAccess,
                             ),
                           ],
-                          if (isRecommended) ...[
+                          if (isDbDisabled) ...[
+                            const SizedBox(width: 8),
+                            _buildDisabledBadge(),
+                          ] else if (isRecommended) ...[
                             const SizedBox(width: 8),
                             _buildRecommendedBadge(isActive: true),
                           ],
@@ -257,8 +265,11 @@ Widget buildTranslationModelSelector(
                     },
                     maxHeight: 250,
                     itemBuilder: (popupContext, item, isCurrentlySelected) {
-                      final isRecommended = item.key == 'google';
+                      final isRecommended = item.key == 'llama';
                       final itemHasAccess = hasAccess(item.key);
+                      final isDbDisabled = !SubscriptionRemoteDataSource
+                          .instance
+                          .isModelEnabled(item.key);
                       final statusKey = {
                         'google': 'google_translate',
                         'google_api': 'google_api',
@@ -287,15 +298,18 @@ Widget buildTranslationModelSelector(
                             ModelStatusIndicator(
                               status: state.modelStatuses[statusKey],
                               compact: true,
+                              greyed: isDbDisabled || !itemHasAccess,
                             ),
                           ],
-                          if (!itemHasAccess) ...[
+                          if (isDbDisabled) ...[
+                            const SizedBox(width: 8),
+                            _buildDisabledBadge(),
+                          ] else if (!itemHasAccess) ...[
                             const SizedBox(width: 8),
                             _buildTierLockBadge(
                               '${SubscriptionRemoteDataSource.instance.getNameForTier(SubscriptionRemoteDataSource.instance.getRequirement('engines', item.key, SubscriptionRemoteDataSource.instance.getTierAt(1)))}+',
                             ),
-                          ],
-                          if (isRecommended && itemHasAccess) ...[
+                          ] else if (isRecommended) ...[
                             const SizedBox(width: 8),
                             _buildRecommendedBadge(
                               isActive: isCurrentlySelected,
@@ -1352,6 +1366,25 @@ _ApiKeyInstructions _nvidiaApiKeyInstructions(
 }
 
 /// Lock badge rendered next to options the user's tier cannot access.
+Widget _buildDisabledBadge() {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+      color: const Color(0x08FFFFFF),
+      borderRadius: BorderRadius.circular(4),
+    ),
+    child: const Text(
+      'LOCKED',
+      style: TextStyle(
+        color: Colors.white38,
+        fontSize: 9,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.5,
+      ),
+    ),
+  );
+}
+
 Widget _buildTierLockBadge(String requiredTierLabel) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

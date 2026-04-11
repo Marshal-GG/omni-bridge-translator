@@ -46,7 +46,7 @@ bool _isNavRailExpanded = false;
 const double _navRailExpandedDiff =
     180.0; // navRailWidth (260) - navRailWidthCollapsed (80)
 
-enum WindowMode { none, login, startup, translation, history, dashboard }
+enum WindowMode { none, login, startup, translation, history, dashboard, subscription }
 
 WindowMode _currentWindowMode = WindowMode.none;
 
@@ -117,6 +117,21 @@ Future<void> setToHistoryPosition() async {
   appWindow.minSize = Size(600 + addedWidth, 400);
   await windowManager.setMinimumSize(Size(600 + addedWidth, 400));
   await windowManager.setSize(Size(1000 + addedWidth, 700));
+  appWindow.alignment = Alignment.center;
+  await windowManager.center();
+  await windowManager.setAlwaysOnTop(false);
+}
+
+/// Wider window for the subscription/plans screen.
+Future<void> setToSubscriptionPosition() async {
+  if (_currentWindowMode == WindowMode.subscription) return;
+  _currentWindowMode = WindowMode.subscription;
+
+  await windowManager.setResizable(true);
+  double addedWidth = _isNavRailExpanded ? _navRailExpandedDiff : 0.0;
+  appWindow.minSize = Size(1100 + addedWidth, 500);
+  await windowManager.setMinimumSize(Size(1100 + addedWidth, 500));
+  await windowManager.setSize(Size(1340 + addedWidth, 820));
   appWindow.alignment = Alignment.center;
   await windowManager.center();
   await windowManager.setAlwaysOnTop(false);

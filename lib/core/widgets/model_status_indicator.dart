@@ -6,16 +6,21 @@ class ModelStatusIndicator extends StatelessWidget {
   final Map<String, dynamic>? status;
   final bool compact;
 
+  /// When true, all badge colours are forced to [Colors.white24] regardless of
+  /// the actual status — used for engines that are locked or unavailable.
+  final bool greyed;
+
   const ModelStatusIndicator({
     super.key,
     required this.status,
     this.compact = false,
+    this.greyed = false,
   });
 
   @override
   Widget build(BuildContext context) {
     if (status == null) {
-      return _buildBadge('Offline', Colors.white24, Icons.cloud_off_rounded);
+      return _badge('Offline', Colors.white24, Icons.cloud_off_rounded);
     }
 
     final String statusStr = status!['status'] ?? 'unknown';
@@ -25,52 +30,52 @@ class ModelStatusIndicator extends StatelessWidget {
 
     switch (statusStr) {
       case 'ready':
-        return _buildBadge(
+        return _badge(
           'Ready',
           Colors.greenAccent,
           Icons.check_circle_outline_rounded,
         );
       case 'loading':
-        return _buildBadge(
+        return _badge(
           progress > 0 ? 'Loading ${(progress * 100).toInt()}%' : 'Loading...',
           Colors.orangeAccent,
           null,
           isSpinning: true,
         );
       case 'not_downloaded':
-        return _buildBadge(
+        return _badge(
           'Download needed',
           Colors.blueAccent,
           Icons.download_for_offline_rounded,
         );
       case 'no_credentials':
       case 'no_api_key':
-        return _buildBadge(
+        return _badge(
           'Validation Error/Key Missing',
           Colors.redAccent,
           Icons.key_off_rounded,
         );
       case 'fallback':
-        return _buildBadge(
+        return _badge(
           'Ready (Fallback)',
           Colors.greenAccent,
           Icons.swap_calls_rounded,
         );
       case 'error':
-        return _buildBadge(
+        return _badge(
           'Error',
           Colors.redAccent,
           Icons.error_outline_rounded,
           tooltip: message,
         );
       case 'unloaded':
-        return _buildBadge(
+        return _badge(
           'Idle',
           Colors.white38,
           Icons.hourglass_empty_rounded,
         );
       default:
-        return _buildBadge(
+        return _badge(
           ready ? 'Ready' : statusStr.toUpperCase(),
           ready ? Colors.greenAccent : Colors.white38,
           ready
@@ -78,6 +83,23 @@ class ModelStatusIndicator extends StatelessWidget {
               : Icons.help_outline_rounded,
         );
     }
+  }
+
+  /// Applies the [greyed] override before forwarding to [_buildBadge].
+  Widget _badge(
+    String label,
+    Color color,
+    IconData? icon, {
+    bool isSpinning = false,
+    String? tooltip,
+  }) {
+    return _buildBadge(
+      label,
+      greyed ? Colors.white24 : color,
+      icon,
+      isSpinning: greyed ? false : isSpinning,
+      tooltip: tooltip,
+    );
   }
 
   Widget _buildBadge(

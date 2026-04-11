@@ -6,28 +6,6 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 
 ## CRITICAL — Must do before any build ships
 
-### 0b. Rebuild Server (pyarmor_runtime_000000 was missing)
-**What:** The previously built `server/dist/omni_bridge_server.exe` (234 MB) will crash at runtime with `ModuleNotFoundError: No module named 'pyarmor_runtime_000000'` — the PyArmor runtime directory was not included in the spec datas. **This is now fixed in the spec**, but the exe must be rebuilt.
-
-**Steps:**
-```bash
-cd server
-pyarmor gen --output dist_obfuscated .
-pyinstaller omni_bridge_server.spec
-```
-
----
-
-### 0c. Rebuild Flutter App
-**What:** The existing Windows release build is compiled from old code (`1.2.4`, before the trial tier fix, per-engine cap enforcement, and parallel startup). Must rebuild with current code and version `2.0.0+2`.
-
-**Steps:**
-```bash
-flutter build windows --release
-```
-
----
-
 ### 0d. Update Firestore `system/app_version`
 **What:** Firestore `system/app_version` must reflect `2.0.0` as the latest version so existing installs prompt users to update.
 
@@ -153,5 +131,7 @@ Then guard class instantiation / method bodies with `if not RIVA_AVAILABLE: rais
 | `endSession()` errors swallowed on logout | ✅ `catch (_) {}` replaced with `catch (e) { AppLogger.e(...) }` in `AuthRemoteDataSource.signOut()`. Logout failures are now visible in logs. |
 | Trial tier not updating when switching to trial | ✅ `_listenToUserDoc` was returning early after `_checkTrialExpiry()` even for valid (non-expired) trials. Fixed by inlining the expiry check — only `return` when trial is expired; valid trials fall through to `_updateCurrentStatus()`. |
 | Debug tier switcher (subscription screen) | ✅ `_DebugTierPanel` added to `SubscriptionScreen` behind `kDebugMode`. Tier buttons use `SubscriptionRemoteDataSource.tierOrder` (dynamic from Firestore). Trial button calls `activateFreshTrialDebug()` (sets valid `trialExpiresAt`). Extra buttons: "Set trial → already expired" and "Reset trial". See item 14 for cleanup checklist. |
+| Server rebuild (pyarmor_runtime_000000) | ✅ `omni_bridge_server.spec` updated to include `pyarmor_runtime_000000` in datas. Server rebuilt via `pyarmor gen --output dist_obfuscated . && pyinstaller omni_bridge_server.spec`. |
+| Flutter app rebuild (`2.0.0+2`) | ✅ Rebuilt with `flutter build windows --release`. Includes: trial tier fix, per-engine cap enforcement, parallel startup, navigation/window transition fixes, usage screen cache + parallel load, refresh button, `ClearUsageCache` use-case, account screen shell. |
 | Per-engine monthly cap enforcement not implemented | ✅ `EngineLimitReachedEvent` was defined and handled in `TranslationBloc` but never fired. Fixed: `UsageRemoteDataSource` now checks `_engineMonthlyUsages` against `engineMonthlyLimit` (via `EngineRegistry` stats→settings key translation) on every poll. First breach emits the settings key on `engineLimitStream`. `TranslationBloc._engineLimitSub` subscribes and dispatches `EngineLimitReachedEvent` — first time stops translation and shows the engine-limit dialog; subsequent calls silently fall back to Google. `_engineLimitFired` set prevents duplicate events per session; cleared on `reset()`. |
 | `subscription_monthly_models` seed doc had `"riva"` instead of `"riva-asr"`/`"riva-nmt"` | ✅ Fixed model IDs in `07_database_schema.md` and `16_monetization_plan.md`. Admin panel seed code (`admin_panel.dart`) was already correct — docs were stale. |

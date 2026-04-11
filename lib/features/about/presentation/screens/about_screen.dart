@@ -31,6 +31,75 @@ class _AboutScreenState extends State<AboutScreen> {
     context.read<AboutBloc>().add(const AboutCheckUpdateEvent());
   }
 
+  void _showSplashPreview(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: SizedBox(
+          width: 300,
+          height: 350,
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A0A0F),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/app/icons/icon.png',
+                        width: 96,
+                        height: 96,
+                        fit: BoxFit.contain,
+                      ),
+                      const SizedBox(height: 32),
+                      const Text(
+                        'Omni Bridge',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Starting up...',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 32, right: 32, bottom: 40),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: const SizedBox(
+                      height: 6,
+                      child: LinearProgressIndicator(
+                        backgroundColor: Color(0xFF1E1E2E),
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00BCD4)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppDashboardShell(
@@ -450,10 +519,7 @@ class _AboutScreenState extends State<AboutScreen> {
                                                         label: 'Test Splash',
                                                         url: '',
                                                         color: Colors.lightGreenAccent,
-                                                        onTap: () => Navigator.pushNamed(
-                                                          context,
-                                                          AppRouter.splash,
-                                                        ),
+                                                        onTap: () => _showSplashPreview(context),
                                                       ),
                                                     ],
                                                   ),

@@ -67,7 +67,7 @@ lib/
 | `StartupBloc` | Thin shell over `AppInitializer.initAsync()`. Drives the default Splash Screen on launch and processes initial routing (`/translation-overlay` if authed, `/onboarding` if not, or `/force_update`). | `IAuthRepository` (held but routing delegated to `AppInitializer`) |
 | `SubscriptionBloc` | Real-time subscription status and plan management | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial`, `OpenCheckout`, `HasUsedTrial` |
 | `AppShellBloc` | **Root-level BLoC** (provided at app root in `app.dart`, not route-scoped). Manages: sidebar expand/collapse, settings & support sub-menu state, current user + subscription tier display in `AppNavigationRail`, OS window resize on sidebar toggle. Implements `RouteChangeNotifier` so `MyNavigatorObserver` can update sub-menu state on navigation events. | `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, `GetSubscriptionStatus` |
-| `UsageBloc` | Analytics dashboard: engine stats, quota, and history. Emits `UsageLoaded` which includes `selectedTranslationEngine` and `selectedTranscriptionEngine` (RTDB stats keys) for highlighting the active engine card | `GetUsageStats`, `GetUsageHistory`, `GetQuotaStatus`, `CheckUsageRollover`, `GetSelectedEnginesUseCase` |
+| `UsageBloc` | Analytics dashboard: engine stats, quota, and history. Emits `UsageLoaded` which includes `selectedTranslationEngine` and `selectedTranscriptionEngine` (RTDB stats keys) for highlighting the active engine card | `GetUsageStats`, `GetUsageHistory`, `GetQuotaStatus`, `CheckUsageRollover`, `GetSelectedEnginesUseCase`, `ClearUsageCache` |
 
 ### BLoC Concurrency (Event Transformers)
 
@@ -176,6 +176,24 @@ A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically run
 | `PythonServerManager` | Manages local Python process lifecycle. Starts the bundled `omni_bridge_server.exe` on app launch, monitors its `exitCode` for unexpected crashes, and auto-restarts with exponential backoff (3s → 10s after 3 failures). An `_isStarting` flag prevents concurrent restart attempts. `TranslationBloc._checkHealthOnce()` also calls `startServer()` on every failed HTTP health poll — covering the case where `_serverProcess` is null (no process handle). |
 | `RTDBClient` | Singleton HTTP client for Firebase RTDB REST operations (all datasources that write to RTDB route through it). Handles transient retries with exponential backoff. `request(makeRequest, buildUrl)` takes a URL-builder lambda alongside the request lambda — the token is baked into the URL query string, so on a 401/403 it force-refreshes the Firebase ID token via `getIdToken(true)`, calls `buildUrl()` again to get a fresh-token URL, and retries the request exactly once. Firestore SDK manages its own token refresh internally. |
 | `ServerConfig` | Single source of truth for the local Python server address (`127.0.0.1:8765`). `wsUrl` and `httpUrl` automatically use `ws://`/`http://` for loopback and upgrade to `wss://`/`https://` for any non-localhost host. The server always binds to loopback so plain WebSocket is intentional and secure. |
+
+### Window Management (`core/platform/window_manager.dart`)
+
+`WindowMode` enum + dedicated positioning functions handle every window state transition centrally. `MyNavigatorObserver._handleWindowState()` maps each named route to the correct function so no screen needs `initState` sizing logic.
+
+| `WindowMode` | Function | Size | Used by |
+|---|---|---|---|
+| `splash` | `setToSplashPosition()` | 300×350 | `/splash` |
+| `onboarding` | `setToOnboardingPosition()` | 400×600 | `/onboarding`, `/login` |
+| `overlay` | `setToOverlayPosition()` | 480×240 min | `/translation-overlay` |
+| `dashboard` | `setToDashboardPosition()` | 1140×720 | all dashboard routes (default) |
+| `settingsOverlay` | `setToSettingsOverlayPosition()` | 900×680 | `/settings-overlay` |
+| `subscription` | `setToSubscriptionPosition()` | 1340×820 | `/subscription` |
+
+> [!IMPORTANT]
+> Always set **both** `appWindow.minSize` (bitsdojo_window) **and** `windowManager.setMinimumSize()` (window_manager). They are separate native packages — setting only one is ignored by the other.
+>
+> The `_isNavRailExpanded` offset (`_navRailExpandedDiff`) is added to any dashboard-mode minimum/target width so the sidebar expand does not cause the window to clip its content.
 
 ### Shared Utilities (`core/utils/`)
 
