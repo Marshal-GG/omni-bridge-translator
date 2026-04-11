@@ -23,10 +23,14 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 
 ## BLOCKERS — Must complete before any public user
 
-### 1. Razorpay Payment Links
-**What:** `openCheckout()` reads payment links from Firestore `system/monetization → payment_links`. Currently empty — users cannot upgrade.
+### 1. Razorpay Payment Links + Webhook → Tier Upgrade
 
-**Steps:**
+**What:** Two separate gaps must both be closed before payments work end-to-end.
+
+#### 1a. Seed payment links into Firestore
+
+`openCheckout()` reads payment links from `system/monetization → payment_links`. Currently empty — users cannot upgrade.
+
 1. Create Razorpay payment links for `pro` and `enterprise` tiers
 2. Seed them into Firestore:
    ```json
@@ -36,7 +40,38 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
    }
    ```
    > Trial is free — no payment link needed for it.
-3. Test checkout flow end-to-end: tap Upgrade → Razorpay opens → payment → tier updates in Firestore
+
+#### 1b. Wire up post-payment tier upgrade (BLOCKER)
+
+**The app has no payment-success handler.** `openCheckout()` launches the Razorpay URL in the browser and stops — it does not poll, listen for a redirect, or verify payment. After the user pays, nothing currently writes the new tier to Firestore.
+
+The full flow once both gaps are closed:
+
+```
+User taps Upgrade → Razorpay opens in browser
+         ↓
+User completes payment
+         ↓
+Razorpay POSTs to webhook URL (Firebase Cloud Function)
+         ↓
+Cloud Function: verifies HMAC signature → extracts UID from payment notes
+         ↓
+Writes users/{uid}/tier = 'pro' (or 'enterprise') to Firestore
+         ↓
+App's _listenToUserDoc fires → tier upgrades in real-time (no restart needed)
+```
+
+**Steps:**
+1. **Pass UID into payment** — configure each Razorpay payment link to pre-fill `notes.uid` with the signed-in user's Firebase UID before launching. Currently `openCheckout()` just opens the raw link; it needs to append the UID (e.g. via a checkout API call or a custom link with pre-filled fields).
+2. **Write a Firebase Cloud Function** as the Razorpay webhook endpoint:
+   - Verify the `X-Razorpay-Signature` HMAC header
+   - Extract `payload.payment.entity.notes.uid` and `notes.tier`
+   - Write `users/{uid}/tier = tier` to Firestore
+3. **Register the webhook URL** in the Razorpay dashboard under Webhooks → `payment.captured` event
+4. **Test end-to-end**: tap Upgrade → pay → confirm tier field updates in Firestore within a few seconds → app header shows new tier live
+
+> [!NOTE]
+> Until 1b is implemented, tiers can be upgraded manually via the Firebase console (`users/{uid}/tier`). 1a alone (seeding links) only unblocks opening the checkout page — it does not complete the payment flow.
 
 ---
 

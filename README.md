@@ -11,7 +11,11 @@
 
 <p align="center">
   <a href="https://github.com/Marshal-GG/omni-bridge-translator/releases/latest">
-    <img src="https://img.shields.io/github/v/release/Marshal-GG/omni-bridge-translator?label=Download&style=for-the-badge&color=0D9488&labelColor=001A2E&logoColor=white" alt="Download Latest"/>
+    <img src="https://img.shields.io/github/v/release/Marshal-GG/omni-bridge-translator?label=Latest%20Release&style=for-the-badge&color=0D9488&labelColor=001A2E&logoColor=white" alt="Download Latest"/>
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://github.com/Marshal-GG/omni-bridge-translator/releases">
+    <img src="https://img.shields.io/github/v/release/Marshal-GG/omni-bridge-translator?include_prereleases&sort=semver&label=Pre-release&style=for-the-badge&color=F59E0B&labelColor=001A2E&logoColor=white" alt="Download Pre-release"/>
   </a>
   &nbsp;&nbsp;
   <img src="https://img.shields.io/badge/Platform-Windows_10%2B-0284C7?style=for-the-badge&logo=windows&logoColor=white&labelColor=001A2E" alt="Platform"/>
@@ -122,7 +126,7 @@
 
 
 <ol align="left">
-  <li>Go to the <a href="https://github.com/Marshal-GG/omni-bridge-translator/releases/latest"><strong>Releases page</strong></a></li>
+  <li>Go to the <a href="https://github.com/Marshal-GG/omni-bridge-translator/releases"><strong>Releases page</strong></a></li>
   <li>Download <code>OmniBridge_Setup.exe</code></li>
   <li>Run the installer — it bundles everything (Python server + UI)</li>
   <li>Launch <strong>Omni Bridge</strong> from your Start Menu or Desktop</li>

@@ -1,5 +1,8 @@
 ; Omni Bridge — Inno Setup Installer Script
 ; Build: Release  |  Target: Windows 10 x64+
+; ──────────────────────────────────────────────────────────────────────────────
+; IMPORTANT: bump MyAppVersion + VersionInfoVersion on every release.
+; ──────────────────────────────────────────────────────────────────────────────
 
 #define MyAppName        "Omni Bridge - Live AI Translator"
 #define MyAppVersion     "2.0.0"
@@ -96,8 +99,9 @@ Source: "docs\legal\*"; DestDir: "{app}\docs\legal"; Flags: ignoreversion recurs
 ; Source: "redist\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [InstallDelete]
-; Wipe existing install dir so stale DLLs, old server builds, and leftover
-; Whisper model files never conflict with the incoming version.
+; Wipe existing install dir so stale DLLs and old server builds never conflict
+; with the incoming version. Whisper/AI model files are backed up before this
+; runs (ssInstall) and restored afterwards (ssPostInstall) — see [Code].
 Type: filesandordirs; Name: "{app}"
 
 [UninstallDelete]
@@ -176,62 +180,136 @@ begin
   DelTree(ExpandConstant('{localappdata}\google-services-desktop-auth\OmniBridge-Release'), True, True, True);
 end;
 
+// Returns true if a previous install of this app already exists.
+// Used to distinguish upgrades (preserve auth) from fresh installs (wipe stale data).
+function IsUpgrade(): Boolean;
+var
+  UninstPath: String;
+  Dummy: String;
+begin
+  UninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1';
+  Result := RegQueryStringValue(HKLM, UninstPath, 'UninstallString', Dummy) or
+            RegQueryStringValue(HKCU, UninstPath, 'UninstallString', Dummy);
+end;
+
+// ── PyInstaller temp cleanup ──────────────────────────────────────────────────
+// Removes stale %TEMP%\omni_bridge* extraction dirs left by previous server runs.
+// Called on both install and uninstall.
+
+procedure CleanPyInstallerTemp();
+var
+  TempDir: String;
+  FindRec: TFindRec;
+begin
+  TempDir := ExpandConstant('{%TEMP}\');
+  if FindFirst(TempDir + 'omni_bridge*', FindRec) then
+  begin
+    repeat
+      if (FindRec.Name <> '.') and (FindRec.Name <> '..') then
+      begin
+        if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+          DelTree(TempDir + FindRec.Name, True, True, True)
+        else
+          DeleteFile(TempDir + FindRec.Name);
+      end;
+    until not FindNext(FindRec);
+    FindClose(FindRec);
+  end;
+end;
+
+// ── Whisper / AI model backup & restore ──────────────────────────────────────
+// Whisper models downloaded by the user live in {app}\models\. [InstallDelete]
+// wipes {app} before new files are copied — these functions back up that dir
+// to the installer's private {tmp} folder first, then restore it afterwards.
+// This prevents users from having to re-download gigabytes of models on update.
+
+procedure CopyDirContents(SrcDir, DstDir: String);
+var
+  FindRec: TFindRec;
+begin
+  if not DirExists(SrcDir) then Exit;
+  ForceDirectories(DstDir);
+  if FindFirst(SrcDir + '*', FindRec) then
+  begin
+    repeat
+      if (FindRec.Name <> '.') and (FindRec.Name <> '..') then
+      begin
+        if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+          CopyDirContents(SrcDir + FindRec.Name + '\', DstDir + FindRec.Name + '\')
+        else
+          FileCopy(SrcDir + FindRec.Name, DstDir + FindRec.Name, False);
+      end;
+    until not FindNext(FindRec);
+    FindClose(FindRec);
+  end;
+end;
+
+procedure BackupModels();
+var
+  ModelsDir, BackupDir: String;
+begin
+  ModelsDir := ExpandConstant('{app}\models\');
+  BackupDir := ExpandConstant('{tmp}\omni_models_backup\');
+  if DirExists(ModelsDir) then
+    CopyDirContents(ModelsDir, BackupDir);
+end;
+
+procedure RestoreModels();
+var
+  BackupDir, ModelsDir: String;
+begin
+  BackupDir := ExpandConstant('{tmp}\omni_models_backup\');
+  ModelsDir := ExpandConstant('{app}\models\');
+  if DirExists(BackupDir) then
+  begin
+    CopyDirContents(BackupDir, ModelsDir);
+    DelTree(BackupDir, True, True, True);
+  end;
+end;
+
 // ── Pre-install cleanup ───────────────────────────────────────────────────────
 // Runs before files are copied. Order matters:
 //   1. Kill processes (release file locks)
-//   2. Run existing uninstaller (HKLM = admin install, HKCU = legacy user install)
-//   3. Wipe SharedPreferences registry keys
+//   2. Back up Whisper/AI model files before [InstallDelete] wipes {app}
+//   3. Fresh install only: wipe stale SharedPreferences + Firebase caches
+//      Skipped on upgrade — preserves signed-in state so user is not logged out
 //   4. Remove outdated Google OAuth registry key from previous scheme
 //   5. Delete stale PyInstaller %TEMP%\omni_bridge* extractions
 //   6. Remove leftover user-level install dir (from old lowest-privilege builds)
-//   7. Wipe persistent session/auth data (prevents "still logged in after reinstall")
+//
+// NOTE: The old uninstaller is intentionally NOT called here. Same-AppId upgrades
+//       are handled natively by Inno Setup ([InstallDelete] + file overwrite).
+//       Running the old uninstaller silently would trigger WipeUserData() in the
+//       old build, logging the user out on every update.
 
 procedure CurStepChanged(CurStep: TSetupStep);
-var
-  UninstPath: String;
-  UninstExe:  String;
-  ResultCode: Integer;
-  TempDir:    String;
-  FindRec:    TFindRec;
 begin
   if CurStep = ssInstall then
   begin
     // 1. Kill stale processes
     KillAppProcesses();
 
-    // 2. Run old uninstaller silently
-    UninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1';
-    if RegQueryStringValue(HKLM, UninstPath, 'UninstallString', UninstExe) or
-       RegQueryStringValue(HKCU, UninstPath, 'UninstallString', UninstExe) then
-    begin
-      Exec(RemoveQuotes(UninstExe), '/VERYSILENT /NORESTART', '', SW_HIDE,
-           ewWaitUntilTerminated, ResultCode);
-    end;
+    // 2. Back up model files — must happen before [InstallDelete] wipes {app}
+    BackupModels();
 
-    // 3. Wipe Flutter SharedPreferences + AppData + Firebase caches
-    WipeUserData();
+    // 3. Wipe stale user data on fresh installs only
+    if not IsUpgrade() then
+      WipeUserData();
 
     // 4. Remove outdated Google OAuth registry key (old Client ID scheme — no longer used)
     DeleteRegKeyIfExists(HKCR, 'com.googleusercontent.apps.883780252017-c3h4v2pha56t4939hld31sdhllg1tcc9');
 
     // 5. Delete stale PyInstaller %TEMP%\omni_bridge* extractions
-    TempDir := ExpandConstant('{%TEMP}\');
-    if FindFirst(TempDir + 'omni_bridge*', FindRec) then
-    begin
-      repeat
-        if (FindRec.Name <> '.') and (FindRec.Name <> '..') then
-        begin
-          if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
-            DelTree(TempDir + FindRec.Name, True, True, True)
-          else
-            DeleteFile(TempDir + FindRec.Name);
-        end;
-      until not FindNext(FindRec);
-      FindClose(FindRec);
-    end;
+    CleanPyInstallerTemp();
 
     // 6. Remove leftover user-level install dir (legacy builds installed to LocalAppData)
     DelTree(ExpandConstant('{localappdata}\Programs\{#MyAppName}'), True, True, True);
+  end;
+
+  if CurStep = ssPostInstall then
+  begin
+    // Restore Whisper/AI models that were backed up before the [InstallDelete] wipe
+    RestoreModels();
   end;
 end;
 
@@ -241,9 +319,8 @@ procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usUninstall then
   begin
-    // Kill processes before files are removed
     KillAppProcesses();
-    // Wipe all user data
     WipeUserData();
+    CleanPyInstallerTemp();
   end;
 end;
