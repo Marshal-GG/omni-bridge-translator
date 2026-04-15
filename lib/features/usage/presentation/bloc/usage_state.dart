@@ -25,8 +25,9 @@ class UsageLoaded extends UsageState {
   final QuotaStatus? quotaStatus;
   final String selectedTranslationEngine;
   final String selectedTranscriptionEngine;
+  final DateTime loadedAt;
 
-  const UsageLoaded({
+  UsageLoaded({
     required this.engineUsage,
     required this.dailyHistory,
     required this.lifetimeTokens,
@@ -37,7 +38,8 @@ class UsageLoaded extends UsageState {
     this.quotaStatus,
     this.selectedTranslationEngine = 'google',
     this.selectedTranscriptionEngine = 'online',
-  });
+    DateTime? loadedAt,
+  }) : loadedAt = loadedAt ?? DateTime.now();
 
   @override
   List<Object?> get props => [
@@ -51,6 +53,7 @@ class UsageLoaded extends UsageState {
     quotaStatus,
     selectedTranslationEngine,
     selectedTranscriptionEngine,
+    loadedAt,
   ];
 }
 

@@ -8,12 +8,21 @@ class EngineUsageCard extends StatelessWidget {
   final EngineUsage usage;
   final double? maxTokens;
   final bool isSelected;
+  /// Share of total calls this engine represents within its section (0–100).
+  /// null = not computed / section has no calls.
+  final double? sessionSharePct;
+
+  /// Week-over-week token change percentage (this week vs last week).
+  /// Positive = growth, negative = decline, null = not enough data.
+  final double? trendChangePct;
 
   const EngineUsageCard({
     super.key,
     required this.usage,
     this.maxTokens,
     this.isSelected = false,
+    this.sessionSharePct,
+    this.trendChangePct,
   });
 
   @override
@@ -134,6 +143,10 @@ class EngineUsageCard extends StatelessWidget {
                                 ),
                               ),
                             ),
+                          if (trendChangePct != null) ...[
+                            const SizedBox(width: 4),
+                            _TrendBadge(changePct: trendChangePct!),
+                          ],
                         ],
                       ),
 
@@ -166,6 +179,9 @@ class EngineUsageCard extends StatelessWidget {
                             _StatChip(
                               label: 'Calls',
                               value: formatter.format(usage.totalCalls),
+                              sublabel: sessionSharePct != null
+                                  ? '${sessionSharePct!.toStringAsFixed(0)}%'
+                                  : null,
                               icon: Icons.touch_app_rounded,
                               iconColor: themeColor,
                             ),
@@ -278,9 +294,51 @@ class EngineUsageCard extends StatelessWidget {
   }
 }
 
+// ── Trend badge ───────────────────────────────────────────────────────────────
+
+class _TrendBadge extends StatelessWidget {
+  final double changePct;
+
+  const _TrendBadge({required this.changePct});
+
+  @override
+  Widget build(BuildContext context) {
+    final isUp = changePct >= 0;
+    final color = isUp ? Colors.tealAccent : Colors.redAccent;
+    final icon = isUp ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
+    final label = '${changePct.abs().toStringAsFixed(0)}%';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 8, color: color),
+          const SizedBox(width: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 8,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Stat chip ─────────────────────────────────────────────────────────────────
+
 class _StatChip extends StatelessWidget {
   final String label;
   final String value;
+  final String? sublabel;
   final IconData icon;
   final Color iconColor;
 
@@ -289,6 +347,7 @@ class _StatChip extends StatelessWidget {
     required this.value,
     required this.icon,
     required this.iconColor,
+    this.sublabel,
   });
 
   @override
@@ -317,7 +376,7 @@ class _StatChip extends StatelessWidget {
                 ),
                 const SizedBox(height: 1),
                 Text(
-                  label,
+                  sublabel != null ? '$label · $sublabel' : label,
                   style: const TextStyle(
                     color: UsageColors.statLabel,
                     fontSize: 9,

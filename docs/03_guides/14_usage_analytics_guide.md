@@ -148,23 +148,37 @@ Follows the standard BLoC pattern:
 **File**: `lib/features/usage/presentation/screens/usage_screen.dart`
 
 Displays a high-density analytics dashboard consistent with the Omni Bridge design language:
-- **Color accent**: `Colors.tealAccent` for ASR, `Color(0xFF6366F1)` (indigo) for translation engines
+- **Color accent**: `UsageColors.asrAccent` (`#818CF8` lighter indigo) for ASR, `UsageColors.translationAccent` (`#2DD4BF` teal) for translation engines
 - **Navigation icon**: `Icons.analytics_rounded`
 - **Layout**: Standard `1020px` centered content width
 - **Engine highlighting**: The `EngineUsageCard` for the currently active ASR/translation engine is highlighted with a stronger border. `UsageScreen` reads `state.selectedTranslationEngine` and `state.selectedTranscriptionEngine` from `UsageLoaded` and passes `isSelected: e.engine == selectedEngine` to each `EngineUsageCard`. Both fields are already RTDB stats keys, matching `EngineUsage.engine` directly — no conversion needed in the screen.
+
+#### Stats Strip (`_StatsStrip`)
+
+The top section of the dashboard. A tier-colored gradient container (10px radius, left accent bar, `ClipRRect`) that summarises the account at a glance. Components:
+
+| Widget | Description |
+|---|---|
+| `_TierBadge` | Compact pill (matches `OmniChip` sizing: `px 8 / py 4`, font 10, radius 6). Icon + tier name in tier color, flat tinted background. `_tierColor()` / `_tierIcon()` top-level helpers map tier string to color/icon. |
+| `_QuotaBand` | Shown when `quotaStatus != null && !isUnlimited`. Label row (period label, used/limit, reset countdown pill) above a 6px custom `Stack`+`FractionallySizedBox` gradient progress bar. Color transitions: tealAccent → orangeAccent (>85%) → redAccent (exceeded). Uses `UsageColors.barTrack` for the empty track. |
+| `_UnlimitedBadge` | Shown when `quotaStatus.isUnlimited`. Small circle icon container + "Unlimited" text in tier color. |
+| `_StatCell` | Compact glass card (`AppColors.cardBackground` bg, `AppColors.cardBorder` border, radius 6). Icon+label row (10px icon, `AppColors.textDisabled` label, 9px) above 15px bold value. Used for THIS MONTH (`Color(0xFF6366F1)`) and LIFETIME (`Color(0xFF2DD4BF)`); also TODAY when `quotaStatus.dailyTokensUsed` is available. |
+| `_TrialCountdown` | Shown when `quotaStatus.trialExpiresAt != null`. Inline timer icon + human-readable countdown. Color: amberAccent → orangeAccent (<2d) → redAccent (expired). |
+
+Design tokens used: `AppColors.cardBackground`, `AppColors.cardBorder`, `AppColors.textDisabled`, `AppColors.textPrimary`, `UsageColors.barTrack`. No ad-hoc hardcoded background or border colors.
+
+#### Week-over-week trend (`_Trend`)
+
+`_buildEngineSection` computes a per-engine `_Trend` from `dailyHistory` (last 7 days vs 7–14 days ago). `changePct` returns `null` when either window has zero data. Passed as `trendChangePct: double?` to `EngineUsageCard`, which renders a `_TrendBadge` (↑/↓ % pill) in the card header.
 
 ### Widgets
 **Directory**: `lib/features/usage/presentation/widgets/`
 
 | Widget | Purpose |
 |---|---|
-| `EngineUsageCard` | Per-engine stat card. Accepts `isSelected` param — highlights the border when the engine is currently active. |
+| `EngineUsageCard` | Per-engine stat card. Accepts `isSelected` (active border highlight) and `trendChangePct` (week-over-week `_TrendBadge`). Monthly usage + gradient progress bar (primary metric), lifetime / calls / avg latency stat row (secondary). |
 | `UsageUtils` | `getDisplayName(statsKey, type)` — delegates to `EngineRegistry.displayNameForStatsKey()`. |
-| `UsageDonutChart` | ASR vs translation breakdown pie chart |
-| `ModelUsageBarChart` | Per-engine bar chart for relative usage |
-| `UsageHistoryChart` | 30-day daily usage line chart |
 | `UsageHeader` | Top bar with refresh `IconButton` (dispatches `LoadUsageStats(refresh: true)`) |
-| `QuotaUsageBar` | Inline progress bar for daily quota |
 
 ---
 
@@ -177,7 +191,6 @@ Displays a high-density analytics dashboard consistent with the Omni Bridge desi
 | `ISubscriptionRepository` | The shared repository that `UsageRepositoryImpl` reads from for engine stats and quota |
 | `IEngineSelectionSource` | Core interface implemented by `SettingsRepositoryImpl` — provides selected engine settings keys to `GetSelectedEnginesUseCase` without cross-feature BLoC coupling |
 | `EngineRegistry` | `lib/core/constants/engine_registry.dart` — single source of truth for all engine definitions: settings key, RTDB stats key, display name, type. Used by `GetSelectedEnginesUseCase`, `UsageUtils`, `UsageConstants`, `_isEngineInPlan`, and `_engineLimit`. |
-| `fl_chart` package | Powers usage visualizations (bar/line charts) |
 
 > [!TIP]
 > Because `UsageRepositoryImpl` wraps `ISubscriptionRepository`, there is no extra Firebase cost — the subscription listener is already open. The usage screen simply presents a different view of data already in memory.
