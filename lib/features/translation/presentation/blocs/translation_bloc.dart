@@ -53,6 +53,7 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   StreamSubscription? _captionSub;
   StreamSubscription? _statusSub;
   StreamSubscription? _engineLimitSub;
+  String? _lastAuthUid;
   Timer? _healthCheckTimer;
   int _lastLineCount = 0;
 
@@ -130,12 +131,19 @@ class TranslationBloc extends Bloc<TranslationEvent, TranslationState> {
   }
 
   void _initAuthListener() {
-    // Re-load settings whenever the user signs in
+    // Snapshot the current UID so the initial Firebase auth confirmation
+    // (which fires the listener with the same user) does not trigger a
+    // redundant settings reload on top of the one fired by _onInitialize.
+    _lastAuthUid = getCurrentUserUseCase().value?.uid;
     getCurrentUserUseCase().addListener(_onAuthChanged);
   }
 
   void _onAuthChanged() {
     final user = getCurrentUserUseCase().value;
+    final newUid = user?.uid;
+    if (newUid == _lastAuthUid) return;
+    _lastAuthUid = newUid;
+
     if (user != null && !isClosed) {
       AppLogger.i(
         'Auth detected, reloading settings...',

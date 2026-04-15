@@ -26,7 +26,8 @@ omni_bridge/
 │   │   ├── platform/                # Tray, Window, AppInitializer
 │   │   ├── routes/                  # MyNavObserver (navigation analytics & window resizing)
 │   │   ├── theme/                   # AppTheme (Design System: Colors, Spacing, Text, Shapes)
-│   │   └── utils/                   # Shared utilities
+│   │   ├── utils/                   # Shared utilities
+│   │   └── widgets/                 # Shared UI widgets (SplashVisual, ModelStatusIndicator, OmniHeader, …)
 │   │
 │   └── features/                    # Feature Modules (Vertical Slice Architecture)
 │       ├── auth/                    # Authentication

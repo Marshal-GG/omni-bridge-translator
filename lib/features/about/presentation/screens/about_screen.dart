@@ -9,6 +9,7 @@ import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_bloc.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_event.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_state.dart';
+import 'package:omni_bridge/core/widgets/splash_visual.dart';
 import 'package:omni_bridge/core/widgets/omni_branding.dart';
 import 'package:omni_bridge/core/widgets/omni_copyright.dart';
 import 'package:omni_bridge/core/widgets/omni_header.dart';
@@ -34,69 +35,7 @@ class _AboutScreenState extends State<AboutScreen> {
   void _showSplashPreview(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.zero,
-        child: SizedBox(
-          width: 300,
-          height: 350,
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF0A0A0F),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: Column(
-              children: [
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Image.asset(
-                        'assets/app/icons/icon.png',
-                        width: 96,
-                        height: 96,
-                        fit: BoxFit.contain,
-                      ),
-                      const SizedBox(height: 32),
-                      const Text(
-                        'Omni Bridge',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Starting up...',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withValues(alpha: 0.6),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 32, right: 32, bottom: 40),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: const SizedBox(
-                      height: 6,
-                      child: LinearProgressIndicator(
-                        backgroundColor: Color(0xFF1E1E2E),
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00BCD4)),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      builder: (context) => const _SplashPreviewDialog(),
     );
   }
 
@@ -964,6 +903,64 @@ class _LegalDialog extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SplashPreviewDialog extends StatefulWidget {
+  const _SplashPreviewDialog();
+
+  @override
+  State<_SplashPreviewDialog> createState() => _SplashPreviewDialogState();
+}
+
+class _SplashPreviewDialogState extends State<_SplashPreviewDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 0.85, end: 1.05).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.zero,
+      child: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        behavior: HitTestBehavior.opaque,
+        child: Center(
+          child: GestureDetector(
+            onTap: () {}, // prevent tap-through closing on the inner box
+            child: SizedBox(
+              width: 300,
+              height: 350,
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: SplashVisual(pulseAnimation: _pulseAnimation),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

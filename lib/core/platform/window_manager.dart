@@ -14,12 +14,16 @@ Future<void> initializeWindow() async {
 
   // 1. Define Window Options (HIDDEN HEADER)
   WindowOptions windowOptions = const WindowOptions(
-    size: Size(800, 200),
+    size: Size(880, 700),
     center: true,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
   );
+
+  // Prevent the OS from closing the window immediately on the X button —
+  // onWindowClose() handles cleanup (server kill, session end) then destroys.
+  await windowManager.setPreventClose(true);
 
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
@@ -28,18 +32,10 @@ Future<void> initializeWindow() async {
 }
 
 Future<void> configureMainWindow() async {
+  // All geometry (size, position, alwaysOnTop) is owned by the nav observer
+  // via setTo*Position(). This function only sets the window title, which
+  // bitsdojo requires doWhenWindowReady to have fired before it can be set.
   appWindow.title = "Omni Bridge: Live AI Translator";
-
-  // Always start at startup size — app always boots through /splash.
-  // MyNavigatorObserver handles resizing when the real route is pushed.
-  await windowManager.setResizable(true);
-  appWindow.minSize = const Size(600, 500);
-  await windowManager.setMinimumSize(const Size(600, 500));
-  await windowManager.setSize(const Size(880, 700));
-  appWindow.alignment = Alignment.center;
-  await windowManager.center();
-  await windowManager.setAlwaysOnTop(true);
-  await windowManager.show();
 }
 
 bool _isNavRailExpanded = false;
@@ -50,7 +46,27 @@ enum WindowMode { none, login, startup, translation, history, dashboard, subscri
 
 WindowMode _currentWindowMode = WindowMode.none;
 
+// ── Smooth window transition ──────────────────────────────────────────────────
+// Hides the window, runs all geometry changes off-screen, then fades back in.
+// Eliminates the multi-step glitch caused by sequential native resize calls
+// each triggering a separate OS repaint.
+
+Future<void> _transitionWindow(Future<void> Function() work) async {
+  await windowManager.setOpacity(0.0);
+  await work();
+  await windowManager.show();
+  await windowManager.focus();
+  // Fade in over ~120 ms (8 steps × 15 ms)
+  for (var i = 1; i <= 8; i++) {
+    await windowManager.setOpacity(i / 8);
+    await Future.delayed(const Duration(milliseconds: 15));
+  }
+  await windowManager.setOpacity(1.0);
+}
+
 /// Instantly resizes the OS window when the navigation rail expands or collapses.
+/// No transition — this happens while the window is already visible and the
+/// content reflows smoothly on its own.
 Future<void> toggleNavRailWindowSize(bool isExpanded) async {
   if (_isNavRailExpanded == isExpanded) return;
   _isNavRailExpanded = isExpanded;
@@ -67,14 +83,16 @@ Future<void> setToLoginPosition() async {
   if (_currentWindowMode == WindowMode.login) return;
   _currentWindowMode = WindowMode.login;
 
-  await windowManager.setResizable(true);
-  double addedWidth = _isNavRailExpanded ? _navRailExpandedDiff : 0.0;
-  appWindow.minSize = Size(600 + addedWidth, 500);
-  await windowManager.setMinimumSize(Size(600 + addedWidth, 500));
-  await windowManager.setSize(Size(880 + addedWidth, 700));
-  appWindow.alignment = Alignment.center;
-  await windowManager.center();
-  await windowManager.setAlwaysOnTop(false);
+  await _transitionWindow(() async {
+    await windowManager.setResizable(true);
+    double addedWidth = _isNavRailExpanded ? _navRailExpandedDiff : 0.0;
+    appWindow.minSize = Size(600 + addedWidth, 500);
+    await windowManager.setMinimumSize(Size(600 + addedWidth, 500));
+    await windowManager.setSize(Size(880 + addedWidth, 700));
+    appWindow.alignment = Alignment.center;
+    await windowManager.center();
+    await windowManager.setAlwaysOnTop(false);
+  });
 }
 
 /// Sets the window to a centered dialog style for Startup/Splash (Loader Size)
@@ -82,13 +100,15 @@ Future<void> setToStartupPosition() async {
   if (_currentWindowMode == WindowMode.startup) return;
   _currentWindowMode = WindowMode.startup;
 
-  await windowManager.setResizable(false);
-  appWindow.minSize = const Size(300, 350);
-  await windowManager.setMinimumSize(const Size(300, 350));
-  await windowManager.setSize(const Size(300, 350));
-  appWindow.alignment = Alignment.center;
-  await windowManager.center();
-  await windowManager.setAlwaysOnTop(true);
+  await _transitionWindow(() async {
+    await windowManager.setResizable(true);
+    appWindow.minSize = const Size(600, 500);
+    await windowManager.setMinimumSize(const Size(600, 500));
+    await windowManager.setSize(const Size(880, 700));
+    appWindow.alignment = Alignment.center;
+    await windowManager.center();
+    await windowManager.setAlwaysOnTop(true);
+  });
 }
 
 /// Sets the window to the wide bottom-center overlay style
@@ -96,15 +116,16 @@ Future<void> setToTranslationPosition() async {
   if (_currentWindowMode == WindowMode.translation) return;
   _currentWindowMode = WindowMode.translation;
 
-  await windowManager.setResizable(true);
-  double addedWidth = _isNavRailExpanded ? _navRailExpandedDiff : 0.0;
-  // Reset constraints before setting new ones
-  appWindow.minSize = Size(300 + addedWidth, 150);
-  await windowManager.setMinimumSize(Size(400 + addedWidth, 150));
-  await windowManager.setSize(Size(730 + addedWidth, 150));
-  appWindow.alignment = Alignment.bottomCenter;
-  await windowManager.setAlignment(Alignment.bottomCenter);
-  await windowManager.setAlwaysOnTop(true);
+  await _transitionWindow(() async {
+    await windowManager.setResizable(true);
+    double addedWidth = _isNavRailExpanded ? _navRailExpandedDiff : 0.0;
+    appWindow.minSize = Size(300 + addedWidth, 150);
+    await windowManager.setMinimumSize(Size(400 + addedWidth, 150));
+    await windowManager.setSize(Size(730 + addedWidth, 150));
+    appWindow.alignment = Alignment.bottomCenter;
+    await windowManager.setAlignment(Alignment.bottomCenter);
+    await windowManager.setAlwaysOnTop(true);
+  });
 }
 
 /// Sets the window to a large centered view for History
@@ -112,14 +133,16 @@ Future<void> setToHistoryPosition() async {
   if (_currentWindowMode == WindowMode.history) return;
   _currentWindowMode = WindowMode.history;
 
-  await windowManager.setResizable(true);
-  double addedWidth = _isNavRailExpanded ? _navRailExpandedDiff : 0.0;
-  appWindow.minSize = Size(600 + addedWidth, 400);
-  await windowManager.setMinimumSize(Size(600 + addedWidth, 400));
-  await windowManager.setSize(Size(1000 + addedWidth, 700));
-  appWindow.alignment = Alignment.center;
-  await windowManager.center();
-  await windowManager.setAlwaysOnTop(false);
+  await _transitionWindow(() async {
+    await windowManager.setResizable(true);
+    double addedWidth = _isNavRailExpanded ? _navRailExpandedDiff : 0.0;
+    appWindow.minSize = Size(600 + addedWidth, 400);
+    await windowManager.setMinimumSize(Size(600 + addedWidth, 400));
+    await windowManager.setSize(Size(1000 + addedWidth, 700));
+    appWindow.alignment = Alignment.center;
+    await windowManager.center();
+    await windowManager.setAlwaysOnTop(false);
+  });
 }
 
 /// Wider window for the subscription/plans screen.
@@ -127,14 +150,16 @@ Future<void> setToSubscriptionPosition() async {
   if (_currentWindowMode == WindowMode.subscription) return;
   _currentWindowMode = WindowMode.subscription;
 
-  await windowManager.setResizable(true);
-  double addedWidth = _isNavRailExpanded ? _navRailExpandedDiff : 0.0;
-  appWindow.minSize = Size(1100 + addedWidth, 500);
-  await windowManager.setMinimumSize(Size(1100 + addedWidth, 500));
-  await windowManager.setSize(Size(1340 + addedWidth, 820));
-  appWindow.alignment = Alignment.center;
-  await windowManager.center();
-  await windowManager.setAlwaysOnTop(false);
+  await _transitionWindow(() async {
+    await windowManager.setResizable(true);
+    double addedWidth = _isNavRailExpanded ? _navRailExpandedDiff : 0.0;
+    appWindow.minSize = Size(1100 + addedWidth, 500);
+    await windowManager.setMinimumSize(Size(1100 + addedWidth, 500));
+    await windowManager.setSize(Size(1340 + addedWidth, 820));
+    appWindow.alignment = Alignment.center;
+    await windowManager.center();
+    await windowManager.setAlwaysOnTop(false);
+  });
 }
 
 /// A unified window size for all main dashboard screens.
@@ -142,14 +167,16 @@ Future<void> setToDashboardPosition() async {
   if (_currentWindowMode == WindowMode.dashboard) return;
   _currentWindowMode = WindowMode.dashboard;
 
-  await windowManager.setResizable(true);
-  double addedWidth = _isNavRailExpanded ? _navRailExpandedDiff : 0.0;
-  appWindow.minSize = Size(1000 + addedWidth, 500);
-  await windowManager.setMinimumSize(Size(1000 + addedWidth, 500));
-  await windowManager.setSize(Size(1140 + addedWidth, 800));
-  appWindow.alignment = Alignment.center;
-  await windowManager.center();
-  await windowManager.setAlwaysOnTop(false);
+  await _transitionWindow(() async {
+    await windowManager.setResizable(true);
+    double addedWidth = _isNavRailExpanded ? _navRailExpandedDiff : 0.0;
+    appWindow.minSize = Size(1000 + addedWidth, 500);
+    await windowManager.setMinimumSize(Size(1000 + addedWidth, 500));
+    await windowManager.setSize(Size(1140 + addedWidth, 800));
+    appWindow.alignment = Alignment.center;
+    await windowManager.center();
+    await windowManager.setAlwaysOnTop(false);
+  });
 }
 
 /// Called by the tray "Quit" item — exits the process cleanly.

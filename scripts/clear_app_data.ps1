@@ -6,7 +6,7 @@ $ErrorActionPreference = "SilentlyContinue"
 Write-Host "`n--- Omni Bridge Cleanup Utility ---" -ForegroundColor Cyan
 Write-Host "Select what you want to clear:"
 Write-Host "1) Debug Version (VS Code / Development)"
-Write-Host "2) Installed Version (Release / Prodcution)"
+Write-Host "2) Installed Version (Release / Production)"
 Write-Host "3) Everything (Clean Slate)"
 Write-Host "Q) Quit"
 
@@ -44,12 +44,17 @@ $ReleaseNames = @(
 function Remove-AppData ($AppName) {
     # Windows/Flutter substitutes some characters (like :) with underscores in folder names
     $AppFolderName = $AppName -replace ':', '_'
-    
+
     $Paths = @(
         (Join-Path $env:APPDATA "$Company\$AppName"),
         (Join-Path $env:APPDATA "$Company\$AppFolderName"),
         (Join-Path $env:LOCALAPPDATA "$Company\$AppName"),
         (Join-Path $env:LOCALAPPDATA "$Company\$AppFolderName"),
+        # com.marshal variant — Runner.rc CompanyName used by Flutter Windows plugins
+        (Join-Path $env:APPDATA "com.marshal\$AppName"),
+        (Join-Path $env:APPDATA "com.marshal\$AppFolderName"),
+        (Join-Path $env:LOCALAPPDATA "com.marshal\$AppName"),
+        (Join-Path $env:LOCALAPPDATA "com.marshal\$AppFolderName"),
         # Also check for direct AppData (no company) just in case some plugins use it
         (Join-Path $env:APPDATA "$AppName"),
         (Join-Path $env:APPDATA "$AppFolderName"),

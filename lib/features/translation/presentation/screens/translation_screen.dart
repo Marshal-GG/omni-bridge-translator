@@ -82,7 +82,7 @@ class _TranslationScreenState extends State<TranslationScreen> {
           child: Stack(
             children: [
               MoveWindow(),
-              Center(child: buildOverlayContent(context)),
+              SizedBox.expand(child: buildOverlayContent(context)),
             ],
           ),
         ),

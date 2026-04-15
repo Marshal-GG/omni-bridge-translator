@@ -114,29 +114,20 @@ class PythonServerManager {
   static void stopServer() {
     _isIntentionalStop = true;
     _restartCount = 0;
-    if (_serverProcess != null) {
-      AppLogger.i(
-        'Attempting to kill Python server process tree...',
-        tag: _tag,
-      );
-      try {
-        // PyInstaller creates a bootloader process -> python child process.
-        // Process.runSync blocks the UI thread until the kill command completes.
-        if (Platform.isWindows) {
-          Process.runSync('taskkill', [
-            '/F',
-            '/IM',
-            'omni_bridge_server.exe',
-            '/T',
-          ]);
-        } else {
-          _serverProcess!.kill();
-        }
-      } catch (e) {
-        AppLogger.e('Error killing Python server', error: e, tag: _tag);
+    AppLogger.i('Attempting to kill Python server process tree...', tag: _tag);
+    try {
+      if (Platform.isWindows) {
+        // Kill by name — covers both bundled server (we have a handle) and the
+        // case where _serverProcess is null (externally started / handle lost).
+        // PyInstaller creates a bootloader → python child, so /T kills the tree.
+        Process.runSync('taskkill', ['/F', '/IM', 'omni_bridge_server.exe', '/T']);
+      } else if (_serverProcess != null) {
+        _serverProcess!.kill();
       }
-      _serverProcess = null;
-      AppLogger.i('Python server stopped.', tag: _tag);
+    } catch (e) {
+      AppLogger.e('Error killing Python server', error: e, tag: _tag);
     }
+    _serverProcess = null;
+    AppLogger.i('Python server stopped.', tag: _tag);
   }
 }

@@ -76,7 +76,7 @@ lib/
 | Event | Transformer | Behaviour |
 |-------|-------------|-----------|
 | `ApplySettingsEvent` | `sequential()` | Queues concurrent saves — no settings call ever overtakes another |
-| `LoadSettingsEvent` | `droppable()` | Drops duplicate load triggers (rapid auth state changes emit multiple) |
+| `LoadSettingsEvent` | `droppable()` | Secondary safety net against concurrent loads. Primary guard: `_lastAuthUid` in `_initAuthListener` / `_onAuthChanged` snapshots the signed-in UID at listener registration time and skips a reload if the UID hasn't changed — preventing the redundant fetch that Firebase emits when it asynchronously re-confirms a cached token on startup. |
 
 ### API Key Validation Gate (`SettingsBloc`)
 
@@ -183,7 +183,7 @@ A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically run
 
 | `WindowMode` | Function | Size | Used by |
 |---|---|---|---|
-| `splash` | `setToSplashPosition()` | 300×350 | `/splash` |
+| `splash` | `setToStartupPosition()` | 880×700 | `/splash` |
 | `onboarding` | `setToOnboardingPosition()` | 400×600 | `/onboarding`, `/login` |
 | `overlay` | `setToOverlayPosition()` | 480×240 min | `/translation-overlay` |
 | `dashboard` | `setToDashboardPosition()` | 1140×720 | all dashboard routes (default) |
@@ -201,6 +201,12 @@ A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically run
 |---|---|
 | `duration_utils.dart` | `formatTimeRemaining(DateTime)` — formats a future expiry timestamp as a human-readable countdown ("2d 3h remaining", "45m remaining", "Trial expired"). Used by trial countdown displays on the Usage and Plan screens. |
 | `UpdateDownloadButton` | Stateful widget (`startup/presentation/widgets/`). If `downloadUrl` is set: streams the `.exe` installer to `Directory.systemTemp` with a progress indicator, then launches it detached. Falls back to opening `releaseUrl` in the browser. Supports `primary` (full-width `ElevatedButton`) and inline text-link styles. |
+
+### Shared Widgets (`core/widgets/`)
+
+| Widget | Purpose |
+|---|---|
+| `SplashVisual` | Pure visual layer of the splash screen — icon pulse animation, title, status text, and progress bar. Accepts `pulseAnimation`, `statusText`, `isIndeterminate`, `progressValue`, and `draggable` params. Used by `SplashScreen` (with `draggable: true` to enable `MoveWindow`) and the About screen test preview dialog (with defaults). Extracting this prevents the two call sites from drifting apart visually. |
 
 ---
 

@@ -38,10 +38,11 @@ class _UsageScreenState extends State<UsageScreen> {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => sl<UsageBloc>()..add(const LoadUsageStats()),
-      child: AppDashboardShell(
-        currentRoute: AppRouter.usage,
-        header: buildUsageHeader(context),
-        child: Column(
+      child: Builder(
+        builder: (context) => AppDashboardShell(
+          currentRoute: AppRouter.usage,
+          header: buildUsageHeader(context),
+          child: Column(
           children: [
             Expanded(
               child: BlocBuilder<UsageBloc, UsageState>(
@@ -203,6 +204,7 @@ class _UsageScreenState extends State<UsageScreen> {
               ),
             ),
           ],
+          ),
         ),
       ),
     );

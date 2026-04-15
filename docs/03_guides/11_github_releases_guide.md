@@ -1,58 +1,90 @@
 # 11 — GitHub Releases Guide
 
-This guide explains how to build the Windows executable and publish it as a GitHub Release so the built-in update checker can detect new versions.
+How to build, package, and publish a new Omni Bridge release.
 
-## Step 1: Build the Executable
+---
 
-Run the following command in your terminal to create a release build:
+## Step 1: Bump the version
+
+Update the version in two places:
+
+| File | Field | Example |
+|---|---|---|
+| `pubspec.yaml` | `version:` | `2.0.1+3` |
+| `installer_setup.iss` | `#define MyAppVersion` + `VersionInfoVersion` | `2.0.1` / `2.0.1.0` |
+
+---
+
+## Step 2: Build the Python server
+
+```powershell
+cd server
+..\.venv\Scripts\activate
+pyarmor gen --output dist_obfuscated .
+pyinstaller omni_bridge_server.spec
+```
+
+Output: `server/dist/omni_bridge_server.exe`
+
+---
+
+## Step 3: Build the Flutter app
 
 ```powershell
 flutter build windows --release
 ```
 
-The build artifacts will be located at:
-`build\windows\x64\runner\Release\`
+Output: `build\windows\x64\runner\Release\`
 
-## Step 2: Package the Application
+---
 
-The executable (`omni_bridge.exe`) requires several DLLs and the `data` folder to run. You must package the **entire contents** of the `Release` folder.
+## Step 4: Compile the installer
 
-1. Navigate to `build\windows\x64\runner\`.
-2. Right-click the `Release` folder and select **Compress to ZIP file**.
-3. Rename the resulting zip to something descriptive, e.g., `omni_bridge_v1.2.3_windows.zip`.
+1. Open `installer_setup.iss` in **Inno Setup 6.7.1**
+2. Build → Compile (or press `Ctrl+F9`)
 
-## Step 3: Create a GitHub Release
+Output: `installers/OmniBridge_Setup_v{version}.exe`
 
-1. Go to your GitHub repository: [Marshal-GG/omni-bridge-translator](https://github.com/Marshal-GG/omni-bridge-translator).
-2. On the right sidebar, click **Releases** -> **Create a new release** (or "Draft a new release").
-3. **Choose a tag**: Type the version number exactly as it appears in your `pubspec.yaml` (e.g., `v1.2.3`).
-   - *Note: The update service expects the "v" prefix or a direct semver string.*
-4. **Release title**: Give it a name, e.g., `Omni Bridge Release v1.2.3`.
-5. **Describe this release**: Add a few bullet points about what changed.
-6. **Attach binaries**: Drag and drop your ZIP file created in Step 2 into the "Attach binaries by dropping them here" area.
-7. Click **Publish release**.
+> [!IMPORTANT]
+> Test the installer on a clean VM before publishing — verify first install, upgrade-over-existing, and uninstall all leave no files behind.
 
-## How the Update Checker Works
+---
 
-The app's `UpdateRemoteDataSource` now checks a specific document in your Firebase **Cloud Firestore** database instead of hitting the GitHub API directly. This allows you to force critical updates and provide custom update messages without publishing a new release immediately.
+## Step 5: Publish the GitHub Release
 
-### How to Configure Updates in the Database
+1. Go to [Marshal-GG/omni-bridge-translator → Releases](https://github.com/Marshal-GG/omni-bridge-translator/releases) → **Draft a new release**
+2. **Tag**: `v2.0.1` (semver, `v` prefix)
+3. **Title**: `Omni Bridge v2.0.1`
+4. **Description**: changelog bullet points
+5. **Attach**: `installers/OmniBridge_Setup_v2.0.1.exe`
+6. **Publish release**
 
-To manage app versions, you do **not** need to add any new code. Follow these steps:
+---
 
-1. Open your **Firebase Console** and navigate to your project.
-2. Go to **Cloud Firestore**.
-3. Create a collection called `system` (if it doesn't exist).
-4. Inside the `system` collection, create a document named exactly `app_version`.
-5. Add the following **4 String fields** to the `app_version` document:
+## Step 6: Update Firestore `system/app_version`
 
-| Field Name | Type | Value (Example) | What it does |
-| :--- | :--- | :--- | :--- |
-| `min_supported` | String | `1.0.0` | If the user's app version is **lower** than this, they get permanently blocked on the **Force Update** screen. |
-| `latest` | String | `1.1.0` | If the user's version is lower than this (but higher than `min_supported`), they get the **optional orange badge** on the settings icon. |
-| `update_url` | String | `https://github.com/omni-bridge/releases` | The link that opens in their web browser when they click the "Download Update" button. |
-| `force_update_message` | String | `A critical security patch is available.` | A custom message shown specifically on the Force Update screen explaining why they must update. |
+After publishing, update these fields so existing installs prompt for the update:
 
-Whenever you release a new version of Omni Bridge via GitHub Releases (Step 3), simply update the `latest` field in Firebase, and all online clients will immediately display the new update badge on their next launch! 
+```json
+{
+  "latest":       "2.0.1",
+  "update_url":   "https://github.com/Marshal-GG/omni-bridge-translator/releases",
+  "download_url": "https://github.com/Marshal-GG/omni-bridge-translator/releases/download/v2.0.1/OmniBridge_Setup_v2.0.1.exe"
+}
+```
 
-If you introduce a breaking change to the Python server requiring a client update, simply change `min_supported` to the new version, which will instantly force-block all outdated clients until they upgrade.
+- `latest` — triggers the orange badge on the settings icon for users below this version
+- `download_url` — enables in-app direct download via `UpdateDownloadButton`; if absent, falls back to opening `update_url` in the browser
+- `min_supported` — only change this for breaking updates; forces the Force Update screen on older clients
+
+---
+
+## How the update checker works
+
+`UpdateRemoteDataSource` reads `system/app_version` from Firestore on every launch and on manual "Check for updates". It compares the running build version against `latest` and `min_supported`:
+
+| Condition | Result |
+|---|---|
+| Running version < `min_supported` | Force Update screen — blocks app access |
+| Running version < `latest` | Orange dot on settings icon, optional update prompt |
+| Running version ≥ `latest` | No notification |

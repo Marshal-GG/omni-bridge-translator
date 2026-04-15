@@ -141,6 +141,7 @@ class UsageRemoteDataSource implements IResettable {
     if (_pollIntervalProvider == null) return;
 
     final interval = _pollIntervalProvider!();
+    _currentPollInterval = interval;
 
     AppLogger.d(
       'Starting usage polling for $uid every $interval seconds.',

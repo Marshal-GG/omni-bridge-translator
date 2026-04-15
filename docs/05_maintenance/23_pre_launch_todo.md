@@ -85,7 +85,15 @@ App's _listenToUserDoc fires → tier upgrades in real-time (no restart needed)
 2. Confirm `build/windows/x64/runner/Release/omni_bridge.exe` exists (freshly built, `2.0.0+2`)
 3. Open `installer_setup.iss` in Inno Setup 6.7.1 and Build → Compile
 4. Output: `installers/OmniBridge_Setup_v2.0.0.exe`
-5. Test on a clean VM before publishing
+5. Test on a clean VM before publishing — verify first install, upgrade, and uninstall
+
+**Installer is production-ready** — all known issues resolved:
+- User stays signed in across updates (`WipeUserData` skipped when `IsUpgrade()` is true)
+- Whisper/AI models survive updates (`BackupModels` → `[InstallDelete]` → `RestoreModels`)
+- PyInstaller `%TEMP%` dirs cleaned on both install and uninstall
+- Server kill-on-close fixed (`setPreventClose(true)` + always `taskkill` by name)
+
+See [11 GitHub Releases Guide](../03_guides/11_github_releases_guide.md) for the full publish flow.
 
 ---
 

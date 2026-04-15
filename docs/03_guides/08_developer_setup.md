@@ -218,13 +218,16 @@ Output: `installers/OmniBridge_Setup_v{version}.exe` (version is pulled from `#d
 - Uses `AppMutex` / `SetupMutex` to block the app from launching during install and prevent duplicate installer instances
 - **Pre-install cleanup** (runs before files are copied):
   1. Kills `omni_bridge.exe` and `omni_bridge_server.exe` to release file locks
-  2. Silently runs the existing uninstaller if a previous version is detected
-  3. Wipes Flutter SharedPreferences registry keys (`HKCU\Software\omni_bridge`, etc.)
-  4. Removes the outdated Google Auth registry key
+  2. Backs up `{app}\models\` (Whisper/AI models) to the installer's private temp dir — preserved across updates
+  3. **Fresh install only**: wipes Flutter SharedPreferences registry keys, AppData, and Firebase caches — skipped on upgrade so the user stays signed in
+  4. Removes the outdated Google Auth registry key (`883780252017-c3h4v2...`)
   5. Deletes stale PyInstaller `%TEMP%\omni_bridge*` extractions
-  6. Removes any leftover user-level install directory
-  7. Wipes AppData and Firebase caches (Roaming, LocalAppData, Firestore, heartbeat, google-services-desktop-auth) — prevents "still logged in after reinstall" issues
-- **On uninstall**: repeats the AppData/Firebase/registry wipe and removes the entire `{app}` directory, including any downloaded Whisper models
+  6. Removes any leftover user-level install directory (legacy builds)
+- **Post-install**: restores the backed-up model files back into `{app}\models\`
+- **On uninstall**: kills processes, wipes AppData/Firebase caches/registry keys, cleans PyInstaller temp, removes the entire `{app}` directory
+
+> [!NOTE]
+> The old uninstaller is intentionally **not** called during upgrades. Same-AppId upgrades are handled natively by Inno Setup. Calling the old uninstaller would trigger `WipeUserData()` from the old build, logging the user out on every update.
 
 ---
 
