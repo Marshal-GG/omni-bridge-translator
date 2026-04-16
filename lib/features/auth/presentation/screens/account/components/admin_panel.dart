@@ -520,8 +520,20 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
       },
     },
 
-    // ── Payment Links (replace with real Razorpay URLs) ────────────────
-    'payment_links': {'trial': '', 'pro': '', 'enterprise': ''},
+    // ── Razorpay Plan IDs (used by createSubscription Cloud Function) ──
+    'plan_ids': {
+      'pro': 'plan_SeBEou7uXFDDRT',
+      'enterprise': 'plan_SeBFJKoDwsl158',
+    },
+
+    // ── Cloud Function URLs ────────────────────────────────────────────
+    // Fill in create_subscription after first deploy:
+    //   firebase deploy --only functions
+    //   then copy the URL from the Firebase Console (Functions tab)
+    'function_urls': {
+      'create_subscription':
+          'https://createsubscription-f3n57yyena-uc.a.run.app',
+    },
 
     // ── Global Settings ───────────────────────────────────────────────
     'usage_poll_interval_seconds': 10,

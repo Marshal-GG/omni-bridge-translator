@@ -14,6 +14,7 @@ void initUseCaseDI() {
   sl.registerLazySingleton(() => LogoutUseCase(sl()));
   sl.registerLazySingleton(() => GetCurrentUserUseCase(sl()));
   sl.registerLazySingleton(() => ObserveAuthChangesUseCase(sl()));
+  sl.registerLazySingleton(() => CheckAdminStatusUseCase(sl()));
 
   // Settings
   sl.registerLazySingleton(() => GetAppSettingsUseCase(sl()));

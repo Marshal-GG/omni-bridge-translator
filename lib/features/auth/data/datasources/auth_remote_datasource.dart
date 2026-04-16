@@ -358,6 +358,17 @@ class AuthRemoteDataSource implements IResettable {
     await GlobalNavigator.pushNamedAndRemoveUntil('/splash', (route) => false);
   }
 
+  /// Returns true if [email] is in the admin whitelist at system/admins.
+  Future<bool> checkAdminStatus(String email) async {
+    try {
+      final doc = await _firestore.doc(FirebasePaths.adminEmails).get();
+      final emails = List<String>.from(doc.data()?['emails'] ?? []);
+      return emails.contains(email);
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _saveUserToFirestore(User user) async {
     try {
       final userRef = _firestore.collection(FirebasePaths.users).doc(user.uid);

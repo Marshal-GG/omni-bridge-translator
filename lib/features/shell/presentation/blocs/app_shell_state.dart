@@ -8,6 +8,7 @@ class AppShellState extends Equatable {
   final bool isSettingsExpanded;
   final bool isSupportExpanded;
   final bool isSidebarExpanded;
+  final bool isAdmin;
 
   const AppShellState({
     this.currentUser,
@@ -15,6 +16,7 @@ class AppShellState extends Equatable {
     this.isSettingsExpanded = false,
     this.isSupportExpanded = false,
     this.isSidebarExpanded = true,
+    this.isAdmin = false,
   });
 
   AppShellState copyWith({
@@ -23,6 +25,7 @@ class AppShellState extends Equatable {
     bool? isSettingsExpanded,
     bool? isSupportExpanded,
     bool? isSidebarExpanded,
+    bool? isAdmin,
   }) {
     return AppShellState(
       currentUser: currentUser != null ? currentUser() : this.currentUser,
@@ -32,6 +35,7 @@ class AppShellState extends Equatable {
       isSettingsExpanded: isSettingsExpanded ?? this.isSettingsExpanded,
       isSupportExpanded: isSupportExpanded ?? this.isSupportExpanded,
       isSidebarExpanded: isSidebarExpanded ?? this.isSidebarExpanded,
+      isAdmin: isAdmin ?? this.isAdmin,
     );
   }
 
@@ -42,5 +46,6 @@ class AppShellState extends Equatable {
     isSettingsExpanded,
     isSupportExpanded,
     isSidebarExpanded,
+    isAdmin,
   ];
 }

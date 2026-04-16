@@ -94,6 +94,10 @@ class AuthRepositoryImpl implements IAuthRepository {
   }
 
   @override
+  Future<bool> isAdmin(String email) =>
+      _authRemoteDataSource.checkAdminStatus(email);
+
+  @override
   Future<void> signOut() async {
     await _authRemoteDataSource.signOut();
 

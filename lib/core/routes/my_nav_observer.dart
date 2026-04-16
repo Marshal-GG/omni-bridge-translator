@@ -40,6 +40,7 @@ class MyNavigatorObserver extends NavigatorObserver {
         name == AppRouter.settingsOverlay ||
         name == AppRouter.usage ||
         name == AppRouter.support ||
+        name == AppRouter.admin ||
         name == AppRouter.onboarding ||
         name == AppRouter.splash) {
       if (previousRoute != null) {

@@ -75,6 +75,37 @@ From the project root, ensure you are logged in to the Firebase CLI (`firebase l
 firebase deploy --only firestore:rules
 ```
 
+**Step 5 — Cloud Functions (Razorpay):**
+
+The payment system requires three Firebase secrets and a deployed Cloud Function. Run each command and paste the value when prompted:
+
+```powershell
+# Razorpay API Key ID (Test: starts with rzp_test_)
+firebase functions:secrets:set RAZORPAY_KEY_ID
+
+# Razorpay API Key Secret (Test secret)
+firebase functions:secrets:set RAZORPAY_KEY_SECRET
+
+# Webhook signing secret (any strong random string, must match Razorpay Dashboard)
+firebase functions:secrets:set RAZORPAY_WEBHOOK_SECRET
+```
+
+Get Razorpay test keys from: Razorpay Dashboard → Settings → API Keys → Generate Test Key.
+
+Then build and deploy the functions:
+
+```powershell
+cd functions
+npm install
+npm run build
+cd ..
+firebase deploy --only functions
+```
+
+After deploy, copy the `createSubscription` Cloud Run URL from the terminal output and seed it into Firestore via **Admin Panel → Seed System Config**.
+
+For switching to production keys, see [Going Live](../04_features/16_monetization_plan.md#going-live-test--production).
+
 > [!IMPORTANT]
 > `firebase_options.dart` and `app_config.dart` are listed in `.gitignore` and must **never** be committed.
 

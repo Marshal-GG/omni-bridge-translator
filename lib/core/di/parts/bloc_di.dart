@@ -63,6 +63,7 @@ void initBlocDI() {
       getCurrentUser: sl(),
       observeAuthChanges: sl(),
       getSubscriptionStatus: sl(),
+      checkAdminStatus: sl(),
     ),
   );
 

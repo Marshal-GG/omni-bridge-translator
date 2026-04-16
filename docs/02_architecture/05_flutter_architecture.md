@@ -50,7 +50,8 @@ lib/
     ├── subscription/            # Subscription: Quota & monetization
     ├── startup/                 # Startup: Bootstrapping, Splash, Onboarding
     ├── about/                   # About: Version info & updates
-    └── usage/                   # Usage: Analytics & statistics dashboard
+    ├── usage/                   # Usage: Analytics & statistics dashboard
+    └── shell/                   # App shell: Navigation rail, AppShellBloc, dashboard wrapper
 ```
 
 ---
@@ -66,7 +67,7 @@ lib/
 | `AboutBloc` | App versioning and updates | `CheckForUpdate` |
 | `StartupBloc` | Thin shell over `AppInitializer.initAsync()`. Drives the default Splash Screen on launch and processes initial routing (`/translation-overlay` if authed, `/onboarding` if not, or `/force_update`). | `IAuthRepository` (held but routing delegated to `AppInitializer`) |
 | `SubscriptionBloc` | Real-time subscription status and plan management | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial`, `OpenCheckout`, `HasUsedTrial` |
-| `AppShellBloc` | **Root-level BLoC** (provided at app root in `app.dart`, not route-scoped). Manages: sidebar expand/collapse, settings & support sub-menu state, current user + subscription tier display in `AppNavigationRail`, OS window resize on sidebar toggle. Implements `RouteChangeNotifier` so `MyNavigatorObserver` can update sub-menu state on navigation events. | `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, `GetSubscriptionStatus` |
+| `AppShellBloc` | **Root-level BLoC** (provided at app root in `app.dart`, not route-scoped). Manages: sidebar expand/collapse, settings & support sub-menu state, current user + subscription tier display in `AppNavigationRail`, OS window resize on sidebar toggle, and **admin status** (`isAdmin: bool`). On every `AppShellUserChanged` event it calls `CheckAdminStatusUseCase` to read `system/admins` and fires `AppShellAdminStatusChanged` — the nav rail reacts by showing/hiding the admin tile. Implements `RouteChangeNotifier` so `MyNavigatorObserver` can update sub-menu state on navigation events. | `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, `GetSubscriptionStatus`, `CheckAdminStatusUseCase` |
 | `UsageBloc` | Analytics dashboard: engine stats, quota, and history. Emits `UsageLoaded` which includes `selectedTranslationEngine` and `selectedTranscriptionEngine` (RTDB stats keys) for highlighting the active engine card | `GetUsageStats`, `GetUsageHistory`, `GetQuotaStatus`, `CheckUsageRollover`, `GetSelectedEnginesUseCase`, `ClearUsageCache` |
 
 ### BLoC Concurrency (Event Transformers)
@@ -90,7 +91,7 @@ UseCases are the brain of the feature. They encapsulate a single business logic 
 
 | Feature | Key UseCases |
 |---------|--------------|
-| **Auth** | `LoginWithGoogle`, `Logout`, `GetCurrentUser`, `ObserveAuthChanges` |
+| **Auth** | `LoginWithGoogle`, `Logout`, `GetCurrentUser`, `ObserveAuthChanges`, `CheckAdminStatus` |
 | **Settings** | `GetAppSettings`, `UpdateAppSettings`, `GetGoogleCredentials`, `LoadDevices`, `ObserveAudioLevels`, `SyncSettings`, `LogEvent`, `GetSystemConfig` |
 | **Translation** | `ObserveCaptions`, `ObserveQuotaStatus`, `GetInitialQuotaStatus`, `GetDefaultTier`, `StartTranslation`, `StopTranslation`, `UpdateTranslationSettings`, `UpdateVolume`, `CheckServerHealth`, `GetModelStatus` |
 | **History** | `GetLiveHistory`, `GetChunkedHistory`, `AddHistoryEntry`, `ConfigureHistory`, `ClearHistory` |
@@ -186,7 +187,7 @@ A GitHub Actions pipeline (`.github/workflows/flutter_ci.yml`) automatically run
 | `splash` | `setToStartupPosition()` | 880×700 | `/splash` |
 | `onboarding` | `setToOnboardingPosition()` | 400×600 | `/onboarding`, `/login` |
 | `overlay` | `setToOverlayPosition()` | 480×240 min | `/translation-overlay` |
-| `dashboard` | `setToDashboardPosition()` | 1140×720 | all dashboard routes (default) |
+| `dashboard` | `setToDashboardPosition()` | 1140×720 | all dashboard routes: `/account`, `/about`, `/usage`, `/support`, `/admin` (default) |
 | `settingsOverlay` | `setToSettingsOverlayPosition()` | 900×680 | `/settings-overlay` |
 | `subscription` | `setToSubscriptionPosition()` | 1340×820 | `/subscription` |
 

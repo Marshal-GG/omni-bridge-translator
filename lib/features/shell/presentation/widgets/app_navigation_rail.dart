@@ -196,7 +196,8 @@ class AppNavigationRail extends StatelessWidget {
     return BlocBuilder<AppShellBloc, AppShellState>(
       buildWhen: (prev, curr) =>
           prev.isSettingsExpanded != curr.isSettingsExpanded ||
-          prev.isSupportExpanded != curr.isSupportExpanded,
+          prev.isSupportExpanded != curr.isSupportExpanded ||
+          prev.isAdmin != curr.isAdmin,
       builder: (context, state) {
         // Sub-menus only show when the sidebar itself is expanded.
         final isSettingsExpanded = state.isSettingsExpanded && sidebarExpanded;
@@ -337,6 +338,20 @@ class AppNavigationRail extends StatelessWidget {
                 tooltip: 'About',
                 onTap: () => _navigate(context, AppRouter.about),
               ),
+
+              // ── Admin (only visible to admins) ──
+              if (state.isAdmin) ...[
+                const SizedBox(height: AppSpacing.xs),
+                _NavTile(
+                  icon: Icons.admin_panel_settings_rounded,
+                  label: 'Admin',
+                  isActive: currentRoute == AppRouter.admin,
+                  isExpanded: sidebarExpanded,
+                  tooltip: 'Admin Panel',
+                  accentColor: Colors.amberAccent,
+                  onTap: () => _navigate(context, AppRouter.admin),
+                ),
+              ],
             ],
           ),
         );
@@ -633,6 +648,8 @@ class _NavTile extends StatefulWidget {
   final VoidCallback onTap;
   final Widget? trailing;
   final String? tooltip;
+  /// Override the cyan accent with a custom color (e.g. amberAccent for admin).
+  final Color? accentColor;
 
   const _NavTile({
     required this.icon,
@@ -642,6 +659,7 @@ class _NavTile extends StatefulWidget {
     this.isExpanded = true,
     this.trailing,
     this.tooltip,
+    this.accentColor,
   });
 
   @override
@@ -655,6 +673,9 @@ class _NavTileState extends State<_NavTile> {
   Widget build(BuildContext context) {
     final active = widget.isActive;
     final highlighted = active || _hovered;
+    final accent = widget.accentColor ?? AppColors.accentCyan;
+    final accentFaint = accent.withValues(alpha: 0.08);
+    final accentBorder = accent.withValues(alpha: 0.12);
 
     // The core tile content
     Widget tile = MouseRegion(
@@ -677,11 +698,11 @@ class _NavTileState extends State<_NavTile> {
             ),
             decoration: BoxDecoration(
               color: active
-                  ? AppColors.cyan(0.08)
+                  ? accentFaint
                   : (_hovered ? AppColors.white(0.04) : AppColors.transparent),
               borderRadius: AppShapes.md,
               border: Border.all(
-                color: active ? AppColors.cyan(0.12) : AppColors.transparent,
+                color: active ? accentBorder : AppColors.transparent,
               ),
             ),
             child: Row(
@@ -693,7 +714,10 @@ class _NavTileState extends State<_NavTile> {
                   height: 20,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppColors.cyan(0.9), AppColors.teal(0.4)],
+                      colors: [
+                        accent.withValues(alpha: 0.9),
+                        accent.withValues(alpha: 0.4),
+                      ],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                     ),
@@ -713,7 +737,7 @@ class _NavTileState extends State<_NavTile> {
                         padding: const EdgeInsets.all(5),
                         decoration: BoxDecoration(
                           color: active
-                              ? AppColors.cyan(0.12)
+                              ? accent.withValues(alpha: 0.12)
                               : (_hovered
                                     ? AppColors.white(0.06)
                                     : AppColors.white(0.03)),
@@ -723,7 +747,7 @@ class _NavTileState extends State<_NavTile> {
                           widget.icon,
                           size: 15,
                           color: active
-                              ? AppColors.accentCyan
+                              ? accent
                               : (highlighted
                                     ? AppColors.textSecondary
                                     : AppColors.textDisabled),
@@ -740,7 +764,7 @@ class _NavTileState extends State<_NavTile> {
                             style: AppTextStyles.caption.copyWith(
                               fontSize: 12.5,
                               color: active
-                                  ? AppColors.accentCyan
+                                  ? accent
                                   : (highlighted
                                         ? AppColors.textSecondary
                                         : AppColors.textMuted),

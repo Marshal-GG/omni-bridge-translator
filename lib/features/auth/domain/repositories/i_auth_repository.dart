@@ -18,4 +18,5 @@ abstract class IAuthRepository {
   );
   Future<Either<Failure, void>> sendPasswordReset(String email);
   Future<void> signOut();
+  Future<bool> isAdmin(String email);
 }

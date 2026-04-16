@@ -23,59 +23,39 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 
 ## BLOCKERS — Must complete before any public user
 
-### 1. Razorpay Payment Links + Webhook → Tier Upgrade
-
-**What:** Two separate gaps must both be closed before payments work end-to-end.
-
-#### 1a. Seed payment links into Firestore
-
-`openCheckout()` reads payment links from `system/monetization → payment_links`. Currently empty — users cannot upgrade.
-
-1. Create Razorpay payment links for `pro` and `enterprise` tiers
-2. Seed them into Firestore:
-   ```json
-   "payment_links": {
-     "pro":        "https://razorpay.me/...",
-     "enterprise": "https://razorpay.me/..."
-   }
-   ```
-   > Trial is free — no payment link needed for it.
-
-#### 1b. Wire up post-payment tier upgrade (BLOCKER)
-
-**The app has no payment-success handler.** `openCheckout()` launches the Razorpay URL in the browser and stops — it does not poll, listen for a redirect, or verify payment. After the user pays, nothing currently writes the new tier to Firestore.
-
-The full flow once both gaps are closed:
-
-```
-User taps Upgrade → Razorpay opens in browser
-         ↓
-User completes payment
-         ↓
-Razorpay POSTs to webhook URL (Firebase Cloud Function)
-         ↓
-Cloud Function: verifies HMAC signature → extracts UID from payment notes
-         ↓
-Writes users/{uid}/tier = 'pro' (or 'enterprise') to Firestore
-         ↓
-App's _listenToUserDoc fires → tier upgrades in real-time (no restart needed)
-```
-
-**Steps:**
-1. **Pass UID into payment** — configure each Razorpay payment link to pre-fill `notes.uid` with the signed-in user's Firebase UID before launching. Currently `openCheckout()` just opens the raw link; it needs to append the UID (e.g. via a checkout API call or a custom link with pre-filled fields).
-2. **Write a Firebase Cloud Function** as the Razorpay webhook endpoint:
-   - Verify the `X-Razorpay-Signature` HMAC header
-   - Extract `payload.payment.entity.notes.uid` and `notes.tier`
-   - Write `users/{uid}/tier = tier` to Firestore
-3. **Register the webhook URL** in the Razorpay dashboard under Webhooks → `payment.captured` event
-4. **Test end-to-end**: tap Upgrade → pay → confirm tier field updates in Firestore within a few seconds → app header shows new tier live
-
-> [!NOTE]
-> Until 1b is implemented, tiers can be upgraded manually via the Firebase console (`users/{uid}/tier`). 1a alone (seeding links) only unblocks opening the checkout page — it does not complete the payment flow.
+> All blockers resolved. See Completed section below.
 
 ---
 
 ## LOW — Polish / post-launch
+
+### 17. Delete Orphaned Account Components
+
+The account screen was rewritten with inline widgets. Three component files are no longer imported anywhere:
+
+| File | Was used for |
+|---|---|
+| `lib/features/auth/presentation/screens/account/components/account_avatar.dart` | Profile photo widget |
+| `lib/features/auth/presentation/screens/account/components/account_name_editor.dart` | Editable display name |
+| `lib/features/auth/presentation/screens/account/components/account_email_info.dart` | Email + provider row |
+
+Delete all three. Run `flutter analyze` after to confirm no remaining references.
+
+---
+
+### 18. Switch Razorpay to Live Mode Before Public Launch
+
+See [Going Live](../04_features/16_monetization_plan.md#going-live-test--production) in the monetization doc for the full step-by-step. Summary:
+
+1. Create live Razorpay plans (same amounts as test)
+2. Rotate `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` Firebase secrets to live values
+3. Update webhook secret in Razorpay Dashboard (Live Mode)
+4. `firebase deploy --only functions`
+5. Update `plan_ids` in `admin_panel.dart` seed data with live plan IDs → Seed System Config in app
+
+> The `function_urls` and webhook URL do not change between test and production.
+
+---
 
 ### 15. Compile Inno Setup Installer
 **What:** Once both the server and Flutter app are rebuilt, compile the installer.
@@ -134,17 +114,18 @@ Then guard class instantiation / method bodies with `if not RIVA_AVAILABLE: rais
 
 ---
 
-### 13. Account Name Editor Size
-**File:** `lib/features/auth/presentation/screens/account/components/account_name_editor.dart:41`
-
-`// TODO: Refine size, currently perceived as too big compared to TextField` — cosmetic fix.
-
----
-
 ## Completed / Not Applicable
 
 | Item | Status |
 |---|---|
+| Razorpay subscription creation — programmatic flow | ✅ `createSubscription` Cloud Function (Gen 2, `us-central1`) creates a Razorpay subscription per user via API with `notes: {uid, tier}` baked in. Flutter `openCheckout()` calls the function with a Firebase ID token, gets back a unique `short_url`, opens it in the browser. No static payment links used — each customer gets their own subscription instance. |
+| Razorpay webhook — all 7 events | ✅ `razorpayWebhook` Cloud Function handles `payment.captured`, `payment.failed`, `subscription.activated`, `subscription.charged`, `subscription.halted`, `subscription.cancelled`, `subscription.completed`. HMAC-SHA256 signature verified on every request. UID resolved via `notes.uid` (primary), `razorpaySubscriptionId` query (renewals), email lookup (fallback). |
+| Payment pending state + failure detection | ✅ `_PlanCardState` implements `WidgetsBindingObserver`. On checkout: button shows "Awaiting Payment..." spinner, disabled. On app resume: 30s grace timer starts — if tier unchanged, orange SnackBar shown and state resets. If tier flips before timer fires, success. 10-minute hard timeout as final fallback. |
+| Admin panel extracted to dedicated `/admin` route | ✅ `AdminScreen` (`lib/features/auth/presentation/screens/admin/admin_screen.dart`) wraps `AdminPanel` in `AppDashboardShell`. Registered as `/admin` in `AppRouter`. Admin tile appears in nav rail when `AppShellState.isAdmin == true`. Window correctly resizes on back — `AppRouter.admin` added to `MyNavigatorObserver.didPop` list. |
+| `AppShellBloc` admin check — clean arch | ✅ `CheckAdminStatusUseCase → IAuthRepository.isAdmin → AuthRepositoryImpl → AuthRemoteDataSource.checkAdminStatus` chain. Bloc no longer imports datasource or firebase paths directly. |
+| Firestore config — `plan_ids` + `function_urls` | ✅ `system/monetization` seeded with `plan_ids: {pro, enterprise}` (Razorpay plan IDs) and `function_urls.create_subscription`. Admin panel seed data updated. Static `payment_links` removed. |
+| Account screen rewrite | ✅ Rewritten with inline `_ProfileHero` (avatar, name, email, provider badge), `_SectionLabel`, `_InfoRow`. Uses `AppColors` theme tokens. Admin panel removed from account screen (now at `/admin`). Orphaned component files (`account_avatar.dart`, `account_name_editor.dart`, `account_email_info.dart`) can be deleted. |
+| Account name editor size TODO | ✅ No longer applicable — `AccountNameEditor` is not used in the rewritten account screen. Component can be deleted. |
 | API keys / `.env` security | ✅ Already in `.gitignore`, keys are secure |
 | GitHub Actions CI/release pipeline | ✅ Not using automated CI — manual release process |
 | Firebase `system/monetization` seed | ✅ Seeded via admin panel (minor adjustments pending) |

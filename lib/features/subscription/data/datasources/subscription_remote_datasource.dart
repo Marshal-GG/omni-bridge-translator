@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -406,16 +407,74 @@ class SubscriptionRemoteDataSource implements IResettable {
     }
   }
 
-  Future<void> openCheckout(String tierId) async {
-    final config =
-        _monetizationConfig?['payment_links'] as Map<String, dynamic>?;
-    final String? url = config?[tierId] as String?;
+  /// Creates a Razorpay subscription for [tierId] via the Cloud Function and
+  /// opens the returned payment URL in the system browser.
+  /// Returns null on success, or an error message string on failure.
+  Future<String?> openCheckout(String tierId) async {
+    final user = _auth.currentUser;
+    if (user == null) return 'Not signed in.';
 
-    if (url != null && await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    } else {
-      AppLogger.w('No payment link found for tier: $tierId', tag: _tag);
+    // Resolve the Cloud Function URL from Firestore config.
+    final functionUrls =
+        _monetizationConfig?['function_urls'] as Map<String, dynamic>?;
+    final functionUrl =
+        functionUrls?['create_subscription'] as String? ?? '';
+
+    if (functionUrl.isEmpty) {
+      AppLogger.w('create_subscription function URL not configured', tag: _tag);
+      return 'Payment service not configured. Please contact support.';
     }
+
+    // Get a fresh ID token to authenticate the Cloud Function call.
+    final String idToken;
+    try {
+      idToken = await user.getIdToken() ?? '';
+    } catch (e) {
+      AppLogger.e('Failed to get ID token', tag: _tag, error: e);
+      return 'Authentication error. Please sign in again.';
+    }
+
+    // Call the Cloud Function — it creates the Razorpay subscription with
+    // notes.uid and notes.tier so the webhook always resolves correctly.
+    final http.Response response;
+    try {
+      response = await _httpClient
+          .post(
+            Uri.parse(functionUrl),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $idToken',
+            },
+            body: jsonEncode({'tierId': tierId}),
+          )
+          .timeout(const Duration(seconds: 30));
+    } catch (e) {
+      AppLogger.e('Network error calling createSubscription', tag: _tag, error: e);
+      return 'Network error. Please try again.';
+    }
+
+    if (response.statusCode != 200) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>?;
+      final msg = body?['error'] as String? ?? 'Failed to create payment session.';
+      AppLogger.w('createSubscription error: $msg', tag: _tag);
+      return msg;
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final url = data['url'] as String?;
+    if (url == null || url.isEmpty) {
+      AppLogger.e('createSubscription returned no URL', tag: _tag);
+      return 'No payment URL returned. Please try again.';
+    }
+
+    final uri = Uri.parse(url);
+    if (!await canLaunchUrl(uri)) {
+      AppLogger.w('Cannot launch Razorpay URL', tag: _tag);
+      return 'Could not open payment page. Please try again.';
+    }
+
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    return null;
   }
 
   /// Checks whether the current user has already used their one-time trial.

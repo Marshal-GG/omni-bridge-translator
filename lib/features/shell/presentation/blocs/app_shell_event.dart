@@ -62,3 +62,12 @@ class AppShellToggleSidebarEvent extends AppShellEvent {
   @override
   List<Object?> get props => [isExpanded];
 }
+
+class AppShellAdminStatusChanged extends AppShellEvent {
+  final bool isAdmin;
+
+  const AppShellAdminStatusChanged({required this.isAdmin});
+
+  @override
+  List<Object?> get props => [isAdmin];
+}

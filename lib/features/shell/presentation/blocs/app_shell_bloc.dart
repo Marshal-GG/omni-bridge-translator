@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:omni_bridge/core/platform/window_manager.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:omni_bridge/features/auth/domain/usecases/observe_auth_changes_usecase.dart';
+import 'package:omni_bridge/features/auth/domain/usecases/check_admin_status_usecase.dart';
 import 'package:omni_bridge/features/subscription/domain/usecases/get_subscription_status.dart';
 import 'package:omni_bridge/core/navigation/app_router.dart';
 import 'package:omni_bridge/core/navigation/route_change_notifier.dart';
@@ -14,6 +16,7 @@ class AppShellBloc extends Bloc<AppShellEvent, AppShellState>
     implements RouteChangeNotifier {
   final ObserveAuthChangesUseCase _observeAuthChanges;
   final GetSubscriptionStatus _getSubscriptionStatus;
+  final CheckAdminStatusUseCase _checkAdminStatusUseCase;
 
   StreamSubscription? _authSubscription;
   StreamSubscription? _statusSubscription;
@@ -22,8 +25,10 @@ class AppShellBloc extends Bloc<AppShellEvent, AppShellState>
     required GetCurrentUserUseCase getCurrentUser,
     required ObserveAuthChangesUseCase observeAuthChanges,
     required GetSubscriptionStatus getSubscriptionStatus,
+    required CheckAdminStatusUseCase checkAdminStatus,
   }) : _observeAuthChanges = observeAuthChanges,
        _getSubscriptionStatus = getSubscriptionStatus,
+       _checkAdminStatusUseCase = checkAdminStatus,
        super(
          AppShellState(
            currentUser: getCurrentUser.call().value,
@@ -36,6 +41,7 @@ class AppShellBloc extends Bloc<AppShellEvent, AppShellState>
     on<AppShellToggleSupportExpanded>(_onToggleSupportExpanded);
     on<AppShellRouteChanged>(_onRouteChanged);
     on<AppShellToggleSidebarEvent>(_onToggleSidebar);
+    on<AppShellAdminStatusChanged>(_onAdminStatusChanged);
 
     // Listen to auth changes
     _authSubscription = _observeAuthChanges.call().listen((user) {
@@ -49,7 +55,23 @@ class AppShellBloc extends Bloc<AppShellEvent, AppShellState>
   }
 
   void _onUserChanged(AppShellUserChanged event, Emitter<AppShellState> emit) {
-    emit(state.copyWith(currentUser: () => event.user));
+    emit(state.copyWith(currentUser: () => event.user, isAdmin: false));
+    if (event.user != null) {
+      _checkAdminStatus(event.user!);
+    }
+  }
+
+  Future<void> _checkAdminStatus(User user) async {
+    if (user.email == null) return;
+    final isAdmin = await _checkAdminStatusUseCase.call(user.email!);
+    if (!isClosed) add(AppShellAdminStatusChanged(isAdmin: isAdmin));
+  }
+
+  void _onAdminStatusChanged(
+    AppShellAdminStatusChanged event,
+    Emitter<AppShellState> emit,
+  ) {
+    emit(state.copyWith(isAdmin: event.isAdmin));
   }
 
   void _onStatusChanged(

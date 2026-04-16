@@ -1,9 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../domain/entities/subscription_plan.dart';
 import 'package:intl/intl.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:omni_bridge/core/widgets/omni_card.dart';
-import 'package:omni_bridge/core/utils/app_logger.dart';
 
 Widget buildPlanCard({
   required SubscriptionPlan plan,
@@ -38,8 +38,68 @@ class _PlanCard extends StatefulWidget {
   State<_PlanCard> createState() => _PlanCardState();
 }
 
-class _PlanCardState extends State<_PlanCard> {
+class _PlanCardState extends State<_PlanCard> with WidgetsBindingObserver {
   bool _expanded = false;
+  bool _ctaLoading = false;
+  bool _paymentPending = false;
+  Timer? _pendingTimeout;
+  Timer? _resumeGraceTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didUpdateWidget(_PlanCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Tier confirmed by webhook — clear pending state
+    if (!oldWidget.isCurrent && widget.isCurrent && _paymentPending) {
+      _pendingTimeout?.cancel();
+      setState(() => _paymentPending = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pendingTimeout?.cancel();
+    _resumeGraceTimer?.cancel();
+    super.dispose();
+  }
+
+  /// When the user returns from the browser after a pending payment, give the
+  /// webhook 30 seconds to write the tier. If it doesn't arrive, assume the
+  /// payment was cancelled or failed and reset so the user can retry.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _paymentPending) {
+      _resumeGraceTimer?.cancel();
+      _resumeGraceTimer = Timer(const Duration(seconds: 30), () {
+        if (!mounted || !_paymentPending) return;
+        setState(() => _paymentPending = false);
+        _pendingTimeout?.cancel();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Payment not confirmed. If you completed payment, it may take a moment — otherwise please try again.',
+            ),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 6),
+          ),
+        );
+      });
+    }
+  }
+
+  void _startPendingTimeout() {
+    _pendingTimeout?.cancel();
+    _pendingTimeout = Timer(const Duration(minutes: 10), () {
+      if (mounted) setState(() => _paymentPending = false);
+    });
+  }
 
   SubscriptionPlan get plan => widget.plan;
   NumberFormat get fmt => widget.formatter;
@@ -307,25 +367,35 @@ class _PlanCardState extends State<_PlanCard> {
 
   // ── CTA ───────────────────────────────────────────────────────────────────────
 
+  Future<void> _handleCta() async {
+    setState(() => _ctaLoading = true);
+    final err = plan.isTrial
+        ? await SubscriptionRemoteDataSource.instance.activateTrial()
+        : await SubscriptionRemoteDataSource.instance.openCheckout(plan.id);
+    if (!mounted) return;
+    setState(() => _ctaLoading = false);
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else if (!plan.isTrial) {
+      // Checkout URL opened — wait for webhook to confirm payment
+      setState(() => _paymentPending = true);
+      _startPendingTimeout();
+    }
+  }
+
   Widget _buildCta() {
+    final isDisabled = widget.isCurrent || (plan.isTrial && widget.trialUsed);
+    final isPending = _paymentPending && !widget.isCurrent;
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: widget.isCurrent || (plan.isTrial && widget.trialUsed)
-            ? null
-            : plan.isTrial
-            ? () async {
-                final err = await SubscriptionRemoteDataSource.instance
-                    .activateTrial();
-                if (err != null) {
-                  AppLogger.e(
-                    'Trial activation failed',
-                    error: err,
-                    tag: 'Trial',
-                  );
-                }
-              }
-            : () => SubscriptionRemoteDataSource.instance.openCheckout(plan.id),
+        onPressed: isDisabled || _ctaLoading || isPending ? null : _handleCta,
         style: ElevatedButton.styleFrom(
           backgroundColor: plan.isTrial
               ? (widget.trialUsed ? Colors.white10 : Colors.amberAccent)
@@ -342,16 +412,56 @@ class _PlanCardState extends State<_PlanCard> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          disabledBackgroundColor: Colors.white.withValues(alpha: 0.05),
+          disabledBackgroundColor: isPending
+              ? _accentColor.withValues(alpha: 0.08)
+              : Colors.white.withValues(alpha: 0.05),
+          disabledForegroundColor: isPending
+              ? _accentColor.withValues(alpha: 0.6)
+              : null,
         ),
-        child: Text(
-          widget.isCurrent
-              ? 'Current Plan'
-              : plan.isTrial
-              ? (widget.trialUsed ? 'Trial Used' : 'Start Free Trial')
-              : 'Select Plan',
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-        ),
+        child: _ctaLoading
+            ? SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: plan.isPopular || plan.isTrial
+                      ? Colors.black54
+                      : Colors.white54,
+                ),
+              )
+            : isPending
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 10,
+                    height: 10,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: _accentColor.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Text(
+                    'Awaiting Payment...',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _accentColor.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              )
+            : Text(
+                widget.isCurrent
+                    ? 'Current Plan'
+                    : plan.isTrial
+                    ? (widget.trialUsed ? 'Trial Used' : 'Start Free Trial')
+                    : 'Select Plan',
+                style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w700),
+              ),
       ),
     );
   }
