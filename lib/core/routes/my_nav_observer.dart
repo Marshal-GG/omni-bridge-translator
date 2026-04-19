@@ -41,6 +41,7 @@ class MyNavigatorObserver extends NavigatorObserver {
         name == AppRouter.usage ||
         name == AppRouter.support ||
         name == AppRouter.admin ||
+        name == AppRouter.billing ||
         name == AppRouter.onboarding ||
         name == AppRouter.splash) {
       if (previousRoute != null) {

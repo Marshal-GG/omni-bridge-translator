@@ -330,14 +330,21 @@ Created automatically on first login by `SubscriptionService._initializeUserDoc(
 
 ```json
 {
-  "tier": "free",
-  "dailyResetAt": "2026-03-09T00:00:00Z",
-  "monthlyTokensUsed": 38000,
-  "monthlyResetAt": "2026-04-01T00:00:00Z",
+  "tier": "pro",
+  "dailyResetAt": "2026-04-18T00:00:00Z",
+  "monthlyTokensUsed": 0,
+  "monthlyResetAt": "2026-05-17T00:00:00Z",
   "lifetimeTokensUsed": 520400,
-  "subscriptionSince": "2026-02-01T00:00:00Z",
+  "subscriptionSince": "2026-04-17T10:22:00Z",
   "paymentProvider": "razorpay",
-  "lastQuotaExceededAt": "2026-03-08T18:30:00Z",
+  "subscriptionStatus": "active",
+  "razorpaySubscriptionId": "sub_XXXXX",
+  "razorpayPlanId": "plan_SeBEou7uXFDDRT",
+  "lastPaymentId": "pay_XXXXX",
+  "lastPaymentAt": "2026-04-17T10:22:00Z",
+  "lastPaymentAmountPaise": 79900,
+  "subscriptionEndedAt": null,
+  "lastQuotaExceededAt": null,
   "forceLogout": false,
   "createdAt": "2026-01-15T10:22:00Z"
 }
@@ -350,9 +357,16 @@ Created automatically on first login by `SubscriptionService._initializeUserDoc(
 | `monthlyTokensUsed` | `number` | creation | (DEPRECATED) Cold storage only. See RTDB `usage/totals`. |
 | `monthlyResetAt` | `Timestamp` | creation → First upgrade → Monthly reset | Initially the 1st of next calendar month. On first paid upgrade, anchored to `now + 30 days` (billing-cycle). Each subsequent reset advances it by another 30 days. Used as the anchor for Subscription Rollovers. |
 | `lifetimeTokensUsed` | `number` | creation | (DEPRECATED) Cold storage only. See RTDB `usage/totals`. |
-| `subscriptionSince` | `Timestamp?` | First upgrade | **Admin-Write Only.** Set once when the user first upgrades from `free` |
-| `paymentProvider` | `string?` | First upgrade | **Admin-Write Only.** Payment provider used: `"razorpay"` |
-| `lastQuotaExceededAt` | `Timestamp?` | On quota hit | Server timestamp of the most recent daily cap breach |
+| `subscriptionSince` | `Timestamp?` | First upgrade | Set once when the user first upgrades from `free`. |
+| `paymentProvider` | `string?` | First upgrade | Payment provider: `"razorpay"`. |
+| `subscriptionStatus` | `string?` | Webhook | Razorpay subscription lifecycle: `active` \| `halted` \| `cancelled` \| `completed`. Written by `razorpayWebhook`. |
+| `razorpaySubscriptionId` | `string?` | Webhook — activated | Razorpay subscription ID (`sub_XXXXX`). Deleted on `halted`/`completed`; kept on `cancelled` until `completed` fires. |
+| `razorpayPlanId` | `string?` | Webhook — activated | Razorpay plan ID (`plan_XXXXX`) for the active subscription. |
+| `subscriptionEndedAt` | `Timestamp?` | Webhook | For `cancelled`: `current_end` from Razorpay — when the billing period actually ends (user keeps access until then). For `halted`/`completed`: server timestamp of the downgrade. |
+| `lastPaymentId` | `string?` | Webhook — activated + charged + captured | Razorpay payment ID (`pay_XXXXX`) of the most recent successful payment. |
+| `lastPaymentAt` | `Timestamp?` | Webhook — activated + charged + captured | Timestamp of the most recent successful payment. |
+| `lastPaymentAmountPaise` | `number?` | Webhook — activated + charged + captured | Amount of the most recent payment in paise (÷ 100 = ₹). |
+| `lastQuotaExceededAt` | `Timestamp?` | On quota hit | Server timestamp of the most recent daily cap breach. |
 | `forceLogout` | `bool` | Admin write | **Global** logout flag. Admin sets `true` to kick; rules allow user-reset to `false` only after kick. |
 | `trial_used` | `bool?` | Trial activation | Set to `true` when the user activates their one-time trial. Prevents re-activation. |
 | `trialExpiresAt` | `Timestamp?` | Trial activation | Timestamp when the trial auto-expires. Checked by `_checkTrialExpiry()` on every user doc snapshot. |
@@ -376,25 +390,34 @@ Created automatically on first login by `SubscriptionService._initializeUserDoc(
 
 ### 0a. Subscription Events — `users/{uid}/subscription_events/{push-id}`
 
-Written by `SubscriptionService._logSubscriptionEvent()` whenever the user's tier changes. Provides a full audit trail of upgrades and downgrades.
+Written by `razorpayWebhook` Cloud Function on every payment/lifecycle event. Also written by `SubscriptionRemoteDataSource._logSubscriptionEvent()` on client-detected tier changes. Provides a full audit trail — used by the Flutter billing screen for payment history.
 
 ```json
 {
-  "event": "upgraded",
-  "from": "free",
-  "to": "pro",
-  "timestamp": "2026-02-01T00:00:00Z",
-  "via": "razorpay"
+  "event": "subscription_renewed",
+  "tier": "pro",
+  "via": "razorpay_subscription",
+  "subscriptionId": "sub_XXXXX",
+  "paymentId": "pay_XXXXX",
+  "amountPaise": 79900,
+  "timestamp": "2026-05-17T10:22:00Z"
 }
 ```
 
-| Field | Type | Notes |
-|---|---|---|
-| `event` | `string` | `"upgraded"` or `"downgraded"` |
-| `from` | `string` | Previous tier |
-| `to` | `string` | New tier |
-| `timestamp` | `Timestamp` | Server timestamp of the change |
-| `via` | `string` | Payment provider (`"razorpay"`) |
+| Field | Type | Present on | Notes |
+|---|---|---|---|
+| `event` | `string` | All | `subscription_activated` · `subscription_renewed` · `subscription_cancelled` · `subscription_completed` · `subscription_halted` · `upgraded` · `downgraded` |
+| `from` | `string?` | Tier-change events | Previous tier |
+| `to` | `string?` | Tier-change events | New tier |
+| `tier` | `string?` | `subscription_renewed` | Current tier at time of renewal |
+| `paymentId` | `string?` | `activated` · `renewed` · `upgraded` | Razorpay payment ID (`pay_XXXXX`) |
+| `amountPaise` | `number?` | `activated` · `renewed` · `upgraded` | Payment amount in paise (÷ 100 = ₹) |
+| `subscriptionId` | `string?` | All subscription events | Razorpay subscription ID (`sub_XXXXX`) |
+| `accessEndsAt` | `Timestamp?` | `subscription_cancelled` | When the billing period actually ends — from Razorpay `current_end` |
+| `timestamp` | `Timestamp` | All | Server timestamp of the event |
+| `via` | `string` | All | `"razorpay_subscription"` · `"razorpay_payment_link"` |
+
+> **Flutter reads this subcollection** in `SubscriptionRemoteDataSource._loadInvoices()` — up to 24 entries newest-first, exposed via `invoicesNotifier: ValueNotifier<List<PaymentEvent>>`. Displayed in the payment history section of the Billing screen.
 
 > Quota-exceeded events are logged to `users/{uid}/logs/{push-id}` in RTDB (see RTDB Event Logs below) with `event: "quota_exceeded"` and a `data` object containing `tier`, `dailyLimit`, and `dailyTokensUsed`. `lastQuotaExceededAt` on the root Firestore user doc is also updated at the same time.
 

@@ -4,3 +4,5 @@ admin.initializeApp();
 
 export {razorpayWebhook} from "./razorpayWebhook";
 export {createSubscription} from "./createSubscription";
+export {cancelSubscription} from "./cancelSubscription";
+export {resumeSubscription} from "./resumeSubscription";

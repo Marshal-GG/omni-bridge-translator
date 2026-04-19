@@ -82,7 +82,7 @@ export const razorpayWebhook = onRequest(
         await handleSubscriptionTerminated(req.body, "halted");
         break;
       case "subscription.cancelled":
-        await handleSubscriptionTerminated(req.body, "cancelled");
+        await handleSubscriptionCancelled(req.body);
         break;
       case "subscription.completed":
         await handleSubscriptionTerminated(req.body, "completed");
@@ -227,6 +227,8 @@ async function handlePaymentCaptured(body: unknown): Promise<void> {
     const snap = await txn.get(userRef);
     if (!snap.exists) throw new Error(`User not found: ${uid}`);
 
+    const amountPaise = (entity.amount as number) ?? 0;
+
     const update: Record<string, unknown> = {
       tier,
       monthlyTokensUsed: 0,
@@ -234,6 +236,7 @@ async function handlePaymentCaptured(body: unknown): Promise<void> {
       paymentProvider: "razorpay",
       lastPaymentId: paymentId,
       lastPaymentAt: now,
+      ...(amountPaise > 0 && {lastPaymentAmountPaise: amountPaise}),
     };
     if (!snap.data()?.subscriptionSince) {
       update.subscriptionSince = now;
@@ -246,6 +249,7 @@ async function handlePaymentCaptured(body: unknown): Promise<void> {
       to: tier,
       via: "razorpay_payment_link",
       paymentId,
+      ...(amountPaise > 0 && {amountPaise}),
       timestamp: now,
     });
   });
@@ -276,10 +280,13 @@ async function handlePaymentFailed(body: unknown): Promise<void> {
 
 async function handleSubscriptionActivated(body: unknown): Promise<void> {
   const entity = subscriptionEntity(body);
+  const payEntity = paymentEntity(body);
   const notes = entity.notes as Record<string, string> | undefined;
   const subId = entity.id as string | undefined;
   const planId = entity.plan_id as string | undefined;
-  const email = (paymentEntity(body).email as string | undefined) ??
+  const firstPaymentId = payEntity.id as string | undefined;
+  const firstPaymentAmount = (payEntity.amount as number) ?? 0;
+  const email = (payEntity.email as string | undefined) ??
     (entity.customer_email as string | undefined);
 
   const uid = await resolveUid(entity, email);
@@ -310,6 +317,10 @@ async function handleSubscriptionActivated(body: unknown): Promise<void> {
       razorpaySubscriptionId: subId,
       razorpayPlanId: planId ?? "",
       subscriptionStatus: "active",
+      // First payment details
+      ...(firstPaymentId && {lastPaymentId: firstPaymentId}),
+      ...(firstPaymentAmount > 0 && {lastPaymentAmountPaise: firstPaymentAmount}),
+      lastPaymentAt: now,
     };
     if (!snap.data()?.subscriptionSince) {
       update.subscriptionSince = now;
@@ -321,11 +332,13 @@ async function handleSubscriptionActivated(body: unknown): Promise<void> {
       to: tier,
       via: "razorpay_subscription",
       subscriptionId: subId,
+      ...(firstPaymentId && {paymentId: firstPaymentId}),
+      ...(firstPaymentAmount > 0 && {amountPaise: firstPaymentAmount}),
       timestamp: now,
     });
   });
 
-  logger.info(`subscription.activated: uid=${uid} tier=${tier} subId=${subId}`);
+  logger.info(`subscription.activated: uid=${uid} tier=${tier} subId=${subId} paymentId=${firstPaymentId ?? "none"}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -383,7 +396,72 @@ async function handleSubscriptionCharged(body: unknown): Promise<void> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// subscription.halted / subscription.cancelled / subscription.completed
+// subscription.cancelled — user cancelled; access continues until current_end
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fired when a user cancels with cancel_at_cycle_end: 1.
+ * The subscription is marked cancelled but the user KEEPS their paid tier
+ * until the current billing period ends (entity.current_end).
+ * Tier downgrade happens later when subscription.completed fires.
+ */
+async function handleSubscriptionCancelled(body: unknown): Promise<void> {
+  const entity = subscriptionEntity(body);
+  const subId = entity.id as string | undefined;
+  // current_end is a Unix timestamp (seconds) — when the billing period ends
+  const currentEndUnix = entity.current_end as number | undefined;
+
+  if (!subId) {
+    logger.error("subscription.cancelled — missing subId");
+    return;
+  }
+
+  const uid = await resolveUid(entity);
+  if (!uid) {
+    logger.error(`subscription.cancelled — could not resolve uid for subId: ${subId}`);
+    return;
+  }
+
+  const db = admin.firestore();
+  const userRef = db.collection("users").doc(uid);
+  const now = admin.firestore.Timestamp.now();
+
+  // accessEndsAt = end of current billing period (not the cancel request time)
+  const accessEndsAt = currentEndUnix
+    ? admin.firestore.Timestamp.fromMillis(currentEndUnix * 1000)
+    : now;
+
+  await db.runTransaction(async (txn) => {
+    const snap = await txn.get(userRef);
+    if (!snap.exists) throw new Error(`User not found: ${uid}`);
+
+    const prevTier = snap.data()?.tier ?? "";
+
+    // Mark cancelled but DO NOT downgrade tier — user keeps access until accessEndsAt.
+    // razorpaySubscriptionId is also kept for reference.
+    txn.update(userRef, {
+      subscriptionStatus: "cancelled",
+      subscriptionEndedAt: accessEndsAt,
+    });
+
+    txn.set(userRef.collection("subscription_events").doc(), {
+      event: "subscription_cancelled",
+      from: prevTier,
+      via: "razorpay_subscription",
+      subscriptionId: subId,
+      accessEndsAt,
+      timestamp: now,
+    });
+  });
+
+  logger.info(
+    `subscription.cancelled: uid=${uid} subId=${subId} ` +
+    `accessEndsAt=${accessEndsAt.toDate().toISOString()}`
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// subscription.halted / subscription.completed — immediate tier downgrade
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function handleSubscriptionTerminated(

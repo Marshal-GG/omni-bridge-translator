@@ -533,6 +533,8 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
     'function_urls': {
       'create_subscription':
           'https://createsubscription-f3n57yyena-uc.a.run.app',
+      'cancel_subscription': 'https://cancelsubscription-f3n57yyena-uc.a.run.app',
+      'resume_subscription': 'https://resumesubscription-f3n57yyena-uc.a.run.app',
     },
 
     // ── Global Settings ───────────────────────────────────────────────

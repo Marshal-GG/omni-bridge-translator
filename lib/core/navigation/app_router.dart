@@ -16,6 +16,7 @@ import 'package:omni_bridge/features/about/presentation/screens/about_screen.dar
 import 'package:omni_bridge/features/subscription/presentation/screens/subscription_screen.dart';
 import 'package:omni_bridge/features/support/presentation/screens/support_screen.dart';
 import 'package:omni_bridge/features/auth/presentation/screens/admin/admin_screen.dart';
+import 'package:omni_bridge/features/subscription/presentation/screens/billing_screen.dart';
 
 // Blocs
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
@@ -42,6 +43,7 @@ class AppRouter {
   static const String usage = '/usage';
   static const String support = '/support';
   static const String admin = '/admin';
+  static const String billing = '/billing';
   static const String forceUpdate = '/force_update';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -129,6 +131,8 @@ class AppRouter {
         return _fadeRoute(const SupportScreen(), settings);
       case admin:
         return _fadeRoute(const AdminScreen(), settings);
+      case billing:
+        return _fadeRoute(const BillingScreen(), settings);
       default:
         return _fadeRoute(
           Scaffold(

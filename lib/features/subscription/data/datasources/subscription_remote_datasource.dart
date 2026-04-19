@@ -10,6 +10,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/features/subscription/domain/entities/subscription_plan.dart';
+import 'package:omni_bridge/features/subscription/domain/entities/billing_info.dart';
+import 'package:omni_bridge/features/subscription/domain/entities/payment_event.dart';
 import 'package:omni_bridge/core/network/rtdb_client.dart';
 import 'package:omni_bridge/core/constants/firebase_paths.dart';
 import 'package:omni_bridge/core/utils/app_logger.dart';
@@ -51,6 +53,14 @@ class SubscriptionRemoteDataSource implements IResettable {
   final Set<String> _notifiedEngines = {};
   ValueNotifier<Set<String>> activeEngineFallbacks = ValueNotifier<Set<String>>({});
 
+  /// Exposes billing/subscription management data read from Firestore.
+  ValueNotifier<BillingInfo> billingInfoNotifier =
+      ValueNotifier<BillingInfo>(BillingInfo.empty);
+
+  /// Payment history loaded once per login from `subscription_events` subcollection.
+  ValueNotifier<List<PaymentEvent>> invoicesNotifier =
+      ValueNotifier<List<PaymentEvent>>([]);
+
   void init() {
     _listenToMonetizationConfig();
     _listenToAuthState();
@@ -70,6 +80,7 @@ class SubscriptionRemoteDataSource implements IResettable {
       if (user != null) {
         _lastKnownTier = null;
         _listenToUserDoc(user.uid);
+        _loadInvoices(user.uid);
       } else {
         reset();
       }
@@ -87,12 +98,45 @@ class SubscriptionRemoteDataSource implements IResettable {
     _notifiedEngines.clear();
     activeEngineFallbacks.dispose();
     activeEngineFallbacks = ValueNotifier<Set<String>>({});
+    billingInfoNotifier.value = BillingInfo.empty;
+    invoicesNotifier.value = [];
 
     // Also cancel monetization sub to be safe, though it's system-wide
     // _monetizationSub?.cancel();
 
     _statusController.add(_getDefaultStatus());
     AppLogger.d('State reset', tag: _tag);
+  }
+
+  /// Loads payment history from `subscription_events` subcollection once per login.
+  Future<void> _loadInvoices(String uid) async {
+    try {
+      final snap = await _firestore
+          .collection(FirebasePaths.users)
+          .doc(uid)
+          .collection('subscription_events')
+          .orderBy('timestamp', descending: true)
+          .limit(24)
+          .get();
+
+      invoicesNotifier.value = snap.docs
+          .map((doc) {
+            final data = doc.data();
+            final ts = (data['timestamp'] as Timestamp?)?.toDate();
+            if (ts == null) return null;
+            return PaymentEvent(
+              event: data['event'] as String? ?? '',
+              paymentId: data['paymentId'] as String?,
+              amountPaise: (data['amountPaise'] as num?)?.toInt(),
+              timestamp: ts,
+              subscriptionId: data['subscriptionId'] as String?,
+            );
+          })
+          .whereType<PaymentEvent>()
+          .toList();
+    } catch (e) {
+      AppLogger.w('Failed to load invoices: $e', tag: _tag);
+    }
   }
 
   void _listenToMonetizationConfig() {
@@ -337,6 +381,19 @@ class SubscriptionRemoteDataSource implements IResettable {
             _lastKnownTier = tier;
 
             _updateCurrentStatus(tier: tier, resetAt: resetAt, monthlyResetAt: monthlyResetAt, trialExpiresAt: trialExpiresAt);
+
+            // ── Billing info ─────────────────────────────────────────────
+            billingInfoNotifier.value = BillingInfo(
+              tier: tier,
+              status: data['subscriptionStatus'] as String? ?? 'none',
+              subscriptionId: data['razorpaySubscriptionId'] as String?,
+              since: (data['subscriptionSince'] as Timestamp?)?.toDate(),
+              nextBillingAt: monthlyResetAt,
+              lastPaymentAt: (data['lastPaymentAt'] as Timestamp?)?.toDate(),
+              lastPaymentPaise: (data['lastPaymentAmountPaise'] as num?)?.toInt(),
+              lastPaymentId: data['lastPaymentId'] as String?,
+              endedAt: (data['subscriptionEndedAt'] as Timestamp?)?.toDate(),
+            );
           });
         });
   }
@@ -474,6 +531,156 @@ class SubscriptionRemoteDataSource implements IResettable {
     }
 
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+    return null;
+  }
+
+  /// Cancels the current Razorpay subscription at the end of the billing period.
+  /// The user keeps access until [BillingInfo.nextBillingAt].
+  /// Returns null on success, or an error message string on failure.
+  Future<String?> cancelSubscription() async {
+    final user = _auth.currentUser;
+    if (user == null) return 'Not signed in.';
+
+    final subscriptionId = billingInfoNotifier.value.subscriptionId;
+    if (subscriptionId == null || subscriptionId.isEmpty) {
+      return 'No active subscription found.';
+    }
+
+    final functionUrls =
+        _monetizationConfig?['function_urls'] as Map<String, dynamic>?;
+    final functionUrl =
+        functionUrls?['cancel_subscription'] as String? ?? '';
+
+    if (functionUrl.isEmpty) {
+      AppLogger.w('cancel_subscription function URL not configured', tag: _tag);
+      return 'Cancellation service not configured. Please contact support.';
+    }
+
+    final String idToken;
+    try {
+      idToken = await user.getIdToken() ?? '';
+    } catch (e) {
+      AppLogger.e('Failed to get ID token for cancel', tag: _tag, error: e);
+      return 'Authentication error. Please sign in again.';
+    }
+
+    final http.Response response;
+    try {
+      response = await _httpClient
+          .post(
+            Uri.parse(functionUrl),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $idToken',
+            },
+            body: jsonEncode({'subscriptionId': subscriptionId}),
+          )
+          .timeout(const Duration(seconds: 30));
+    } catch (e) {
+      AppLogger.e('Network error calling cancelSubscription', tag: _tag, error: e);
+      return 'Network error. Please try again.';
+    }
+
+    if (response.statusCode != 200) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>?;
+      final msg = body?['error'] as String? ?? 'Failed to cancel subscription.';
+      AppLogger.w('cancelSubscription error: $msg', tag: _tag);
+      return msg;
+    }
+
+    AppLogger.i('Subscription cancellation scheduled: $subscriptionId', tag: _tag);
+
+    // Optimistic update — reflect cancelled state immediately without waiting
+    // for the razorpayWebhook to fire and update Firestore.
+    final current = billingInfoNotifier.value;
+    billingInfoNotifier.value = BillingInfo(
+      tier: current.tier,
+      status: 'cancelled',
+      subscriptionId: current.subscriptionId,
+      since: current.since,
+      nextBillingAt: current.nextBillingAt,
+      lastPaymentAt: current.lastPaymentAt,
+      lastPaymentPaise: current.lastPaymentPaise,
+      lastPaymentId: current.lastPaymentId,
+      endedAt: current.nextBillingAt, // best estimate until webhook fires
+    );
+
+    return null;
+  }
+
+  /// Resumes a Razorpay subscription that was cancelled with cancel_at_cycle_end:1.
+  /// The subscription is reactivated on its original billing schedule — no new
+  /// subscription, no double billing.
+  /// Returns null on success, or an error message string on failure.
+  Future<String?> resumeSubscription() async {
+    final user = _auth.currentUser;
+    if (user == null) return 'Not signed in.';
+
+    final subscriptionId = billingInfoNotifier.value.subscriptionId;
+    if (subscriptionId == null || subscriptionId.isEmpty) {
+      return 'No subscription found to resume.';
+    }
+
+    final functionUrls =
+        _monetizationConfig?['function_urls'] as Map<String, dynamic>?;
+    final functionUrl =
+        functionUrls?['resume_subscription'] as String? ?? '';
+
+    if (functionUrl.isEmpty) {
+      AppLogger.w('resume_subscription function URL not configured', tag: _tag);
+      return 'Resume service not configured. Please contact support.';
+    }
+
+    final String idToken;
+    try {
+      idToken = await user.getIdToken() ?? '';
+    } catch (e) {
+      AppLogger.e('Failed to get ID token for resume', tag: _tag, error: e);
+      return 'Authentication error. Please sign in again.';
+    }
+
+    final http.Response response;
+    try {
+      response = await _httpClient
+          .post(
+            Uri.parse(functionUrl),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $idToken',
+            },
+            body: jsonEncode({'subscriptionId': subscriptionId}),
+          )
+          .timeout(const Duration(seconds: 30));
+    } catch (e) {
+      AppLogger.e('Network error calling resumeSubscription', tag: _tag, error: e);
+      return 'Network error. Please try again.';
+    }
+
+    if (response.statusCode != 200) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>?;
+      final msg = body?['error'] as String? ?? 'Failed to resume subscription.';
+      AppLogger.w('resumeSubscription error: $msg', tag: _tag);
+      return msg;
+    }
+
+    AppLogger.i('Subscription resumed: $subscriptionId', tag: _tag);
+
+    // Optimistic update — reflect active state immediately.
+    // The Firestore snapshot will confirm once the Cloud Function's direct
+    // write propagates.
+    final current = billingInfoNotifier.value;
+    billingInfoNotifier.value = BillingInfo(
+      tier: current.tier,
+      status: 'active',
+      subscriptionId: current.subscriptionId,
+      since: current.since,
+      nextBillingAt: current.nextBillingAt,
+      lastPaymentAt: current.lastPaymentAt,
+      lastPaymentPaise: current.lastPaymentPaise,
+      lastPaymentId: current.lastPaymentId,
+      endedAt: null,
+    );
+
     return null;
   }
 

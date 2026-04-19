@@ -264,6 +264,16 @@ class AppNavigationRail extends StatelessWidget {
                 onTap: () => _navigate(context, AppRouter.subscription),
               ),
 
+              // ── Billing ──
+              _NavTile(
+                icon: Icons.receipt_long_rounded,
+                label: 'Billing',
+                isActive: currentRoute == AppRouter.billing,
+                isExpanded: sidebarExpanded,
+                tooltip: 'Billing',
+                onTap: () => _navigate(context, AppRouter.billing),
+              ),
+
               // ── Usage ──
               _NavTile(
                 icon: Icons.insights_rounded,

@@ -29,20 +29,6 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 
 ## LOW — Polish / post-launch
 
-### 17. Delete Orphaned Account Components
-
-The account screen was rewritten with inline widgets. Three component files are no longer imported anywhere:
-
-| File | Was used for |
-|---|---|
-| `lib/features/auth/presentation/screens/account/components/account_avatar.dart` | Profile photo widget |
-| `lib/features/auth/presentation/screens/account/components/account_name_editor.dart` | Editable display name |
-| `lib/features/auth/presentation/screens/account/components/account_email_info.dart` | Email + provider row |
-
-Delete all three. Run `flutter analyze` after to confirm no remaining references.
-
----
-
 ### 18. Switch Razorpay to Live Mode Before Public Launch
 
 See [Going Live](../04_features/16_monetization_plan.md#going-live-test--production) in the monetization doc for the full step-by-step. Summary:
@@ -118,6 +104,11 @@ Then guard class instantiation / method bodies with `if not RIVA_AVAILABLE: rais
 
 | Item | Status |
 |---|---|
+| Billing screen (`/billing`) | ✅ Full billing management UI: status card (plan badge, status pill, countdown chip, 30-day progress bar, member since, next billing, last payment + `pay_XXXXX` copy, subscription ID copy), `_PendingCancelCard` for cancelled-but-active state, `_HaltedCard`, `_CancelledCard`, upsell card. Payment history section reads `subscription_events` subcollection via `invoicesNotifier`. Back button in header. `BillingInfo` entity includes `lastPaymentId`, `isCancelPending` getter. `PaymentEvent` entity for history entries. |
+| `cancelSubscription` Cloud Function | ✅ Authenticated HTTP endpoint. Verifies subscription belongs to caller before calling Razorpay `cancel_at_cycle_end: 1`. Optimistic UI update in datasource — billing screen shows pending-cancel state immediately without waiting for webhook. URL: `https://cancelsubscription-f3n57yyena-uc.a.run.app` |
+| `resumeSubscription` Cloud Function | ✅ Authenticated HTTP endpoint. Reactivates a pending-cancel subscription via Razorpay `POST /v1/subscriptions/{id}/resume` with `{ resume_at: "now" }`. Same subscription, original billing schedule, no new subscription created. Writes `subscriptionStatus:'active'` to Firestore directly so UI updates without waiting for webhook. Optimistic update in datasource. URL: `https://resumesubscription-f3n57yyena-uc.a.run.app` |
+| `subscription.cancelled` webhook fix | ✅ Previously treated same as `halted` (immediate downgrade). Now `handleSubscriptionCancelled()` sets `subscriptionStatus:'cancelled'` + `subscriptionEndedAt: entity.current_end` (real period end) — does NOT downgrade tier. Tier only drops when `subscription.completed` fires. Redeployed. |
+| Webhook payment data completeness | ✅ `subscription.activated` now saves `lastPaymentId`, `lastPaymentAmountPaise`, `lastPaymentAt` to root doc and `paymentId`, `amountPaise` to event doc (first payment was previously unrecorded). `payment.captured` now also saves `lastPaymentAmountPaise` and `amountPaise` in event doc. All three charge events (`activated`, `charged`, `captured`) now write identical payment fields. |
 | Razorpay subscription creation — programmatic flow | ✅ `createSubscription` Cloud Function (Gen 2, `us-central1`) creates a Razorpay subscription per user via API with `notes: {uid, tier}` baked in. Flutter `openCheckout()` calls the function with a Firebase ID token, gets back a unique `short_url`, opens it in the browser. No static payment links used — each customer gets their own subscription instance. |
 | Razorpay webhook — all 7 events | ✅ `razorpayWebhook` Cloud Function handles `payment.captured`, `payment.failed`, `subscription.activated`, `subscription.charged`, `subscription.halted`, `subscription.cancelled`, `subscription.completed`. HMAC-SHA256 signature verified on every request. UID resolved via `notes.uid` (primary), `razorpaySubscriptionId` query (renewals), email lookup (fallback). |
 | Payment pending state + failure detection | ✅ `_PlanCardState` implements `WidgetsBindingObserver`. On checkout: button shows "Awaiting Payment..." spinner, disabled. On app resume: 30s grace timer starts — if tier unchanged, orange SnackBar shown and state resets. If tier flips before timer fires, success. 10-minute hard timeout as final fallback. |
@@ -125,7 +116,7 @@ Then guard class instantiation / method bodies with `if not RIVA_AVAILABLE: rais
 | `AppShellBloc` admin check — clean arch | ✅ `CheckAdminStatusUseCase → IAuthRepository.isAdmin → AuthRepositoryImpl → AuthRemoteDataSource.checkAdminStatus` chain. Bloc no longer imports datasource or firebase paths directly. |
 | Firestore config — `plan_ids` + `function_urls` | ✅ `system/monetization` seeded with `plan_ids: {pro, enterprise}` (Razorpay plan IDs) and `function_urls.create_subscription`. Admin panel seed data updated. Static `payment_links` removed. |
 | Account screen rewrite | ✅ Rewritten with inline `_ProfileHero` (avatar, name, email, provider badge), `_SectionLabel`, `_InfoRow`. Uses `AppColors` theme tokens. Admin panel removed from account screen (now at `/admin`). Orphaned component files (`account_avatar.dart`, `account_name_editor.dart`, `account_email_info.dart`) can be deleted. |
-| Account name editor size TODO | ✅ No longer applicable — `AccountNameEditor` is not used in the rewritten account screen. Component can be deleted. |
+| Orphaned account components deleted | ✅ `account_avatar.dart`, `account_name_editor.dart`, `account_email_info.dart` deleted. No references remain. `flutter analyze` clean. |
 | API keys / `.env` security | ✅ Already in `.gitignore`, keys are secure |
 | GitHub Actions CI/release pipeline | ✅ Not using automated CI — manual release process |
 | Firebase `system/monetization` seed | ✅ Seeded via admin panel (minor adjustments pending) |

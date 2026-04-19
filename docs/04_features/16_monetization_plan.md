@@ -93,6 +93,7 @@ Two Firebase Cloud Functions handle all Razorpay payment operations. Both are de
 | Function | URL | Purpose |
 |---|---|---|
 | `createSubscription` | `https://createsubscription-f3n57yyena-uc.a.run.app` | Creates a Razorpay subscription for the calling user |
+| `cancelSubscription` | `https://cancelsubscription-f3n57yyena-uc.a.run.app` | Cancels the caller's subscription at end of billing period |
 | `razorpayWebhook` | `https://razorpaywebhook-f3n57yyena-uc.a.run.app` | Receives Razorpay webhook events and updates Firestore |
 
 ### `createSubscription`
@@ -129,6 +130,26 @@ Content-Type: application/json
 **Secrets used**:
 - `RAZORPAY_KEY_ID` — Razorpay API key ID
 - `RAZORPAY_KEY_SECRET` — Razorpay API key secret
+
+### `cancelSubscription`
+
+**File**: `functions/src/cancelSubscription.ts`
+
+Cancels the calling user's Razorpay subscription at the end of the current billing period (`cancel_at_cycle_end: 1`). The user keeps access until `monthlyResetAt`.
+
+**Auth**: Firebase ID token (`Authorization: Bearer <token>`)
+
+**Request**: `{ subscriptionId: "sub_XXXXX" }`
+
+**Response**: `{ ok: true }` or `{ error: "..." }`
+
+**Security**: Cross-checks that the `subscriptionId` belongs to the calling `uid` by querying Firestore before calling Razorpay — prevents users from cancelling other accounts' subscriptions.
+
+**Secrets used**: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`
+
+The resulting `subscription.cancelled` webhook event is handled by `razorpayWebhook` which downgrades the tier automatically.
+
+---
 
 ### `razorpayWebhook`
 
@@ -304,7 +325,9 @@ Cloud Function endpoints read by the Flutter app.
 ```json
 {
   "function_urls": {
-    "create_subscription": "https://createsubscription-f3n57yyena-uc.a.run.app"
+    "create_subscription": "https://createsubscription-f3n57yyena-uc.a.run.app",
+    "cancel_subscription": "https://cancelsubscription-f3n57yyena-uc.a.run.app",
+    "resume_subscription": "https://resumesubscription-f3n57yyena-uc.a.run.app"
   }
 }
 ```
@@ -446,6 +469,8 @@ Make a real ₹1 test payment (Razorpay supports ₹1 test in live mode via UPI)
 | `plan_ids.pro` in Firestore | `plan_SeBEou7uXFDDRT` | new live plan ID |
 | `plan_ids.enterprise` in Firestore | `plan_SeBFJKoDwsl158` | new live plan ID |
 | `function_urls.create_subscription` | unchanged | unchanged |
+| `function_urls.cancel_subscription` | unchanged | unchanged |
+| `function_urls.resume_subscription` | unchanged | unchanged |
 
 > The Cloud Function URLs and the Flutter app code do not change between test and production — only the secrets and plan IDs change.
 
