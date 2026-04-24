@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/features/history/domain/usecases/get_live_history_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/get_chunked_history_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/clear_history_usecase.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/features/history/domain/entities/history_entry.dart';
 import 'history_event.dart';
@@ -14,7 +14,7 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
   final GetLiveHistoryUseCase _getLiveHistoryUseCase;
   final GetChunkedHistoryUseCase _getChunkedHistoryUseCase;
   final ClearHistoryUseCase _clearHistoryUseCase;
-  final SubscriptionRemoteDataSource _subscriptionDataSource;
+  final ISubscriptionRepository _subscriptionDataSource;
 
   late final ValueListenable<List<HistoryEntry>> _liveHistoryListenable;
   late final ValueListenable<List<HistoryEntry>> _chunkedHistoryListenable;
@@ -28,7 +28,7 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
     required GetLiveHistoryUseCase getLiveHistoryUseCase,
     required GetChunkedHistoryUseCase getChunkedHistoryUseCase,
     required ClearHistoryUseCase clearHistoryUseCase,
-    required SubscriptionRemoteDataSource subscriptionDataSource,
+    required ISubscriptionRepository subscriptionDataSource,
   }) : _getLiveHistoryUseCase = getLiveHistoryUseCase,
        _getChunkedHistoryUseCase = getChunkedHistoryUseCase,
        _clearHistoryUseCase = clearHistoryUseCase,

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/core/widgets/omni_progress_bar.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:omni_bridge/core/utils/duration_utils.dart';
 
@@ -9,7 +10,7 @@ Widget buildCurrentUsageDisplay({
   required QuotaStatus status,
   required NumberFormat formatter,
 }) {
-  final tierName = SubscriptionRemoteDataSource.instance
+  final tierName = sl<ISubscriptionRepository>()
       .getNameForTier(status.tier)
       .toUpperCase();
 

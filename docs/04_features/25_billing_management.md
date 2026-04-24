@@ -118,7 +118,7 @@ bool get hasSubscription => status != 'none';
 ```
 User taps "Cancel Subscription"
  └─ Confirmation dialog shown
-     └─ Confirmed → datasource.cancelSubscription()
+     └─ Confirmed → sl<CancelSubscriptionUseCase>()()
          └─ Gets Firebase ID token
          └─ POST cancelSubscription Cloud Function
              └─ Verifies token, checks subscription belongs to caller
@@ -158,7 +158,7 @@ Applies when `isCancelPending == true` (status `cancelled`, tier still paid). Re
 ```
 User taps "Resume Subscription"
  └─ Confirmation dialog shown
-     └─ Confirmed → datasource.resumeSubscription()
+     └─ Confirmed → sl<ResumeSubscriptionUseCase>()()
          └─ Reads function_urls.resume_subscription from system/monetization
          └─ Gets Firebase ID token
          └─ POST resumeSubscription Cloud Function
@@ -300,12 +300,15 @@ Handles 7 events. Key behaviour per event:
 
 ---
 
-## Notifiers on `SubscriptionRemoteDataSource`
+## Reactive Notifiers
+
+Exposed on `ISubscriptionRepository` (backed by `SubscriptionRemoteDataSource`). All presentation code accesses them via `sl<ISubscriptionRepository>()`.
 
 | Notifier | Type | Updated when |
 |---|---|---|
-| `billingInfoNotifier` | `ValueNotifier<BillingInfo>` | Every Firestore `users/{uid}` snapshot + optimistic cancel + optimistic resume |
+| `billingInfoNotifier` | `ValueNotifier<BillingInfo>` | Every Firestore `users/{uid}` snapshot + optimistic cancel/resume |
 | `invoicesNotifier` | `ValueNotifier<List<PaymentEvent>>` | Once per login — reads `subscription_events` (24 entries, newest first) |
+| `configNotifier` | `ValueNotifier<int>` | Every Firestore `system/monetization` snapshot (version counter) |
 
 ---
 
@@ -324,8 +327,12 @@ Handles 7 events. Key behaviour per event:
 |---|---|
 | `lib/features/subscription/domain/entities/billing_info.dart` | Billing state snapshot entity |
 | `lib/features/subscription/domain/entities/payment_event.dart` | Single payment history entry entity |
+| `lib/features/subscription/domain/repositories/i_subscription_repository.dart` | Interface — exposes `billingInfoNotifier`, `invoicesNotifier`, `cancelSubscription()`, `resumeSubscription()` and all tier/config helpers |
+| `lib/features/subscription/domain/usecases/cancel_subscription_usecase.dart` | Use-case — delegates to `ISubscriptionRepository.cancelSubscription()` |
+| `lib/features/subscription/domain/usecases/resume_subscription_usecase.dart` | Use-case — delegates to `ISubscriptionRepository.resumeSubscription()` |
 | `lib/features/subscription/data/datasources/subscription_remote_datasource.dart` | `_listenToUserDoc` reads all billing fields · `_loadInvoices` reads subcollection · `cancelSubscription()` + `resumeSubscription()` with optimistic updates |
-| `lib/features/subscription/presentation/screens/billing_screen.dart` | Full billing UI — status card, countdown, progress bar, actions, pending-cancel banner, resume button, invoice history |
+| `lib/features/subscription/data/repositories/subscription_repository.dart` | `SubscriptionRepositoryImpl` — bridges interface to datasource |
+| `lib/features/subscription/presentation/screens/billing_screen.dart` | Full billing UI — uses `sl<ISubscriptionRepository>()` for notifiers, `sl<CancelSubscriptionUseCase>()` and `sl<ResumeSubscriptionUseCase>()` for actions |
 | `lib/core/navigation/app_router.dart` | `/billing` route registration |
 | `lib/features/shell/presentation/widgets/app_navigation_rail.dart` | Billing nav tile |
 | `functions/src/cancelSubscription.ts` | Cloud Function — Razorpay cancel API |

@@ -7,7 +7,7 @@ import 'package:omni_bridge/firebase_options.dart';
 import 'package:omni_bridge/core/config/app_config.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/core/data/datasources/usage_metrics_remote_datasource.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import 'package:omni_bridge/core/platform/tray_manager.dart';
 import 'package:omni_bridge/core/platform/window_manager.dart';
 import 'package:omni_bridge/features/usage/data/datasources/usage_remote_datasource.dart';
@@ -99,18 +99,15 @@ class AppInitializer {
     }
 
     AuthRemoteDataSource.instance.init();
-    SubscriptionRemoteDataSource.instance.init();
+    final subRepo = sl<ISubscriptionRepository>();
+    await subRepo.init();
     UsageRemoteDataSource.instance.init(
-      tierStream: SubscriptionRemoteDataSource.instance.statusStream,
-      limitProvider: SubscriptionRemoteDataSource.instance.getLimitForTier,
-      periodLimitProvider:
-          SubscriptionRemoteDataSource.instance.getPeriodLimitForTier,
-      defaultTierProvider: () =>
-          SubscriptionRemoteDataSource.instance.defaultTier,
-      pollIntervalProvider: () =>
-          SubscriptionRemoteDataSource.instance.pollIntervalSeconds,
-      engineLimitProvider:
-          SubscriptionRemoteDataSource.instance.engineMonthlyLimit,
+      tierStream: subRepo.statusStream,
+      limitProvider: subRepo.getLimitForTier,
+      periodLimitProvider: subRepo.getPeriodLimitForTier,
+      defaultTierProvider: () => subRepo.defaultTier,
+      pollIntervalProvider: () => subRepo.pollIntervalSeconds,
+      engineLimitProvider: subRepo.engineMonthlyLimit,
     );
 
     await initializeWindow();

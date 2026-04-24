@@ -4,7 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:omni_bridge/features/history/presentation/blocs/history_bloc.dart';
 import 'package:omni_bridge/features/history/presentation/blocs/history_event.dart';
 import 'package:omni_bridge/features/history/presentation/blocs/history_state.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import 'package:omni_bridge/features/history/domain/entities/history_entry.dart';
 import 'package:omni_bridge/features/history/presentation/screens/history/components/history_header.dart';
 import 'package:omni_bridge/features/history/presentation/screens/history/components/history_list_components.dart';
@@ -41,7 +42,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
   @override
   Widget build(BuildContext context) {
     final tier = widget.state.subscriptionStatus.tier;
-    final rank = SubscriptionRemoteDataSource.instance.getTierRank(tier);
+    final rank = sl<ISubscriptionRepository>().getTierRank(tier);
     // Base tier (0): blocked entirely — showing upgrade sheet via callback above.
     if (rank == 0) {
       return WindowBorder(
@@ -66,9 +67,9 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                     icon: Icons.history_toggle_off,
                     title: 'History Unavailable',
                     subtitle:
-                        'Upgrade to ${SubscriptionRemoteDataSource.instance.getNameForRank(1)} or higher plan to access your translation history.',
+                        'Upgrade to ${sl<ISubscriptionRepository>().getNameForRank(1)} or higher plan to access your translation history.',
                     requiredTier:
-                        '${SubscriptionRemoteDataSource.instance.getNameForRank(1)}+',
+                        '${sl<ISubscriptionRepository>().getNameForRank(1)}+',
                   ),
                 ),
               ],
@@ -78,7 +79,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
       );
     }
 
-    final isPro = SubscriptionRemoteDataSource.instance.isHighestTier(tier);
+    final isPro = sl<ISubscriptionRepository>().isHighestTier(tier);
 
     return WindowBorder(
       color: Colors.white10,
@@ -155,14 +156,13 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
                               child: _TierGateView(
                                 icon: Icons.auto_fix_high,
                                 title:
-                                    '${SubscriptionRemoteDataSource.instance.getNameForRank(SubscriptionRemoteDataSource.instance.getTierRank(tier) + 1)} Feature',
+                                    '${sl<ISubscriptionRepository>().getNameForRank(sl<ISubscriptionRepository>().getTierRank(tier) + 1)} Feature',
                                 subtitle:
-                                    'Upgrade to ${SubscriptionRemoteDataSource.instance.getNameForRank(SubscriptionRemoteDataSource.instance.getTierRank(tier) + 1)} to unlock Intelligent Context Refresh — '
+                                    'Upgrade to ${sl<ISubscriptionRepository>().getNameForRank(sl<ISubscriptionRepository>().getTierRank(tier) + 1)} to unlock Intelligent Context Refresh — '
                                     'AI that corrects translations up to 5 seconds back in real time.',
-                                requiredTier: SubscriptionRemoteDataSource
-                                    .instance
+                                requiredTier: sl<ISubscriptionRepository>()
                                     .getNameForRank(
-                                      SubscriptionRemoteDataSource.instance
+                                      sl<ISubscriptionRepository>()
                                               .getTierRank(tier) +
                                           1,
                                     ),
@@ -200,7 +200,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
 
   /// Subtitle shown under the Live Transcripts column header.
   String _historySubtitle(String tier) {
-    final rank = SubscriptionRemoteDataSource.instance.getTierRank(tier);
+    final rank = sl<ISubscriptionRepository>().getTierRank(tier);
     if (rank == 0) return 'No history available';
     if (rank == 1) return 'Current session only';
     if (rank == 2) return 'Last 3 days';
@@ -209,7 +209,7 @@ class _HistoryPanelBodyState extends State<_HistoryPanelBody> {
 
   /// Filter entries based on the user's tier's history rank.
   List<HistoryEntry> _filterByTier(List<HistoryEntry> entries, String tier) {
-    final rank = SubscriptionRemoteDataSource.instance.getTierRank(tier);
+    final rank = sl<ISubscriptionRepository>().getTierRank(tier);
     if (rank >= 3) return entries; // Unlimited
     if (rank == 2) {
       final cutoff = DateTime.now().subtract(const Duration(days: 3));

@@ -8,7 +8,8 @@ import 'package:omni_bridge/features/settings/presentation/blocs/settings_bloc.d
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_event.dart';
 import 'package:omni_bridge/features/settings/presentation/blocs/settings_state.dart';
 import 'package:omni_bridge/core/constants/languages.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import 'package:omni_bridge/features/translation/data/datasources/translation_rest_datasource.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_bloc.dart';
 import 'package:omni_bridge/features/translation/presentation/blocs/translation_event.dart';
@@ -167,7 +168,7 @@ Widget buildTranslationModelSelector(
   };
 
   bool hasAccess(String engineKey) {
-    return SubscriptionRemoteDataSource.instance.canUseModel(engineKey);
+    return sl<ISubscriptionRepository>().canUseModel(engineKey);
   }
 
   final needsNvidiaKey =
@@ -221,9 +222,8 @@ Widget buildTranslationModelSelector(
                       if (selectedItem == null) return const SizedBox();
 
                       final isRecommended = selectedItem.key == 'llama';
-                      final isDbDisabled = !SubscriptionRemoteDataSource
-                          .instance
-                          .isModelEnabled(selectedItem.key);
+                      final isDbDisabled =
+                          !sl<ISubscriptionRepository>().isModelEnabled(selectedItem.key);
                       final selectedHasAccess = hasAccess(selectedItem.key);
                       final statusKey = {
                         'google': 'google_translate',
@@ -267,9 +267,8 @@ Widget buildTranslationModelSelector(
                     itemBuilder: (popupContext, item, isCurrentlySelected) {
                       final isRecommended = item.key == 'llama';
                       final itemHasAccess = hasAccess(item.key);
-                      final isDbDisabled = !SubscriptionRemoteDataSource
-                          .instance
-                          .isModelEnabled(item.key);
+                      final isDbDisabled =
+                          !sl<ISubscriptionRepository>().isModelEnabled(item.key);
                       final statusKey = {
                         'google': 'google_translate',
                         'google_api': 'google_api',
@@ -307,7 +306,7 @@ Widget buildTranslationModelSelector(
                           ] else if (!itemHasAccess) ...[
                             const SizedBox(width: 8),
                             _buildTierLockBadge(
-                              '${SubscriptionRemoteDataSource.instance.getNameForTier(SubscriptionRemoteDataSource.instance.getRequirement('engines', item.key, SubscriptionRemoteDataSource.instance.getTierAt(1)))}+',
+                              '${sl<ISubscriptionRepository>().getNameForTier(sl<ISubscriptionRepository>().getRequirement('engines', item.key, sl<ISubscriptionRepository>().getTierAt(1)))}+',
                             ),
                           ] else if (isRecommended) ...[
                             const SizedBox(width: 8),
@@ -421,7 +420,7 @@ Widget _buildTranscriptionModelSection(
                   label: 'NVIDIA Riva',
                   status: state.modelStatuses['riva-asr'],
                   isRecommended: true,
-                  locked: !SubscriptionRemoteDataSource.instance
+                  locked: !sl<ISubscriptionRepository>()
                       .canUseModel('riva-asr'),
                   icon: Icons.bolt_rounded,
                   onChanged: (v) {
@@ -444,7 +443,7 @@ Widget _buildTranscriptionModelSection(
                           .startsWith('whisper')
                       ? state.settings.transcriptionModel
                       : 'whisper-base'],
-                  locked: !SubscriptionRemoteDataSource.instance
+                  locked: !sl<ISubscriptionRepository>()
                       .canUseModel('whisper-base'),
                   icon: Icons.offline_bolt_outlined,
                   onChanged: (v) {
@@ -707,33 +706,33 @@ class _WhisperModelCardState extends State<_WhisperModelCard> {
     };
 
     final currentTier =
-        SubscriptionRemoteDataSource.instance.currentStatus?.tier ??
-        SubscriptionRemoteDataSource.instance.defaultTier;
+        sl<ISubscriptionRepository>().currentStatus?.tier ??
+        sl<ISubscriptionRepository>().defaultTier;
 
     bool whisperHasAccess(String size) {
       if (size == 'tiny' || size == 'base') return true;
-      final required = SubscriptionRemoteDataSource.instance.getRequirement(
+      final required = sl<ISubscriptionRepository>().getRequirement(
         'whisper',
         size,
         size == 'medium'
-            ? SubscriptionRemoteDataSource.instance.getTierAt(2)
-            : SubscriptionRemoteDataSource.instance.getTierAt(1),
+            ? sl<ISubscriptionRepository>().getTierAt(2)
+            : sl<ISubscriptionRepository>().getTierAt(1),
       );
-      return SubscriptionRemoteDataSource.instance.tierHasAccess(
+      return sl<ISubscriptionRepository>().tierHasAccess(
         currentTier,
         required,
       );
     }
 
     String whisperLockLabel(String size) {
-      final required = SubscriptionRemoteDataSource.instance.getRequirement(
+      final required = sl<ISubscriptionRepository>().getRequirement(
         'whisper',
         size,
         size == 'medium'
-            ? SubscriptionRemoteDataSource.instance.getTierAt(2)
-            : SubscriptionRemoteDataSource.instance.getTierAt(1),
+            ? sl<ISubscriptionRepository>().getTierAt(2)
+            : sl<ISubscriptionRepository>().getTierAt(1),
       );
-      return '${SubscriptionRemoteDataSource.instance.getNameForTier(required)}+';
+      return '${sl<ISubscriptionRepository>().getNameForTier(required)}+';
     }
 
     return Container(

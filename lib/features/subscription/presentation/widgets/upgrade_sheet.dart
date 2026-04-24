@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import '../screens/subscription_screen.dart';
 
 void showUpgradeSheet(BuildContext context) {
@@ -19,9 +20,9 @@ class UpgradeSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final plans = SubscriptionRemoteDataSource.instance.availablePlans;
+    final plans = sl<ISubscriptionRepository>().availablePlans;
     final promptConfig =
-        SubscriptionRemoteDataSource.instance.upgradePromptConfig;
+        sl<ISubscriptionRepository>().upgradePromptConfig;
     final title =
         promptConfig?['feature_locked']?['title'] as String? ??
         'Upgrade Your Plan';
@@ -68,7 +69,7 @@ class UpgradeSheet extends StatelessWidget {
           ...plans
               .where(
                 (p) =>
-                    p.id != SubscriptionRemoteDataSource.instance.defaultTier,
+                    p.id != sl<ISubscriptionRepository>().defaultTier,
               )
               .map((plan) {
                 final highlight = plan.isUnlimited

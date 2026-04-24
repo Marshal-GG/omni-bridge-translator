@@ -47,9 +47,9 @@ omni_bridge/
 │       │   ├── data/                # HistoryRemoteDataSource
 │       │   └── presentation/        # HistoryBloc, HistoryScreen
 │       ├── subscription/            # Quota & monetization
-│       │   ├── domain/              # UseCases (GetSubscriptionStatus, GetAvailablePlans, ActivateTrial)
-│       │   ├── data/                # SubscriptionRemoteDataSource, TrackingRemoteDataSource
-│       │   └── presentation/        # SubscriptionBloc, UpgradeSheet
+│       │   ├── domain/              # ISubscriptionRepository · UseCases (GetSubscriptionStatus, GetAvailablePlans, ActivateTrial, OpenCheckout, HasUsedTrial, CancelSubscription, ResumeSubscription)
+│       │   ├── data/                # SubscriptionRepositoryImpl, SubscriptionRemoteDataSource
+│       │   └── presentation/        # SubscriptionBloc, SubscriptionScreen, BillingScreen, UpgradeSheet, PlanCard
 │       ├── startup/                 # Bootstrapping & onboarding
 │       │   ├── domain/              # (minimal — thin shell over AppInitializer)
 │       │   ├── data/                # UpdateRemoteDataSource (forced-update check)

@@ -16,6 +16,7 @@ import 'package:omni_bridge/features/settings/domain/usecases/load_devices_useca
 import 'package:omni_bridge/features/settings/domain/usecases/log_event_usecase.dart';
 import 'package:omni_bridge/features/settings/domain/usecases/update_volume_usecase.dart';
 import 'package:omni_bridge/features/subscription/domain/usecases/get_subscription_status.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
 class MockGetAppSettingsUseCase extends Mock implements GetAppSettingsUseCase {}
@@ -39,6 +40,9 @@ class MockLiveDeviceUpdateUseCase extends Mock
 
 class MockLiveMicToggleUseCase extends Mock implements LiveMicToggleUseCase {}
 
+class MockISubscriptionRepository extends Mock
+    implements ISubscriptionRepository {}
+
 void main() {
   late SettingsBloc settingsBloc;
   late MockGetAppSettingsUseCase mockGetAppSettingsUseCase;
@@ -50,6 +54,7 @@ void main() {
   late MockUpdateVolumeUseCase mockUpdateVolumeUseCase;
   late MockLiveDeviceUpdateUseCase mockLiveDeviceUpdateUseCase;
   late MockLiveMicToggleUseCase mockLiveMicToggleUseCase;
+  late MockISubscriptionRepository mockSubscriptionRepository;
 
   setUp(() {
     mockGetAppSettingsUseCase = MockGetAppSettingsUseCase();
@@ -61,6 +66,7 @@ void main() {
     mockUpdateVolumeUseCase = MockUpdateVolumeUseCase();
     mockLiveDeviceUpdateUseCase = MockLiveDeviceUpdateUseCase();
     mockLiveMicToggleUseCase = MockLiveMicToggleUseCase();
+    mockSubscriptionRepository = MockISubscriptionRepository();
 
     when(() => mockGetSubscriptionStatus()).thenAnswer((_) => Stream.empty());
 
@@ -74,6 +80,7 @@ void main() {
       updateVolumeUseCase: mockUpdateVolumeUseCase,
       liveDeviceUpdateUseCase: mockLiveDeviceUpdateUseCase,
       liveMicToggleUseCase: mockLiveMicToggleUseCase,
+      subscriptionRepository: mockSubscriptionRepository,
     );
   });
 

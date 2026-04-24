@@ -61,9 +61,9 @@ lib/
 | BLoC | Responsibility | Depends On |
 |------|----------------|------------|
 | `AuthBloc` | Firebase Auth state management | `IAuthRepository` |
-| `SettingsBloc` | User preferences, device selection, audio monitoring, and API key validation gating | `GetAppSettingsUseCase`, `UpdateAppSettingsUseCase`, `GetGoogleCredentialsUseCase`, `LoadDevicesUseCase`, `ObserveAudioLevelsUseCase`, `LogEventUseCase`, `GetSubscriptionStatus` |
-| `TranslationBloc` | Live translation session control, caption streaming, server health, model status, quota reactivity, and auth-aware settings sync | `StartTranslationUseCase`, `StopTranslationUseCase`, `UpdateVolumeUseCase`, `GetModelStatusUseCase`, `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `GetInitialQuotaStatusUseCase`, `GetDefaultTierUseCase`, `UpdateTranslationSettingsUseCase`, `CheckServerHealthUseCase`, `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, `GetAppSettingsUseCase`, `GetGoogleCredentialsUseCase`, `SyncSettingsUseCase`, `LogEventUseCase`, `LogoutUseCase`, `GetSystemConfigUseCase`, `SubscriptionRemoteDataSource`, `TranslationRestDatasource` |
-| `HistoryBloc` | Live and chunked transcription history | `GetLiveHistoryUseCase`, `GetChunkedHistoryUseCase`, `ClearHistoryUseCase`, `AddHistoryEntryUseCase`, `ConfigureHistoryUseCase`, `SubscriptionRemoteDataSource` |
+| `SettingsBloc` | User preferences, device selection, audio monitoring, and API key validation gating | `GetAppSettingsUseCase`, `UpdateAppSettingsUseCase`, `GetGoogleCredentialsUseCase`, `LoadDevicesUseCase`, `ObserveAudioLevelsUseCase`, `LogEventUseCase`, `GetSubscriptionStatus`, `ISubscriptionRepository` |
+| `TranslationBloc` | Live translation session control, caption streaming, server health, model status, quota reactivity, and auth-aware settings sync | `StartTranslationUseCase`, `StopTranslationUseCase`, `UpdateVolumeUseCase`, `GetModelStatusUseCase`, `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `GetInitialQuotaStatusUseCase`, `GetDefaultTierUseCase`, `UpdateTranslationSettingsUseCase`, `CheckServerHealthUseCase`, `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, `GetAppSettingsUseCase`, `GetGoogleCredentialsUseCase`, `SyncSettingsUseCase`, `LogEventUseCase`, `LogoutUseCase`, `GetSystemConfigUseCase`, `ISubscriptionRepository`, `TranslationRestDatasource` |
+| `HistoryBloc` | Live and chunked transcription history | `GetLiveHistoryUseCase`, `GetChunkedHistoryUseCase`, `ClearHistoryUseCase`, `AddHistoryEntryUseCase`, `ConfigureHistoryUseCase`, `ISubscriptionRepository` |
 | `AboutBloc` | App versioning and updates | `CheckForUpdate` |
 | `StartupBloc` | Thin shell over `AppInitializer.initAsync()`. Drives the default Splash Screen on launch and processes initial routing (`/translation-overlay` if authed, `/onboarding` if not, or `/force_update`). | `IAuthRepository` (held but routing delegated to `AppInitializer`) |
 | `SubscriptionBloc` | Real-time subscription status and plan management | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial`, `OpenCheckout`, `HasUsedTrial` |
@@ -95,7 +95,7 @@ UseCases are the brain of the feature. They encapsulate a single business logic 
 | **Settings** | `GetAppSettings`, `UpdateAppSettings`, `GetGoogleCredentials`, `LoadDevices`, `ObserveAudioLevels`, `SyncSettings`, `LogEvent`, `GetSystemConfig` |
 | **Translation** | `ObserveCaptions`, `ObserveQuotaStatus`, `GetInitialQuotaStatus`, `GetDefaultTier`, `StartTranslation`, `StopTranslation`, `UpdateTranslationSettings`, `UpdateVolume`, `CheckServerHealth`, `GetModelStatus` |
 | **History** | `GetLiveHistory`, `GetChunkedHistory`, `AddHistoryEntry`, `ConfigureHistory`, `ClearHistory` |
-| **Subscription** | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial`, `OpenCheckout`, `HasUsedTrial` |
+| **Subscription** | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial`, `OpenCheckout`, `HasUsedTrial`, `CancelSubscriptionUseCase`, `ResumeSubscriptionUseCase` |
 | **About** | `CheckForUpdate` |
 | **Usage** | `GetUsageStats`, `GetUsageHistory`, `GetQuotaStatus`, `CheckUsageRollover`, `GetSelectedEnginesUseCase` |
 
@@ -233,7 +233,7 @@ main()
      ├─ ConnectivityService.init()
      ├─ Single-instance guard (WindowsSingleInstance)
      ├─ Firebase.initializeApp() — both default & named (RTDB) apps
-     ├─ AuthRemoteDataSource / SubscriptionRemoteDataSource / UsageRemoteDataSource .init()
+     ├─ AuthRemoteDataSource.init() · sl<ISubscriptionRepository>().init() · UsageRemoteDataSource.init()
      ├─ initializeWindow() + initializeTray()
      └─ Protocol handler registration (omni-bridge:// + Google OAuth scheme)
          └─ AppLinks deep-link stream: OAuth redirects → AuthRemoteDataSource

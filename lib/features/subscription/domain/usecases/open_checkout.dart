@@ -5,5 +5,5 @@ class OpenCheckout {
 
   OpenCheckout(this._repository);
 
-  Future<void> call(String tierId) => _repository.openCheckout(tierId);
+  Future<String?> call(String tierId) => _repository.openCheckout(tierId);
 }

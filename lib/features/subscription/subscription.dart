@@ -8,5 +8,7 @@ export 'domain/usecases/has_used_trial.dart';
 export 'domain/usecases/open_checkout.dart';
 export 'domain/usecases/check_model_access_usecase.dart';
 export 'domain/usecases/check_engine_limit_usecase.dart';
+export 'domain/usecases/cancel_subscription_usecase.dart';
+export 'domain/usecases/resume_subscription_usecase.dart';
 export 'presentation/bloc/subscription_bloc.dart';
 export 'presentation/screens/subscription_screen.dart';

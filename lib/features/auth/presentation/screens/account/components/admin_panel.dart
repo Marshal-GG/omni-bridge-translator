@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:omni_bridge/core/constants/firebase_paths.dart';
 import 'package:omni_bridge/core/widgets/omni_tinted_button.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 import 'package:omni_bridge/core/widgets/omni_search_bar.dart';
 
@@ -176,7 +178,7 @@ class _AdminPanelState extends State<AdminPanel> {
                           final isSelected = _selectedUserUid == uid;
                           final tier =
                               data['tier'] ??
-                              SubscriptionRemoteDataSource.instance.defaultTier;
+                              sl<ISubscriptionRepository>().defaultTier;
 
                           return ListTile(
                             dense: true,
@@ -254,10 +256,10 @@ class _AdminPanelState extends State<AdminPanel> {
                   const SizedBox(height: 8),
                   ValueListenableBuilder<int>(
                     valueListenable:
-                        SubscriptionRemoteDataSource.instance.configNotifier,
+                        sl<ISubscriptionRepository>().configNotifier,
                     builder: (context, _, _) {
                       final plans =
-                          SubscriptionRemoteDataSource.instance.availablePlans;
+                          sl<ISubscriptionRepository>().availablePlans;
                       if (plans.isEmpty) {
                         return const Text(
                           'No plans loaded – seed config first',
@@ -273,7 +275,7 @@ class _AdminPanelState extends State<AdminPanel> {
                             height: 32,
                             child: ActionChip(
                               label: Text(
-                                SubscriptionRemoteDataSource.instance
+                                sl<ISubscriptionRepository>()
                                     .getNameForTier(tier)
                                     .toUpperCase(),
                                 style: const TextStyle(
@@ -285,7 +287,7 @@ class _AdminPanelState extends State<AdminPanel> {
                                 alpha: 0.05,
                               ),
                               onPressed: () {
-                                SubscriptionRemoteDataSource.instance
+                                sl<SubscriptionRemoteDataSource>()
                                     .setTierForOtherUser(
                                       _selectedUserUid!,
                                       tier,
@@ -335,20 +337,20 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
   bool _updatingPoll = false;
   String? _lastResult;
   late final _pollController = TextEditingController(
-    text: SubscriptionRemoteDataSource.instance.pollIntervalSeconds.toString(),
+    text: sl<ISubscriptionRepository>().pollIntervalSeconds.toString(),
   );
 
   @override
   void initState() {
     super.initState();
-    SubscriptionRemoteDataSource.instance.configNotifier.addListener(
+    sl<ISubscriptionRepository>().configNotifier.addListener(
       _onConfigChanged,
     );
   }
 
   void _onConfigChanged() {
     if (!mounted) return;
-    final newValue = SubscriptionRemoteDataSource.instance.pollIntervalSeconds
+    final newValue = sl<ISubscriptionRepository>().pollIntervalSeconds
         .toString();
     if (_pollController.text != newValue && !_updatingPoll) {
       setState(() {
@@ -359,7 +361,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
 
   @override
   void dispose() {
-    SubscriptionRemoteDataSource.instance.configNotifier.removeListener(
+    sl<ISubscriptionRepository>().configNotifier.removeListener(
       _onConfigChanged,
     );
     _pollController.dispose();

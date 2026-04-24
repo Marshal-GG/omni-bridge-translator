@@ -1,5 +1,6 @@
 import 'package:omni_bridge/features/usage/domain/entities/engine_usage.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 
 class EngineUsageDto extends EngineUsage {
   const EngineUsageDto({
@@ -32,8 +33,7 @@ class EngineUsageDto extends EngineUsage {
   }
 
   static UsageType resolveType(String engine) {
-    final src = SubscriptionRemoteDataSource.instance;
-    final configType = src.getModelType(engine);
+    final configType = sl<ISubscriptionRepository>().getModelType(engine);
 
     if (configType != null) {
       if (configType == 'asr') return UsageType.asr;

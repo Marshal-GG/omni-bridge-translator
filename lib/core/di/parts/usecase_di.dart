@@ -55,6 +55,8 @@ void initUseCaseDI() {
   sl.registerLazySingleton(() => HasUsedTrial(sl()));
   sl.registerLazySingleton(() => CheckModelAccessUseCase(sl()));
   sl.registerLazySingleton(() => CheckEngineLimitUseCase(sl()));
+  sl.registerLazySingleton(() => CancelSubscriptionUseCase(sl()));
+  sl.registerLazySingleton(() => ResumeSubscriptionUseCase(sl()));
 
   // About
   sl.registerLazySingleton(() => CheckForUpdate(sl()));

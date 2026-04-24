@@ -7,7 +7,10 @@ import 'package:omni_bridge/core/theme/app_theme.dart';
 import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:omni_bridge/core/widgets/omni_header.dart';
 import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
+import 'package:omni_bridge/features/subscription/domain/usecases/cancel_subscription_usecase.dart';
+import 'package:omni_bridge/features/subscription/domain/usecases/resume_subscription_usecase.dart';
 import 'package:omni_bridge/features/subscription/domain/entities/billing_info.dart';
 import 'package:omni_bridge/features/subscription/domain/entities/payment_event.dart';
 
@@ -56,7 +59,7 @@ class BillingScreen extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 580),
             child: ValueListenableBuilder<BillingInfo>(
               valueListenable:
-                  SubscriptionRemoteDataSource.instance.billingInfoNotifier,
+                  sl<ISubscriptionRepository>().billingInfoNotifier,
               builder: (context, info, _) => _BillingBody(info: info),
             ),
           ),
@@ -534,8 +537,7 @@ class _ActionsSectionState extends State<_ActionsSection> {
 
     if (confirm != true || !mounted) return;
     setState(() => _resuming = true);
-    final error =
-        await SubscriptionRemoteDataSource.instance.resumeSubscription();
+    final error = await sl<ResumeSubscriptionUseCase>()();
     if (!mounted) return;
     setState(() => _resuming = false);
 
@@ -587,8 +589,7 @@ class _ActionsSectionState extends State<_ActionsSection> {
 
     if (confirm != true || !mounted) return;
     setState(() => _cancelling = true);
-    final error =
-        await SubscriptionRemoteDataSource.instance.cancelSubscription();
+    final error = await sl<CancelSubscriptionUseCase>()();
     if (!mounted) return;
     setState(() => _cancelling = false);
 
@@ -601,7 +602,7 @@ class _ActionsSectionState extends State<_ActionsSection> {
       ));
     } else {
       final billing =
-          SubscriptionRemoteDataSource.instance.billingInfoNotifier.value;
+          sl<ISubscriptionRepository>().billingInfoNotifier.value;
       final until = billing.endedAt != null
           ? ' Access continues until ${DateFormat('d MMM yyyy').format(billing.endedAt!)}.'
           : '';
@@ -683,7 +684,7 @@ class _InvoiceSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<List<PaymentEvent>>(
       valueListenable:
-          SubscriptionRemoteDataSource.instance.invoicesNotifier,
+          sl<ISubscriptionRepository>().invoicesNotifier,
       builder: (context, events, _) {
         final visible = events
             .where((e) =>

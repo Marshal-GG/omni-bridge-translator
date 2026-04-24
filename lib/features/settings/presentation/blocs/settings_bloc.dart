@@ -12,7 +12,7 @@ import 'package:omni_bridge/features/settings/domain/usecases/update_volume_usec
 import 'package:omni_bridge/features/settings/domain/entities/app_settings.dart';
 import 'package:omni_bridge/core/constants/model_language_support.dart';
 import 'package:omni_bridge/features/subscription/domain/usecases/get_subscription_status.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'settings_event.dart';
 import 'settings_state.dart';
@@ -24,6 +24,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   final LoadDevicesUseCase loadDevicesUseCase;
   final LogEventUseCase logEventUseCase;
   final GetSubscriptionStatus getSubscriptionStatus;
+  final ISubscriptionRepository subscriptionRepository;
   final UpdateVolumeUseCase updateVolumeUseCase;
   final LiveDeviceUpdateUseCase liveDeviceUpdateUseCase;
   final LiveMicToggleUseCase liveMicToggleUseCase;
@@ -36,6 +37,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     required this.loadDevicesUseCase,
     required this.logEventUseCase,
     required this.getSubscriptionStatus,
+    required this.subscriptionRepository,
     required this.updateVolumeUseCase,
     required this.liveDeviceUpdateUseCase,
     required this.liveMicToggleUseCase,
@@ -191,11 +193,11 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     final status = event.status;
     final currentSettings = state.settings;
 
-    bool needsTranslationReset = !SubscriptionRemoteDataSource.instance
+    bool needsTranslationReset = !subscriptionRepository
         .allowedTranslationModels(status.tier)
         .contains(currentSettings.translationModel);
 
-    bool needsTranscriptionReset = !SubscriptionRemoteDataSource.instance
+    bool needsTranscriptionReset = !subscriptionRepository
         .allowedTranscriptionModels(status.tier)
         .contains(currentSettings.transcriptionModel);
 

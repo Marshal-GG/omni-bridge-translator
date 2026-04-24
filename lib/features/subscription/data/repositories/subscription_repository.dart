@@ -1,60 +1,102 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import '../../domain/entities/subscription_plan.dart';
+import '../../domain/entities/billing_info.dart';
+import '../../domain/entities/payment_event.dart';
 import '../../domain/repositories/i_subscription_repository.dart';
-import '../../../../features/subscription/data/datasources/subscription_remote_datasource.dart';
+import '../datasources/subscription_remote_datasource.dart';
 
 class SubscriptionRepositoryImpl implements ISubscriptionRepository {
   final SubscriptionRemoteDataSource _service;
 
-  SubscriptionRepositoryImpl({SubscriptionRemoteDataSource? service})
-    : _service = service ?? SubscriptionRemoteDataSource.instance;
+  SubscriptionRepositoryImpl({required SubscriptionRemoteDataSource service})
+      : _service = service;
 
+  // ── Quota status ────────────────────────────────────────────────────────
   @override
   Stream<QuotaStatus> get statusStream => _service.statusStream;
 
   @override
   QuotaStatus? get currentStatus => _service.currentStatus;
 
+  // ── Plans ────────────────────────────────────────────────────────────────
   @override
   List<SubscriptionPlan> get availablePlans => _service.availablePlans;
 
   @override
   Stream<void> get configChangeStream {
-    // ignore: close_sinks — controller lifetime is tied to the listener; GC'd when stream is no longer listened to
+    // ignore: close_sinks
     final controller = StreamController<void>.broadcast();
     _service.configNotifier.addListener(() {
-      if (!controller.isClosed) {
-        controller.add(null);
-      }
+      if (!controller.isClosed) controller.add(null);
     });
     return controller.stream;
   }
 
+  // ── Billing state (reactive) ─────────────────────────────────────────────
   @override
-  Future<void> init() async {
-    _service.init();
-  }
+  ValueNotifier<BillingInfo> get billingInfoNotifier =>
+      _service.billingInfoNotifier;
 
   @override
-  Future<void> refreshStatus() async {
-    // Service handles updates via listeners
-  }
+  ValueNotifier<List<PaymentEvent>> get invoicesNotifier =>
+      _service.invoicesNotifier;
 
   @override
-  Future<String?> activateTrial() async {
-    return _service.activateTrial();
-  }
+  ValueNotifier<int> get configNotifier => _service.configNotifier;
+
+  // ── Actions ──────────────────────────────────────────────────────────────
+  @override
+  Future<void> init() async => _service.init();
 
   @override
-  Future<void> openCheckout(String tierId) async {
-    await _service.openCheckout(tierId);
-  }
+  Future<void> refreshStatus() async {}
 
   @override
-  Future<bool> hasUsedTrial() async {
-    return _service.hasUsedTrial();
-  }
+  Future<String?> activateTrial() => _service.activateTrial();
+
+  @override
+  Future<String?> openCheckout(String tierId) => _service.openCheckout(tierId);
+
+  @override
+  Future<bool> hasUsedTrial() => _service.hasUsedTrial();
+
+  @override
+  Future<String?> cancelSubscription() => _service.cancelSubscription();
+
+  @override
+  Future<String?> resumeSubscription() => _service.resumeSubscription();
+
+  // ── Tier helpers ─────────────────────────────────────────────────────────
+  @override
+  String get defaultTier => _service.defaultTier;
+
+  @override
+  List<String> get tierOrder => _service.tierOrder;
+
+  @override
+  int getTierRank(String tier) => _service.getTierRank(tier);
+
+  @override
+  bool isHighestTier(String tier) => _service.isHighestTier(tier);
+
+  @override
+  String getNameForTier(String tier) => _service.getNameForTier(tier);
+
+  @override
+  String getNameForRank(int rank) => _service.getNameForRank(rank);
+
+  @override
+  String getTierAt(int index) => _service.getTierAt(index);
+
+  @override
+  bool tierHasAccess(String currentTier, String requiredTier) =>
+      _service.tierHasAccess(currentTier, requiredTier);
+
+  @override
+  String getRequirement(String category, String key, String fallback) =>
+      _service.getRequirement(category, key, fallback);
 
   @override
   int getLimitForTier(String tier) => _service.getLimitForTier(tier);
@@ -64,22 +106,31 @@ class SubscriptionRepositoryImpl implements ISubscriptionRepository {
       _service.getPeriodLimitForTier(tier);
 
   @override
+  String getPriceForTier(String tier) => _service.getPriceForTier(tier);
+
+  // ── Model / engine access ────────────────────────────────────────────────
+  @override
   bool canUseModel(String engineId) => _service.canUseModel(engineId);
 
   @override
   bool isModelEnabled(String engineId) => _service.isModelEnabled(engineId);
 
   @override
-  Map<String, int> engineLimits() => _service.engineLimits();
+  Map<String, int> engineLimits([String? tier]) => _service.engineLimits(tier);
 
   @override
-  String getPriceForTier(String tier) => _service.getPriceForTier(tier);
+  int engineMonthlyLimit(String engineId, [String? tier]) =>
+      _service.engineMonthlyLimit(engineId, tier);
 
   @override
-  String getNameForTier(String tier) => _service.getNameForTier(tier);
+  String? getModelType(String engineId) => _service.getModelType(engineId);
 
   @override
-  String get defaultTier => _service.defaultTier;
+  String getModelDisplayName(String engineId) =>
+      _service.getModelDisplayName(engineId);
+
+  @override
+  String get fallbackEngine => _service.fallbackEngine;
 
   @override
   List<String> allowedTranslationModels([String? tier]) =>
@@ -93,8 +144,17 @@ class SubscriptionRepositoryImpl implements ISubscriptionRepository {
   bool shouldShowEngineLimitNotice(String engineId) =>
       _service.shouldShowEngineLimitNotice(engineId);
 
+  // ── Config data ──────────────────────────────────────────────────────────
   @override
-  void dispose() {
-    // Managed externally
-  }
+  int get pollIntervalSeconds => _service.pollIntervalSeconds;
+
+  @override
+  int get captionRetentionDays => _service.captionRetentionDays;
+
+  @override
+  Map<String, dynamic>? get upgradePromptConfig =>
+      _service.upgradePromptConfig;
+
+  @override
+  void dispose() {}
 }

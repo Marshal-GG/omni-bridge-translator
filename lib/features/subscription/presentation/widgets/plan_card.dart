@@ -2,7 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../domain/entities/subscription_plan.dart';
 import 'package:intl/intl.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import 'package:omni_bridge/core/widgets/omni_card.dart';
 
 Widget buildPlanCard({
@@ -310,7 +311,7 @@ class _PlanCardState extends State<_PlanCard> with WidgetsBindingObserver {
   // ── Expanded details ──────────────────────────────────────────────────────────
 
   Widget _buildExpandedDetails() {
-    final src = SubscriptionRemoteDataSource.instance;
+    final src = sl<ISubscriptionRepository>();
 
     return Container(
       width: double.infinity,
@@ -370,8 +371,8 @@ class _PlanCardState extends State<_PlanCard> with WidgetsBindingObserver {
   Future<void> _handleCta() async {
     setState(() => _ctaLoading = true);
     final err = plan.isTrial
-        ? await SubscriptionRemoteDataSource.instance.activateTrial()
-        : await SubscriptionRemoteDataSource.instance.openCheckout(plan.id);
+        ? await sl<ISubscriptionRepository>().activateTrial()
+        : await sl<ISubscriptionRepository>().openCheckout(plan.id);
     if (!mounted) return;
     setState(() => _ctaLoading = false);
     if (err != null) {

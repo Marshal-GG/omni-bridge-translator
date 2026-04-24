@@ -11,7 +11,7 @@ import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/features/history/domain/usecases/get_live_history_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/get_chunked_history_usecase.dart';
 import 'package:omni_bridge/features/history/domain/usecases/clear_history_usecase.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 
 class MockGetLiveHistoryUseCase extends Mock implements GetLiveHistoryUseCase {}
 
@@ -21,7 +21,7 @@ class MockGetChunkedHistoryUseCase extends Mock
 class MockClearHistoryUseCase extends Mock implements ClearHistoryUseCase {}
 
 class MockSubscriptionRemoteDataSource extends Mock
-    implements SubscriptionRemoteDataSource {}
+    implements ISubscriptionRepository {}
 
 void main() {
   late HistoryBloc historyBloc;

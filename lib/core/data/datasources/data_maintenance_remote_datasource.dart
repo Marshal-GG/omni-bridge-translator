@@ -5,7 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:omni_bridge/core/constants/firebase_paths.dart';
 import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:omni_bridge/core/network/rtdb_client.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 
 abstract class IDataMaintenanceRemoteDataSource {
   Future<void> cleanupOldCaptions();
@@ -32,8 +33,7 @@ class DataMaintenanceRemoteDataSource
     if (userUid == null) return;
 
     try {
-      final retentionDays =
-          SubscriptionRemoteDataSource.instance.captionRetentionDays;
+      final retentionDays = sl<ISubscriptionRepository>().captionRetentionDays;
       if (retentionDays <= 0) return; // free tier — nothing stored to clean
 
       final cutoffMs = DateTime.now()

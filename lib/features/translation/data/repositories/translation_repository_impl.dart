@@ -1,7 +1,7 @@
 import 'package:omni_bridge/core/utils/app_logger.dart';
 import '../../domain/entities/caption_message.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
-import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import '../datasources/asr_websocket_datasource.dart';
 import '../datasources/translation_rest_datasource.dart';
 import '../../domain/repositories/i_translation_repository.dart';
@@ -10,7 +10,7 @@ class TranslationRepositoryImpl implements ITranslationRepository {
   static const String _tag = 'TranslationRepo';
   final AsrWebSocketClient _asrClient;
   final TranslationRestDatasource _restDatasource;
-  final SubscriptionRemoteDataSource _subscriptionService;
+  final ISubscriptionRepository _subscriptionService;
 
   TranslationRepositoryImpl(
     this._asrClient,

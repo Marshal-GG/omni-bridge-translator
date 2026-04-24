@@ -14,6 +14,7 @@ import '../widgets/subscription_header.dart';
 import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
 import 'package:omni_bridge/core/navigation/app_router.dart';
 import 'package:omni_bridge/core/utils/duration_utils.dart';
+import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
 
 class SubscriptionScreen extends StatefulWidget {
@@ -24,13 +25,12 @@ class SubscriptionScreen extends StatefulWidget {
 }
 
 class _DebugTierPanel extends StatelessWidget {
-  final _src = SubscriptionRemoteDataSource.instance;
-
-  _DebugTierPanel();
+  const _DebugTierPanel();
 
   @override
   Widget build(BuildContext context) {
-    final tiers = _src.tierOrder;
+    final src = sl<SubscriptionRemoteDataSource>();
+    final tiers = sl<ISubscriptionRepository>().tierOrder;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
@@ -60,8 +60,8 @@ class _DebugTierPanel extends StatelessWidget {
                 textStyle: const TextStyle(fontSize: 11),
               ),
               onPressed: () => t == 'trial'
-                  ? _src.activateFreshTrialDebug()
-                  : _src.setTierDebug(t),
+                  ? src.activateFreshTrialDebug()
+                  : src.setTierDebug(t),
               child: Text(t),
             )).toList(),
           ),
@@ -80,7 +80,7 @@ class _DebugTierPanel extends StatelessWidget {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   textStyle: const TextStyle(fontSize: 11),
                 ),
-                onPressed: () => _src.activateExpiredTrialDebug(),
+                onPressed: () => src.activateExpiredTrialDebug(),
                 child: const Text('Set trial → already expired'),
               ),
               OutlinedButton(
@@ -92,7 +92,7 @@ class _DebugTierPanel extends StatelessWidget {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   textStyle: const TextStyle(fontSize: 11),
                 ),
-                onPressed: () => _src.resetTrialDebug(),
+                onPressed: () => src.resetTrialDebug(),
                 child: const Text('Reset trial'),
               ),
             ],

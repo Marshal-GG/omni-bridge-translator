@@ -27,6 +27,139 @@ Remaining work before Omni Bridge can be publicly launched. Items are ordered by
 
 ---
 
+## ARCHITECTURE — Clean Architecture Violations (must fix before declaring v2.0 stable)
+
+The codebase has accumulated significant clean architecture violations. The strict rules are: **presentation → domain ← data**, BLoCs in presentation only, use-cases own all logic, repository interfaces in domain, DI via `get_it` only, no cross-feature internal imports.
+
+### ~~A1. Eliminate `SubscriptionRemoteDataSource` singleton~~ ✅ COMPLETE
+
+**Completed:** All 15+ `.instance` callsites across presentation, domain, and core layers have been replaced. `flutter analyze` reports zero issues.
+
+**What was done:**
+- Expanded `ISubscriptionRepository` interface to cover all callers' needs (billing notifiers, tier helpers, model access, config data, cancel/resume)
+- `SubscriptionRepositoryImpl` delegates every method to `SubscriptionRemoteDataSource` via constructor injection
+- New use-cases: `CancelSubscriptionUseCase`, `ResumeSubscriptionUseCase` — registered in `usecase_di.dart`
+- `OpenCheckout` return type unified to `Future<String?>` (was `Future<void>` in interface, `Future<String?>` in datasource)
+- `HistoryBloc` and `SettingsBloc` now inject `ISubscriptionRepository` instead of the datasource
+- `TranslationRepositoryImpl` accepts `ISubscriptionRepository` (was `SubscriptionRemoteDataSource`)
+- All presentation widgets (`billing_screen`, `plan_card`, `upgrade_sheet`, `current_usage_display`, `history_panel`, `languages_tab`, `subscription_screen`) use `sl<ISubscriptionRepository>()`
+- Core callsites (`app_initializer`, `data_maintenance_remote_datasource`, `engine_usage_dto`) updated
+- `admin_panel.dart` uses `sl<ISubscriptionRepository>()` for all interface methods; retains `sl<SubscriptionRemoteDataSource>()` only for the two debug-only admin methods (`setTierForOtherUser`, `setTierDebug`) — guarded by `kDebugMode`
+- Test mocks updated: `MockSubscriptionRemoteDataSource` now implements `ISubscriptionRepository`; `SettingsBloc` test wired with `MockISubscriptionRepository`
+
+**Verified:** `flutter analyze` → `No issues found!`
+
+---
+
+### A2. Eliminate `AuthRemoteDataSource` singleton from presentation (CRITICAL)
+
+`AuthRemoteDataSource.instance` accessed directly from presentation widgets.
+
+**Affected files:**
+- `lib/features/auth/presentation/screens/account/account_screen.dart:6` — calls `currentUser.value`, `updateDisplayName(newName)`
+- `lib/features/auth/presentation/screens/account/components/admin_panel.dart:5` — calls `auth.currentUser`, `firestore`
+- `lib/features/about/presentation/screens/about_screen.dart:7` — cross-feature import
+
+**Fix:** Use the existing `IAuthRepository` interface (already exists for admin check). Add use-cases: `WatchCurrentUserUseCase`, `UpdateDisplayNameUseCase`. Account screen and admin panel inject these via `get_it`.
+
+---
+
+### A3. Build out missing `startup/domain/` layer (CRITICAL — vertical slice violation)
+
+`features/startup/` has only `data/datasources/` and `presentation/`. No `domain/entities/`, `domain/repositories/`, or `domain/usecases/` at all.
+
+**What to create:**
+```
+features/startup/domain/
+  entities/
+    update_info.dart           ← move from presentation/notifiers
+    startup_phase.dart
+  repositories/
+    i_startup_repository.dart
+    i_update_repository.dart
+  usecases/
+    run_startup_sequence.dart
+    watch_update_available.dart
+    download_update.dart
+```
+
+**Then fix:**
+- `lib/features/startup/data/datasources/update_remote_datasource.dart:9` — currently imports presentation `UpdateNotifier`. The notifier should become a presentation-side wrapper around `WatchUpdateAvailableUseCase` returning a `Stream<UpdateInfo?>`.
+- `lib/features/about/presentation/blocs/about_bloc.dart:5` — replace `UpdateNotifier.instance.value` with the use-case
+- `lib/features/translation/presentation/screens/components/translation_header.dart:9` — same
+- `lib/features/shell/presentation/widgets/shell_overlay.dart:3` — same
+- `lib/features/about/data/repositories/update_repository.dart:3` — currently imports `startup/data/datasources/update_remote_datasource.dart` (data → data cross-feature). Should depend on `IUpdateRepository` interface from `startup/domain/`.
+
+---
+
+### A4. Split `TranslationBloc` (834 lines) into use-cases (MAJOR)
+
+`lib/features/translation/presentation/blocs/translation_bloc.dart` — 834 lines with embedded business logic. BLoCs should orchestrate, not contain logic.
+
+**Extract these into use-cases under `translation/domain/usecases/`:**
+- `CheckQuotaBeforeStartUseCase` — currently inlined in `_onToggleRunning` (lines 250-276)
+- `SwitchEngineFallbackUseCase` — currently inlined as fallback engine switching logic
+- `HandleAuthStateChangeUseCase` — currently in `_onAuthChanged` (lines 133-149)
+- `InitializeTranslationSessionUseCase` — currently in `_onInitialize` (lines 102-131)
+- `MonitorModelStatusUseCase` — model status orchestration scattered through event handlers
+
+After extraction, the BLoC should be ~200-300 lines: only event→use-case→state mapping.
+
+---
+
+### A5. Remove `data/` → `data/` cross-feature imports (CRITICAL)
+
+| File | Currently imports | Fix |
+|---|---|---|
+| `lib/features/settings/data/repositories/audio_device_repository_impl.dart:2` | `translation/data/datasources/asr_websocket_datasource.dart` | Settings should not know about ASR transport. Either move shared audio device code to `core/`, or expose via `translation/domain` interface |
+| ~~`lib/features/translation/data/repositories/translation_repository_impl.dart:4`~~ | ~~`subscription/data/datasources/...`~~ | ✅ Fixed in A1 — now injects `ISubscriptionRepository` |
+| `lib/features/startup/data/datasources/startup_remote_datasource.dart:5-6` | `subscription/data/...` and `translation/data/...` | Inject `ISubscriptionRepository` + `ITranscriptionRepository` interfaces |
+
+---
+
+### A6. Remove `data/` → `presentation/` imports (CRITICAL)
+
+| File | Issue | Fix |
+|---|---|---|
+| `lib/features/startup/data/datasources/update_remote_datasource.dart:9` | Writes to `UpdateNotifier` (presentation) | Datasource should return data, not push to a notifier. Move notifier-update to a use-case in domain that the presentation listens to |
+| `lib/features/usage/data/models/engine_usage_dto.dart:2` | Calls `SubscriptionRemoteDataSource.instance.getModelType(engine)` from a DTO | DTO should be pure data. Move `getModelType` resolution to a use-case that wraps the DTO mapping |
+
+---
+
+### A7. Remove presentation imports from domain layer (CRITICAL)
+
+`lib/features/usage/domain/usecases/get_usage_stats.dart:4` imports `usage/presentation/widgets/usage_utils.dart` and calls `UsageUtils.getDisplayName(s.engine, s.type)` at line 60.
+
+**Fix:** `getDisplayName` is domain logic (mapping engine → display name). Move to `usage/domain/services/usage_display_resolver.dart` or directly into the entity. Presentation can keep using it from there if needed.
+
+---
+
+### A8. Audit `get_it` registration completeness
+
+After A1–A7, re-check `lib/core/di/parts/` to ensure every repository interface and use-case is registered, and there are no manual `Foo.instance` accesses remaining outside of declared singletons in `core/`.
+
+**Search to run after refactor:**
+```bash
+grep -rn "SubscriptionRemoteDataSource\.instance" lib/ --include="*.dart"
+```
+**Status after A1:** Zero matches in `lib/features/`. Remaining `.instance` usages in `lib/features/` are legitimate DI registrations in `datasource_di.dart` (registering the singleton into `get_it`) and two debug-only admin methods guarded by `kDebugMode`.
+
+Re-run this audit after A2–A7 complete.
+
+---
+
+### Suggested order of operations
+
+1. ~~**A1** (subscription singleton)~~ ✅ **DONE** — all callsites eliminated, `flutter analyze` clean
+2. **A3** (startup domain) — adds missing layer, unblocks A6
+3. **A2** (auth singleton) — small surface, quick win
+4. **A5/A6** (data ↔ data, data ↔ presentation) — `translation_repository_impl.dart` already resolved by A1; remaining: `settings/audio_device_repository_impl.dart`, `startup/startup_remote_datasource.dart`, `update_remote_datasource.dart`
+5. **A7** (domain → presentation) — single file, easy
+6. **A4** (TranslationBloc split) — largest refactor but isolated to one feature
+7. **A8** (DI audit) — verification step
+
+---
+
 ## LOW — Polish / post-launch
 
 ### 18. Switch Razorpay to Live Mode Before Public Launch
@@ -104,6 +237,7 @@ Then guard class instantiation / method bodies with `if not RIVA_AVAILABLE: rais
 
 | Item | Status |
 |---|---|
+| **A1 — Eliminate `SubscriptionRemoteDataSource` singleton** | ✅ `ISubscriptionRepository` interface expanded to cover all 15+ callsites. New use-cases: `CancelSubscriptionUseCase`, `ResumeSubscriptionUseCase`. All presentation widgets, BLoCs, repositories, and core datasources now route through `sl<ISubscriptionRepository>()`. `flutter analyze` → zero issues. |
 | Billing screen (`/billing`) | ✅ Full billing management UI: status card (plan badge, status pill, countdown chip, 30-day progress bar, member since, next billing, last payment + `pay_XXXXX` copy, subscription ID copy), `_PendingCancelCard` for cancelled-but-active state, `_HaltedCard`, `_CancelledCard`, upsell card. Payment history section reads `subscription_events` subcollection via `invoicesNotifier`. Back button in header. `BillingInfo` entity includes `lastPaymentId`, `isCancelPending` getter. `PaymentEvent` entity for history entries. |
 | `cancelSubscription` Cloud Function | ✅ Authenticated HTTP endpoint. Verifies subscription belongs to caller before calling Razorpay `cancel_at_cycle_end: 1`. Optimistic UI update in datasource — billing screen shows pending-cancel state immediately without waiting for webhook. URL: `https://cancelsubscription-f3n57yyena-uc.a.run.app` |
 | `resumeSubscription` Cloud Function | ✅ Authenticated HTTP endpoint. Reactivates a pending-cancel subscription via Razorpay `POST /v1/subscriptions/{id}/resume` with `{ resume_at: "now" }`. Same subscription, original billing schedule, no new subscription created. Writes `subscriptionStatus:'active'` to Firestore directly so UI updates without waiting for webhook. Optimistic update in datasource. URL: `https://resumesubscription-f3n57yyena-uc.a.run.app` |

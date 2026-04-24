@@ -17,13 +17,13 @@ void initRepositoryDI() {
     () => sl<ISettingsRepository>() as SettingsRepositoryImpl,
   );
   sl.registerLazySingleton<ITranslationRepository>(
-    () => TranslationRepositoryImpl(sl(), sl(), sl()),
+    () => TranslationRepositoryImpl(sl(), sl(), sl<ISubscriptionRepository>()),
   );
   sl.registerLazySingleton<IAudioDeviceRepository>(
     () => AudioDeviceRepositoryImpl(sl<AsrWebSocketClient>()),
   );
   sl.registerLazySingleton<ISubscriptionRepository>(
-    () => SubscriptionRepositoryImpl(service: sl()),
+    () => SubscriptionRepositoryImpl(service: sl<SubscriptionRemoteDataSource>()),
   );
   sl.registerLazySingleton<IUpdateRepository>(() => UpdateRepositoryImpl(sl()));
   sl.registerLazySingleton<IHistoryRepository>(

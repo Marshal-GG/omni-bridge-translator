@@ -44,6 +44,7 @@ void initBlocDI() {
       loadDevicesUseCase: sl(),
       logEventUseCase: sl(),
       getSubscriptionStatus: sl(),
+      subscriptionRepository: sl<ISubscriptionRepository>(),
       updateVolumeUseCase: sl(),
       liveDeviceUpdateUseCase: sl(),
       liveMicToggleUseCase: sl(),
@@ -85,7 +86,7 @@ void initBlocDI() {
       getLiveHistoryUseCase: sl(),
       getChunkedHistoryUseCase: sl(),
       clearHistoryUseCase: sl(),
-      subscriptionDataSource: sl(),
+      subscriptionDataSource: sl<ISubscriptionRepository>(),
     ),
   );
 
