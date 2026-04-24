@@ -10,13 +10,47 @@ import '../../../../core/theme/app_theme.dart';
 import '../blocs/support_bloc.dart';
 import '../../domain/entities/feedback_ticket.dart';
 
-/// Displays a dashboard of the user's **active** tickets (open + inProgress).
+/// Displays a dashboard of the user's tickets filtered by [tabIndex].
 ///
-/// Rendered when no specific ticket is selected and the side‑panel is visible.
+/// Tab indices match [AppNavigationRail._supportSubTabs]:
+///   0 – All, 1 – Active (open + inProgress), 2 – Pending (inProgress),
+///   3 – Resolved, 4 – Archive (closed).
+///
 /// Colour tokens, spacing, radii and motion durations all come from
 /// [AppColors], [AppSpacing], [AppShapes], and [AppTextStyles] per DESIGN.md.
 class ActiveTicketsPage extends StatelessWidget {
-  const ActiveTicketsPage({super.key});
+  /// Which nav-rail sub-tab is currently selected.
+  final int tabIndex;
+
+  const ActiveTicketsPage({super.key, this.tabIndex = 0});
+
+  /// Returns the tickets that match [tabIndex] from the full [tickets] list.
+  List<FeedbackTicket> _filter(List<FeedbackTicket> tickets) {
+    switch (tabIndex) {
+      case 1: // Active
+        return tickets
+            .where(
+              (t) =>
+                  t.status == TicketStatus.open ||
+                  t.status == TicketStatus.inProgress,
+            )
+            .toList();
+      case 2: // Pending
+        return tickets
+            .where((t) => t.status == TicketStatus.inProgress)
+            .toList();
+      case 3: // Resolved
+        return tickets
+            .where((t) => t.status == TicketStatus.resolved)
+            .toList();
+      case 4: // Archive
+        return tickets
+            .where((t) => t.status == TicketStatus.closed)
+            .toList();
+      default: // All Tickets
+        return tickets;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,16 +60,10 @@ class ActiveTicketsPage extends StatelessWidget {
           return _buildLoadingState();
         }
 
-        final activeTickets = state.tickets
-            .where(
-              (t) =>
-                  t.status == TicketStatus.open ||
-                  t.status == TicketStatus.inProgress,
-            )
-            .toList();
+        final filtered = _filter(state.tickets);
 
         return _ActiveTicketsDashboard(
-          activeTickets: activeTickets,
+          activeTickets: filtered,
           allTickets: state.tickets,
         );
       },

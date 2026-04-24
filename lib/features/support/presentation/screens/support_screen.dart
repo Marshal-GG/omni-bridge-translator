@@ -11,42 +11,37 @@ import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_sh
 import 'package:omni_bridge/core/navigation/app_router.dart';
 import 'package:omni_bridge/core/widgets/omni_badge.dart';
 
-class SupportScreen extends StatefulWidget {
+class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
 
   @override
-  State<SupportScreen> createState() => _SupportScreenState();
-}
-
-class _SupportScreenState extends State<SupportScreen> {
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final initialTabIndex = args is int ? args : 0;
+
     return BlocProvider(
       create: (context) => sl<SupportBloc>()
         ..add(const LoadSupportLinks())
         ..add(const CaptureSystemSnapshot())
-        ..add(const LoadTicketHistory()),
-      child: AppDashboardShell(
-        currentRoute: AppRouter.support,
-        header: buildSupportHeader(context),
-        child: Column(
-          children: [
-            Expanded(
-              child: Row(
-                children: [
-                  const SupportSidebar(),
-                  Expanded(
-                    child: BlocBuilder<SupportBloc, SupportState>(
-                      builder: (context, state) {
-                        return Container(
+        ..add(const LoadTicketHistory())
+        ..add(SupportTabChanged(initialTabIndex)),
+      child: BlocBuilder<SupportBloc, SupportState>(
+        builder: (context, state) {
+          return AppDashboardShell(
+            currentRoute: AppRouter.support,
+            supportTabIndex: state.activeTabIndex,
+            onSupportTabChanged: (i) => context.read<SupportBloc>().add(SupportTabChanged(i)),
+            header: buildSupportHeader(context),
+            child: Column(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      const SupportSidebar(),
+                      Expanded(
+                        child: Container(
                           decoration: const BoxDecoration(
-                            color: Colors
-                                .transparent, // Let OmniWindowLayout background show through
+                            color: Colors.transparent, // Let OmniWindowLayout background show through
                           ),
                           child: Stack(
                             children: [
@@ -58,22 +53,24 @@ class _SupportScreenState extends State<SupportScreen> {
                                     Expanded(
                                       child: state.activeTicketId != null
                                           ? const SupportChatView()
-                                          : const ActiveTicketsPage(),
+                                          : ActiveTicketsPage(
+                                              tabIndex: state.activeTabIndex,
+                                            ),
                                     ),
                                   ],
                                 ),
                               ),
                             ],
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

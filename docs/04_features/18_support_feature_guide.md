@@ -81,7 +81,9 @@ Manages the real-time state of the chat. It listens for new message arrives via 
 ### SupportScreen
 **File**: `lib/features/support/presentation/screens/support_screen.dart`
 
-The top-level shell for the feature. It wraps a `BlocBuilder<SupportBloc, SupportState>` and routes to the correct sub-screen:
+The top-level shell for the feature, implemented as a stateless widget. It reads the initial active tab from `ModalRoute.of(context)?.settings.arguments`, provisions a local `SupportBloc`, and wraps its content in a `BlocBuilder`. By passing the active tab index down to `AppDashboardShell`, it keeps the global navigation sidebar perfectly in sync.
+
+It routes to the correct sub-screen depending on the internal conversational state:
 
 | State | Rendered Screen |
 |---|---|

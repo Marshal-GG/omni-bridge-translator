@@ -29,11 +29,19 @@ class AppNavigationRail extends StatelessWidget {
   /// Callback when a settings sub-tab is tapped while already on Settings.
   final ValueChanged<int>? onSettingsTabChanged;
 
+  /// Index of the active support sub-tab.
+  final int? supportTabIndex;
+
+  /// Callback when a support sub-tab is tapped while already on Support.
+  final ValueChanged<int>? onSupportTabChanged;
+
   const AppNavigationRail({
     super.key,
     required this.currentRoute,
     this.settingsTabIndex,
     this.onSettingsTabChanged,
+    this.supportTabIndex,
+    this.onSupportTabChanged,
   });
 
   static const _settingsSubTabs = [
@@ -346,12 +354,16 @@ class AppNavigationRail extends StatelessWidget {
                   return _NavSubTile(
                     icon: tab.icon,
                     label: tab.label,
-                    isActive: currentRoute == AppRouter.support && i == 0,
+                    isActive: currentRoute == AppRouter.support &&
+                        supportTabIndex == i,
                     onTap: () {
-                      if (currentRoute != AppRouter.support) {
+                      if (currentRoute == AppRouter.support) {
+                        onSupportTabChanged?.call(i);
+                      } else {
                         Navigator.pushReplacementNamed(
                           context,
                           AppRouter.support,
+                          arguments: i,
                         );
                       }
                     },

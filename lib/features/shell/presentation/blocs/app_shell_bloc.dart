@@ -108,9 +108,20 @@ class AppShellBloc extends Bloc<AppShellEvent, AppShellState>
     Emitter<AppShellState> emit,
   ) {
     if (event.routeName == AppRouter.settingsOverlay) {
-      emit(state.copyWith(isSettingsExpanded: true));
+      emit(state.copyWith(
+        isSettingsExpanded: true,
+        isSupportExpanded: false,
+      ));
     } else if (event.routeName == AppRouter.support) {
-      emit(state.copyWith(isSupportExpanded: true));
+      emit(state.copyWith(
+        isSupportExpanded: true,
+        isSettingsExpanded: false,
+      ));
+    } else {
+      emit(state.copyWith(
+        isSettingsExpanded: false,
+        isSupportExpanded: false,
+      ));
     }
   }
 

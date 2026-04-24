@@ -27,6 +27,12 @@ class AppDashboardShell extends StatefulWidget {
   /// Callback when a settings sub-tab is clicked in the nav rail.
   final ValueChanged<int>? onSettingsTabChanged;
 
+  /// Index of the active support sub-tab (forwarded to the nav rail).
+  final int? supportTabIndex;
+
+  /// Callback when a support sub-tab is clicked in the nav rail.
+  final ValueChanged<int>? onSupportTabChanged;
+
   const AppDashboardShell({
     super.key,
     required this.child,
@@ -34,6 +40,8 @@ class AppDashboardShell extends StatefulWidget {
     this.header,
     this.settingsTabIndex,
     this.onSettingsTabChanged,
+    this.supportTabIndex,
+    this.onSupportTabChanged,
   });
 
   @override
@@ -89,6 +97,8 @@ class _AppDashboardShellState extends State<AppDashboardShell> {
                         currentRoute: widget.currentRoute,
                         settingsTabIndex: widget.settingsTabIndex,
                         onSettingsTabChanged: widget.onSettingsTabChanged,
+                        supportTabIndex: widget.supportTabIndex,
+                        onSupportTabChanged: widget.onSupportTabChanged,
                       ),
                       Expanded(child: widget.child),
                     ],

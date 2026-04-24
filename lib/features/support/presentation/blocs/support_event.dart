@@ -107,3 +107,12 @@ class UpdateChatMessages extends SupportEvent {
 class CloseChat extends SupportEvent {
   const CloseChat();
 }
+
+class SupportTabChanged extends SupportEvent {
+  final int tabIndex;
+
+  const SupportTabChanged(this.tabIndex);
+
+  @override
+  List<Object?> get props => [tabIndex];
+}

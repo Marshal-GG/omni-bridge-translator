@@ -49,12 +49,20 @@ class SupportBloc extends Bloc<SupportEvent, SupportState> {
     on<SendMessage>(_onSendMessage);
     on<UpdateChatMessages>(_onUpdateChatMessages);
     on<CloseChat>(_onCloseChat);
+    on<SupportTabChanged>(_onSupportTabChanged);
   }
 
   @override
   Future<void> close() {
     _messagesSubscription?.cancel();
     return super.close();
+  }
+
+  void _onSupportTabChanged(
+    SupportTabChanged event,
+    Emitter<SupportState> emit,
+  ) {
+    emit(state.copyWith(activeTabIndex: event.tabIndex));
   }
 
   Future<void> _onLoadSupportLinks(

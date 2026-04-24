@@ -21,6 +21,10 @@ class SupportState extends Equatable {
   final bool isLoadingMessages;
   final bool isSendingMessage;
 
+  /// Index of the active support sub-tab (0 = All, 1 = Active, 2 = Pending,
+  /// 3 = Resolved, 4 = Archive). Mirrors [SettingsState.activeTabIndex].
+  final int activeTabIndex;
+
   const SupportState({
     this.supportLinks = const [],
     this.isLoadingLinks = false,
@@ -39,6 +43,7 @@ class SupportState extends Equatable {
     this.messages = const [],
     this.isLoadingMessages = false,
     this.isSendingMessage = false,
+    this.activeTabIndex = 0,
   });
 
   SupportState copyWith({
@@ -59,6 +64,7 @@ class SupportState extends Equatable {
     List<SupportMessage>? messages,
     bool? isLoadingMessages,
     bool? isSendingMessage,
+    int? activeTabIndex,
   }) {
     return SupportState(
       supportLinks: supportLinks ?? this.supportLinks,
@@ -78,6 +84,7 @@ class SupportState extends Equatable {
       messages: messages ?? this.messages,
       isLoadingMessages: isLoadingMessages ?? this.isLoadingMessages,
       isSendingMessage: isSendingMessage ?? this.isSendingMessage,
+      activeTabIndex: activeTabIndex ?? this.activeTabIndex,
     );
   }
 
@@ -100,5 +107,6 @@ class SupportState extends Equatable {
     messages,
     isLoadingMessages,
     isSendingMessage,
+    activeTabIndex,
   ];
 }
