@@ -41,7 +41,10 @@ lib/features/support/
 │   └── repositories/        # SupportRepositoryImpl
 └── presentation/
     ├── blocs/               # SupportBloc, Events, States
-    ├── screens/             # SupportScreen, TicketDetailsScreen
+    ├── screens/
+    │   ├── support_screen.dart        # Shell + BLoC routing
+    │   ├── active_tickets_page.dart   # Default dashboard (no ticket selected)
+    │   └── ticket_details_screen.dart # Individual ticket chat view
     └── widgets/             # ChatBubble, TicketListTile, SnapshotPreview
 ```
 
@@ -75,11 +78,33 @@ Handles local persistence of draft messages and a cache of the last 10 support t
 **Directory**: `lib/features/support/presentation/blocs/`
 Manages the real-time state of the chat. It listens for new message arrives via a stream from the repository and handles the pagination of ticket history.
 
+### SupportScreen
+**File**: `lib/features/support/presentation/screens/support_screen.dart`
+
+The top-level shell for the feature. It wraps a `BlocBuilder<SupportBloc, SupportState>` and routes to the correct sub-screen:
+
+| State | Rendered Screen |
+|---|---|
+| No ticket selected (default) | `ActiveTicketsPage` |
+| Ticket selected | `TicketDetailsScreen` |
+
+### ActiveTicketsPage
+**File**: `lib/features/support/presentation/screens/active_tickets_page.dart`
+
+The entry-point dashboard shown when the user navigates to Support with no active ticket selected. Strictly design-system compliant — uses `AppColors`, `AppTextStyles`, `AppShapes`, and `AppSpacing` tokens alongside global widgets from `lib/core/widgets/` (`OmniCard`, `OmniChip`, `OmniBadge`).
+
+**Key UI sections:**
+- **Summary strip** — three stat cards showing open, in-progress, and resolved counts.
+- **Section header** — "Active Tickets" title with a count badge.
+- **Ticket cards** — interactive cards with status-based accent colouring and hover effects. Tapping a card dispatches a `SupportSelectTicketEvent` to the BLoC to navigate to `TicketDetailsScreen`.
+
+> **Important:** Do **not** add hardcoded colours, custom gradients, or inline card/chip reproductions to this file. All colour values must come from `AppColors` (or `withValues(alpha:)` calls on those tokens); all status pills and card containers must use `OmniChip`/`OmniBadge` and `OmniCard` respectively.
+
 ### Design Aesthetic & Window Management
-The `support` feature utilizes **Glassmorphism** heavily through the main `AppTheme` design system (see `lib/core/theme/app_theme.dart`). 
-- **Theming**: Directly leverages `AppColors`, `AppSpacing`, and `AppTextStyles` tokens, overriding legacy hardcoded gradients to ensure consistency with the entire app.
-- **Layout**: Uses a Split-view dashboard for desktop, ensuring intuitive navigation between different support threads.
-- **Window Management**: The `SupportScreen` window sizing rules and positioning are managed centrally by the `MyNavObserver` instead of locally, ensuring smooth resizing transitions when navigating between the overlay and support chat screens.
+The `support` feature leverages the **Glassmorphism** design language through the main `AppTheme` (see `lib/core/theme/app_theme.dart`) and the shared global widget library (`lib/core/widgets/`).
+- **Theming**: Uses `AppColors`, `AppSpacing`, and `AppTextStyles` tokens. All card and chip patterns use `OmniCard` and `OmniChip`/`OmniBadge` — never inline `Container` reproductions.
+- **Layout**: Split-view dashboard for desktop, ensuring intuitive navigation between different support threads.
+- **Window Management**: `SupportScreen` window sizing is managed centrally by `MyNavObserver` → `setToDashboardPosition()`, ensuring smooth resize transitions when navigating between screens.
 
 ---
 
@@ -96,4 +121,5 @@ One of the unique capabilities of the `support` feature is the **System Snapshot
 
 - [05 — Flutter Architecture](../02_architecture/05_flutter_architecture.md) — Feature-driven structure and BLoC reference
 - [07 — Database Schema](../02_architecture/07_database_schema.md) — Ticketing schema details in Firestore
-- [13 — New Screen Setup Guide](../03_guides/13_new_screen_setup_guide.md) — UI/UX pattern reference & centralized window routing.
+- [13 — New Screen Setup Guide](../03_guides/13_new_screen_setup_guide.md) — UI/UX pattern reference & centralized window routing
+- [26 — Shell Update Notifications](../04_features/26_shell_update_notifications.md) — Update tile and badge implementation

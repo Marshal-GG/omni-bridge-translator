@@ -160,6 +160,68 @@ Re-run this audit after A2–A7 complete.
 
 ---
 
+## DESIGN SYSTEM — follow-up after shipping `DESIGN.md`
+
+`DESIGN.md` at the repo root now mirrors `lib/core/theme/app_theme.dart` and captures motion, iconography, components, and the 27 s demo-video spec. A pointer exists in `CLAUDE.md` so future Claude sessions read it before generating UI. These are follow-ups to validate and leverage it.
+
+### D1. Test-drive the design system end-to-end
+
+**What:** Paste `DESIGN.md` into Claude or Google Stitch with a prompt for a *new* screen (e.g. "generate a first-run onboarding step explaining microphone permissions"). Compare output against the existing app.
+
+**Why:** The real test of the spec is whether an AI agent that's never seen the app produces on-brand UI. If it doesn't, the failing section is too vague and needs tightening.
+
+**Exit criterion:** One generation pass produces correct palette, typography, motion, and component choices — no manual correction of hex values or easing names needed.
+
+---
+
+### D2. Export the demo HTML to an actual video file
+
+**What:** The demo (`design_export/Omni Bridge Demo.html`) is a 27 s HTML animation that's unusable on LinkedIn until it's rendered to MP4. Write a Puppeteer + ffmpeg script that:
+
+1. Loads the HTML at 1200 × 750
+2. Scrubs the timeline from 0 → 27 s at 60 fps (via a `?t=` param or `postMessage` seek)
+3. Captures each frame as PNG
+4. Pipes the frames to ffmpeg with `-c:v libx264 -pix_fmt yuv420p -r 60` to produce:
+   - `omni_bridge_demo.mp4` — 1920 × 1080 (upscaled)
+   - `omni_bridge_demo_square.mp4` — 1080 × 1080 centered crop
+   - `omni_bridge_demo.gif` — 600 × 375 at 20 fps, `-loop 0`, target ≤ 8 MB
+
+**Where it goes:** `design_export/export/` (gitignored large binaries, keep the script committed at `design_export/convert_video.js` or similar).
+
+**Why:** §9.8 of `DESIGN.md` promises these outputs — they need to actually exist before the LinkedIn post goes live.
+
+---
+
+### D3. Commit a poster frame alongside `DESIGN.md`
+
+**What:** Capture the demo at `t = 2.2 s` (logo + tagline reveal — the moment defined in §9.8 of `DESIGN.md`) and save as `docs/06_tools/design_poster.png` at 1920 × 1080. Reference it from `DESIGN.md` as the visual ground-truth snapshot.
+
+**Why:** The spec is 1300+ lines of text. A single PNG tells a human reader "yes, the colors and motion I'm describing look like this." Cheap insurance against the spec drifting into fiction.
+
+---
+
+### D4. Add a theme-drift check
+
+**What:** A ~20-line Dart test or Python script that parses `lib/core/theme/app_theme.dart` and verifies every hex value declared as a `const` in `AppColors` / `UsageColors` also appears somewhere in `DESIGN.md`. Fail CI if the two diverge.
+
+**Suggested location:** `test/design/theme_drift_test.dart`
+
+**Sketch:**
+```dart
+test('every AppColors hex appears in DESIGN.md', () async {
+  final theme = File('lib/core/theme/app_theme.dart').readAsStringSync();
+  final design = File('DESIGN.md').readAsStringSync().toLowerCase();
+  final hexes = RegExp(r'0xFF([0-9A-Fa-f]{6})').allMatches(theme)
+      .map((m) => '#${m.group(1)!.toLowerCase()}').toSet();
+  final missing = hexes.where((h) => !design.contains(h)).toList();
+  expect(missing, isEmpty, reason: 'Hexes in app_theme.dart but not in DESIGN.md: $missing');
+});
+```
+
+**Why:** Someone will change `AppColors` and forget to update `DESIGN.md`. The spec will rot silently — this catches it at CI time.
+
+---
+
 ## LOW — Polish / post-launch
 
 ### 18. Switch Razorpay to Live Mode Before Public Launch

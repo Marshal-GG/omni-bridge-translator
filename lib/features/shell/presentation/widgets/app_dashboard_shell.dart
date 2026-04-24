@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:omni_bridge/core/widgets/omni_window_layout.dart';
 import 'package:omni_bridge/features/shell/presentation/widgets/app_navigation_rail.dart';
 import 'package:omni_bridge/features/shell/presentation/widgets/shell_overlay.dart';
+import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
 
 /// A wrapper layout that provides a global dashboard shell experience.
 ///
@@ -11,7 +13,7 @@ import 'package:omni_bridge/features/shell/presentation/widgets/shell_overlay.da
 ///
 /// This ensures the draggable title-bar and window controls span the entire
 /// window rather than being confined to only the content area next to the rail.
-class AppDashboardShell extends StatelessWidget {
+class AppDashboardShell extends StatefulWidget {
   final Widget child;
   final String currentRoute;
 
@@ -35,6 +37,29 @@ class AppDashboardShell extends StatelessWidget {
   });
 
   @override
+  State<AppDashboardShell> createState() => _AppDashboardShellState();
+}
+
+class _AppDashboardShellState extends State<AppDashboardShell> {
+  @override
+  void initState() {
+    super.initState();
+    // ── Debug: simulate an available update so the nav tile is always visible
+    //    in development. Remove (or leave — it's gated by kDebugMode) before
+    //    publishing a release build.
+    if (kDebugMode) {
+      Future.microtask(
+        () => UpdateNotifier.instance.setAvailable(
+          '2.0.0-preview',
+          'https://github.com/Marshal-GG/omni-bridge-translator/releases',
+          download:
+              'https://github.com/Marshal-GG/omni-bridge-translator/releases/download/v2.0.0/OmniBridge-Setup.exe',
+        ),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -49,31 +74,32 @@ class AppDashboardShell extends StatelessWidget {
         if (constraints.maxHeight < 350) return const SizedBox.expand();
 
         return OmniWindowLayout(
-      child: ShellOverlay(
-        child: Column(
-          children: [
-            if (header != null) ...[
-              header!,
-              const Divider(height: 1, color: Colors.white10),
-            ],
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AppNavigationRail(
-                    currentRoute: currentRoute,
-                    settingsTabIndex: settingsTabIndex,
-                    onSettingsTabChanged: onSettingsTabChanged,
-                  ),
-                  Expanded(child: child),
+          child: ShellOverlay(
+            child: Column(
+              children: [
+                if (widget.header != null) ...[
+                  widget.header!,
+                  const Divider(height: 1, color: Colors.white10),
                 ],
-              ),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppNavigationRail(
+                        currentRoute: widget.currentRoute,
+                        settingsTabIndex: widget.settingsTabIndex,
+                        onSettingsTabChanged: widget.onSettingsTabChanged,
+                      ),
+                      Expanded(child: widget.child),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
         );
       },
     );
   }
 }
+

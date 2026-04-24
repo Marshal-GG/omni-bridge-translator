@@ -8,6 +8,9 @@ import 'package:omni_bridge/core/widgets/omni_chip.dart';
 import 'package:omni_bridge/features/shell/presentation/blocs/app_shell_bloc.dart';
 import 'package:omni_bridge/features/shell/presentation/blocs/app_shell_event.dart';
 import 'package:omni_bridge/features/shell/presentation/blocs/app_shell_state.dart';
+import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  AppNavigationRail — collapsible dashboard sidebar
@@ -139,6 +142,22 @@ class AppNavigationRail extends StatelessWidget {
                   _divider(),
                   const SizedBox(height: AppSpacing.xs),
 
+                  // ── Update tile (shown when update is available) ──
+                  ListenableBuilder(
+                    listenable: UpdateNotifier.instance,
+                    builder: (context, _) {
+                      if (!UpdateNotifier.instance.value) {
+                        return const SizedBox.shrink();
+                      }
+                      return _UpdateNavTile(
+                        isExpanded: isExpanded,
+                        isForced: UpdateNotifier.instance.isForced,
+                        version: UpdateNotifier.instance.latestVersion,
+                        onTap: () => _launchUpdate(),
+                      );
+                    },
+                  ),
+
                   // ── Toggle Button ──
                   _NavTile(
                     icon: isExpanded
@@ -156,6 +175,7 @@ class AppNavigationRail extends StatelessWidget {
 
                   const SizedBox(height: AppSpacing.xs),
                   _buildUserProfile(context, isExpanded),
+
                 ],
               ),
             ),
@@ -509,6 +529,163 @@ class AppNavigationRail extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  // ── Update launch ────────────────────────────────────────────────────────────
+
+  static Future<void> _launchUpdate() async {
+    final notifier = UpdateNotifier.instance;
+    final url = notifier.downloadUrl?.isNotEmpty == true
+        ? notifier.downloadUrl!
+        : notifier.releaseUrl ??
+            'https://github.com/Marshal-GG/omni-bridge-translator/releases';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  _UpdateNavTile — pulsing update button shown in the rail
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _UpdateNavTile extends StatefulWidget {
+  final bool isExpanded;
+  final bool isForced;
+  final String? version;
+  final VoidCallback onTap;
+
+  const _UpdateNavTile({
+    required this.isExpanded,
+    required this.isForced,
+    required this.onTap,
+    this.version,
+  });
+
+  @override
+  State<_UpdateNavTile> createState() => _UpdateNavTileState();
+}
+
+class _UpdateNavTileState extends State<_UpdateNavTile>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+  late final Animation<double> _glow;
+  bool _hovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    )..repeat(reverse: true);
+    _glow = Tween<double>(begin: 0.3, end: 0.9).animate(
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color =
+        widget.isForced ? AppColors.accentRed : AppColors.accentCyan;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 2,
+      ),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedBuilder(
+            animation: _glow,
+            builder: (context, _) => AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: EdgeInsets.symmetric(
+                horizontal: widget.isExpanded ? AppSpacing.sm : 0,
+                vertical: AppSpacing.sm - 1,
+              ),
+              decoration: BoxDecoration(
+                color: color.withValues(
+                  alpha: _hovered ? 0.14 : _glow.value * 0.09,
+                ),
+                borderRadius: AppShapes.md,
+                border: Border.all(
+                  color: color.withValues(
+                    alpha: _hovered ? 0.35 : _glow.value * 0.2,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  // Centered in collapsed mode
+                  if (!widget.isExpanded) const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: AppShapes.sm,
+                    ),
+                    child: Icon(
+                      widget.isForced
+                          ? Icons.priority_high_rounded
+                          : Icons.system_update_alt_rounded,
+                      size: 15,
+                      color: color,
+                    ),
+                  ),
+                  if (!widget.isExpanded) const Spacer(),
+
+                  if (widget.isExpanded) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.isForced ? 'Critical Update' : 'Update',
+                            style: AppTextStyles.caption.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: color,
+                            ),
+                          ),
+                          if (widget.version != null)
+                            Text(
+                              'v${widget.version}',
+                              style: AppTextStyles.labelTiny.copyWith(
+                                color: color.withValues(alpha: 0.6),
+                                fontSize: 9,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.download_rounded,
+                      size: 13,
+                      color: color.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 2),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

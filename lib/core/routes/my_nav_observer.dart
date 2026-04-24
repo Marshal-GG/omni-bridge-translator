@@ -65,14 +65,15 @@ class MyNavigatorObserver extends NavigatorObserver {
       setToTranslationPosition();
     } else if (name == AppRouter.historyPanel) {
       setToHistoryPosition();
-    } else if (name == AppRouter.onboarding ||
-        name == AppRouter.splash ||
-        name == AppRouter.forceUpdate) {
+    } else if (name == AppRouter.onboarding || name == AppRouter.splash) {
       setToStartupPosition();
+    } else if (name == AppRouter.forceUpdate) {
+      setToForceUpdatePosition();
     } else if (name == AppRouter.subscription) {
       setToSubscriptionPosition();
     } else {
       setToDashboardPosition();
     }
+
   }
 }

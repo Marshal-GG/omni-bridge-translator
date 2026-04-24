@@ -42,7 +42,7 @@ bool _isNavRailExpanded = false;
 const double _navRailExpandedDiff =
     180.0; // navRailWidth (260) - navRailWidthCollapsed (80)
 
-enum WindowMode { none, login, startup, translation, history, dashboard, subscription }
+enum WindowMode { none, login, startup, forceUpdate, translation, history, dashboard, subscription }
 
 WindowMode _currentWindowMode = WindowMode.none;
 
@@ -108,6 +108,22 @@ Future<void> setToStartupPosition() async {
     appWindow.alignment = Alignment.center;
     await windowManager.center();
     await windowManager.setAlwaysOnTop(true);
+  });
+}
+
+/// Force-update screen — same size as startup but NOT always-on-top.
+Future<void> setToForceUpdatePosition() async {
+  if (_currentWindowMode == WindowMode.forceUpdate) return;
+  _currentWindowMode = WindowMode.forceUpdate;
+
+  await _transitionWindow(() async {
+    await windowManager.setResizable(true);
+    appWindow.minSize = const Size(600, 500);
+    await windowManager.setMinimumSize(const Size(600, 500));
+    await windowManager.setSize(const Size(880, 700));
+    appWindow.alignment = Alignment.center;
+    await windowManager.center();
+    await windowManager.setAlwaysOnTop(false);
   });
 }
 

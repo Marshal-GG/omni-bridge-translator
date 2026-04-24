@@ -17,6 +17,11 @@ This guide provides a detailed walkthrough for adding a new screen (and its asso
 4. [Presentation Layer (UI & State)](#4-presentation-layer-ui--state)
 5. [Window Management (window_manager.dart)](#5-window-management-window_managerdart)
 6. [UI Structure & Premium Aesthetics](#6-ui-structure--premium-aesthetics)
+   - [6A. Dashboard Shell](#a-dashboard-shell)
+   - [6B. Global Widget Library (use first)](#b-global-widget-library--check-before-writing-any-ui)
+   - [6C. Header (OmniHeader)](#c-header-omniheader)
+   - [6D. Engine Status Badges](#d-engine-status-badges-modelstatusindicator)
+   - [6E. Layout Constraints](#e-layout-constraints)
 7. [Dependency Injection (DI) Registration](#7-dependency-injection-di-registration)
 8. [Navigation & Routing](#8-navigation--routing)
 9. [Error Handling & Failures](#9-error-handling--failures-functional-approach)
@@ -196,41 +201,68 @@ class MyScreen extends StatelessWidget {
 The project uses a centralized `window_manager.dart` for handling window positioning, sizing, and transparency across different features.
 
 ### A. Define Window Presets
-Add a new positioning function in `lib/core/platform/window_manager.dart` if your screen requires a specific size.
+Add a new entry to the `WindowMode` enum and a new positioning function in `lib/core/platform/window_manager.dart` if your screen requires a specific size.
 
 > [!IMPORTANT]
 > Always set **both** `appWindow.minSize` (bitsdojo_window) **and** `windowManager.setMinimumSize` (window_manager). They are separate native packages — setting only one is ignored by the other.
 
+**Step 1 — add to enum:**
 ```dart
-/// Sets the window to a centered panel for the MyFeature screen
+enum WindowMode { none, login, startup, forceUpdate, translation, history, dashboard, subscription, myFeature }
+```
+
+**Step 2 — add a position function:**
+```dart
+/// Sets the window to a centered panel for the MyFeature screen.
 Future<void> setToMyFeaturePosition() async {
-  await windowManager.setResizable(true);
-  appWindow.minSize = const Size(1000, 500);          // bitsdojo constraint
-  await windowManager.setMinimumSize(const Size(1000, 500)); // window_manager constraint
-  await windowManager.setSize(const Size(1140, 850));
-  appWindow.alignment = Alignment.center;
-  await windowManager.center();
-  await windowManager.setAlwaysOnTop(false);
+  if (_currentWindowMode == WindowMode.myFeature) return; // guard — no-op on re-entry
+  _currentWindowMode = WindowMode.myFeature;
+
+  await _transitionWindow(() async {           // fades out → resizes → fades in
+    await windowManager.setResizable(true);
+    appWindow.minSize = const Size(1000, 500);          // bitsdojo constraint
+    await windowManager.setMinimumSize(const Size(1000, 500)); // window_manager constraint
+    await windowManager.setSize(const Size(1140, 850));
+    appWindow.alignment = Alignment.center;
+    await windowManager.center();
+    await windowManager.setAlwaysOnTop(false); // almost always false — see note below
+  });
 }
 ```
 
+> [!WARNING]
+> **`setAlwaysOnTop`**: Only set to `true` for screens that must float above all other OS windows during active use (e.g., the translation overlay, splash/onboarding). Dashboard and utility screens **must** use `false`. Setting it to `true` on a utility screen is a UX defect — the window can't be hidden behind other apps.
+>
+> Example of the split: `setToStartupPosition()` uses `true`; the identical `setToForceUpdatePosition()` uses `false` because the force-update screen is a full blocking page, not a live overlay.
+
 ### B. Trigger Positioning on Navigation
 
-To ensure consistent window transitions, window resizing is handled centrally by the `MyNavigatorObserver`. You must register your route in the observer's window management logic.
+Window resizing is driven by `MyNavigatorObserver`. Register your route in `_handleWindowState` **and** add it to the `didPop` list so the previous window size is restored when the user navigates back.
 
 ```dart
 // lib/core/routes/my_nav_observer.dart
 
+// 1. didPop — restore window on back-navigation
+void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+  final name = route.settings.name;
+  if (name == AppRouter.myFeature /* ... other routes ... */) {
+    if (previousRoute != null) _handleWindowState(previousRoute);
+  }
+}
+
+// 2. _handleWindowState — apply window preset
 void _handleWindowState(Route<dynamic> route) {
   final name = route.settings.name;
-  if (name == AppRouter.myFeature) {
+  // ...
+  } else if (name == AppRouter.myFeature) {
     setToMyFeaturePosition();
   }
+  // ...
 }
 ```
 
 > [!TIP]
-> This pattern allows the app to automatically restore the previous window size when the user navigates back, without needing any manual logic in your `initState`.
+> The `_currentWindowMode` guard inside each preset function means navigating to a screen you're already on is a no-op — no flicker, no redundant native calls.
 
 ---
 
@@ -262,57 +294,51 @@ Widget build(BuildContext context) {
 > [!NOTE]
 > `AppDashboardShell` is the high-level layout. If you are building a smaller utility window that does NOT need the sidebar, use `OmniWindowLayout` directly.
 
-### B. Draggable Header
-Create a header widget in `presentation/widgets/[feature]_header.dart`.
+### B. Global Widget Library — check before writing any UI
 
-> [!IMPORTANT]
-> **Never** wrap `MinimizeWindowButton` or `CloseWindowButton` in a `SizedBox`. These bitsdojo widgets have their own internal sizing — constraining them causes them to render vertically centered (appearing "floating" in the header). Place them **directly** in the Row.
+**Before writing any inline `Container`, `Row`, or `Scaffold` that recreates a known pattern, check `lib/core/widgets/` first.** Recreating these as private widgets or inline code is a defect, not a style choice.
+
+| Widget | Import | Use for |
+|---|---|---|
+| `OmniWindowLayout` | `core/widgets/omni_window_layout.dart` | Every top-level screen — `Scaffold(transparent) + WindowBorder + surface bg` |
+| `OmniHeader` | `core/widgets/omni_header.dart` | Draggable 32 px title bar with icon, title, minimize & close |
+| `OmniCard` | `core/widgets/omni_card.dart` | Tinted card container — pass `baseColor` + `hasGlow: true` for glow |
+| `OmniChip` | `core/widgets/omni_chip.dart` | Feature tags, version strings, engine name labels |
+| `OmniBadge` | `core/widgets/omni_badge.dart` | Ticket status, category labels — heavier weight than `OmniChip` |
+| `OmniTintedButton` | `core/widgets/omni_tinted_button.dart` | Action buttons needing tinted bg + hover scale + loading state |
+| `OmniSearchBar` | `core/widgets/omni_search_bar.dart` | All search `TextField`s — wired to the global `InputDecorationTheme` |
+| `OmniProgressBar` | `core/widgets/omni_progress_bar.dart` | Quota / usage progress bars |
+| `OmniDropdown` | `core/widgets/omni_dropdown.dart` | All dropdown selectors |
+| `OmniSegmentedControl` | `core/widgets/omni_segmented_control.dart` | Tab-style 2–4 option toggle |
+| `OmniVersionChip` | `core/widgets/omni_version_chip.dart` | Auto-reads `PackageInfo` and renders `OMNI BRIDGE vX.X.X` |
+| `OmniBranding` | `core/widgets/omni_branding.dart` | Logo + wordmark lockup |
+| `OmniCopyright` | `core/widgets/omni_copyright.dart` | Footer copyright line |
+
+**Anti-patterns:**
+- ❌ `Scaffold(backgroundColor: transparent) + WindowBorder(...)` → `OmniWindowLayout`
+- ❌ Manual 32 px `Row` with `MoveWindow + MinimizeWindowButton + CloseWindowButton` → `OmniHeader`
+- ❌ `Container(decoration: BoxDecoration(color: color.withValues(alpha:0.05), ...))` → `OmniCard`
+- ❌ Inline tinted pill/chip `Container` → `OmniChip` / `OmniBadge`
+- ❌ Custom hover-animated tinted button → `OmniTintedButton`
+- ❌ Raw `TextField` as a search input → `OmniSearchBar`
+
+### C. Header (`OmniHeader`)
+
+All screens pass their header via `AppDashboardShell.header` or directly as the first child of `OmniWindowLayout`. **Always use `OmniHeader`** — do not rebuild the button row manually.
 
 ```dart
-Widget buildMyFeatureHeader(BuildContext context) {
-  return SizedBox(
-    height: 32,
-    child: Row(
-      children: [
-        // Optional: back button (standard Flutter widget — SizedBox wrapper is fine)
-        SizedBox(
-          width: 32,
-          height: 32,
-          child: IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_rounded, size: 15, color: Colors.white38),
-            splashRadius: 16,
-            padding: EdgeInsets.zero,
-          ),
-        ),
-        const Icon(Icons.my_icon, size: 14, color: Colors.tealAccent),
-        const SizedBox(width: 8),
-        const Text(
-          'My Feature',
-          style: TextStyle(
-            color: Colors.white38,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Expanded(child: MoveWindow()), // fills remaining space, enables drag
-        MinimizeWindowButton(          // ← NO SizedBox wrapper
-          colors: WindowButtonColors(iconNormal: Colors.white38),
-        ),
-        CloseWindowButton(             // ← NO SizedBox wrapper
-          colors: WindowButtonColors(
-            iconNormal: Colors.white38,
-            mouseOver: Colors.redAccent,
-          ),
-          onPressed: () => appWindow.close(),
-        ),
-      ],
-    ),
-  );
-}
+OmniHeader(
+  title: 'My Feature',
+  icon: Icons.my_feature_icon,          // optional
+  accentColor: AppColors.accentCyan,    // optional — tints icon
+  onBack: () => Navigator.pop(context), // optional — shows back button
+)
 ```
 
-### C. Engine Status Badges (`ModelStatusIndicator`)
+> [!IMPORTANT]
+> Never wrap `MinimizeWindowButton` or `CloseWindowButton` (bitsdojo widgets) in a `SizedBox`. They have their own internal sizing — constraining them causes them to appear vertically off-center. `OmniHeader` already handles this correctly internally.
+
+### D. Engine Status Badges (`ModelStatusIndicator`)
 
 The shared `ModelStatusIndicator` widget (`lib/core/widgets/model_status_indicator.dart`) renders a compact status badge (Ready / Loading / Error / etc.) for any model.
 
@@ -337,7 +363,7 @@ ModelStatusIndicator(
 )
 ```
 
-### D. Layout Constraints
+### E. Layout Constraints
 For premium visual balance, center the main content in a fixed-width container to avoid stretching on wide monitors. The target width depends on the screen's content density:
 
 | Screen type | Typical content width |
@@ -594,7 +620,8 @@ Remove all unused imports immediately — the analyzer treats them as errors and
 - [ ] **Injection**: DataSources, Repositories, UseCases, and BLoCs registered in `injection.dart`.
 - [ ] **Router**: Constant defined and route registered (with `BlocProvider`) in `app_router.dart`.
 - [ ] **Sidebar**: `_NavTile` added to `AppNavigationRail` with proper active state check.
-- [ ] **Window Management**: New position preset added to `window_manager.dart` and registered in `my_nav_observer.dart`.
+- [ ] **Window Management**: `WindowMode` enum entry added, preset function added (with `_transitionWindow` + `setAlwaysOnTop(false)`), registered in `my_nav_observer.dart`.
+- [ ] **Global widgets**: No `OmniWindowLayout`, `OmniHeader`, `OmniCard`, `OmniChip`, `OmniBadge`, `OmniTintedButton`, or `OmniSearchBar` patterns recreated inline — checked `lib/core/widgets/` first.
 - [ ] **UI Structure**: Screen uses `AppDashboardShell` with proper `currentRoute` and `OmniHeader`.
 - [ ] **Design Language**: Colors match feature category (ASR: Indigo, Trans: Teal). Model names match standard nomenclature.
 - [ ] **Performance**: Vertical dead space minimized using `MainAxisSize.min` and high-density padding.
