@@ -6,7 +6,7 @@
     "omni-bridge-ai-translator": {
       "hosting": {
         "omnibridge": [
-          "omni-bridge-landing"
+          "omni-bridge-ai-translator"
         ]
       }
     }

@@ -34,25 +34,6 @@
       "*.local"
     ]
   },
-  "flutter": {
-    "platforms": {
-      "android": {
-        "default": {
-          "projectId": "omni-bridge-ai-translator",
-          "appId": "1:883780252017:android:c71e9d80351719134406d0",
-          "fileOutput": "android/app/google-services.json"
-        }
-      },
-      "dart": {
-        "lib/firebase_options.dart": {
-          "projectId": "omni-bridge-ai-translator",
-          "configurations": {
-            "windows": "1:883780252017:web:f12a6019fa4c12234406d0"
-          }
-        }
-      }
-    }
-  },
   "database": {
     "rules": "database.rules.json"
   },
