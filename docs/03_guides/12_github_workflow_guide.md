@@ -281,6 +281,7 @@ git push origin v1.2.0
 | `.github/workflows/flutter_ci.yml` | `workflow_dispatch` (Manual) | Analyze + Test + Coverage + Build |
 | `.github/workflows/release.yml` | `workflow_dispatch` (Manual) | Build Windows + GitHub Release |
 | `.github/workflows/web_landing_ci.yml` | Auto — push/PR touching `web_landing/**`, `firebase.json`, `.firebaserc` | Build Next.js static export + deploy to Firebase Hosting (PR preview / UAT / production) |
+| `.github/workflows/firebase_rules_ci.yml` | Auto — push/PR touching `*.rules`, `firestore.indexes.json`, `firebase.json`, `.firebaserc` | Validate Firestore / Storage / RTDB rules on PR (dry run); deploy to live Firebase on push to `main` (production-gated). Does **not** trigger on `uat` — rules are project-wide so a uat deploy would silently change prod. |
 
 > [!NOTE]
 > To switch the Flutter workflows from **Manual** to **Auto-trigger** (on push/PR or tags), edit the `.yml` files in `.github/workflows/` and uncomment the `push:` and `pull_request:` blocks as described in their headers. The `web_landing_ci.yml` workflow is already auto-triggered.

@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "omni-bridge-ai-translator"
+  },
+  "targets": {
+    "omni-bridge-ai-translator": {
+      "hosting": {
+        "omnibridge": [
+          "omni-bridge-landing"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

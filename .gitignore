@@ -92,16 +92,17 @@ windows/flutter/ephemeral/
 # Firebase & Google credentials
 firebase_options.dart
 app_config.dart
+# Firebase — sensitive only. Deploy config + rules must stay tracked
+# so CI can deploy and security rules are code-reviewed.
 google-services.json
 GoogleService-Info.plist
 firebase-debug.log
 firebase-debug.*.log
 *.firebase
-firebase.json
-.firebaserc
-firestore.indexes.json
-firestore.rules
-storage.rules
+# DO NOT add firebase.json, .firebaserc, firestore.rules,
+# firestore.indexes.json, storage.rules, or database.rules.json here —
+# they are required by GitHub Actions web_landing_ci.yml and serve as
+# the source of truth for Firestore/Storage/RTDB security rules.
 
 # Additional ignores
 task.md

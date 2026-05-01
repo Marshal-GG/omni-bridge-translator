@@ -1,0 +1,93 @@
+name: Firebase Rules — Validate & Deploy
+
+# Rules / indexes are project-wide in Firebase: there is no per-environment
+# scope. We therefore:
+#   - Validate on every PR that touches them (catches syntax errors early)
+#   - Deploy ONLY on push to main (gated by the `production` environment)
+# Do NOT add `uat` to the deploy trigger — it would silently change prod rules.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firestore.rules'
+      - 'storage.rules'
+      - 'database.rules.json'
+      - 'firestore.indexes.json'
+      - 'firebase.json'
+      - '.firebaserc'
+      - '.github/workflows/firebase_rules_ci.yml'
+  pull_request:
+    paths:
+      - 'firestore.rules'
+      - 'storage.rules'
+      - 'database.rules.json'
+      - 'firestore.indexes.json'
+      - 'firebase.json'
+      - '.firebaserc'
+      - '.github/workflows/firebase_rules_ci.yml'
+
+jobs:
+  # ── 1. Validate (every PR — fails fast on rule syntax errors) ──────────────
+  validate:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Authenticate
+        run: |
+          mkdir -p "$HOME/.config/gcloud"
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE }}' > "$HOME/.config/gcloud/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/.config/gcloud/sa.json" >> "$GITHUB_ENV"
+
+      - name: Validate Firestore rules + indexes (dry run)
+        run: firebase deploy --only firestore:rules,firestore:indexes --dry-run --project omni-bridge-ai-translator
+
+      - name: Validate Storage rules (dry run)
+        run: firebase deploy --only storage --dry-run --project omni-bridge-ai-translator
+
+      - name: Validate Realtime Database rules (dry run)
+        run: firebase deploy --only database --dry-run --project omni-bridge-ai-translator
+
+  # ── 2. Deploy (main branch only — gated by production environment) ────────
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://console.firebase.google.com/project/omni-bridge-ai-translator/firestore/rules
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Authenticate
+        run: |
+          mkdir -p "$HOME/.config/gcloud"
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE }}' > "$HOME/.config/gcloud/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/.config/gcloud/sa.json" >> "$GITHUB_ENV"
+
+      - name: Deploy Firestore rules + indexes
+        run: firebase deploy --only firestore:rules,firestore:indexes --project omni-bridge-ai-translator --non-interactive
+
+      - name: Deploy Storage rules
+        run: firebase deploy --only storage --project omni-bridge-ai-translator --non-interactive
+
+      - name: Deploy Realtime Database rules
+        run: firebase deploy --only database --project omni-bridge-ai-translator --non-interactive

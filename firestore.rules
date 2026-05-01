@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is an admin
+    function isAdmin() {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/system/admins) &&
+             request.auth.token.email in get(/databases/$(database)/documents/system/admins).data.emails;
+    }
+
+    // Helper: get user's tier (defaults to 'free' if not set)
+    function getUserTier() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userDoc.data.get('tier', 'free');
+    }
+
+    // Helper: check if user's tier has a specific translation model allowed
+    function tierAllowsModel(model) {
+      let tier = getUserTier();
+      let config = get(/databases/$(database)/documents/system/monetization);
+      return model in config.data.tiers[tier].allowed_translation_models;
+    }
+
+    // 1. User Data Rules
+    match /users/{userId} {
+      // Admins can read and write anything
+      allow read, update: if isAdmin();
+
+      // Users can read their own doc
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Users can write their own doc with specific field restrictions
+      allow write: if request.auth != null && request.auth.uid == userId
+                   && (
+                     // 1. Block tier changes (Admin only)
+                     !('tier' in request.resource.data.diff(resource.data).affectedKeys())
+                     &&
+                     // 2. forceLogout: ONLY allow a transition from true -> false (client-side reset)
+                     // If forceLogout is being changed, it MUST be moving to false.
+                     (
+                       !('forceLogout' in request.resource.data.diff(resource.data).affectedKeys()) ||
+                       (request.resource.data.forceLogout == false && resource.data.forceLogout == true)
+                     )
+                     &&
+                     // 3. Allow usage and profile fields
+                     // (These keys are implicitly allowed since we only blocked tier/forceLogout above)
+                     true
+                   );
+
+      match /{document=**} {
+         // Allow users to manage their own sub-collections (sessions, subscription_events, etc.)
+         // Users CAN write forceLogout on their own sessions to revoke devices.
+         allow read, write: if request.auth != null && request.auth.uid == userId;
+         allow read, write: if isAdmin();
+      }
+    }
+
+    // 2. Admin System Rules
+    match /system/admins {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (
+        !exists(/databases/$(database)/documents/system/admins) || 
+        isAdmin() ||
+        request.auth.token.email == 'marshalgcom@gmail.com'
+      );
+    }
+
+    // 3. Global System Config
+    match /system/monetization {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 3b. App Version Control
+    match /system/app_version {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 4. Translation Credentials — only tiers with google_api access can read
+    match /system/translation_config {
+      allow read: if request.auth != null && (isAdmin() || tierAllowsModel('google_api'));
+      allow write: if isAdmin();
+    }
+
+    // 5. Legal Documents (Terms of Service, Privacy Policy)
+    // Publicly readable so the app can fetch them without auth
+    match /legal/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 6. Support System (Feedback Tickets & Messages)
+    match /feedback_tickets/{ticketId} {
+      // Users can see their own tickets
+      allow read: if request.auth != null && (isAdmin() || resource.data.user_id == request.auth.uid);
+      
+      // Users can create new tickets (must set their own user_id)
+      allow create: if request.auth != null && request.resource.data.user_id == request.auth.uid;
+      
+      // Only admins or ticket owners can update (e.g., closing a ticket)
+      allow update: if request.auth != null && (isAdmin() || resource.data.user_id == request.auth.uid);
+      
+      // Messages sub-collection
+      match /messages/{messageId} {
+        // Only ticket owner or admin can read/write messages
+        allow read, write: if request.auth != null && 
+          (isAdmin() || get(/databases/$(database)/documents/feedback_tickets/$(ticketId)).data.user_id == request.auth.uid);
+      }
+    }
+  }
+}
