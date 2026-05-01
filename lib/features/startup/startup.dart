@@ -1,4 +1,12 @@
 export 'data/datasources/startup_remote_datasource.dart';
 export 'data/datasources/update_remote_datasource.dart';
+export 'data/repositories/startup_repository_impl.dart';
+export 'data/repositories/update_repository_impl.dart';
+export 'domain/entities/startup_phase.dart';
+export 'domain/entities/update_info.dart';
+export 'domain/repositories/i_startup_repository.dart';
+export 'domain/repositories/i_update_repository.dart';
+export 'domain/usecases/check_for_update_usecase.dart';
+export 'domain/usecases/run_startup_sequence.dart';
 export 'presentation/blocs/startup_bloc.dart';
 export 'presentation/notifiers/update_notifier.dart';

@@ -1,0 +1,134 @@
+name: Web Landing — Build & Deploy
+
+on:
+  push:
+    branches: [main, uat]
+    paths:
+      - 'web_landing/**'
+      - 'firebase.json'
+      - '.firebaserc'
+      - '.github/workflows/web_landing_ci.yml'
+  pull_request:
+    paths:
+      - 'web_landing/**'
+      - 'firebase.json'
+      - '.firebaserc'
+      - '.github/workflows/web_landing_ci.yml'
+
+jobs:
+  # ── 1. Build ────────────────────────────────────────────────────────────────
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web_landing/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web_landing
+        run: npm ci
+
+      - name: Build static export
+        working-directory: web_landing
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: landing-out
+          path: web_landing/out
+          retention-days: 1
+
+  # ── 2. Preview (PRs only — temporary Firebase channel) ─────────────────────
+  deploy-preview:
+    needs: build
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: landing-out
+          path: web_landing/out
+
+      - name: Deploy preview channel
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE }}
+          projectId: omni-bridge-ai-translator
+          target: omnibridge
+          # no channelId = auto-creates a preview channel for this PR
+          # Firebase posts the preview URL as a PR comment automatically
+
+  # ── 3. UAT (uat branch — auto-deploys, no approval needed) ─────────────────
+  deploy-uat:
+    needs: build
+    if: github.ref == 'refs/heads/uat'
+    runs-on: ubuntu-latest
+    environment:
+      name: uat
+      url: https://uat.omnibridge.marshalx.dev
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: landing-out
+          path: web_landing/out
+
+      - name: Deploy to UAT channel
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE }}
+          channelId: uat
+          expires: 30d
+          projectId: omni-bridge-ai-translator
+          target: omnibridge
+
+  # ── 4. Production (main branch — requires approval in GitHub Environments) ──
+  deploy-production:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://omnibridge.marshalx.dev
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: landing-out
+          path: web_landing/out
+
+      - name: Deploy to live
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE }}
+          channelId: live
+          projectId: omni-bridge-ai-translator
+          target: omnibridge

@@ -266,6 +266,14 @@ class UsageRemoteDataSource implements IResettable {
     return jsonDecode(response.body) as Map<String, dynamic>? ?? {};
   }
 
+  Future<Map<String, dynamic>> getLanguageUsageRaw(String uid) async {
+    final url = await RTDBClient.instance.getRTDBUrl(FirebasePaths.usageLanguages);
+    if (url == null) return {};
+    final response = await http.get(url);
+    if (response.statusCode != 200) return {};
+    return jsonDecode(response.body) as Map<String, dynamic>? ?? {};
+  }
+
   Future<Map<String, dynamic>> getDailyUsageHistoryRaw(String uid) async {
     final url = await RTDBClient.instance.getRTDBUrl(FirebasePaths.dailyUsage);
     if (url == null) return {};

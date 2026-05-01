@@ -280,6 +280,42 @@ git push origin v1.2.0
 |------|---------|---------|
 | `.github/workflows/flutter_ci.yml` | `workflow_dispatch` (Manual) | Analyze + Test + Coverage + Build |
 | `.github/workflows/release.yml` | `workflow_dispatch` (Manual) | Build Windows + GitHub Release |
+| `.github/workflows/web_landing_ci.yml` | Auto — push/PR touching `web_landing/**`, `firebase.json`, `.firebaserc` | Build Next.js static export + deploy to Firebase Hosting (PR preview / UAT / production) |
 
 > [!NOTE]
-> To switch from **Manual** to **Auto-trigger** (on push/PR or tags), edit the `.yml` files in `.github/workflows/` and uncomment the `push:` and `pull_request:` blocks as described in their headers.
+> To switch the Flutter workflows from **Manual** to **Auto-trigger** (on push/PR or tags), edit the `.yml` files in `.github/workflows/` and uncomment the `push:` and `pull_request:` blocks as described in their headers. The `web_landing_ci.yml` workflow is already auto-triggered.
+
+---
+
+## 10. Web Landing Branch Strategy
+
+The `web_landing_ci.yml` workflow has its own deploy strategy distinct from the Flutter app:
+
+| Trigger | Target | Approval |
+|---|---|---|
+| PR opened / updated (paths-scoped to `web_landing/**`) | Firebase preview channel — URL posted to PR | None |
+| Push to `uat` branch | `https://uat.omnibridge.marshalx.dev` (30-day TTL, auto-renews on every push) | None |
+| Push to `main` branch | `https://omnibridge.marshalx.dev` (permanent) | **Required** — `production` GitHub Environment gate |
+
+### Promoting from UAT to production
+
+```powershell
+# Test on UAT first
+git push origin uat
+
+# When happy with uat.omnibridge.marshalx.dev, promote
+git checkout main
+git merge uat
+git push origin main
+# → CI builds, blocks on production Environment approval, then deploys
+```
+
+### One-time setup
+
+| What | Where | Detail |
+|---|---|---|
+| GitHub secret `FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE` | Repo → Settings → Secrets and variables → Actions | Paste the full service-account JSON from Firebase Console → Project Settings → Service accounts |
+| GitHub Environment `uat` | Repo → Settings → Environments | No protection rules |
+| GitHub Environment `production` | Repo → Settings → Environments | Required reviewers: yourself; Wait timer: 0 |
+
+Full DNS / Firebase Hosting setup in [27 — Domains & Subdomains](../05_maintenance/27_domains_and_subdomains.md).

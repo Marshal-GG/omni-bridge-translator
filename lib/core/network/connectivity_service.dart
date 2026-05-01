@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
+import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/features/startup/domain/entities/update_info.dart';
+import 'package:omni_bridge/features/startup/domain/repositories/i_update_repository.dart';
 import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
-import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 
 /// Monitors internet connectivity and triggers background tasks (like update checks)
 /// when the device returns online.
@@ -26,8 +27,6 @@ class ConnectivityService {
   void _handleConnectivityChange(List<ConnectivityResult> results) {
     final hasNetwork = results.any((r) => r != ConnectivityResult.none);
 
-    // If it's the first result (usually triggered immediately on listen),
-    // we ignore it to avoid double-checking what AppInitializer already did.
     if (_isFirstCheck) {
       _isFirstCheck = false;
       return;
@@ -38,19 +37,17 @@ class ConnectivityService {
         '[ConnectivityService] Internet connection restored. Retrying background tasks...',
       );
 
-      // Delay slightly to let the OS fully establish the data path
       Future.delayed(const Duration(seconds: 3), () async {
         try {
-          final result = await UpdateRemoteDataSource.instance.checkForUpdate();
+          final result = await sl<IUpdateRepository>().checkForUpdate();
 
-          // If we find a forced update or a new available version, UpdateRemoteDataSource.instance.checkForUpdate()
-          // already notifies UpdateNotifier.instance, which the UI reflects.
-          if (result.status == UpdateStatus.forced ||
-              result.status == UpdateStatus.available) {
+          if (result.status == UpdateInfoStatus.forced ||
+              result.status == UpdateInfoStatus.available) {
             UpdateNotifier.instance.setAvailable(
               result.latestVersion ?? '',
               result.releaseUrl ?? '',
-              forced: result.status == UpdateStatus.forced,
+              download: result.downloadUrl,
+              forced: result.status == UpdateInfoStatus.forced,
               message: result.forceUpdateMessage,
             );
           }

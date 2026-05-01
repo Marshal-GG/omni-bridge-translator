@@ -5,8 +5,7 @@ import 'package:omni_bridge/core/constants/firebase_paths.dart';
 import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:omni_bridge/core/network/rtdb_client.dart';
 import 'package:omni_bridge/core/data/interfaces/resettable.dart';
-import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
-import 'package:omni_bridge/features/startup/presentation/notifiers/update_notifier.dart';
+import '../../domain/entities/update_info.dart';
 
 class UpdateRemoteDataSource implements IResettable {
   final FirebaseFirestore _firestore;
@@ -22,11 +21,9 @@ class UpdateRemoteDataSource implements IResettable {
 
   @override
   Future<void> reset() async {
-    // No local state to clear in this data source, but implements interface for consistency
     AppLogger.d('Resetting UpdateRemoteDataSource', tag: _tag);
   }
 
-  /// Compares semver strings. Returns true if [latest] is newer than [current].
   bool _isNewer(String current, String latest) {
     try {
       final c = current.replaceAll(RegExp(r'[^0-9.]'), '').split('.');
@@ -44,72 +41,56 @@ class UpdateRemoteDataSource implements IResettable {
     }
   }
 
-  Future<UpdateResult> checkForUpdate() async {
+  Future<UpdateInfo> checkForUpdate() async {
     try {
       final info = await PackageInfo.fromPlatform();
       final current = info.version;
 
-      final docStr = await _firestore
+      final doc = await _firestore
           .collection(FirebasePaths.system)
           .doc(FirebasePaths.appVersion.split('/').last)
           .get()
           .timeout(const Duration(seconds: 4));
 
-      if (!docStr.exists) {
-        return const UpdateResult(
-          status: UpdateStatus.error,
+      if (!doc.exists) {
+        return const UpdateInfo(
+          status: UpdateInfoStatus.error,
           errorMessage: 'Update configuration not found.',
         );
       }
 
-      final data = docStr.data()!;
+      final data = doc.data()!;
       final latest = data['latest'] as String? ?? '1.0.0';
       final minSupported = data['min_supported'] as String? ?? '1.0.0';
       final updateUrl = data['update_url'] as String? ?? '';
       final downloadUrl = data['download_url'] as String?;
       final forceUpdateMessage = data['force_update_message'] as String?;
 
-      UpdateResult result;
-
       if (_isNewer(current, minSupported)) {
-        result = UpdateResult(
-          status: UpdateStatus.forced,
+        return UpdateInfo(
+          status: UpdateInfoStatus.forced,
           latestVersion: latest,
           releaseUrl: updateUrl,
           downloadUrl: downloadUrl,
           forceUpdateMessage: forceUpdateMessage,
         );
       } else if (_isNewer(current, latest)) {
-        result = UpdateResult(
-          status: UpdateStatus.available,
+        return UpdateInfo(
+          status: UpdateInfoStatus.available,
           latestVersion: latest,
           releaseUrl: updateUrl,
           downloadUrl: downloadUrl,
         );
       } else {
-        result = UpdateResult(
-          status: UpdateStatus.upToDate,
+        return UpdateInfo(
+          status: UpdateInfoStatus.upToDate,
           latestVersion: current,
         );
       }
-
-      // Automatically update the global notifier if an update is found
-      if (result.status == UpdateStatus.forced ||
-          result.status == UpdateStatus.available) {
-        UpdateNotifier.instance.setAvailable(
-          result.latestVersion ?? '',
-          result.releaseUrl ?? '',
-          download: result.downloadUrl,
-          forced: result.status == UpdateStatus.forced,
-          message: result.forceUpdateMessage,
-        );
-      }
-
-      return result;
     } catch (e) {
       AppLogger.e('Error checking for update', error: e, tag: _tag);
-      return const UpdateResult(
-        status: UpdateStatus.error,
+      return const UpdateInfo(
+        status: UpdateInfoStatus.error,
         errorMessage: 'Check failed. Verify your internet connection.',
       );
     }

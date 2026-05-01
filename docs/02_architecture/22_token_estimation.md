@@ -21,7 +21,7 @@ Usage is tracked in **exact characters**, not estimated tokens. Every model repo
 
 No estimation, no Unicode range checks, no BPE approximation. Just `len()`.
 
-**Flutter side** — `logModelUsage()` in [`lib/core/data/datasources/usage_metrics_remote_datasource.dart:42`](../../lib/core/data/datasources/usage_metrics_remote_datasource.dart) accumulates these into Firebase RTDB under `users/{uid}/model_stats/{engine}`.
+**Flutter side** — `logModelUsage()` in [`lib/core/data/datasources/usage_metrics_remote_datasource.dart:42`](../../lib/core/data/datasources/usage_metrics_remote_datasource.dart) accumulates these into Firebase RTDB under `users/{uid}/model_stats/{engine}` and also into per-language buckets under `users/{uid}/usage/totals/languages/{code}` (see [Language Tracking](#language-tracking) below).
 
 ---
 
@@ -116,3 +116,24 @@ All ASR engines output the recognized transcript only. `output_tokens` is always
 | Enterprise | 750,000 | $15 → ₹1,245 | ₹3,735 | ₹2,499 |
 
 > Cost is the same regardless of language — English and Hindi cost identically per character at Google rates. The old token-based system undercounted English (4 chars = 1 token) which gave English users disproportionate quota headroom.
+
+---
+
+## Language Tracking
+
+`logModelUsage()` also accumulates a per-language token buffer (`_languageBuffer`). Language resolution:
+
+1. Use `stats['source_lang']` if explicitly set (non-`'auto'`, non-empty).
+2. Fall back to `stats['detected_lang']` — written by Riva ASR when language detection fires.
+3. For Whisper: `AsrWebSocketClient._sourceLang` is updated when `source_lang_override` arrives from the server, so subsequent `usage_stats` messages carry the detected code.
+
+`flushUsage()` writes these totals to RTDB alongside the normal engine stats — same multi-path PATCH, no extra network call:
+
+| RTDB path | Notes |
+|---|---|
+| `usage/totals/languages/{code}/tokens` | Lifetime tokens for this source language |
+| `usage/totals/languages/{code}/calls` | Lifetime call count |
+| `daily_usage/{date}/languages/{code}/tokens` | Today's token count |
+| `daily_usage/{date}/languages/{code}/calls` | Today's call count |
+
+These are read by `UsageRemoteDataSource.getLanguageUsageRaw()` and displayed in `LanguagePie` on the Usage Analytics screen.

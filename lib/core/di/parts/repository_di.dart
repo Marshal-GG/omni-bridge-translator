@@ -7,6 +7,7 @@ import 'package:omni_bridge/features/history/history.dart';
 import 'package:omni_bridge/features/subscription/subscription.dart';
 import 'package:omni_bridge/features/usage/usage.dart';
 import 'package:omni_bridge/features/about/about.dart';
+import 'package:omni_bridge/features/startup/startup.dart' as startup_feature;
 
 void initRepositoryDI() {
   sl.registerLazySingleton<IAuthRepository>(() => AuthRepositoryImpl(sl()));
@@ -25,7 +26,18 @@ void initRepositoryDI() {
   sl.registerLazySingleton<ISubscriptionRepository>(
     () => SubscriptionRepositoryImpl(service: sl<SubscriptionRemoteDataSource>()),
   );
-  sl.registerLazySingleton<IUpdateRepository>(() => UpdateRepositoryImpl(sl()));
+  // Startup repositories
+  sl.registerLazySingleton<startup_feature.IStartupRepository>(
+    () => startup_feature.StartupRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton<startup_feature.IUpdateRepository>(
+    () => startup_feature.UpdateRepositoryImpl(sl()),
+  );
+
+  // About's IUpdateRepository wraps startup's via the domain seam
+  sl.registerLazySingleton<IUpdateRepository>(
+    () => UpdateRepositoryImpl(sl<startup_feature.IUpdateRepository>()),
+  );
   sl.registerLazySingleton<IHistoryRepository>(
     () => HistoryRepositoryImpl(localDataSource: sl()),
   );

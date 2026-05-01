@@ -6,7 +6,7 @@ import 'package:omni_bridge/features/usage/presentation/bloc/usage_event.dart';
 
 Widget buildUsageHeader(BuildContext context) {
   return OmniHeader(
-    title: 'Usage Dashboard',
+    title: 'Usage Analytics',
     icon: Icons.analytics_rounded,
     onBack: () => Navigator.pop(context),
     actions: [

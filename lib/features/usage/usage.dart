@@ -1,13 +1,16 @@
 export 'data/datasources/usage_remote_datasource.dart';
 export 'data/repositories/usage_repository_impl.dart';
+export 'domain/entities/language_usage.dart';
 export 'domain/repositories/usage_repository.dart';
 export 'domain/repositories/i_engine_selection_source.dart';
 export 'domain/usecases/check_usage_rollover.dart';
 export 'domain/usecases/clear_usage_cache.dart';
+export 'domain/usecases/get_language_usage.dart';
 export 'domain/usecases/get_quota_status.dart';
 export 'domain/usecases/get_selected_engines_usecase.dart';
 export 'domain/usecases/get_usage_history.dart';
 export 'domain/usecases/get_usage_stats.dart';
 export 'presentation/bloc/usage_bloc.dart';
+export 'presentation/bloc/usage_event.dart';
+export 'presentation/bloc/usage_state.dart';
 export 'presentation/screens/usage_screen.dart';
-export 'presentation/widgets/quota_usage_bar.dart';

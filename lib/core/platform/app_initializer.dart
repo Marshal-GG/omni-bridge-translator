@@ -13,12 +13,13 @@ import 'package:omni_bridge/core/platform/window_manager.dart';
 import 'package:omni_bridge/features/usage/data/datasources/usage_remote_datasource.dart';
 import 'package:omni_bridge/core/network/rtdb_client.dart';
 import 'package:omni_bridge/core/infrastructure/python_server_manager.dart';
+import 'package:omni_bridge/features/startup/domain/entities/update_info.dart';
+import 'package:omni_bridge/features/startup/domain/repositories/i_update_repository.dart'
+    as startup;
 
 import 'package:protocol_handler/protocol_handler.dart';
 import 'package:app_links/app_links.dart';
 import 'package:windows_single_instance/windows_single_instance.dart';
-import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
-import 'package:omni_bridge/features/startup/data/datasources/update_remote_datasource.dart';
 import 'dart:io' show Platform;
 import 'package:omni_bridge/core/di/di.dart';
 import 'package:omni_bridge/core/network/connectivity_service.dart';
@@ -159,14 +160,15 @@ class AppInitializer {
   /// Phase 2 — async init. Runs after [runApp] (driven by [StartupBloc]) so
   /// the splash screen is visible immediately. Starts the server in the
   /// background, validates the auth session, and checks for forced updates.
-  /// Returns the resolved initial route.
-  static Future<String> initAsync({
+  ///
+  /// Returns the resolved route and any update info the presentation layer
+  /// should act on (e.g. populating [UpdateNotifier]).
+  static Future<(String, UpdateInfo?)> initAsync({
     void Function(String message, double progress)? onProgress,
   }) async {
     onProgress?.call("Starting background services...", 0.1);
-    await Future.delayed(const Duration(milliseconds: 400)); // Minimum visible delay
+    await Future.delayed(const Duration(milliseconds: 400));
 
-    // Start the Python server. Now we wait for it to emit the initial start signal.
     onProgress?.call("Starting Python AI engine...", 0.3);
     await PythonServerManager.startServer();
 
@@ -175,7 +177,6 @@ class AppInitializer {
       app: Firebase.app(RTDBClient.appName),
     );
 
-    // Wait for auth state from local persistence — usually < 50 ms on desktop.
     try {
       await auth.authStateChanges().first.timeout(
         const Duration(milliseconds: 300),
@@ -185,7 +186,7 @@ class AppInitializer {
     User? currentUser = auth.currentUser;
 
     onProgress?.call("Checking for updates...", 0.7);
-    await Future.delayed(const Duration(milliseconds: 300)); // Minimum visible delay
+    await Future.delayed(const Duration(milliseconds: 300));
 
     final results = await Future.wait([
       () async {
@@ -202,24 +203,28 @@ class AppInitializer {
           return false;
         }
       }(),
-      UpdateRemoteDataSource.instance.checkForUpdate().catchError((e) {
+      sl<startup.IUpdateRepository>().checkForUpdate().catchError((e) {
         debugPrint('[AppInitializer] Failed to check for forced updates: $e');
-        return const UpdateResult(status: UpdateStatus.error);
+        return const UpdateInfo(status: UpdateInfoStatus.error);
       }),
     ]);
 
     final isLoggedIn = results[0] as bool;
-    final updateResult = results[1] as UpdateResult;
+    final updateInfo = results[1] as UpdateInfo;
 
-    if (updateResult.status == UpdateStatus.forced) {
+    if (updateInfo.status == UpdateInfoStatus.forced) {
       onProgress?.call("Update required...", 1.0);
-      return '/force_update';
+      return ('/force_update', updateInfo);
     }
 
     onProgress?.call("Ready...", 1.0);
     await Future.delayed(const Duration(milliseconds: 200));
 
-    if (isLoggedIn) return '/translation-overlay';
-    return '/onboarding'; // not logged in → go straight to onboarding
+    final notifyUpdate = updateInfo.status == UpdateInfoStatus.available
+        ? updateInfo
+        : null;
+
+    if (isLoggedIn) return ('/translation-overlay', notifyUpdate);
+    return ('/onboarding', notifyUpdate);
   }
 }

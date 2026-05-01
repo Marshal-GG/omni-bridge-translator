@@ -7,12 +7,14 @@ import 'package:omni_bridge/features/history/history.dart';
 import 'package:omni_bridge/features/subscription/subscription.dart';
 import 'package:omni_bridge/features/usage/usage.dart';
 import 'package:omni_bridge/features/about/about.dart';
+import 'package:omni_bridge/features/startup/startup.dart' as startup_feature;
 
 void initUseCaseDI() {
   // Auth
   sl.registerLazySingleton(() => LoginWithGoogleUseCase(sl()));
   sl.registerLazySingleton(() => LogoutUseCase(sl()));
   sl.registerLazySingleton(() => GetCurrentUserUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateDisplayNameUseCase(sl()));
   sl.registerLazySingleton(() => ObserveAuthChangesUseCase(sl()));
   sl.registerLazySingleton(() => CheckAdminStatusUseCase(sl()));
 
@@ -58,6 +60,14 @@ void initUseCaseDI() {
   sl.registerLazySingleton(() => CancelSubscriptionUseCase(sl()));
   sl.registerLazySingleton(() => ResumeSubscriptionUseCase(sl()));
 
+  // Startup
+  sl.registerLazySingleton(
+    () => startup_feature.RunStartupSequenceUseCase(sl<startup_feature.IStartupRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => startup_feature.CheckForUpdateUseCase(sl<startup_feature.IUpdateRepository>()),
+  );
+
   // About
   sl.registerLazySingleton(() => CheckForUpdate(sl()));
 
@@ -74,6 +84,7 @@ void initUseCaseDI() {
     () => GetUsageStats(sl(), sl<ISubscriptionRepository>()),
   );
   sl.registerLazySingleton(() => GetUsageHistory(sl()));
+  sl.registerLazySingleton(() => GetLanguageUsage(sl()));
   sl.registerLazySingleton(() => GetQuotaStatus(sl()));
   sl.registerLazySingleton(() => CheckUsageRollover(sl(), sl()));
   sl.registerLazySingleton(() => GetSelectedEnginesUseCase(sl<IEngineSelectionSource>()));

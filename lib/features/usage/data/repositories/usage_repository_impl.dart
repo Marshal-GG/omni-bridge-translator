@@ -1,6 +1,7 @@
 import 'package:omni_bridge/core/utils/app_logger.dart';
 import 'package:omni_bridge/features/usage/domain/entities/daily_usage_record.dart';
 import 'package:omni_bridge/features/usage/domain/entities/engine_usage.dart';
+import 'package:omni_bridge/features/usage/domain/entities/language_usage.dart';
 import 'package:omni_bridge/features/usage/domain/repositories/usage_repository.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 import 'package:omni_bridge/features/usage/data/datasources/usage_remote_datasource.dart';
@@ -20,9 +21,13 @@ class UsageRepositoryImpl implements UsageRepository {
 
   List<DailyUsageRecord>? _cachedHistory;
   DateTime? _historyCachedAt;
+  int _cachedHistoryDays = 30;
 
   Map<String, dynamic>? _cachedTotals;
   DateTime? _totalsCachedAt;
+
+  List<LanguageUsage>? _cachedLanguages;
+  DateTime? _languagesCachedAt;
 
   @override
   void clearCache() => _clearCache();
@@ -32,8 +37,11 @@ class UsageRepositoryImpl implements UsageRepository {
     _modelStatsCachedAt = null;
     _cachedHistory = null;
     _historyCachedAt = null;
+    _cachedHistoryDays = 30;
     _cachedTotals = null;
     _totalsCachedAt = null;
+    _cachedLanguages = null;
+    _languagesCachedAt = null;
   }
 
   bool _isFresh(DateTime? cachedAt) =>
@@ -71,7 +79,9 @@ class UsageRepositoryImpl implements UsageRepository {
 
   @override
   Future<List<DailyUsageRecord>> getDailyUsageHistory({int days = 30}) async {
-    if (_isFresh(_historyCachedAt)) return _cachedHistory!;
+    if (_isFresh(_historyCachedAt) && _cachedHistoryDays == days) {
+      return _cachedHistory!;
+    }
     try {
       final uid = _remoteDataSource.currentUid;
       if (uid == null) return [];
@@ -91,6 +101,7 @@ class UsageRepositoryImpl implements UsageRepository {
       final result = history.reversed.toList();
       _cachedHistory = result;
       _historyCachedAt = DateTime.now();
+      _cachedHistoryDays = days;
       return result;
     } catch (e) {
       AppLogger.e(
@@ -99,6 +110,37 @@ class UsageRepositoryImpl implements UsageRepository {
         error: e,
       );
       return _cachedHistory ?? [];
+    }
+  }
+
+  @override
+  Future<List<LanguageUsage>> getLanguageUsage() async {
+    if (_isFresh(_languagesCachedAt)) return _cachedLanguages!;
+    try {
+      final uid = _remoteDataSource.currentUid;
+      if (uid == null) return [];
+      final data = await _remoteDataSource.getLanguageUsageRaw(uid);
+      final result = <LanguageUsage>[];
+      data.forEach((code, value) {
+        if (value is Map<String, dynamic>) {
+          result.add(LanguageUsage(
+            code: code,
+            tokens: (value['tokens'] as num?)?.toInt() ?? 0,
+            calls: (value['calls'] as num?)?.toInt() ?? 0,
+          ));
+        }
+      });
+      result.sort((a, b) => b.tokens.compareTo(a.tokens));
+      _cachedLanguages = result;
+      _languagesCachedAt = DateTime.now();
+      return result;
+    } catch (e) {
+      AppLogger.e(
+        '[UsageRepositoryImpl] Error fetching language usage: $e',
+        tag: 'UsageRepository',
+        error: e,
+      );
+      return _cachedLanguages ?? [];
     }
   }
 

@@ -22,6 +22,7 @@ class UsageMetricsRemoteDataSource implements IResettable {
 
   // Buffer for aggregating usage stats to reduce RTDB writes
   final Map<String, dynamic> _usageBuffer = {};
+  final Map<String, Map<String, int>> _languageBuffer = {};
   Timer? _usageFlushTimer;
 
   String? get uid => _auth.currentUser?.uid;
@@ -68,6 +69,20 @@ class UsageMetricsRemoteDataSource implements IResettable {
       b['last_model'] = stats['model'];
       if (stats['error'] != null) b['last_error'] = stats['error'];
 
+      // Buffer per-language token counts. Prefer an explicit source_lang; when
+      // auto-detection is active fall back to detected_lang from the ASR engine.
+      final rawLang = stats['source_lang'] as String? ?? '';
+      final detectedLang = stats['detected_lang'] as String? ?? '';
+      final effectiveLang =
+          (rawLang.isEmpty || rawLang == 'auto') ? detectedLang : rawLang;
+      if (effectiveLang.isNotEmpty && effectiveLang != 'auto') {
+        _languageBuffer[effectiveLang] ??= {'tokens': 0, 'calls': 0};
+        _languageBuffer[effectiveLang]!['tokens'] =
+            _languageBuffer[effectiveLang]!['tokens']! + inputTokens + outputTokens;
+        _languageBuffer[effectiveLang]!['calls'] =
+            _languageBuffer[effectiveLang]!['calls']! + 1;
+      }
+
       _usageFlushTimer ??= Timer(
         const Duration(seconds: 3),
         () => flushUsage(),
@@ -90,6 +105,8 @@ class UsageMetricsRemoteDataSource implements IResettable {
 
     final Map<String, dynamic> bufferCopy = Map.from(_usageBuffer);
     _usageBuffer.clear();
+    final Map<String, Map<String, int>> langBufferCopy = Map.from(_languageBuffer);
+    _languageBuffer.clear();
 
     final userUid = uid;
     if (userUid == null) return;
@@ -204,6 +221,34 @@ class UsageMetricsRemoteDataSource implements IResettable {
             (totalsBase['weekly'] ?? 0) + totalDailyTokens;
       }
 
+      // Per-language token totals (daily + lifetime)
+      if (langBufferCopy.isNotEmpty) {
+        final langTotals =
+            (currentData['usage']?['totals']?['languages'])
+                as Map<String, dynamic>? ??
+            {};
+        final langDaily =
+            (currentData[FirebasePaths.dailyUsage]?[todayStr]?['languages'])
+                as Map<String, dynamic>? ??
+            {};
+        for (final e in langBufferCopy.entries) {
+          final lang = e.key;
+          final tokens = e.value['tokens']!;
+          final calls = e.value['calls']!;
+          if (tokens <= 0) continue;
+          final prevTotal = (langTotals[lang] as Map<String, dynamic>?);
+          updates['${FirebasePaths.usageLanguages}/$lang/tokens'] =
+              ((prevTotal?['tokens'] as num?)?.toInt() ?? 0) + tokens;
+          updates['${FirebasePaths.usageLanguages}/$lang/calls'] =
+              ((prevTotal?['calls'] as num?)?.toInt() ?? 0) + calls;
+          final prevDaily = (langDaily[lang] as Map<String, dynamic>?);
+          updates['${FirebasePaths.dailyUsage}/$todayStr/languages/$lang/tokens'] =
+              ((prevDaily?['tokens'] as num?)?.toInt() ?? 0) + tokens;
+          updates['${FirebasePaths.dailyUsage}/$todayStr/languages/$lang/calls'] =
+              ((prevDaily?['calls'] as num?)?.toInt() ?? 0) + calls;
+        }
+      }
+
       if (updates.isNotEmpty) {
         await _rtdbClient.request(
           (client, url) => client.patch(url, body: jsonEncode(updates)),
@@ -226,6 +271,7 @@ class UsageMetricsRemoteDataSource implements IResettable {
     _usageFlushTimer?.cancel();
     _usageFlushTimer = null;
     _usageBuffer.clear();
+    _languageBuffer.clear();
     AppLogger.d('State reset', tag: _tag);
   }
 }

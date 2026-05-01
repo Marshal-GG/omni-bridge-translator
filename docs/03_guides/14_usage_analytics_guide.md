@@ -8,7 +8,7 @@
 
 # 14 — Usage Analytics Guide
 
-This document describes the `usage` feature module — an in-app analytics dashboard that gives users a live breakdown of their AI engine consumption and quota status.
+This document describes the `usage` feature module — an in-app analytics dashboard that gives users a live breakdown of their AI engine consumption, quota status, daily activity, and source-language distribution.
 
 ## Table of Contents
 1. [Overview](#1-overview)
@@ -16,13 +16,14 @@ This document describes the `usage` feature module — an in-app analytics dashb
 3. [Domain Layer](#3-domain-layer)
 4. [Data Layer](#4-data-layer)
 5. [Presentation Layer](#5-presentation-layer)
-6. [Integration Points](#6-integration-points)
+6. [Language Tracking Pipeline](#6-language-tracking-pipeline)
+7. [Integration Points](#7-integration-points)
 
 ---
 
 ## 1. Overview
 
-The `usage` feature displays per-session and cumulative statistics for AI usage (tokens consumed, bytes translated, quota remaining). It is entirely **read-only** — it has no commands of its own, instead reading from the `ISubscriptionRepository` which is populated by Firebase Realtime Database listeners in `UsageMetricsRemoteDataSource`.
+The `usage` feature displays per-session and cumulative statistics for AI usage — tokens consumed, daily/monthly quota, per-engine breakdown, a 30-day activity chart, and a top-languages donut. It is read-only from the user's perspective; all writes happen in `UsageMetricsRemoteDataSource` during translation sessions.
 
 **Feature location**: `lib/features/usage/`
 
@@ -33,30 +34,49 @@ The `usage` feature displays per-session and cumulative statistics for AI usage 
 ```
 lib/features/usage/
 ├── domain/
-│   ├── entities/           # EngineUsage, DailyUsageRecord, QuotaStatus
+│   ├── entities/
+│   │   ├── engine_usage.dart          # Per-engine stats snapshot
+│   │   ├── daily_usage_record.dart    # One day of aggregated usage
+│   │   ├── language_usage.dart        # Source-language token totals
+│   │   └── quota_status.dart          # Daily/monthly quota snapshot
 │   ├── repositories/
-│   │   ├── usage_repository.dart              # Abstract interface (includes clearCache())
-│   │   └── i_engine_selection_source.dart     # Re-exports core/interfaces/i_engine_selection_source.dart
-│   ├── usecases/
-│   │   ├── get_usage_stats.dart               # Aggregates engine stats from RTDB, checks plan access
-│   │   ├── get_usage_history.dart             # Fetches 30-day daily usage history
-│   │   ├── get_quota_status.dart              # Current daily/monthly quota snapshot
-│   │   ├── check_usage_rollover.dart          # Archives and resets expired periods
-│   │   ├── get_selected_engines_usecase.dart  # Translates settings keys → RTDB stats keys via EngineRegistry
-│   │   └── clear_usage_cache.dart             # Invalidates the in-memory cache on demand
-│   └── utils/
-│       └── usage_constants.dart               # Delegates knownAsr/TranslationEngines to EngineRegistry
+│   │   ├── usage_repository.dart              # Abstract interface
+│   │   └── i_engine_selection_source.dart     # Re-exports core/interfaces/
+│   └── usecases/
+│       ├── get_usage_stats.dart               # Aggregates engine stats, checks plan access
+│       ├── get_usage_history.dart             # Fetches N-day daily usage history
+│       ├── get_language_usage.dart            # Fetches per-language token totals
+│       ├── get_quota_status.dart              # Current quota snapshot
+│       ├── check_usage_rollover.dart          # Archives and resets expired periods
+│       ├── get_selected_engines_usecase.dart  # Settings keys → RTDB stats keys
+│       └── clear_usage_cache.dart             # Invalidates the in-memory cache
 ├── data/
-│   ├── datasources/        # UsageRemoteDataSource (Firestore + RTDB polling)
-│   ├── models/             # DTOs: EngineUsageDto, DailyUsageRecordDto
-│   └── repositories/       # UsageRepositoryImpl
+│   ├── datasources/
+│   │   └── usage_remote_datasource.dart   # RTDB REST reads (stats, history, languages)
+│   ├── models/
+│   │   ├── engine_usage_dto.dart          # JSON → EngineUsage
+│   │   └── daily_usage_record_dto.dart    # JSON → DailyUsageRecord
+│   └── repositories/
+│       └── usage_repository_impl.dart     # UsageRepository implementation (3-min TTL cache)
 └── presentation/
-    ├── bloc/               # UsageBloc, UsageEvent, UsageState
-    ├── screens/            # UsageScreen (main analytics view)
-    └── widgets/            # Charts, EngineUsageCard, quota bars, UsageUtils
+    ├── bloc/
+    │   ├── usage_bloc.dart    # Orchestrates load + range change + CSV export
+    │   ├── usage_event.dart   # LoadUsageStats · SetDateRange · ExportCsv
+    │   └── usage_state.dart   # UsageInitial · UsageLoading · UsageLoaded · UsageError
+    ├── screens/
+    │   └── usage_screen.dart  # Main analytics view
+    └── widgets/
+        ├── engine_usage_card.dart  # Per-engine stat card (ACTIVE / LOCKED pill)
+        ├── quota_strip.dart        # Two-bar quota widget (Daily amber + Monthly teal)
+        ├── stat_cards_grid.dart    # 4-card grid: TODAY / WEEK / MONTH / LIFETIME sparklines
+        ├── activity_chart.dart     # 30-day stacked bar chart (ASR + NMT)
+        ├── language_pie.dart       # Source-language donut + flag legend
+        ├── usage_header.dart       # Title bar with refresh action
+        ├── usage_status_bar.dart   # 28 px footer: engine dots + "Updated Ns ago"
+        └── usage_utils.dart        # getDisplayName() helper
 ```
 
-The `usage` feature follows the standard **Clean Architecture (Vertical Slice)** pattern established across all features. See [13 New Screen Setup Guide](../03_guides/13_new_screen_setup_guide.md) for the full pattern reference.
+The `usage` feature follows the standard **Clean Architecture (Vertical Slice)** pattern. See [13 New Screen Setup Guide](../03_guides/13_new_screen_setup_guide.md) for the full pattern reference.
 
 ---
 
@@ -65,52 +85,68 @@ The `usage` feature follows the standard **Clean Architecture (Vertical Slice)**
 ### Repository Interface
 **File**: `lib/features/usage/domain/repositories/usage_repository.dart`
 
-Defines the contract for fetching engine stats and daily history. Kept deliberately minimal and decoupled from any data source.
-
-### `IEngineSelectionSource`
-**File**: `lib/core/interfaces/i_engine_selection_source.dart`
-
-A cross-feature interface (defined in `core`, not in `settings`) that exposes the two methods `getSelectedTranslationEngine()` and `getSelectedTranscriptionEngine()`. Implemented by `SettingsRepositoryImpl`. The usage feature depends only on this interface — never directly on `SettingsBloc` or `ISettingsRepository`.
-
-### `GetSelectedEnginesUseCase`
-**File**: `lib/features/usage/domain/usecases/get_selected_engines_usecase.dart`
-
-Reads the currently selected ASR and translation engines via `IEngineSelectionSource` (which returns settings keys such as `'google'` or `'whisper-tiny'`), then translates them to **RTDB stats keys** via `EngineRegistry.settingsKeyToStatsKey()`. Returns a `SelectedEngines` value object with `translationStatsKey` and `transcriptionStatsKey`. These stats keys match `EngineUsage.engine` so `UsageScreen` can compare directly without any conversion.
-
-### `ClearUsageCache`
-**File**: `lib/features/usage/domain/usecases/clear_usage_cache.dart`
-
-Single-method use-case that calls `UsageRepository.clearCache()`. Injected into `UsageBloc` and called when `LoadUsageStats(refresh: true)` is dispatched (i.e. the user presses the refresh button in the header). Keeps the bloc free of any direct repository dependency.
-
-### `UsageConstants`
-**File**: `lib/features/usage/domain/utils/usage_constants.dart`
-
-Delegates `knownAsrEngines` and `knownTranslationEngines` to `EngineRegistry.knownAsrStatsKeys` / `knownTranslationStatsKeys`. No hardcoded lists.
+| Method | Returns | Notes |
+|---|---|---|
+| `getModelUsageStats()` | `Future<List<EngineUsage>>` | Per-engine cumulative stats |
+| `getDailyUsageHistory({int days})` | `Future<List<DailyUsageRecord>>` | Last N days, sorted oldest-first |
+| `getLanguageUsage()` | `Future<List<LanguageUsage>>` | Per-language totals, sorted by tokens descending |
+| `getUsageTotals()` | `Future<Map<String, dynamic>>` | Raw `usage/totals` node |
+| `clearCache()` | `void` | Invalidates all in-memory caches |
+| `quotaStatusStream` | `Stream<QuotaStatus>` | Live quota updates from background poll |
+| `currentQuotaStatus` | `QuotaStatus?` | Most recent quota snapshot |
+| `engineMonthlyUsage` | `Map<String, int>` | Per-engine subscription-cycle tokens |
 
 ### Entities
-**Directory**: `lib/features/usage/domain/entities/`
 
-Plain Dart classes representing usage snapshots. These have **zero dependencies** on Firebase, Flutter, or any data source.
+**`LanguageUsage`** (`lib/features/usage/domain/entities/language_usage.dart`)  
+Plain Dart class (Equatable). Fields: `code` (ISO 639-1, e.g. `'en'`), `tokens` (`int`), `calls` (`int`).
+
+**`EngineUsage`** — per-engine stats snapshot. Key computed field: `effectiveTokens` (uses monthly if capped, lifetime otherwise).
+
+**`DailyUsageRecord`** — one day. Fields: `date`, `totalTokens`, `engineTokens: Map<String, int>` (RTDB stats key → tokens).
+
+**`QuotaStatus`** — daily/monthly usage against configured limits. Has `isExceeded`, `isUnlimited`, `hasMonthlyLimit`, `hasPeriodLimit`, `monthlyProgress` helpers.
+
+### Use Cases
+
+**`GetLanguageUsage`** — calls `UsageRepository.getLanguageUsage()`. No parameters.
+
+**`GetSelectedEnginesUseCase`** — reads `IEngineSelectionSource` (returns settings keys like `'whisper-tiny'`) then translates via `EngineRegistry.settingsKeyToStatsKey()`. Returns `SelectedEngines(translationStatsKey, transcriptionStatsKey)`. Both fields match `EngineUsage.engine` directly — no conversion needed in the screen.
+
+**`ClearUsageCache`** — single call to `UsageRepository.clearCache()`. Injected into `UsageBloc`; called on `LoadUsageStats(refresh: true)`.
 
 ---
 
 ## 4. Data Layer
 
+### `UsageRemoteDataSource`
+**File**: `lib/features/usage/data/datasources/usage_remote_datasource.dart`
+
+RTDB reads via `RTDBClient.instance.getRTDBUrl(path)` + `http.get()`. All paths are user-scoped (prefixed `users/{uid}/`).
+
+| Method | RTDB path | Notes |
+|---|---|---|
+| `getModelUsageStatsRaw(uid)` | `model_stats` | Returns raw JSON map |
+| `getDailyUsageHistoryRaw(uid)` | `daily_usage` | Full history; repo trims to N days |
+| `getLanguageUsageRaw(uid)` | `usage/totals/languages` | Map of `{code: {tokens, calls}}` |
+| `fetchUsageTotals(uid)` | `usage/totals` | Lifetime + period counters |
+
 ### `UsageRepositoryImpl`
 **File**: `lib/features/usage/data/repositories/usage_repository_impl.dart`
 
-Implements `UsageRepository`. Delegates to `UsageRemoteDataSource` for all RTDB REST calls.
+Implements `UsageRepository`. All four fetch methods have a **3-minute in-memory TTL** cache. Cache is cleared on any rollover write and on demand via `clearCache()`.
 
-**In-memory cache (3-minute TTL):** `getModelUsageStats()`, `getDailyUsageHistory()`, and `getUsageTotals()` all cache their RTDB responses in memory. On repeat visits within 3 minutes the results are returned instantly with no network round-trip. The cache is cleared automatically after any rollover write and on demand via `clearCache()` (called through `ClearUsageCache` when the user explicitly refreshes).
+```
+Cache fields:
+  _cachedModelStats / _modelStatsCachedAt
+  _cachedHistory / _historyCachedAt / _cachedHistoryDays
+  _cachedTotals / _totalsCachedAt
+  _cachedLanguages / _languagesCachedAt
+```
 
-> [!NOTE]
-> Live quota numbers (daily/monthly/lifetime tokens) are **not** affected by the cache — they come from `UsageRemoteDataSource`'s background polling timer, which updates independently of the screen.
-
-**DI Registration** (in `lib/core/di/parts/repository_di.dart`):
+**DI Registration** (`lib/core/di/parts/repository_di.dart`):
 ```dart
-sl.registerLazySingleton<UsageRepository>(
-  () => UsageRepositoryImpl(),
-);
+sl.registerLazySingleton<UsageRepository>(() => UsageRepositoryImpl());
 ```
 
 ---
@@ -120,89 +156,131 @@ sl.registerLazySingleton<UsageRepository>(
 ### BLoC
 **Directory**: `lib/features/usage/presentation/bloc/`
 
-Follows the standard BLoC pattern:
-- **Events**: `LoadUsageStats` (with optional `refresh: bool`)
-- **States**: `UsageInitial`, `UsageLoading`, `UsageLoaded`, `UsageError`
-- **BLoC**: Calls use cases and emits states
+**Events:**
 
-`UsageLoaded` carries the full dashboard state including:
-
-| Field | Type | Description |
+| Event | Payload | Handler |
 |---|---|---|
-| `engineUsage` | `List<EngineUsage>` | Per-engine stats grouped by display name |
-| `dailyHistory` | `List<DailyUsageRecord>` | Last 30 days of daily usage |
-| `lifetimeTokens` | `int` | All-time character count |
-| `monthlyTokens` | `int` | Current calendar-month character count |
-| `asrTokens` | `int` | Lifetime ASR character count |
-| `translationTokens` | `int` | Lifetime translation character count |
-| `tier` | `String` | User's current subscription tier (uppercased) |
-| `quotaStatus` | `QuotaStatus?` | Current daily/monthly quota snapshot |
-| `selectedTranslationEngine` | `String` | Active translation engine as RTDB stats key (e.g. `'google-translate'`) |
-| `selectedTranscriptionEngine` | `String` | Active ASR engine as RTDB stats key (e.g. `'whisper-asr'`) |
+| `LoadUsageStats` | `refresh: bool` | Fetches all data in parallel; clears cache if refresh |
+| `SetDateRange` | `range: UsageRange` | Re-fetches history + languages for the new range |
+| `ExportCsv` | — | Writes a `.csv` file to `~/Downloads/` |
 
-`UsageBloc` dependencies: `GetUsageStats`, `GetUsageHistory`, `GetQuotaStatus`, `CheckUsageRollover`, `GetSelectedEnginesUseCase`, `ClearUsageCache`.
+**`UsageRange`** enum: `sevenDays(7, '7D')` · `thirtyDays(30, '30D')` · `ninetyDays(90, '90D')` · `oneYear(365, '1Y')`
 
-**Load strategy:** After rollover completes, `GetUsageStats`, `GetUsageHistory`, and `GetSelectedEnginesUseCase` are fired in parallel via `Future.wait` — cutting load time from ~3 sequential RTDB round-trips to ~1. `LoadUsageStats(refresh: true)` calls `ClearUsageCache` before fetching, bypassing the 3-minute cache.
+**`UsageLoaded` fields:**
+
+| Field | Type | Source |
+|---|---|---|
+| `engineUsage` | `List<EngineUsage>` | `GetUsageStats` |
+| `dailyHistory` | `List<DailyUsageRecord>` | `GetUsageHistory(days: range.days)` |
+| `languages` | `List<LanguageUsage>` | `GetLanguageUsage` |
+| `lifetimeTokens` | `int` | `quotaStatus.lifetimeTokensUsed` |
+| `monthlyTokens` | `int` | `quotaStatus.monthlyTokensUsed` |
+| `weeklyTokens` | `int` | `quotaStatus.weeklyTokensUsed` |
+| `asrTokens` | `int` | Sum of ASR engine tokens from `GetUsageStats` |
+| `translationTokens` | `int` | Sum of translation engine tokens |
+| `tier` | `String` | Uppercased from `quotaStatus.tier` |
+| `quotaStatus` | `QuotaStatus?` | `GetQuotaStatus.current` |
+| `selectedTranslationEngine` | `String` | RTDB stats key from `GetSelectedEnginesUseCase` |
+| `selectedTranscriptionEngine` | `String` | RTDB stats key |
+| `range` | `UsageRange` | Current date range selection |
+| `loadedAt` | `DateTime` | `DateTime.now()` at load time |
+| `exportPath` | `String?` | Set after successful CSV export |
+| `exportError` | `String?` | Set on export failure |
+
+**Load strategy:** `GetUsageStats`, `GetUsageHistory`, `GetSelectedEnginesUseCase`, and `GetLanguageUsage` run in parallel via `Future.wait` — one network round-trip window for all four.
 
 ### Screen
 **File**: `lib/features/usage/presentation/screens/usage_screen.dart`
 
-Displays a high-density analytics dashboard consistent with the Omni Bridge design language:
-- **Color accent**: `UsageColors.asrAccent` (`#818CF8` lighter indigo) for ASR, `UsageColors.translationAccent` (`#2DD4BF` teal) for translation engines
-- **Navigation icon**: `Icons.analytics_rounded`
-- **Layout**: Standard `1020px` centered content width
-- **Engine highlighting**: The `EngineUsageCard` for the currently active ASR/translation engine is highlighted with a stronger border. `UsageScreen` reads `state.selectedTranslationEngine` and `state.selectedTranscriptionEngine` from `UsageLoaded` and passes `isSelected: e.engine == selectedEngine` to each `EngineUsageCard`. Both fields are already RTDB stats keys, matching `EngineUsage.engine` directly — no conversion needed in the screen.
+Full-bleed dark background (`#161616 → #0F0F0F` vertical gradient). No centered max-width constraint — content stretches edge-to-edge with `16 px` horizontal padding.
 
-#### Stats Strip (`_StatsStrip`)
+**Layout (top-to-bottom):**
+1. `buildUsageHeader(context)` — pinned outside scroll, bottom border
+2. `QuotaStrip` — daily + monthly bars (only when `quotaStatus != null`)
+3. `StatCardsGrid` — TODAY / THIS WEEK / THIS MONTH / LIFETIME
+4. Row: `ActivityChart` | `LanguagePie` (50/50 split)
+5. Translation engines section (grid of `EngineUsageCard`)
+6. ASR engines section (grid of `EngineUsageCard`)
+7. `UsageStatusBar` — pinned footer
 
-The top section of the dashboard. A tier-colored gradient container (10px radius, left accent bar, `ClipRRect`) that summarises the account at a glance. Components:
+**Week-over-week trend** — `_buildEngineSection` computes `changePct` per engine by comparing `dailyHistory` tokens for the last 7 days vs the preceding 7 days. `null` when either window has zero data. Passed as `trendChangePct` to `EngineUsageCard`.
 
-| Widget | Description |
-|---|---|
-| `_TierBadge` | Compact pill (matches `OmniChip` sizing: `px 8 / py 4`, font 10, radius 6). Icon + tier name in tier color, flat tinted background. `_tierColor()` / `_tierIcon()` top-level helpers map tier string to color/icon. |
-| `_QuotaBand` | Shown when `quotaStatus != null && !isUnlimited`. Label row (period label, used/limit, reset countdown pill) above a 6px custom `Stack`+`FractionallySizedBox` gradient progress bar. Color transitions: tealAccent → orangeAccent (>85%) → redAccent (exceeded). Uses `UsageColors.barTrack` for the empty track. |
-| `_UnlimitedBadge` | Shown when `quotaStatus.isUnlimited`. Small circle icon container + "Unlimited" text in tier color. |
-| `_StatCell` | Compact glass card (`AppColors.cardBackground` bg, `AppColors.cardBorder` border, radius 6). Icon+label row (10px icon, `AppColors.textDisabled` label, 9px) above 15px bold value. Used for THIS MONTH (`Color(0xFF6366F1)`) and LIFETIME (`Color(0xFF2DD4BF)`); also TODAY when `quotaStatus.dailyTokensUsed` is available. |
-| `_TrialCountdown` | Shown when `quotaStatus.trialExpiresAt != null`. Inline timer icon + human-readable countdown. Color: amberAccent → orangeAccent (<2d) → redAccent (expired). |
+**Section headers** — show right-aligned aggregate: `"N engines · X.XK tokens"`. Use `NumberFormat.compact()`.
 
-Design tokens used: `AppColors.cardBackground`, `AppColors.cardBorder`, `AppColors.textDisabled`, `AppColors.textPrimary`, `UsageColors.barTrack`. No ad-hoc hardcoded background or border colors.
-
-#### Week-over-week trend (`_Trend`)
-
-`_buildEngineSection` computes a per-engine `_Trend` from `dailyHistory` (last 7 days vs 7–14 days ago). `changePct` returns `null` when either window has zero data. Passed as `trendChangePct: double?` to `EngineUsageCard`, which renders a `_TrendBadge` (↑/↓ % pill) in the card header.
+**Engine card `isSelected`** — `e.engine == state.selectedTranslationEngine` (or transcription). Both sides are already RTDB stats keys; no conversion needed.
 
 ### Widgets
-**Directory**: `lib/features/usage/presentation/widgets/`
 
-| Widget | Purpose |
-|---|---|
-| `EngineUsageCard` | Per-engine stat card. Accepts `isSelected` (active border highlight) and `trendChangePct` (week-over-week `_TrendBadge`). Monthly usage + gradient progress bar (primary metric), lifetime / calls / avg latency stat row (secondary). |
-| `UsageUtils` | `getDisplayName(statsKey, type)` — delegates to `EngineRegistry.displayNameForStatsKey()`. |
-| `UsageHeader` | Top bar with refresh `IconButton` (dispatches `LoadUsageStats(refresh: true)`) |
+| Widget | File | Purpose |
+|---|---|---|
+| `QuotaStrip` | `quota_strip.dart` | Two-column (Daily amber / Monthly teal) quota bars with shimmering gradient, plan pill, reset countdowns, Upgrade button |
+| `StatCardsGrid` | `stat_cards_grid.dart` | 4 glass cards (TODAY / THIS WEEK / THIS MONTH / LIFETIME) with sparklines drawn from `dailyHistory` — no `Random()`, no hardcoded fallbacks |
+| `ActivityChart` | `activity_chart.dart` | 30-day stacked bar chart — ASR indigo + Translation teal. Hover state dims non-hovered bars. Summary row: active days, average, peak. Empty state when `dailyHistory.isEmpty`. |
+| `LanguagePie` | `language_pie.dart` | SVG donut + flag legend, top 5 + "Other" bucket. Empty state until language data arrives. |
+| `EngineUsageCard` | `engine_usage_card.dart` | Per-engine card with glowing dot, big mono token count, `tokens · X% share`, 4 px animated progress bar, `avg Nms · p99 Nms` footer. **ACTIVE** pill (top-right) for selected engine. **LOCKED** pill for engines not in user's plan. Uniform height regardless of token count. |
+| `UsageStatusBar` | `usage_status_bar.dart` | 28 px pinned footer. Engine status dots (translation teal, ASR indigo, LIVE/OFFLINE). "Updated Ns ago" counter updated every 1s. |
+| `UsageHeader` | `usage_header.dart` | `OmniHeader` titled "Usage Analytics" with a `refresh` icon that dispatches `LoadUsageStats(refresh: true)`. |
+| `UsageUtils` | `usage_utils.dart` | `getDisplayName(statsKey, type)` — delegates to `EngineRegistry.displayNameForStatsKey()`. |
 
 ---
 
-## 6. Integration Points
+## 6. Language Tracking Pipeline
+
+Source-language statistics are collected passively during translation sessions and exposed in the `LanguagePie` widget.
+
+### Write path
+
+**File**: `lib/core/data/datasources/usage_metrics_remote_datasource.dart`
+
+`logModelUsage(stats)` buffers per-language token counts in `_languageBuffer: Map<String, Map<String, int>>`. Language resolution order:
+
+1. Use `stats['source_lang']` if present and not `'auto'` or empty.
+2. Fall back to `stats['detected_lang']` — populated by Riva ASR when auto-detection is active.
+3. Skip if both are absent or `'auto'`.
+
+On the 3-second flush timer, `flushUsage()` writes:
+- `usage/totals/languages/{code}/tokens` — lifetime total
+- `usage/totals/languages/{code}/calls` — lifetime call count
+- `daily_usage/{YYYY-MM-DD}/languages/{code}/tokens`
+- `daily_usage/{YYYY-MM-DD}/languages/{code}/calls`
+
+All updates are part of the existing multi-path PATCH — no extra RTDB write.
+
+**Auto-detection fix** (`lib/features/translation/data/datasources/asr_websocket_datasource.dart`):  
+When the server sends a `source_lang_override` (Whisper auto-detecting the source language), `AsrWebSocketClient._sourceLang` is updated immediately. This ensures subsequent `usage_stats` messages for that session are tagged with the detected language code, not `'auto'`.
+
+### Read path
+
+`UsageRemoteDataSource.getLanguageUsageRaw(uid)` reads `usage/totals/languages` via REST. `UsageRepositoryImpl.getLanguageUsage()` maps each `{code: {tokens, calls}}` entry to a `LanguageUsage` entity, sorts by `tokens` descending, and caches with the same 3-minute TTL.
+
+### Supported display names and flags
+
+`LanguagePie._displayName()` and `_flagFor()` have built-in mappings for 20 ISO 639-1 codes: `en`, `es`, `fr`, `de`, `ja`, `zh`, `ko`, `pt`, `it`, `ru`, `ar`, `hi`, `nl`, `sv`, `pl`, `tr`, `uk`, `vi`, `th`, `id`. Unknown codes show `🌐` and the code uppercased.
+
+---
+
+## 7. Integration Points
 
 | Component | Role |
-|-----------|------|
-| `SubscriptionRemoteDataSource` | Populates quota and usage fields in Firebase (source of truth for plan/tier) |
-| `UsageMetricsRemoteDataSource` | Buffers per-call stats (3s flush) and writes multi-path PATCH to RTDB `model_stats/{statsKey}` and `daily_usage/{date}/models/{statsKey}` |
-| `ISubscriptionRepository` | The shared repository that `UsageRepositoryImpl` reads from for engine stats and quota |
-| `IEngineSelectionSource` | Core interface implemented by `SettingsRepositoryImpl` — provides selected engine settings keys to `GetSelectedEnginesUseCase` without cross-feature BLoC coupling |
-| `EngineRegistry` | `lib/core/constants/engine_registry.dart` — single source of truth for all engine definitions: settings key, RTDB stats key, display name, type. Used by `GetSelectedEnginesUseCase`, `UsageUtils`, `UsageConstants`, `_isEngineInPlan`, and `_engineLimit`. |
-
-> [!TIP]
-> Because `UsageRepositoryImpl` wraps `ISubscriptionRepository`, there is no extra Firebase cost — the subscription listener is already open. The usage screen simply presents a different view of data already in memory.
+|---|---|
+| `UsageMetricsRemoteDataSource` | Buffers per-call stats (3 s flush), writes `model_stats/`, `daily_usage/`, and `usage/totals/languages/` to RTDB. **Single write path for all usage data.** |
+| `UsageRemoteDataSource` | Read-only REST client for the usage feature screen. Reads `model_stats/`, `daily_usage/`, and `usage/totals/languages/`. |
+| `AsrWebSocketClient` | Updates `_sourceLang` on `source_lang_override` events — ensures language stats are tagged with the detected code, not `'auto'`. |
+| `IEngineSelectionSource` | Core interface implemented by `SettingsRepositoryImpl`. Provides selected engine settings keys to `GetSelectedEnginesUseCase` without cross-feature BLoC coupling. |
+| `EngineRegistry` | `lib/core/constants/engine_registry.dart` — canonical mapping between settings keys, RTDB stats keys, display names, and types. All engine lookups must go through this registry. |
 
 > [!IMPORTANT]
-> **Engine Key Spaces**: The Flutter settings system uses **settings keys** (e.g. `'google'`, `'riva-nmt'`) while the Python server writes **RTDB stats keys** (e.g. `'google-translate'`, `'riva-grpc-mt'`) to `model_stats/`. These two key spaces are different for every engine except `riva-asr`. All translation between these spaces must go through `EngineRegistry` — never hardcode both sides of this mapping in ad-hoc string comparisons.
+> **Engine Key Spaces**: Settings keys (e.g. `'google'`, `'whisper-tiny'`) and RTDB stats keys (e.g. `'google-translate'`, `'whisper-asr'`) are distinct namespaces for most engines. All translation between them must go through `EngineRegistry`.
+
+> [!NOTE]
+> Live quota numbers (daily/monthly/lifetime tokens) are **not** cached — they come from `UsageRemoteDataSource`'s background polling timer, which runs independently of the screen load.
 
 ---
 
 ## Related Docs
 
 - [05 Flutter Architecture](../02_architecture/05_flutter_architecture.md) — BLoC pattern, DI, and all feature modules
-- [07 Database Schema](../02_architecture/07_database_schema.md) — Firestore & Realtime DB schema for usage counters
+- [07 Database Schema](../02_architecture/07_database_schema.md) — RTDB schema for usage counters including `usage/totals/languages`
+- [22 Token Estimation](../02_architecture/22_token_estimation.md) — How characters are counted per engine
 - [16 Monetization Plan](../04_features/16_monetization_plan.md) — Subscription tiers, quotas, and limits
 - [13 New Screen Setup Guide](../03_guides/13_new_screen_setup_guide.md) — Pattern reference for adding new feature screens

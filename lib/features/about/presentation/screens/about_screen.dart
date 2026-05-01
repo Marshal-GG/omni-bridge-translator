@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:omni_bridge/core/constants/firebase_paths.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:omni_bridge/features/about/domain/entities/update_result.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_bloc.dart';
 import 'package:omni_bridge/features/about/presentation/blocs/about_event.dart';
@@ -762,11 +761,8 @@ class _LegalDialog extends StatelessWidget {
   }
 
   Widget _buildBody() {
-    return FutureBuilder<DocumentSnapshot>(
-      future: AuthRemoteDataSource.instance.firestore
-          .collection(FirebasePaths.legal)
-          .doc(documentId)
-          .get(),
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: sl<IAuthRepository>().getLegalDocument(documentId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -786,7 +782,7 @@ class _LegalDialog extends StatelessWidget {
           );
         }
 
-        if (!snapshot.hasData || !snapshot.data!.exists) {
+        if (!snapshot.hasData || snapshot.data == null) {
           return const Center(
             child: Text(
               'Document not found.',
@@ -795,8 +791,7 @@ class _LegalDialog extends StatelessWidget {
           );
         }
 
-        final data = snapshot.data!.data() as Map<String, dynamic>;
-        final content = data['content'] as String? ?? '';
+        final content = snapshot.data!['content'] as String? ?? '';
 
         return Padding(
           padding: const EdgeInsets.all(12),

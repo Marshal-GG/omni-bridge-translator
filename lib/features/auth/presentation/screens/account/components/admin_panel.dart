@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:omni_bridge/core/constants/firebase_paths.dart';
 import 'package:omni_bridge/core/widgets/omni_tinted_button.dart';
-import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart'; // retained: admin-only raw Firestore ops (no domain interface)
+import 'package:omni_bridge/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:omni_bridge/core/di/di.dart';
 import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import 'package:omni_bridge/features/subscription/data/datasources/subscription_remote_datasource.dart';
@@ -28,17 +29,14 @@ class _AdminPanelState extends State<AdminPanel> {
   }
 
   Future<void> _checkAdminAccess() async {
-    final user = AuthRemoteDataSource.instance.auth.currentUser;
+    final user = sl<IAuthRepository>().currentUser.value;
     if (user == null || user.email == null) {
       if (mounted) setState(() => _isAdmin = false);
       return;
     }
     try {
-      final doc = await AuthRemoteDataSource.instance.firestore
-          .doc(FirebasePaths.adminEmails)
-          .get();
-      final emails = List<String>.from(doc.data()?['emails'] ?? []);
-      if (mounted) setState(() => _isAdmin = emails.contains(user.email));
+      final isAdmin = await sl<IAuthRepository>().isAdmin(user.email!);
+      if (mounted) setState(() => _isAdmin = isAdmin);
     } catch (_) {
       if (mounted) setState(() => _isAdmin = false);
     }
@@ -93,7 +91,7 @@ class _AdminPanelState extends State<AdminPanel> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: FutureBuilder(
-                    future: AuthRemoteDataSource.instance.firestore
+                    future: sl<AuthRemoteDataSource>().firestore
                         .collection(FirebasePaths.users)
                         .get(),
                     builder: (context, snapshot) {
@@ -691,7 +689,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
 
     setState(() => _updatingPoll = true);
     try {
-      await AuthRemoteDataSource.instance.firestore
+      await sl<AuthRemoteDataSource>().firestore
           .doc(FirebasePaths.monetizationConfig)
           .set({'usage_poll_interval_seconds': val}, SetOptions(merge: true));
       if (mounted) {
@@ -716,7 +714,7 @@ class _SystemConfigSectionState extends State<_SystemConfigSection> {
       _lastResult = null;
     });
     try {
-      final firestore = AuthRemoteDataSource.instance.firestore;
+      final firestore = sl<AuthRemoteDataSource>().firestore;
 
       // Seed monetization config
       await firestore.doc(FirebasePaths.monetizationConfig).set({
@@ -902,7 +900,7 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
       _error = null;
     });
     try {
-      final doc = await AuthRemoteDataSource.instance.firestore
+      final doc = await sl<AuthRemoteDataSource>().firestore
           .collection('system')
           .doc('admins')
           .get();
@@ -926,7 +924,7 @@ class _AdminIdentitySectionState extends State<_AdminIdentitySection> {
   Future<void> _saveEmails(List<String> emails) async {
     setState(() => _saving = true);
     try {
-      await AuthRemoteDataSource.instance.firestore
+      await sl<AuthRemoteDataSource>().firestore
           .collection('system')
           .doc('admins')
           .set({'emails': emails}, SetOptions(merge: true));

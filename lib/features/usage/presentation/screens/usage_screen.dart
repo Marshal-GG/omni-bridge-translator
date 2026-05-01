@@ -1,19 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+
+import 'package:omni_bridge/core/constants/engine_registry.dart';
+import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/core/navigation/app_router.dart';
 import 'package:omni_bridge/core/theme/app_theme.dart';
+import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
+import 'package:omni_bridge/features/usage/domain/entities/daily_usage_record.dart';
+import 'package:omni_bridge/features/usage/domain/entities/engine_usage.dart';
 import 'package:omni_bridge/features/usage/presentation/bloc/usage_bloc.dart';
 import 'package:omni_bridge/features/usage/presentation/bloc/usage_event.dart';
 import 'package:omni_bridge/features/usage/presentation/bloc/usage_state.dart';
-import 'package:omni_bridge/features/usage/domain/entities/engine_usage.dart';
-import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
-import 'package:omni_bridge/features/usage/domain/entities/daily_usage_record.dart';
-import 'package:omni_bridge/features/usage/presentation/widgets/usage_header.dart';
+import 'package:omni_bridge/features/usage/presentation/widgets/activity_chart.dart';
 import 'package:omni_bridge/features/usage/presentation/widgets/engine_usage_card.dart';
-import 'package:omni_bridge/core/di/di.dart';
-import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
-import 'package:omni_bridge/core/navigation/app_router.dart';
+import 'package:omni_bridge/features/usage/presentation/widgets/language_pie.dart';
+import 'package:omni_bridge/features/usage/presentation/widgets/quota_strip.dart';
+import 'package:omni_bridge/features/usage/presentation/widgets/stat_cards_grid.dart';
+import 'package:omni_bridge/features/usage/presentation/widgets/usage_header.dart';
+import 'package:omni_bridge/features/usage/presentation/widgets/usage_status_bar.dart';
 
+/// Usage analytics dashboard matching `demo/Usage Analytics.html`.
+///
+/// Layout (top → bottom inside scrollable content):
+///   1. Title row — "Usage Analytics" + tier chip + range selector + Export CSV
+///   2. [QuotaStrip] — daily (amber) + monthly (teal) bars
+///   3. [StatCardsGrid] — TODAY / THIS WEEK / THIS MONTH / LIFETIME
+///   4. Charts row — [ActivityChart] (1.7fr) + [LanguagePie] (1fr)
+///   5. ASR ENGINES section header + 3-col [EngineUsageCard] grid
+///   6. TRANSLATION ENGINES section header + 3-col [EngineUsageCard] grid
+///   7. [UsageStatusBar] — fixed 28 px footer
 class UsageScreen extends StatelessWidget {
   const UsageScreen({super.key});
 
@@ -25,125 +41,449 @@ class UsageScreen extends StatelessWidget {
         builder: (context) => AppDashboardShell(
           currentRoute: AppRouter.usage,
           header: buildUsageHeader(context),
-          child: BlocBuilder<UsageBloc, UsageState>(
+          child: BlocConsumer<UsageBloc, UsageState>(
+            listenWhen: (previous, current) {
+              if (current is! UsageLoaded) return false;
+              final prev = previous is UsageLoaded ? previous : null;
+              // Only fire when exportPath/exportError transitions from null → non-null.
+              final exportPathChanged =
+                  current.exportPath != null && prev?.exportPath != current.exportPath;
+              final exportErrorChanged =
+                  current.exportError != null && prev?.exportError != current.exportError;
+              return exportPathChanged || exportErrorChanged;
+            },
+            listener: (context, state) {
+              if (state is UsageLoaded && state.exportPath != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Exported to ${state.exportPath}'),
+                    backgroundColor: AppColors.semanticTranslation,
+                    duration: const Duration(seconds: 4),
+                  ),
+                );
+              }
+              if (state is UsageLoaded && state.exportError != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Export failed: ${state.exportError}'),
+                    backgroundColor: UsageColors.errorRed,
+                  ),
+                );
+              }
+            },
             builder: (context, state) {
-              if (state is UsageLoading) {
+              if (state is UsageLoading || state is UsageInitial) {
                 return const Center(
                   child: CircularProgressIndicator(
-                    color: Colors.tealAccent,
+                    color: AppColors.accentTeal,
                     strokeWidth: 2,
                   ),
                 );
               }
-
               if (state is UsageError) {
-                return Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        color: Colors.redAccent,
-                        size: 32,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        state.message,
-                        style: const TextStyle(color: Colors.redAccent, fontSize: 13),
-                      ),
-                      const SizedBox(height: 16),
-                      OutlinedButton(
-                        onPressed: () => context
-                            .read<UsageBloc>()
-                            .add(const LoadUsageStats(refresh: true)),
-                        child: const Text('Try Again'),
-                      ),
-                    ],
-                  ),
-                );
+                return _ErrorView(message: state.message);
               }
-
               if (state is UsageLoaded) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 24,
-                  ),
-                  physics: const BouncingScrollPhysics(),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1020),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ── Stats strip ─────────────────────────────────
-                          _StatsStrip(state: state),
-                          const SizedBox(height: 28),
-
-                          // ── ASR Engines ──────────────────────────────────
-                          _buildEngineSection(
-                            title: 'ASR Engines',
-                            icon: Icons.mic_none_rounded,
-                            accentColor: const Color(0xFF6366F1),
-                            engines: state.engineUsage
-                                .where((e) => e.type == UsageType.asr)
-                                .toList(),
-                            allEngines: state.engineUsage,
-                            selectedEngine: state.selectedTranscriptionEngine,
-                            dailyHistory: state.dailyHistory,
-                          ),
-                          const SizedBox(height: 24),
-
-                          // ── Translation Engines ───────────────────────────
-                          _buildEngineSection(
-                            title: 'Translation Engines',
-                            icon: Icons.translate_rounded,
-                            accentColor: const Color(0xFF2DD4BF),
-                            engines: state.engineUsage
-                                .where((e) => e.type == UsageType.translation)
-                                .toList(),
-                            allEngines: state.engineUsage,
-                            selectedEngine: state.selectedTranslationEngine,
-                            dailyHistory: state.dailyHistory,
-                          ),
-                          const SizedBox(height: 32),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
+                return _LoadedView(state: state);
               }
-
-              return const SizedBox();
+              return const SizedBox.shrink();
             },
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildEngineSection({
-    required String title,
-    required IconData icon,
-    required Color accentColor,
-    required List<EngineUsage> engines,
-    required List<EngineUsage> allEngines,
-    required String selectedEngine,
-    required List<DailyUsageRecord> dailyHistory,
-  }) {
+// ── Loaded view ───────────────────────────────────────────────────────────────
+
+class _LoadedView extends StatelessWidget {
+  final UsageLoaded state;
+  const _LoadedView({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF161616), Color(0xFF0F0F0F)],
+        ),
+      ),
+      child: Column(
+      children: [
+        // Pinned sub-header matching demo (padding 18/24/14 + bottom border).
+        Container(
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 14),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: AppColors.cardBorder, width: 1),
+            ),
+          ),
+          child: _TitleRow(state: state),
+        ),
+
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (state.quotaStatus != null)
+                  QuotaStrip(
+                    quota: state.quotaStatus!,
+                    monthlyTokens: state.monthlyTokens,
+                    lifetimeTokens: state.lifetimeTokens,
+                  ),
+                const SizedBox(height: 16),
+
+                StatCardsGrid(
+                  todayTokens: state.quotaStatus?.dailyTokensUsed ?? 0,
+                  weeklyTokens: state.weeklyTokens,
+                  monthlyTokens: state.monthlyTokens,
+                  lifetimeTokens: state.lifetimeTokens,
+                  dailyHistory: state.dailyHistory,
+                ),
+                const SizedBox(height: 16),
+
+                _ChartsRow(state: state),
+                const SizedBox(height: 22),
+
+                _EngineSection(
+                  title: 'ASR ENGINES',
+                  icon: Icons.mic_none_rounded,
+                  accent: UsageColors.asrAccent,
+                  engines: state.engineUsage
+                      .where((e) => e.type == UsageType.asr)
+                      .toList(),
+                  selectedEngine: state.selectedTranscriptionEngine,
+                  dailyHistory: state.dailyHistory,
+                ),
+                const SizedBox(height: 18),
+
+                _EngineSection(
+                  title: 'TRANSLATION ENGINES',
+                  icon: Icons.translate_rounded,
+                  accent: UsageColors.translationAccent,
+                  engines: state.engineUsage
+                      .where((e) => e.type == UsageType.translation)
+                      .toList(),
+                  selectedEngine: state.selectedTranslationEngine,
+                  dailyHistory: state.dailyHistory,
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ),
+        UsageStatusBar(
+          loadedAt: state.loadedAt,
+          avgLatencyMs: () {
+            final calls = state.engineUsage.fold<int>(0, (s, e) => s + e.totalCalls);
+            final ms = state.engineUsage.fold<int>(0, (s, e) => s + e.totalLatencyMs);
+            return calls > 0 ? (ms / calls).round() : 0;
+          }(),
+          translationEngine: EngineRegistry.displayNameForStatsKey(
+            state.selectedTranslationEngine,
+          ),
+          transcriptionEngine: EngineRegistry.displayNameForStatsKey(
+            state.selectedTranscriptionEngine,
+          ),
+          isConnected: state.quotaStatus != null,
+        ),
+      ],
+    ),
+    );
+  }
+}
+
+// ── Title row ─────────────────────────────────────────────────────────────────
+
+class _TitleRow extends StatelessWidget {
+  final UsageLoaded state;
+  const _TitleRow({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Usage Analytics',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _TierChip(label: state.tier),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Track tokens, engines, and languages across every session.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
+          ],
+        ),
+        const Spacer(),
+        _RangeSelector(current: state.range),
+        const SizedBox(width: 8),
+        _ExportButton(),
+      ],
+    );
+  }
+}
+
+class _TierChip extends StatelessWidget {
+  final String label;
+  const _TierChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.accentTeal.withValues(alpha: 0.10),
+        border: Border.all(
+          color: AppColors.accentTeal.withValues(alpha: 0.30),
+        ),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: AppColors.accentTeal,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Range selector ────────────────────────────────────────────────────────────
+
+class _RangeSelector extends StatelessWidget {
+  final UsageRange current;
+  const _RangeSelector({required this.current});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        border: Border.all(color: AppColors.cardBorder),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: UsageRange.values.map((r) {
+          final isActive = current == r;
+          final is1Y = r == UsageRange.oneYear;
+          return GestureDetector(
+            onTap: () => context.read<UsageBloc>().add(SetDateRange(r)),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? AppColors.accentTeal.withValues(alpha: 0.15)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Text(
+                r.label,
+                style: TextStyle(
+                  color: isActive
+                      ? AppColors.accentTeal
+                      : is1Y
+                          ? AppColors.textDisabled
+                          : AppColors.textMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+// ── Export CSV button ─────────────────────────────────────────────────────────
+
+class _ExportButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.read<UsageBloc>().add(const ExportCsv()),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          border: Border.all(color: AppColors.cardBorder),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.download_rounded,
+              size: 12,
+              color: AppColors.textSecondary,
+            ),
+            SizedBox(width: 6),
+            Text(
+              'Export CSV',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Charts row ────────────────────────────────────────────────────────────────
+
+class _ChartsRow extends StatelessWidget {
+  final UsageLoaded state;
+  const _ChartsRow({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 17,
+          child: ActivityChart(dailyHistory: state.dailyHistory),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 10,
+          child: LanguagePie(languages: state.languages),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Engine section (header + grid) ───────────────────────────────────────────
+
+class _EngineSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color accent;
+  final List<EngineUsage> engines;
+  final String selectedEngine;
+  final List<DailyUsageRecord> dailyHistory;
+
+  const _EngineSection({
+    required this.title,
+    required this.icon,
+    required this.accent,
+    required this.engines,
+    required this.selectedEngine,
+    required this.dailyHistory,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     if (engines.isEmpty) return const SizedBox.shrink();
 
-    final maxTokens = allEngines
-        .map((e) => e.effectiveTokens)
-        .fold(0.0, (a, b) => a > b ? a : b.toDouble());
+    final sectionTotal =
+        engines.fold<int>(0, (s, e) => s + e.effectiveTokens);
+    final maxTokens = engines
+        .map((e) => e.effectiveTokens.toDouble())
+        .fold<double>(0, (a, b) => a > b ? a : b);
+    final allEmpty = engines.every((e) => e.totalCalls == 0);
+    final trends = _computeWeekOverWeek(engines, dailyHistory);
+    final fmt = NumberFormat.compact();
 
-    // Week-over-week trend per engine from dailyHistory
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(
+          title: title,
+          icon: icon,
+          accent: accent,
+          trailing: Text(
+            '${engines.length} engines · ${fmt.format(sectionTotal)} tokens',
+            style: const TextStyle(
+              color: AppColors.textFaint,
+              fontSize: 10,
+              fontFamily: 'JetBrains Mono',
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (allEmpty)
+          _EmptySection()
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cols = constraints.maxWidth >= 750
+                  ? 3
+                  : constraints.maxWidth >= 500
+                      ? 2
+                      : 1;
+              const spacing = 10.0;
+              final cardWidth =
+                  (constraints.maxWidth - spacing * (cols - 1)) / cols;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: engines.map((e) {
+                  final sharePct = sectionTotal > 0
+                      ? e.effectiveTokens / sectionTotal * 100
+                      : 0.0;
+                  return SizedBox(
+                    width: cardWidth,
+                    child: EngineUsageCard(
+                      usage: e,
+                      maxTokens: maxTokens,
+                      isSelected: e.engine == selectedEngine,
+                      trendChangePct: trends[e.engine],
+                      sharePct: sharePct,
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  Map<String, double?> _computeWeekOverWeek(
+    List<EngineUsage> engines,
+    List<DailyUsageRecord> history,
+  ) {
     final now = DateTime.now();
-    final Map<String, _Trend> trends = {};
+    final result = <String, double?>{};
     for (final e in engines) {
-      int thisWeek = 0;
-      int lastWeek = 0;
-      for (final record in dailyHistory) {
+      int thisWeek = 0, lastWeek = 0;
+      for (final record in history) {
         final daysAgo = now.difference(record.date).inDays;
         final tokens = record.engineTokens[e.engine] ?? 0;
         if (daysAgo < 7) {
@@ -152,522 +492,71 @@ class UsageScreen extends StatelessWidget {
           lastWeek += tokens;
         }
       }
-      trends[e.engine] = _Trend(thisWeek: thisWeek, lastWeek: lastWeek);
+      result[e.engine] =
+          lastWeek == 0 ? null : (thisWeek - lastWeek) / lastWeek * 100;
     }
-
-    // Empty state: all engines have zero calls ever
-    final allEmpty = engines.every((e) => e.totalCalls == 0);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 13, color: accentColor.withValues(alpha: 0.8)),
-            const SizedBox(width: 8),
-            Text(
-              title.toUpperCase(),
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(child: Divider(color: Colors.white10, height: 1)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (allEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.inbox_outlined,
-                  size: 14,
-                  color: Colors.white.withValues(alpha: 0.2),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'No usage recorded yet for these engines',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          )
-        else
-          LayoutBuilder(
-            builder: (context, constraints) {
-              int cols = 4;
-              if (constraints.maxWidth < 500) {
-                cols = 1;
-              } else if (constraints.maxWidth < 750) {
-                cols = 2;
-              } else if (constraints.maxWidth < 950) {
-                cols = 3;
-              }
-              const spacing = 10.0;
-              final cardWidth =
-                  (constraints.maxWidth - spacing * (cols - 1)) / cols;
-              return Wrap(
-                spacing: spacing,
-                runSpacing: spacing,
-                children: engines
-                    .map(
-                      (e) => SizedBox(
-                        width: cardWidth,
-                        child: EngineUsageCard(
-                          usage: e,
-                          maxTokens: maxTokens,
-                          isSelected: e.engine == selectedEngine,
-                          trendChangePct: trends[e.engine]?.changePct,
-                        ),
-                      ),
-                    )
-                    .toList(),
-              );
-            },
-          ),
-      ],
-    );
+    return result;
   }
 }
 
-// ── Week-over-week trend data ─────────────────────────────────────────────────
+// ── Section header ────────────────────────────────────────────────────────────
 
-class _Trend {
-  final int thisWeek;
-  final int lastWeek;
-
-  const _Trend({required this.thisWeek, required this.lastWeek});
-
-  /// Positive = growth, negative = decline, null = not enough data.
-  double? get changePct {
-    if (lastWeek == 0 && thisWeek == 0) return null;
-    if (lastWeek == 0) return null; // can't compute % from zero base
-    return (thisWeek - lastWeek) / lastWeek * 100;
-  }
-}
-
-// ── Stats strip ───────────────────────────────────────────────────────────────
-
-Color _tierColor(String tier) => switch (tier.toLowerCase()) {
-      'enterprise' => const Color(0xFFFFD700),
-      'pro' => Colors.tealAccent,
-      'trial' => Colors.purpleAccent,
-      _ => Colors.white38,
-    };
-
-IconData _tierIcon(String tier) => switch (tier.toLowerCase()) {
-      'enterprise' => Icons.workspace_premium_rounded,
-      'pro' => Icons.bolt_rounded,
-      'trial' => Icons.hourglass_top_rounded,
-      _ => Icons.person_outline_rounded,
-    };
-
-class _StatsStrip extends StatelessWidget {
-  final UsageLoaded state;
-
-  const _StatsStrip({required this.state});
-
-  @override
-  Widget build(BuildContext context) {
-    final compact = NumberFormat.compact();
-    final quota = state.quotaStatus;
-    final tierColor = _tierColor(state.tier);
-
-    final age = DateTime.now().difference(state.loadedAt);
-    final updatedLabel = age.inSeconds < 10
-        ? 'just now'
-        : age.inMinutes < 1
-            ? '${age.inSeconds}s ago'
-            : age.inMinutes < 60
-                ? '${age.inMinutes}m ago'
-                : '${age.inHours}h ago';
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              tierColor.withValues(alpha: 0.08),
-              tierColor.withValues(alpha: 0.02),
-              AppColors.cardBackground,
-            ],
-            stops: const [0.0, 0.3, 1.0],
-          ),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: tierColor.withValues(alpha: 0.18)),
-        ),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Colored left accent bar
-              Container(
-                width: 4,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      tierColor,
-                      tierColor.withValues(alpha: 0.3),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-              ),
-              // Content
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 16, 20, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Tier badge
-                          _TierBadge(tier: state.tier),
-                          const SizedBox(width: 20),
-
-                          // Quota band (expanded center)
-                          if (quota != null && !quota.isUnlimited)
-                            Expanded(child: _QuotaBand(status: quota))
-                          else if (quota != null && quota.isUnlimited)
-                            Expanded(child: _UnlimitedBadge(color: tierColor))
-                          else
-                            const Spacer(),
-
-                          const SizedBox(width: 20),
-
-                          // Stat cells
-                          if (quota != null && !quota.isUnlimited)
-                            _StatCell(
-                              icon: Icons.today_rounded,
-                              label: 'TODAY',
-                              value: compact.format(quota.dailyTokensUsed),
-                              iconColor: Colors.blueAccent,
-                            ),
-                          if (quota != null && !quota.isUnlimited)
-                            const SizedBox(width: 10),
-                          _StatCell(
-                            icon: Icons.calendar_month_rounded,
-                            label: 'THIS MONTH',
-                            value: compact.format(state.monthlyTokens),
-                            iconColor: const Color(0xFF6366F1),
-                          ),
-                          const SizedBox(width: 10),
-                          _StatCell(
-                            icon: Icons.all_inclusive_rounded,
-                            label: 'LIFETIME',
-                            value: compact.format(state.lifetimeTokens),
-                            iconColor: const Color(0xFF2DD4BF),
-                          ),
-
-                          // Trial countdown
-                          if (quota?.trialExpiresAt != null) ...[
-                            const SizedBox(width: 10),
-                            _TrialCountdown(
-                              expiresAt: quota!.trialExpiresAt!,
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      // Last updated
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.update_rounded,
-                            size: 9,
-                            color: Colors.white.withValues(alpha: 0.18),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Updated $updatedLabel',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.18),
-                              fontSize: 9,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Tier badge ────────────────────────────────────────────────────────────────
-
-class _TierBadge extends StatelessWidget {
-  final String tier;
-
-  const _TierBadge({required this.tier});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _tierColor(tier);
-    final icon = _tierIcon(tier);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 11, color: color),
-          const SizedBox(width: 5),
-          Text(
-            tier.toUpperCase(),
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.6,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Quota progress band ───────────────────────────────────────────────────────
-
-class _QuotaBand extends StatelessWidget {
-  final QuotaStatus status;
-
-  const _QuotaBand({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final compact = NumberFormat.compact();
-    final progress = status.progress.clamp(0.0, 1.0);
-    final isExceeded = status.isExceeded;
-    final color = isExceeded
-        ? Colors.redAccent
-        : progress > 0.85
-            ? Colors.orangeAccent
-            : Colors.tealAccent;
-
-    final int used = status.hasPeriodLimit || status.hasMonthlyLimit
-        ? status.monthlyTokensUsed
-        : status.dailyTokensUsed;
-    final int limit = status.hasPeriodLimit
-        ? status.periodLimit
-        : status.hasMonthlyLimit
-            ? status.monthlyLimit
-            : status.dailyLimit;
-    final String periodLabel =
-        status.hasPeriodLimit || status.hasMonthlyLimit ? 'MONTHLY' : 'DAILY';
-
-    final DateTime resetAt = status.monthlyResetAt ?? status.dailyResetAt;
-    final Duration remaining = resetAt.difference(DateTime.now());
-    final String resetLabel = remaining.isNegative
-        ? 'resetting…'
-        : remaining.inDays > 0
-            ? 'resets in ${remaining.inDays}d'
-            : remaining.inHours > 0
-                ? 'resets in ${remaining.inHours}h'
-                : 'resets in ${remaining.inMinutes}m';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            Text(
-              '$periodLabel QUOTA',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.35),
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              '${compact.format(used)} / ${compact.format(limit)}',
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                resetLabel,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.35),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        // Custom gradient progress bar
-        Stack(
-          children: [
-            Container(
-              height: 6,
-              decoration: BoxDecoration(
-                color: UsageColors.barTrack,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-            if (progress > 0)
-              FractionallySizedBox(
-                widthFactor: progress,
-                child: Container(
-                  height: 6,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(3),
-                    gradient: LinearGradient(
-                      colors: [
-                        color.withValues(alpha: 0.6),
-                        color,
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-// ── Unlimited badge ───────────────────────────────────────────────────────────
-
-class _UnlimitedBadge extends StatelessWidget {
-  final Color color;
-
-  const _UnlimitedBadge({required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.10),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.all_inclusive_rounded, size: 14, color: color),
-        ),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'QUOTA',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.3),
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Unlimited',
-              style: TextStyle(
-                color: color,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-// ── Generic stat cell ─────────────────────────────────────────────────────────
-
-class _StatCell extends StatelessWidget {
-  final String label;
-  final String value;
+class _SectionHeader extends StatelessWidget {
+  final String title;
   final IconData icon;
-  final Color iconColor;
+  final Color accent;
+  final Widget? trailing;
 
-  const _StatCell({
-    required this.label,
-    required this.value,
+  const _SectionHeader({
+    required this.title,
     required this.icon,
-    required this.iconColor,
+    required this.accent,
+    this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 10, color: iconColor.withValues(alpha: 0.6)),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: AppColors.textDisabled,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.6,
-                ),
-              ),
-            ],
+    return Row(
+      children: [
+        Icon(icon, size: 13, color: accent.withValues(alpha: 0.8)),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: TextStyle(
+            color: accent.withValues(alpha: 0.87),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.0,
           ),
-          const SizedBox(height: 3),
+        ),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Divider(color: AppColors.cardBorder, height: 1),
+        ),
+        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+      ],
+    );
+  }
+}
+
+class _EmptySection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Icon(
+            Icons.inbox_outlined,
+            size: 14,
+            color: Colors.white.withValues(alpha: 0.2),
+          ),
+          const SizedBox(width: 8),
           Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              height: 1,
+            'No usage recorded yet for these engines',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.25),
+              fontSize: 12,
             ),
           ),
         ],
@@ -676,46 +565,40 @@ class _StatCell extends StatelessWidget {
   }
 }
 
-// ── Trial countdown ───────────────────────────────────────────────────────────
+// ── Error view ────────────────────────────────────────────────────────────────
 
-class _TrialCountdown extends StatelessWidget {
-  final DateTime expiresAt;
-
-  const _TrialCountdown({required this.expiresAt});
+class _ErrorView extends StatelessWidget {
+  final String message;
+  const _ErrorView({required this.message});
 
   @override
   Widget build(BuildContext context) {
-    final remaining = expiresAt.difference(DateTime.now());
-    final expired = remaining.isNegative;
-
-    final String label = expired
-        ? 'Trial expired'
-        : remaining.inDays > 0
-            ? '${remaining.inDays}d ${remaining.inHours.remainder(24)}h left'
-            : remaining.inHours > 0
-                ? '${remaining.inHours}h ${remaining.inMinutes.remainder(60)}m left'
-                : '${remaining.inMinutes}m left';
-
-    final color = expired
-        ? Colors.redAccent
-        : remaining.inDays < 2
-            ? Colors.orangeAccent
-            : Colors.amberAccent;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.timer_outlined, size: 12, color: color),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: UsageColors.errorRed,
+            size: 32,
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: const TextStyle(
+              color: UsageColors.errorRed,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton(
+            onPressed: () => context
+                .read<UsageBloc>()
+                .add(const LoadUsageStats(refresh: true)),
+            child: const Text('Try Again'),
+          ),
+        ],
+      ),
     );
   }
 }

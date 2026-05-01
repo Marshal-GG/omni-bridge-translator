@@ -21,6 +21,9 @@ class AsrWebSocketClient implements IResettable {
   static const String _tag = 'AsrWebSocketClient';
   TranslationWebsocketClient? _service;
 
+  String _sourceLang = 'auto';
+  String _targetLang = 'en';
+
   Stream<CaptionMessage>? get captions => _service?.captions;
 
   final _audioLevelController =
@@ -60,14 +63,20 @@ class AsrWebSocketClient implements IResettable {
         return;
       }
 
-      // Usage stats — log to Firestore
+      // Usage stats — log with session language context
       if (msg.usageStats != null) {
-        UsageMetricsRemoteDataSource.instance.logModelUsage(msg.usageStats!);
+        final statsWithLang = Map<String, dynamic>.from(msg.usageStats!)
+          ..['source_lang'] = _sourceLang
+          ..['target_lang'] = _targetLang;
+        UsageMetricsRemoteDataSource.instance.logModelUsage(statsWithLang);
         return;
       }
 
-      // Override signal from backend — handled by the UI layer
-      if (msg.sourceLangOverride != null) return;
+      // Override signal from backend — track detected lang for usage stats.
+      if (msg.sourceLangOverride != null) {
+        _sourceLang = msg.sourceLangOverride!;
+        return;
+      }
 
       if (msg.isSystemMessage) {
         asrTextController.showSystemMessage(msg.text);
@@ -125,6 +134,8 @@ class AsrWebSocketClient implements IResettable {
     // Reuse the existing service + connection if already live.
     // This avoids the WebSocket handshake + WASAPI cold-start on every toggle.
     _ensureService();
+    _sourceLang = sourceLang;
+    _targetLang = targetLang;
 
     _service!.start(
       sourceLang: sourceLang,

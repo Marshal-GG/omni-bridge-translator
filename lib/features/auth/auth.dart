@@ -6,4 +6,5 @@ export 'domain/usecases/login_with_google_usecase.dart';
 export 'domain/usecases/logout_usecase.dart';
 export 'domain/usecases/observe_auth_changes_usecase.dart';
 export 'domain/usecases/check_admin_status_usecase.dart';
+export 'domain/usecases/update_display_name_usecase.dart';
 export 'presentation/blocs/auth_bloc.dart';

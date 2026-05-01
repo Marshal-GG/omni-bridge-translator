@@ -559,7 +559,12 @@ The **Single Source of Truth** for current user usage. Polled at an interval sou
   "subscription_monthly": 15200,
   "weekly": 5000,
   "last_calendar_month": "2026_03",
-  "last_week": "2026-03-03"
+  "last_week": "2026-03-03",
+  "languages": {
+    "en": { "tokens": 54200, "calls": 340 },
+    "hi": { "tokens": 18900, "calls": 120 },
+    "fr": { "tokens": 7400,  "calls": 48 }
+  }
 }
 ```
 
@@ -571,6 +576,10 @@ The **Single Source of Truth** for current user usage. Polled at an interval sou
 | `weekly` | `number` | Tokens used in current week (Monday start). Resets on Monday. |
 | `last_calendar_month` | `string` | Tracks current period in RTDB (e.g., `"2026_03"`) to trigger archive on month change. |
 | `last_week` | `string` | Tracks current week in RTDB (e.g., `"2026_03_03"`, Monday anchor) to trigger archive on week change. |
+| `languages/{code}/tokens` | `number` | Lifetime tokens attributed to this ISO 639-1 source language. Written by `UsageMetricsRemoteDataSource.flushUsage()`. Only non-`auto` languages are tracked. |
+| `languages/{code}/calls` | `number` | Lifetime translation calls for this source language. |
+
+> **Auto-detection**: When `source_lang = 'auto'` the Flutter client uses `detected_lang` from the ASR stats (Riva) or the most recent `source_lang_override` signal (Whisper) to resolve the actual language code before writing. Sessions where language is never resolved are not counted.
 
 ---
 
@@ -807,6 +816,10 @@ Tracks aggregated usage for a specific calendar day. The path key is the date st
       "last_error": "Connection refused",
       "last_error_time": 1741237000000
     }
+  },
+  "languages": {
+    "en": { "tokens": 9800, "calls": 62 },
+    "hi": { "tokens": 4400, "calls": 28 }
   }
 }
 ```
@@ -821,6 +834,8 @@ Tracks aggregated usage for a specific calendar day. The path key is the date st
 | `errors/{engine}/failed_calls` | `number` | Non-fatal translation API errors grouped by engine |
 | `errors/{engine}/last_error` | `string` | Last error message for the engine |
 | `errors/{engine}/last_error_time` | `number` | RTDB timestamp of the last error |
+| `languages/{code}/tokens` | `number` | Tokens attributed to this source language today |
+| `languages/{code}/calls` | `number` | Translation calls for this source language today |
 
 ---
 
@@ -864,7 +879,8 @@ legal/{documentId}                       ← terms of service, privacy policy
 RTDB:
 users/{uid}/
     ├── usage/totals                     ← live counters (lifetime, calendar, weekly, sub-monthly)
-    ├── daily_usage/{YYYY-MM-DD}         ← per-day aggregated tracking
+    ├── usage/totals/languages/{code}    ← lifetime per-language token + call totals
+    ├── daily_usage/{YYYY-MM-DD}         ← per-day aggregated tracking (tokens, models, errors, languages)
     ├── captions/{push-id}               ← live caption stream
     ├── current_caption                  ← ephemeral interim caption (overwritten, deleted on final)
     ├── model_usage/{push-id}            ← translation call logs

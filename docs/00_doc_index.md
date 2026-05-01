@@ -47,6 +47,7 @@
 | 24 | [24_removed_code_snippets.md](05_maintenance/24_removed_code_snippets.md) | Developers | Preserved removed code (e.g. overlay header popup menu) for future reference |
 | 25 | [25_billing_management.md](04_features/25_billing_management.md) | Product / Developers | Billing screen — subscription status, cancel, re-subscribe, Cloud Functions |
 | 26 | [26_shell_update_notifications.md](04_features/26_shell_update_notifications.md) | Developers | Update tile (nav rail) + `ForceUpdateScreen` — `UpdateNotifier`, `WindowMode.forceUpdate`, launch logic, debug simulation |
+| 27 | [27_domains_and_subdomains.md](05_maintenance/27_domains_and_subdomains.md) | Maintainers | Public-facing hostnames (`omnibridge.marshalx.dev`, UAT), Firebase Hosting setup, Cloudflare DNS records, CI deploy targets |
 
 ---
 

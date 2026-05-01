@@ -40,7 +40,18 @@ Both modes are driven by a single source of truth: `UpdateNotifier.instance`.
 
 **File**: `lib/features/startup/presentation/notifiers/update_notifier.dart`
 
-A singleton `ValueNotifier<bool>` set by the version-check service during startup.
+A singleton `ValueNotifier<bool>` populated by the **presentation layer** from a returned `UpdateInfo` (post-A3, the data layer never writes to it directly).
+
+**Who calls `setAvailable()`:**
+
+| Caller | When |
+|---|---|
+| `StartupBloc._onInitialize` | App launch — destructures `(String, UpdateInfo?)` from `AppInitializer.initAsync()` and populates the notifier if an update is found, before navigating to the splash next route. |
+| `ConnectivityService._handleConnectivityChange` | Offline → online recovery — re-runs `sl<IUpdateRepository>().checkForUpdate()` and populates the notifier if a new version surfaces while the user is mid-session. |
+| `AboutBloc._onCheckUpdate` | User taps "Check for updates" in the About screen — populates the notifier so the nav rail tile appears even if startup found nothing. |
+
+> [!IMPORTANT]
+> **Do not call `UpdateNotifier.instance.setAvailable()` from `update_remote_datasource.dart` or any other data-layer file.** That was the pre-A3 pattern; it's now an A6 (data→presentation) violation. The datasource returns `UpdateInfo`; presentation owns the notifier.
 
 ```dart
 // Signal that an update is available (soft)
@@ -107,7 +118,7 @@ ListenableBuilder(
 **File**: `lib/features/startup/presentation/screens/force_update_screen.dart`  
 **Route**: `AppRouter.forceUpdate` → `/force_update`
 
-When `UpdateNotifier.instance.isForced` is `true`, the connectivity service navigates to `/force_update` using `Navigator.pushReplacementNamed`. This screen blocks the entire app until the user downloads and installs the new version.
+When `AppInitializer.initAsync()` returns a route of `/force_update`, `StartupBloc` populates `UpdateNotifier` (with `forced: true`) and emits `StartupNavigateToForceUpdate` — `SplashScreen` then `pushReplacementNamed`s to `/force_update`. This screen blocks the entire app until the user downloads and installs the new version.
 
 ### UI
 

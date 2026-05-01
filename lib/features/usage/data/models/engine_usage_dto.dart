@@ -1,6 +1,4 @@
 import 'package:omni_bridge/features/usage/domain/entities/engine_usage.dart';
-import 'package:omni_bridge/core/di/di.dart';
-import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 
 class EngineUsageDto extends EngineUsage {
   const EngineUsageDto({
@@ -33,13 +31,6 @@ class EngineUsageDto extends EngineUsage {
   }
 
   static UsageType resolveType(String engine) {
-    final configType = sl<ISubscriptionRepository>().getModelType(engine);
-
-    if (configType != null) {
-      if (configType == 'asr') return UsageType.asr;
-      if (configType == 'translation') return UsageType.translation;
-    }
-
     final name = engine.toLowerCase();
     if (name == 'no-op' || name == 'noop') return UsageType.unknown;
 

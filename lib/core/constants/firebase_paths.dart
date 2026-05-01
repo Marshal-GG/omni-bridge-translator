@@ -23,6 +23,7 @@ class FirebasePaths {
   // RTDB Nodes
   static const String dailyUsage = 'daily_usage';
   static const String usageTotals = 'usage/totals';
+  static const String usageLanguages = 'usage/totals/languages';
   static const String captions = 'captions';
   static const String modelStats = 'model_stats';
   static const String activeSessions = 'sessions';

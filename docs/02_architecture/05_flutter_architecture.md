@@ -65,7 +65,7 @@ lib/
 | `TranslationBloc` | Live translation session control, caption streaming, server health, model status, quota reactivity, and auth-aware settings sync | `StartTranslationUseCase`, `StopTranslationUseCase`, `UpdateVolumeUseCase`, `GetModelStatusUseCase`, `ObserveCaptionsUseCase`, `ObserveQuotaStatusUseCase`, `GetInitialQuotaStatusUseCase`, `GetDefaultTierUseCase`, `UpdateTranslationSettingsUseCase`, `CheckServerHealthUseCase`, `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, `GetAppSettingsUseCase`, `GetGoogleCredentialsUseCase`, `SyncSettingsUseCase`, `LogEventUseCase`, `LogoutUseCase`, `GetSystemConfigUseCase`, `ISubscriptionRepository`, `TranslationRestDatasource` |
 | `HistoryBloc` | Live and chunked transcription history | `GetLiveHistoryUseCase`, `GetChunkedHistoryUseCase`, `ClearHistoryUseCase`, `AddHistoryEntryUseCase`, `ConfigureHistoryUseCase`, `ISubscriptionRepository` |
 | `AboutBloc` | App versioning and updates | `CheckForUpdate` |
-| `StartupBloc` | Thin shell over `AppInitializer.initAsync()`. Drives the default Splash Screen on launch and processes initial routing (`/translation-overlay` if authed, `/onboarding` if not, or `/force_update`). | `IAuthRepository` (held but routing delegated to `AppInitializer`) |
+| `StartupBloc` | Drives the Splash Screen on launch via `AppInitializer.initAsync()`. Destructures the returned `(String, UpdateInfo?)` record — populates `UpdateNotifier.instance` itself when an update is found (post-A3, datasource no longer pushes), then emits `StartupNavigateTo*` for routing (`/translation-overlay` / `/onboarding` / `/force_update`). | `IAuthRepository` |
 | `SubscriptionBloc` | Real-time subscription status and plan management | `GetSubscriptionStatus`, `GetAvailablePlans`, `ActivateTrial`, `OpenCheckout`, `HasUsedTrial` |
 | `AppShellBloc` | **Root-level BLoC** (provided at app root in `app.dart`, not route-scoped). Manages: sidebar expand/collapse, settings & support sub-menu state, current user + subscription tier display in `AppNavigationRail`, OS window resize on sidebar toggle, and **admin status** (`isAdmin: bool`). On every `AppShellUserChanged` event it calls `CheckAdminStatusUseCase` to read `system/admins` and fires `AppShellAdminStatusChanged` — the nav rail reacts by showing/hiding the admin tile. Implements `RouteChangeNotifier` so `MyNavigatorObserver` can update sub-menu state on navigation events. | `GetCurrentUserUseCase`, `ObserveAuthChangesUseCase`, `GetSubscriptionStatus`, `CheckAdminStatusUseCase` |
 | `UsageBloc` | Analytics dashboard: engine stats, quota, and history. Emits `UsageLoaded` which includes `selectedTranslationEngine` and `selectedTranscriptionEngine` (RTDB stats keys) for highlighting the active engine card | `GetUsageStats`, `GetUsageHistory`, `GetQuotaStatus`, `CheckUsageRollover`, `GetSelectedEnginesUseCase`, `ClearUsageCache` |
@@ -240,17 +240,21 @@ main()
 
  └─ runApp(MyApp(initialRoute: '/splash')) ← Renders `/splash` immediately
      └─ OS window renders immediately on the correct screen — no blank frame
-     └─ StartupBloc triggers StartupVerifySessionEvent
-         └─ AppInitializer.initAsync()     ← PHASE 2 (concurrent async loading)
+     └─ StartupBloc triggers StartupInitializeEvent
+         └─ AppInitializer.initAsync() returns (String, UpdateInfo?)  ← PHASE 2 (concurrent)
              ├─ unawaited(PythonServerManager.startServer())  ← server boots in background
              ├─ Auth state resolves from local persistence (≤300 ms timeout)
              └─ Future.wait([
                    currentUser.reload() → isLoggedIn,
-                   UpdateRemoteDataSource.checkForUpdate() → updateResult,
+                   sl<startup.IUpdateRepository>().checkForUpdate() → UpdateInfo,
                 ])
-                ├─ Forced update  → emits `/force_update`
-                ├─ Logged in      → emits `/translation-overlay`
-                └─ Logged out     → emits `/onboarding`
+                ├─ Forced update     → returns ('/force_update', UpdateInfo)
+                ├─ Available update  → returns (route, UpdateInfo)
+                ├─ Logged in         → returns ('/translation-overlay', null|info)
+                └─ Logged out        → returns ('/onboarding', null|info)
+         └─ StartupBloc destructures the record:
+             ├─ if updateInfo != null → UpdateNotifier.instance.setAvailable(...)
+             └─ emits StartupNavigateTo* state for the route
 
  └─ SplashScreen reacts to StartupState
      ├─ StartupCompleted('/force_update')        → ForceUpdateScreen (blocks app access)

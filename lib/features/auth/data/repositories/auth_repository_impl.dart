@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:omni_bridge/core/constants/firebase_paths.dart';
 import 'package:omni_bridge/core/error/failures.dart';
 import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:omni_bridge/features/auth/domain/repositories/i_auth_repository.dart';
@@ -94,8 +95,21 @@ class AuthRepositoryImpl implements IAuthRepository {
   }
 
   @override
+  Future<void> updateDisplayName(String name) =>
+      _authRemoteDataSource.updateDisplayName(name);
+
+  @override
   Future<bool> isAdmin(String email) =>
       _authRemoteDataSource.checkAdminStatus(email);
+
+  @override
+  Future<Map<String, dynamic>?> getLegalDocument(String docId) async {
+    final snap = await _authRemoteDataSource.firestore
+        .collection(FirebasePaths.legal)
+        .doc(docId)
+        .get();
+    return snap.data();
+  }
 
   @override
   Future<void> signOut() async {

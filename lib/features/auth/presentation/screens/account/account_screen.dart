@@ -3,7 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:omni_bridge/core/theme/app_theme.dart';
 import 'package:omni_bridge/core/widgets/omni_version_chip.dart';
-import 'package:omni_bridge/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/features/auth/domain/repositories/i_auth_repository.dart';
+import 'package:omni_bridge/features/auth/domain/usecases/update_display_name_usecase.dart';
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_header.dart';
 import 'package:omni_bridge/features/auth/presentation/screens/account/components/account_button.dart';
 import 'package:omni_bridge/features/shell/presentation/widgets/app_dashboard_shell.dart';
@@ -25,7 +27,7 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   void initState() {
     super.initState();
-    final user = AuthRemoteDataSource.instance.currentUser.value;
+    final user = sl<IAuthRepository>().currentUser.value;
     _nameController.text = user?.displayName ?? '';
   }
 
@@ -43,7 +45,7 @@ class _AccountScreenState extends State<AccountScreen> {
       _message = null;
     });
     try {
-      await AuthRemoteDataSource.instance.updateDisplayName(newName);
+      await sl<UpdateDisplayNameUseCase>()(newName);
       if (!mounted) return;
       setState(() {
         _isSaving = false;
@@ -86,13 +88,13 @@ class _AccountScreenState extends State<AccountScreen> {
       ),
     );
     if (confirm == true && mounted) {
-      await AuthRemoteDataSource.instance.signOut();
+      await sl<IAuthRepository>().signOut();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = AuthRemoteDataSource.instance.currentUser.value;
+    final user = sl<IAuthRepository>().currentUser.value;
     final isAnon = user?.isAnonymous ?? false;
 
     return AppDashboardShell(

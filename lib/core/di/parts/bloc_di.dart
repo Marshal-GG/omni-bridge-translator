@@ -105,6 +105,7 @@ void initBlocDI() {
     () => UsageBloc(
       getUsageStats: sl(),
       getUsageHistory: sl(),
+      getLanguageUsage: sl(),
       getQuotaStatus: sl(),
       checkUsageRollover: sl(),
       getSelectedEngines: sl(),

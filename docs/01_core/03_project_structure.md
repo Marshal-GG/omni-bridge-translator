@@ -51,12 +51,12 @@ omni_bridge/
 │       │   ├── data/                # SubscriptionRepositoryImpl, SubscriptionRemoteDataSource
 │       │   └── presentation/        # SubscriptionBloc, SubscriptionScreen, BillingScreen, UpgradeSheet, PlanCard
 │       ├── startup/                 # Bootstrapping & onboarding
-│       │   ├── domain/              # (minimal — thin shell over AppInitializer)
-│       │   ├── data/                # UpdateRemoteDataSource (forced-update check)
-│       │   └── presentation/        # StartupBloc, SplashScreen, OnboardingScreen, ForceUpdateScreen
+│       │   ├── domain/              # Entities (UpdateInfo, StartupPhase), Repositories (IStartupRepository, IUpdateRepository), UseCases (RunStartupSequence, CheckForUpdateUseCase)
+│       │   ├── data/                # StartupRepositoryImpl, UpdateRepositoryImpl (wrap StartupRemoteDataSource and UpdateRemoteDataSource)
+│       │   └── presentation/        # StartupBloc (owns UpdateNotifier population post-A3), SplashScreen, OnboardingScreen, ForceUpdateScreen
 │       ├── about/                   # Version info & updates
 │       │   ├── domain/              # UseCases (CheckForUpdate)
-│       │   ├── data/                # (delegates to UpdateRemoteDataSource)
+│       │   ├── data/                # UpdateRepositoryImpl (injects startup.IUpdateRepository, maps UpdateInfo → UpdateResult)
 │       │   └── presentation/        # AboutBloc, AboutScreen
 │       ├── support/                 # Support ticketing & chat
 │       │   ├── domain/              # Support entities & repository interface
@@ -70,6 +70,15 @@ omni_bridge/
 │           ├── domain/              # UsageRepository interface + entities
 │           ├── data/                # UsageRepositoryImpl (wraps SubscriptionRepository)
 │           └── presentation/        # UsageBloc, UsageScreen, widgets
+│
+├── web_landing/                     # Marketing landing page (Next.js static export)
+│   ├── src/
+│   │   ├── app/                     # layout.tsx, page.tsx, globals.css (theme tokens mirror app_theme.dart)
+│   │   └── components/              # Navbar, Hero, Features, Engines, HowItWorks, Pricing, Platforms, Footer
+│   ├── next.config.ts               # output: 'export', trailingSlash: true
+│   ├── package.json                 # next 16, react 19
+│   └── README.md                    # Develop / deploy instructions
+│   # Deployed via .github/workflows/web_landing_ci.yml to omnibridge.marshalx.dev (production) and uat.omnibridge.marshalx.dev (UAT)
 │
 ├── server/                          # Python backend
 │   ├── flutter_server.py            # FastAPI entrypoint
