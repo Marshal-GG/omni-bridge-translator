@@ -48,6 +48,7 @@
 | 25 | [25_billing_management.md](04_features/25_billing_management.md) | Product / Developers | Billing screen — subscription status, cancel, re-subscribe, Cloud Functions |
 | 26 | [26_shell_update_notifications.md](04_features/26_shell_update_notifications.md) | Developers | Update tile (nav rail) + `ForceUpdateScreen` — `UpdateNotifier`, `WindowMode.forceUpdate`, launch logic, debug simulation |
 | 27 | [27_domains_and_subdomains.md](05_maintenance/27_domains_and_subdomains.md) | Maintainers | Public-facing hostnames (`omnibridge.marshalx.dev`, UAT), Firebase Hosting setup, Cloudflare DNS records, CI deploy targets |
+| 28 | [28_subscription_screen_redesign.md](04_features/28_subscription_screen_redesign.md) | Developers | Implementation plan to rebuild the Subscription screen from the `Monetization.html` prototype — billing cycle toggle, compare table, FAQ, trust panel |
 
 ---
 
