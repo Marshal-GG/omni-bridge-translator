@@ -19,30 +19,45 @@ Canonical inventory of every public-facing hostname Omni Bridge uses. Cross-link
 
 ## Live domains
 
-| Hostname | Purpose | Backed by | DNS provider | CF proxy | TLS issuer | Notes |
-|---|---|---|---|---|---|---|
-| `omnibridge.marshalx.dev` | Marketing landing page | Firebase Hosting (Next.js static export, target `omnibridge`) | Cloudflare DNS | **OFF** | Let's Encrypt via Firebase | Proxy must be OFF — Firebase performs the TLS handshake directly. Turning proxy on breaks renewal. |
-| `uat.omnibridge.marshalx.dev` | UAT / staging landing page | Firebase Hosting (`uat` channel on the `omnibridge` target) | Cloudflare DNS | **OFF** | Let's Encrypt via Firebase | Same TLS constraint as apex. 30-day channel TTL, auto-renewed on every push to the `uat` branch. |
-| `*.omni-bridge-landing.web.app` | Firebase auto-generated PR-preview channels | Firebase Hosting | Firebase | n/a | Firebase | Temporary URLs created per pull request, deleted when the PR closes. Posted by the Firebase action as a PR comment. Not user-facing. |
+**Two Firebase Hosting sites in the same project** (one Firebase project, two sites within it — not two projects). Each environment gets its own site so its custom domain binds at the site level (= the live channel) without requiring channel-domain UI features that aren't exposed in every Firebase Console rollout.
 
-The Firebase site name is `omni-bridge-landing` (must be globally unique on Firebase). `firebase.json` references it via the target alias `omnibridge`, mapped in `.firebaserc`.
+| Hostname | Site | Target alias (in `firebase.json`) | Default URL | DNS | CF proxy | TLS issuer |
+|---|---|---|---|---|---|---|
+| `omnibridge.marshalx.dev` | `omni-bridge-ai-translator` (default site) | `omnibridge` | `omni-bridge-ai-translator.web.app` | Cloudflare DNS | **OFF** | Let's Encrypt via Firebase |
+| `uat.omnibridge.marshalx.dev` | `omni-bridge-ai-translator-uat` | `omnibridge-uat` | `omni-bridge-ai-translator-uat.web.app` | Cloudflare DNS | **OFF** | Let's Encrypt via Firebase |
+| (PR previews) | `omni-bridge-ai-translator` | `omnibridge` | auto `omni-bridge-ai-translator--pr-NNN-<hash>.web.app` | Firebase | n/a | Firebase |
+
+> **Why proxy must be OFF:** Firebase Hosting provisions its TLS cert via Let's Encrypt by performing the TLS handshake directly with the domain. Cloudflare's orange-cloud proxy intercepts that handshake and breaks cert provisioning. Set the A records to **DNS only** (grey cloud) for both apex and uat subdomain.
+
+> **Why two sites, not channels:** The cleanest pattern would be one site with `live` and `uat` channels, each bound to its own custom domain (Fluxora does this). It requires Firebase Console's "channel custom domains" UI, which isn't exposed in every project rollout. omni-bridge falls back to the more universally-supported pattern: two sites, each with a site-level domain.
 
 ---
 
-## Cloudflare DNS records to add
+## Custom domain setup (Firebase Console)
 
-The DNS records below need to exist in the `marshalx.dev` zone before either deploy will resolve. Set them once — the Firebase action handles cert provisioning automatically when the custom domain is connected.
+Each domain binds to its own dedicated site at the site level — no channel selection needed. Both sites have only a `live` channel that the workflow deploys to.
 
-| Type | Name | Value | Proxy | TTL |
-|---|---|---|---|---|
-| A | `omnibridge` | (Firebase will surface 2 IPs in Hosting console) | OFF | Auto |
-| A | `omnibridge` | (second Firebase IP) | OFF | Auto |
-| TXT | `omnibridge` | `firebase=omni-bridge-landing` (verification record from Firebase console) | n/a | Auto |
-| A | `uat.omnibridge` | (same 2 Firebase IPs as apex) | OFF | Auto |
-| A | `uat.omnibridge` | (second Firebase IP) | OFF | Auto |
-| TXT | `uat.omnibridge` | `firebase=omni-bridge-landing` | n/a | Auto |
+### Production domain (`omnibridge.marshalx.dev` → site `omni-bridge-ai-translator`)
 
-Get the actual IPs and TXT verification token from **Firebase Console → Hosting → Custom domains → Add custom domain** for each of `omnibridge.marshalx.dev` and `uat.omnibridge.marshalx.dev`. Provision the apex first, then the UAT subdomain on the same site.
+1. Firebase Console → Hosting → site **`omni-bridge-ai-translator`** → **Add custom domain**
+2. Enter `omnibridge.marshalx.dev`
+3. Choose **Serve traffic from this domain** (don't check "Redirect")
+4. Firebase shows 2 A-record IPs + 1 TXT verification token
+5. Add to Cloudflare DNS, **proxy OFF** (DNS only)
+6. Click **Verify** in Firebase — provisioning takes a few minutes
+
+### UAT domain (`uat.omnibridge.marshalx.dev` → site `omni-bridge-ai-translator-uat`)
+
+> **Prerequisite:** the UAT site must exist. Created via `firebase hosting:sites:create omni-bridge-ai-translator-uat`. After that, push to the `uat` branch deploys to the UAT site's `live` channel.
+
+1. Firebase Console → Hosting → site **`omni-bridge-ai-translator-uat`** (the UAT site, NOT the default one) → **Add custom domain**
+2. Enter `uat.omnibridge.marshalx.dev`
+3. Choose **Serve traffic from this domain**
+4. Same DNS dance — A records + TXT token from Firebase, paste into Cloudflare, proxy OFF, Verify
+
+### Common mistake
+
+Adding `uat.omnibridge.marshalx.dev` to the **default site** (`omni-bridge-ai-translator`) instead of the UAT site routes it to production content. If `uat.omnibridge.marshalx.dev` shows the wrong build, remove the binding from the default site's Custom domains tab and re-add it on the `omni-bridge-ai-translator-uat` site instead.
 
 ---
 
@@ -62,7 +77,7 @@ Add these in **GitHub repo → Settings → Secrets and variables → Actions**:
 
 | Secret | Source |
 |---|---|
-| `FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE` | Firebase Console → Project Settings → Service accounts → Generate new private key. Paste the entire JSON. |
+| `FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE_AI_TRANSLATOR` | Firebase Console → Project Settings → Service accounts → Generate new private key. Paste the entire JSON. |
 
 ### Required GitHub Environments
 

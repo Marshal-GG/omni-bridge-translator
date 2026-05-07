@@ -7,9 +7,11 @@
       "hosting": {
         "omnibridge": [
           "omni-bridge-ai-translator"
+        ],
+        "omnibridge-uat": [
+          "omni-bridge-ai-translator-uat"
         ]
       }
     }
-  },
-  "etags": {}
+  }
 }

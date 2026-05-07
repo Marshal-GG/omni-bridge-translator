@@ -45,7 +45,7 @@ jobs:
       - name: Authenticate
         run: |
           mkdir -p "$HOME/.config/gcloud"
-          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE }}' > "$HOME/.config/gcloud/sa.json"
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE_AI_TRANSLATOR }}' > "$HOME/.config/gcloud/sa.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/.config/gcloud/sa.json" >> "$GITHUB_ENV"
 
       - name: Validate Firestore rules + indexes (dry run)
@@ -80,7 +80,7 @@ jobs:
       - name: Authenticate
         run: |
           mkdir -p "$HOME/.config/gcloud"
-          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE }}' > "$HOME/.config/gcloud/sa.json"
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE_AI_TRANSLATOR }}' > "$HOME/.config/gcloud/sa.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/.config/gcloud/sa.json" >> "$GITHUB_ENV"
 
       - name: Deploy Firestore rules + indexes

@@ -66,7 +66,7 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE_AI_TRANSLATOR }}
           projectId: omni-bridge-ai-translator
           target: omnibridge
           # no channelId = auto-creates a preview channel for this PR
@@ -93,15 +93,14 @@ jobs:
           name: landing-out
           path: web_landing/out
 
-      - name: Deploy to UAT channel
+      - name: Deploy to UAT site (live channel of omnibridge-uat target)
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE }}
-          channelId: uat
-          expires: 30d
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE_AI_TRANSLATOR }}
+          channelId: live
           projectId: omni-bridge-ai-translator
-          target: omnibridge
+          target: omnibridge-uat
 
   # ── 4. Production (main branch — requires approval in GitHub Environments) ──
   deploy-production:
@@ -124,11 +123,11 @@ jobs:
           name: landing-out
           path: web_landing/out
 
-      - name: Deploy to live
+      - name: Deploy to production (live channel of omnibridge target)
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_OMNI_BRIDGE_AI_TRANSLATOR }}
           channelId: live
           projectId: omni-bridge-ai-translator
           target: omnibridge
