@@ -21,15 +21,22 @@ class HistoryLocalDataSource implements IResettable {
   // Callback for re-translating a 5-sec chunk (wired by the overlay)
   Future<String> Function(String text, String src, String tgt)? _translateFn;
 
+  /// Returns the active translation engine ID at the time of capture. Wired
+  /// by the Translation feature's `configureHistory` call so the History
+  /// feature stays free of cross-feature imports.
+  String? Function()? _activeEngineProvider;
+
   void configure({
     required String sourceLang,
     required String targetLang,
     required Future<String> Function(String text, String src, String tgt)
     translateFn,
+    String? Function()? activeEngineProvider,
   }) {
     _sourceLang = sourceLang;
     _targetLang = targetLang;
     _translateFn = translateFn;
+    _activeEngineProvider = activeEngineProvider;
     _restartChunkTimer();
   }
 
@@ -41,6 +48,7 @@ class HistoryLocalDataSource implements IResettable {
       timestamp: DateTime.now(),
       sourceLang: _sourceLang,
       targetLang: _targetLang,
+      engine: _activeEngineProvider?.call(),
     );
     liveEntries.value = [...liveEntries.value, entry];
     _chunkBuffer.add(transcription);
@@ -63,6 +71,7 @@ class HistoryLocalDataSource implements IResettable {
         timestamp: DateTime.now(),
         sourceLang: _sourceLang,
         targetLang: _targetLang,
+        engine: _activeEngineProvider?.call(),
       );
       chunkedEntries.value = [...chunkedEntries.value, entry];
     });
@@ -72,6 +81,22 @@ class HistoryLocalDataSource implements IResettable {
     liveEntries.value = [];
     chunkedEntries.value = [];
     _chunkBuffer.clear();
+  }
+
+  /// Removes a single entry from whichever stream it currently lives in.
+  /// Compares by reference identity — entries are only ever appended to the
+  /// notifier, so the same instance the UI holds is the one we drop.
+  void removeEntry(HistoryEntry entry) {
+    final live = liveEntries.value;
+    if (live.contains(entry)) {
+      liveEntries.value = live.where((e) => !identical(e, entry)).toList();
+      return;
+    }
+    final chunked = chunkedEntries.value;
+    if (chunked.contains(entry)) {
+      chunkedEntries.value =
+          chunked.where((e) => !identical(e, entry)).toList();
+    }
   }
 
   @override

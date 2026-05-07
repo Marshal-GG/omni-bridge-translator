@@ -63,8 +63,6 @@ class MyNavigatorObserver extends NavigatorObserver {
       setToLoginPosition();
     } else if (name == AppRouter.translationOverlay) {
       setToTranslationPosition();
-    } else if (name == AppRouter.historyPanel) {
-      setToHistoryPosition();
     } else if (name == AppRouter.onboarding || name == AppRouter.splash) {
       setToStartupPosition();
     } else if (name == AppRouter.forceUpdate) {

@@ -37,6 +37,9 @@ void initUseCaseDI() {
   sl.registerLazySingleton(() => ConfigureHistoryUseCase(repository: sl()));
   sl.registerLazySingleton(() => GetLiveHistoryUseCase(repository: sl()));
   sl.registerLazySingleton(() => GetChunkedHistoryUseCase(repository: sl()));
+  sl.registerLazySingleton(
+    () => GetVisibleHistoryUseCase(sl<ISubscriptionRepository>()),
+  );
 
   // Translation
   sl.registerLazySingleton(() => StartTranslationUseCase(sl()));

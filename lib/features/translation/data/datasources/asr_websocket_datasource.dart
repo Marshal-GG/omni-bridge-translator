@@ -193,6 +193,7 @@ class AsrWebSocketClient implements IResettable {
       sourceLang: sourceLang,
       targetLang: targetLang,
       translateFn: (text, src, tgt) async => text,
+      activeEngineProvider: () => translationModel,
     );
   }
 

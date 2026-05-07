@@ -42,7 +42,7 @@ bool _isNavRailExpanded = false;
 const double _navRailExpandedDiff =
     180.0; // navRailWidth (260) - navRailWidthCollapsed (80)
 
-enum WindowMode { none, login, startup, forceUpdate, translation, history, dashboard, subscription }
+enum WindowMode { none, login, startup, forceUpdate, translation, dashboard, subscription }
 
 WindowMode _currentWindowMode = WindowMode.none;
 
@@ -141,23 +141,6 @@ Future<void> setToTranslationPosition() async {
     appWindow.alignment = Alignment.bottomCenter;
     await windowManager.setAlignment(Alignment.bottomCenter);
     await windowManager.setAlwaysOnTop(true);
-  });
-}
-
-/// Sets the window to a large centered view for History
-Future<void> setToHistoryPosition() async {
-  if (_currentWindowMode == WindowMode.history) return;
-  _currentWindowMode = WindowMode.history;
-
-  await _transitionWindow(() async {
-    await windowManager.setResizable(true);
-    double addedWidth = _isNavRailExpanded ? _navRailExpandedDiff : 0.0;
-    appWindow.minSize = Size(600 + addedWidth, 400);
-    await windowManager.setMinimumSize(Size(600 + addedWidth, 400));
-    await windowManager.setSize(Size(1000 + addedWidth, 700));
-    appWindow.alignment = Alignment.center;
-    await windowManager.center();
-    await windowManager.setAlwaysOnTop(false);
   });
 }
 

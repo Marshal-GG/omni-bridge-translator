@@ -169,5 +169,50 @@ void main() {
         ),
       ],
     );
+
+    blocTest<HistoryBloc, HistoryState>(
+      'HistorySearchChanged updates the search field on HistoryLoaded',
+      build: () => historyBloc,
+      act: (bloc) {
+        bloc.add(LoadHistoryEvent());
+        bloc.add(const HistorySearchChanged('hello'));
+      },
+      expect: () => [
+        HistoryLoaded(
+          liveEntries: const [],
+          chunkedEntries: const [],
+          subscriptionStatus: testStatusFree,
+        ),
+        HistoryLoaded(
+          liveEntries: const [],
+          chunkedEntries: const [],
+          subscriptionStatus: testStatusFree,
+          search: 'hello',
+        ),
+      ],
+    );
+
+    blocTest<HistoryBloc, HistoryState>(
+      'HistoryLangFilterChanged updates the langFilter field',
+      build: () => historyBloc,
+      act: (bloc) {
+        bloc.add(LoadHistoryEvent());
+        bloc.add(const HistoryLangFilterChanged('en'));
+      },
+      expect: () => [
+        HistoryLoaded(
+          liveEntries: const [],
+          chunkedEntries: const [],
+          subscriptionStatus: testStatusFree,
+        ),
+        HistoryLoaded(
+          liveEntries: const [],
+          chunkedEntries: const [],
+          subscriptionStatus: testStatusFree,
+          langFilter: 'en',
+        ),
+      ],
+    );
+
   });
 }

@@ -22,6 +22,11 @@ class HistoryRepositoryImpl implements IHistoryRepository {
   }
 
   @override
+  void removeEntry(HistoryEntry entry) {
+    localDataSource.removeEntry(entry);
+  }
+
+  @override
   void clear() {
     localDataSource.clear();
   }
@@ -32,11 +37,13 @@ class HistoryRepositoryImpl implements IHistoryRepository {
     required String targetLang,
     required Future<String> Function(String text, String src, String tgt)
     translateFn,
+    String? Function()? activeEngineProvider,
   }) {
     localDataSource.configure(
       sourceLang: sourceLang,
       targetLang: targetLang,
       translateFn: translateFn,
+      activeEngineProvider: activeEngineProvider,
     );
   }
 

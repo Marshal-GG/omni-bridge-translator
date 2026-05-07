@@ -10,11 +10,13 @@ class ConfigureHistoryUseCase {
     required String targetLang,
     required Future<String> Function(String text, String src, String tgt)
     translateFn,
+    String? Function()? activeEngineProvider,
   }) {
     repository.configure(
       sourceLang: sourceLang,
       targetLang: targetLang,
       translateFn: translateFn,
+      activeEngineProvider: activeEngineProvider,
     );
   }
 }

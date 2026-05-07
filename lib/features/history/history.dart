@@ -6,4 +6,6 @@ export 'domain/usecases/clear_history_usecase.dart';
 export 'domain/usecases/configure_history_usecase.dart';
 export 'domain/usecases/get_chunked_history_usecase.dart';
 export 'domain/usecases/get_live_history_usecase.dart';
+export 'domain/usecases/get_visible_history_usecase.dart';
+export 'domain/entities/history_entry.dart';
 export 'presentation/blocs/history_bloc.dart';

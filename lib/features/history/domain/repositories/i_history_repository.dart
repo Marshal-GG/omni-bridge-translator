@@ -7,6 +7,8 @@ abstract class IHistoryRepository {
 
   void addEntry(String transcription, String translation);
 
+  void removeEntry(HistoryEntry entry);
+
   void clear();
 
   void configure({
@@ -14,6 +16,7 @@ abstract class IHistoryRepository {
     required String targetLang,
     required Future<String> Function(String text, String src, String tgt)
     translateFn,
+    String? Function()? activeEngineProvider,
   });
 
   void dispose();

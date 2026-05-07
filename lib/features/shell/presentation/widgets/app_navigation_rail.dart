@@ -302,6 +302,16 @@ class AppNavigationRail extends StatelessWidget {
                 onTap: () => _navigate(context, AppRouter.billing),
               ),
 
+              // ── History ──
+              _NavTile(
+                icon: Icons.history_rounded,
+                label: 'History',
+                isActive: currentRoute == AppRouter.historyPanel,
+                isExpanded: sidebarExpanded,
+                tooltip: 'History',
+                onTap: () => _navigate(context, AppRouter.historyPanel),
+              ),
+
               // ── Usage ──
               _NavTile(
                 icon: Icons.insights_rounded,

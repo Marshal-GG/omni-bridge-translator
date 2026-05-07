@@ -87,6 +87,7 @@ void initBlocDI() {
       getChunkedHistoryUseCase: sl(),
       clearHistoryUseCase: sl(),
       subscriptionDataSource: sl<ISubscriptionRepository>(),
+      historyRepository: sl<IHistoryRepository>(),
     ),
   );
 
