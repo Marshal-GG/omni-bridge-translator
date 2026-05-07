@@ -13,77 +13,63 @@ The Billing screen (`/billing`) is a dedicated dashboard page for managing an ac
 
 ## Billing Screen — UI
 
-### Active Subscriber
+> The screen was redesigned in [29 — Billing Screen Redesign](29_billing_screen_redesign.md). This section describes the **post-redesign layout** that ships on `main`. The previous narrow-column layout no longer exists.
+
+### Layout (all paid states)
 
 ```
-┌─ Status Card ──────────────────────────────────────────────┐
-│  [PRO]  ● Active                       Renews in 14 days   │
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ (progress bar) ━━━━━  │
-│  📅 Member since       17 Apr 2026                          │
-│  🔄 Next billing       17 May 2026  ·  ₹799                 │
-│  💳 Last payment       17 Apr 2026  ·  ₹799  ·  pay_XXXXX  │
-│  🏷  Subscription ID    sub_XXXXX  [copy]                    │
-│  💰 Payment via        Razorpay                             │
-└─────────────────────────────────────────────────────────────┘
-
-┌─ Actions ───────────────────────────────────────────────────┐
-│  [Upgrade to Enterprise →]                                  │
-│  [Cancel Subscription]  ← confirmation dialog               │
-└─────────────────────────────────────────────────────────────┘
-
-PAYMENT HISTORY
-17 Apr 2026   ₹799   First payment   pay_XXXXX  [copy]
+┌─ HeroBlock ─────────────────────────────────────────────────────┐
+│ Billing                                  [⇄ Compare Plans]       │
+│ Subscription, usage, and invoices for your Omni Bridge account.  │
+└──────────────────────────────────────────────────────────────────┘
+[ optional StatusBanner — halted (red) / cancellation scheduled (amber) ]
+┌─ BillingSubscriptionCard (flex 7) ──┐ ┌─ BillingUsageCard (flex 9) ─┐
+│ [PRO]  Pro  ₹799/month   [ACTIVE]   │ │ THIS BILLING PERIOD 17 Apr  │
+│ ↻ Renews automatically on 17 May    │ │  Monthly tokens   250k/1M   │
+│ STARTED        LAST PAID            │ │  Daily tokens     12.5k/50k │
+│ 17 Apr 2026    ₹799 · 17 Apr 2026   │ │  ⚡ Rate limit    60 req/min│
+│ SUBSCRIPTION ID  CUSTOMER ID        │ └─────────────────────────────┘
+│ sub_NXqM9…N4tk  cust_NXqM9…dRT      │
+│ [Compare Plans]  [Cancel]           │
+└─────────────────────────────────────┘
+┌─ BillingPaymentMethodNotice ──────────────────────────────────────┐
+│ 💳  PAYMENT METHOD                                                │
+│     UPI · maya@okhdfcbank             [⇗ Manage in Razorpay]      │
+└───────────────────────────────────────────────────────────────────┘
+┌─ INVOICES ────────────────────────────────────────────────────────┐
+│ PAYMENT          DATE         AMOUNT  METHOD              STATUS  │
+│ Renewal          17 Apr 2026  ₹799    UPI · maya@okhdfc…  [PAID] ⤓│
+│ First payment    17 Mar 2026  ₹799    Card · HDFC •• 4421 [PAID] ⤓│
+└───────────────────────────────────────────────────────────────────┘
+┌─ BillingFootnote ─────────────────────────────────────────────────┐
+│ 🛡 Payments and refunds                                           │
+│   All payments are processed by Razorpay. Card details never      │
+│   reach Omni Bridge. Refunds within 7 business days.              │
+│   ✉ billing@omnibridge.marshalx.dev                               │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
-### Pending Cancel (cancelled, access ongoing)
+### Tier accent
 
-```
-┌─ Status Card ──────────────────────────────────────────────┐
-│  [PRO]  ● Cancels 17 May             Access ends in 29 days │
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ (progress bar) ━━━━━  │
-│  📅 Member since       17 Apr 2026                          │
-│  ⏰ Access until        17 May 2026                         │
-│  💳 Last payment       17 Apr 2026  ·  ₹799  ·  pay_XXXXX  │
-│  🏷  Subscription ID    sub_XXXXX  [copy]                    │
-└─────────────────────────────────────────────────────────────┘
+`BillingSubscriptionCard` and `BillingUsageCard` both take a `tierAccent` color picked once in the screen body:
 
-┌─ Cancellation Scheduled ────────────────────────────────────┐
-│  ⏱  Your Pro access continues until 17 May 2026.           │
-│     After that your account moves to the Free plan.         │
-└─────────────────────────────────────────────────────────────┘
+| Tier | Accent |
+|---|---|
+| `enterprise` | `AppColors.splashPurple` |
+| `pro` | `AppColors.accentTeal` |
+| `trial` | `AppColors.amber` |
+| `halted` / cancel-pending | `AppColors.amber` (overrides the tier color while in degraded state) |
+| `free` / unknown | `AppColors.textDisabled` |
 
-PAYMENT HISTORY
-...
-```
+### Per-state rendering
 
-### Payment Halted
-
-```
-┌─ Status Card ──────────────────────────────────────────────┐
-│  [PRO]  ● Payment Failed                                    │
-│  Access ended  17 Apr 2026                                  │
-└─────────────────────────────────────────────────────────────┘
-
-┌─ Payment Failed ────────────────────────────────────────────┐
-│  ⚠  Razorpay attempted renewal but all retries failed.      │
-│  [Re-subscribe to Pro]                                      │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Cancelled / Completed (access ended)
-
-```
-┌─ Status Card ──────────────────────────────────────────────┐
-│  [PRO]  ● Cancelled    Subscription ended  17 May 2026      │
-└─────────────────────────────────────────────────────────────┘
-
-  Your Pro subscription ended on 17 May 2026.
-  [Re-subscribe to Pro]   [View All Plans →]
-```
-
-### Free / Trial User
-
-Simple upsell card with a "View Plans" button pointing to `/subscription`.
+| State | Card layout | Banner | Primary action |
+|---|---|---|---|
+| `active` | hero row + invoices + payment method + footnote | — | Compare Plans / Cancel |
+| `halted` | hero row + invoices | red top banner | Re-subscribe |
+| `cancelled` + paid tier (`isCancelPending`) | hero row + invoices | amber top banner | Resume |
+| `cancelled` / `completed` + free | upsell layout (no hero row) | — | View Plans |
+| `none` (free / trial) | upsell layout | — | View Plans |
 
 ---
 
@@ -192,12 +178,15 @@ All fields read from `users/{uid}` in Firestore. Written by `razorpayWebhook` Cl
 |---|---|---|---|
 | `tier` | `tier` | Plan badge | webhook / admin |
 | `subscriptionStatus` | `status` | Status pill | webhook |
-| `subscriptionSince` | `since` | Member since | webhook — first activation |
-| `monthlyResetAt` | `nextBillingAt` | Next billing / Access until | webhook — activated + charged |
-| `lastPaymentAt` | `lastPaymentAt` | Last payment date | webhook — activated + charged + captured |
-| `lastPaymentAmountPaise` | `lastPaymentPaise` | Last payment amount (÷ 100 = ₹) | webhook — activated + charged + captured |
+| `subscriptionSince` | `since` | Started | webhook — first activation |
+| `monthlyResetAt` | `nextBillingAt` | Renews on / period end | webhook — activated + charged |
+| `lastPaymentAt` | `lastPaymentAt` | Last paid date | webhook — activated + charged + captured |
+| `lastPaymentAmountPaise` | `lastPaymentPaise` | Last paid amount (÷ 100 = ₹) | webhook — activated + charged + captured |
 | `lastPaymentId` | `lastPaymentId` | Last payment ID (`pay_XXXXX`) | webhook — activated + charged + captured |
+| `lastPaymentMethod` | `lastPaymentMethod` | Method type (`upi`/`card`/…) | webhook — activated + charged + captured |
+| `lastPaymentMethodSummary` | `lastPaymentMethodSummary` | Method notice line | webhook — activated + charged + captured |
 | `razorpaySubscriptionId` | `subscriptionId` | Subscription ID (`sub_XXXXX`) | webhook — activated |
+| `razorpayCustomerId` | `customerId` (drives `customerPortalUrl`) | "Manage in Razorpay" link | webhook — first activation only |
 | `subscriptionEndedAt` | `endedAt` | Access until / Access ended | webhook — cancelled (`current_end`) · halted/completed (`now`) |
 
 Payment history is read from the `subscription_events` subcollection into `invoicesNotifier`.
@@ -210,15 +199,22 @@ Payment history is read from the `subscription_events` subcollection into `invoi
 
 ```dart
 class BillingInfo {
-  final String tier;            // free | trial | pro | enterprise
-  final String status;          // active | halted | cancelled | completed | none
-  final String? subscriptionId; // razorpaySubscriptionId (sub_XXXXX)
-  final DateTime? since;        // subscriptionSince
-  final DateTime? nextBillingAt;// monthlyResetAt
+  final String tier;                       // free | trial | pro | enterprise
+  final String status;                     // active | halted | cancelled | completed | none
+  final String? subscriptionId;            // razorpaySubscriptionId (sub_XXXXX)
+  final DateTime? since;                   // subscriptionSince
+  final DateTime? nextBillingAt;           // monthlyResetAt
   final DateTime? lastPaymentAt;
-  final int? lastPaymentPaise;  // ÷ 100 for ₹ display
-  final String? lastPaymentId;  // pay_XXXXX
-  final DateTime? endedAt;      // subscriptionEndedAt
+  final int? lastPaymentPaise;             // ÷ 100 for ₹ display
+  final String? lastPaymentId;             // pay_XXXXX
+  final DateTime? endedAt;                 // subscriptionEndedAt
+  final String? customerId;                // razorpayCustomerId (cust_XXXXX)
+  final String? lastPaymentMethod;         // 'upi' | 'card' | 'netbanking' | 'wallet'
+  final String? lastPaymentMethodSummary;  // 'UPI · maya@okhdfcbank' | 'Card · HDFC •• 4421'
+
+  // Derived: returns 'https://dashboard.razorpay.com/app/customer/<id>'
+  // when customerId is set; null otherwise.
+  String? get customerPortalUrl;
 }
 ```
 
@@ -234,17 +230,22 @@ Maps one `subscription_events` subcollection document. Used for payment history 
 
 ```dart
 class PaymentEvent {
-  final String event;        // subscription_activated | subscription_renewed | ...
-  final String? paymentId;   // pay_XXXXX
+  final String event;          // subscription_activated | subscription_renewed | ...
+  final String? paymentId;     // pay_XXXXX
   final int? amountPaise;
   final DateTime timestamp;
   final String? subscriptionId;
+  final String? method;        // 'upi' | 'card' | 'netbanking' | 'wallet'
+  final String? methodSummary; // 'UPI · maya@okhdfcbank'
+  final String? invoiceUrl;    // Razorpay-hosted PDF (download button target)
 
   bool get isCharge => amountPaise != null && amountPaise! > 0 && paymentId != null;
   String? get amountFormatted => '₹${amountPaise! / 100}';
   String get label => ... // human readable label per event type
 }
 ```
+
+> `invoiceUrl` is currently always null — capturing it from the webhook is tracked as follow-up #1 in [29 §16](29_billing_screen_redesign.md#16-implementation-status-shipped). The download icon in `BillingInvoiceTable` is disabled-with-tooltip when missing.
 
 ---
 

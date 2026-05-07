@@ -49,6 +49,7 @@
 | 26 | [26_shell_update_notifications.md](04_features/26_shell_update_notifications.md) | Developers | Update tile (nav rail) + `ForceUpdateScreen` — `UpdateNotifier`, `WindowMode.forceUpdate`, launch logic, debug simulation |
 | 27 | [27_domains_and_subdomains.md](05_maintenance/27_domains_and_subdomains.md) | Maintainers | Public-facing hostnames (`omnibridge.marshalx.dev`, UAT), Firebase Hosting setup, Cloudflare DNS records, CI deploy targets |
 | 28 | [28_subscription_screen_redesign.md](04_features/28_subscription_screen_redesign.md) | Developers | Implementation plan to rebuild the Subscription screen from the `Monetization.html` prototype — billing cycle toggle, compare table, FAQ, trust panel |
+| 29 | [29_billing_screen_redesign.md](04_features/29_billing_screen_redesign.md) | Developers | Billing screen rebuilt from the `Billing.html` prototype (shipped) — scoped to the Razorpay-via-URL model; subscription + usage hero row, invoice table with method column, customer-portal link, footnote |
 
 ---
 

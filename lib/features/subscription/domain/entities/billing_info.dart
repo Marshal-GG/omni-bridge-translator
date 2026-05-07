@@ -38,6 +38,20 @@ class BillingInfo extends Equatable {
   /// actual end of the billing period (not the cancel request time).
   final DateTime? endedAt;
 
+  /// Razorpay customer ID (`cust_XXXXX`) — captured by the webhook on first
+  /// activation. Used to link to the Razorpay customer portal where the user
+  /// manages saved payment methods.
+  final String? customerId;
+
+  /// Method type of the most recent successful payment
+  /// (`'upi' | 'card' | 'netbanking' | 'wallet'`).
+  final String? lastPaymentMethod;
+
+  /// Human-friendly summary of the most recent payment method, e.g.
+  /// `'UPI · maya@okhdfcbank'` or `'Card · HDFC •• 4421'`. Pre-formatted
+  /// server-side; the UI just renders it.
+  final String? lastPaymentMethodSummary;
+
   const BillingInfo({
     required this.tier,
     required this.status,
@@ -48,6 +62,9 @@ class BillingInfo extends Equatable {
     this.lastPaymentPaise,
     this.lastPaymentId,
     this.endedAt,
+    this.customerId,
+    this.lastPaymentMethod,
+    this.lastPaymentMethodSummary,
   });
 
   bool get isActive => status == 'active';
@@ -69,6 +86,14 @@ class BillingInfo extends Equatable {
     return '₹${(lastPaymentPaise! / 100).toStringAsFixed(0)}';
   }
 
+  /// Razorpay customer-portal URL derived from [customerId]. Returns null when
+  /// the customer ID is missing (legacy users from before the webhook captured
+  /// it). The UI hides the "Manage in Razorpay" button when this is null.
+  String? get customerPortalUrl {
+    if (customerId == null || customerId!.isEmpty) return null;
+    return 'https://dashboard.razorpay.com/app/customer/$customerId';
+  }
+
   static const empty = BillingInfo(tier: 'free', status: 'none');
 
   @override
@@ -82,5 +107,8 @@ class BillingInfo extends Equatable {
     lastPaymentPaise,
     lastPaymentId,
     endedAt,
+    customerId,
+    lastPaymentMethod,
+    lastPaymentMethodSummary,
   ];
 }

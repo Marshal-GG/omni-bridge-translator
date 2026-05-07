@@ -343,6 +343,9 @@ Created automatically on first login by `SubscriptionService._initializeUserDoc(
   "lastPaymentId": "pay_XXXXX",
   "lastPaymentAt": "2026-04-17T10:22:00Z",
   "lastPaymentAmountPaise": 79900,
+  "lastPaymentMethod": "upi",
+  "lastPaymentMethodSummary": "UPI · maya@okhdfcbank",
+  "razorpayCustomerId": "cust_NXqM92",
   "subscriptionEndedAt": null,
   "lastQuotaExceededAt": null,
   "forceLogout": false,
@@ -366,6 +369,9 @@ Created automatically on first login by `SubscriptionService._initializeUserDoc(
 | `lastPaymentId` | `string?` | Webhook — activated + charged + captured | Razorpay payment ID (`pay_XXXXX`) of the most recent successful payment. |
 | `lastPaymentAt` | `Timestamp?` | Webhook — activated + charged + captured | Timestamp of the most recent successful payment. |
 | `lastPaymentAmountPaise` | `number?` | Webhook — activated + charged + captured | Amount of the most recent payment in paise (÷ 100 = ₹). |
+| `lastPaymentMethod` | `string?` | Webhook — activated + charged + captured | Method type of the most recent payment: `upi` \| `card` \| `netbanking` \| `wallet`. Drives the method column in the Billing screen invoice table. |
+| `lastPaymentMethodSummary` | `string?` | Webhook — activated + charged + captured | Pre-formatted human-friendly summary, e.g. `"UPI · maya@okhdfcbank"`, `"Card · HDFC •• 4421"`, `"Net Banking · HDFC"`. Built server-side in `buildMethodSummary()`. |
+| `razorpayCustomerId` | `string?` | Webhook — first activation only | Razorpay customer ID (`cust_XXXXX`). Drives the "Manage in Razorpay" button on the Billing screen via `BillingInfo.customerPortalUrl`. Never overwritten once set. Pre-redesign users won't have it — backfill is tracked in [29 §16](../04_features/29_billing_screen_redesign.md#16-implementation-status-shipped). |
 | `lastQuotaExceededAt` | `Timestamp?` | On quota hit | Server timestamp of the most recent daily cap breach. |
 | `forceLogout` | `bool` | Admin write | **Global** logout flag. Admin sets `true` to kick; rules allow user-reset to `false` only after kick. |
 | `trial_used` | `bool?` | Trial activation | Set to `true` when the user activates their one-time trial. Prevents re-activation. |
@@ -400,6 +406,8 @@ Written by `razorpayWebhook` Cloud Function on every payment/lifecycle event. Al
   "subscriptionId": "sub_XXXXX",
   "paymentId": "pay_XXXXX",
   "amountPaise": 79900,
+  "method": "upi",
+  "methodSummary": "UPI · maya@okhdfcbank",
   "timestamp": "2026-05-17T10:22:00Z"
 }
 ```
@@ -412,6 +420,9 @@ Written by `razorpayWebhook` Cloud Function on every payment/lifecycle event. Al
 | `tier` | `string?` | `subscription_renewed` | Current tier at time of renewal |
 | `paymentId` | `string?` | `activated` · `renewed` · `upgraded` | Razorpay payment ID (`pay_XXXXX`) |
 | `amountPaise` | `number?` | `activated` · `renewed` · `upgraded` | Payment amount in paise (÷ 100 = ₹) |
+| `method` | `string?` | `activated` · `renewed` · `upgraded` | Razorpay method type: `upi` \| `card` \| `netbanking` \| `wallet`. Mirrors `lastPaymentMethod` on the user doc. |
+| `methodSummary` | `string?` | `activated` · `renewed` · `upgraded` | Pre-formatted method line — e.g. `"UPI · maya@okhdfcbank"`. Surfaced in the Billing screen invoice table's METHOD column. |
+| `invoiceUrl` | `string?` | `activated` · `renewed` (when available) | Razorpay-hosted PDF invoice URL. Drives the per-row download icon in `BillingInvoiceTable`. **Currently always null** — capturing it from `payload.invoice.entity.short_url` is tracked as follow-up #1 in [29 §16](../04_features/29_billing_screen_redesign.md#16-implementation-status-shipped). |
 | `subscriptionId` | `string?` | All subscription events | Razorpay subscription ID (`sub_XXXXX`) |
 | `accessEndsAt` | `Timestamp?` | `subscription_cancelled` | When the billing period actually ends — from Razorpay `current_end` |
 | `timestamp` | `Timestamp` | All | Server timestamp of the event |

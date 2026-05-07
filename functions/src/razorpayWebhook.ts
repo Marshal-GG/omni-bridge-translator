@@ -197,6 +197,48 @@ function thirtyDaysFromNow(): admin.firestore.Timestamp {
   );
 }
 
+/**
+ * Builds a human-friendly one-line summary for the most recent payment, e.g.
+ *   UPI:        "UPI · maya@okhdfcbank"
+ *   Card:       "Card · HDFC •• 4421"
+ *   Netbanking: "Net Banking · HDFC"
+ *   Wallet:     "Wallet · Paytm"
+ *
+ * Razorpay's payment.entity exposes different detail fields per method, and
+ * not all are present (especially in test mode). This is a best-effort summary
+ * — falls back to the bare method name if details are missing. Returns null
+ * when the method itself is unknown.
+ */
+function buildMethodSummary(payEntity: Record<string, unknown>): string | null {
+  const method = payEntity.method as string | undefined;
+  if (!method) return null;
+  switch (method) {
+    case "upi": {
+      const vpa = payEntity.vpa as string | undefined;
+      return vpa ? `UPI · ${vpa}` : "UPI";
+    }
+    case "card": {
+      const card = payEntity.card as Record<string, unknown> | undefined;
+      const issuer = (card?.issuer as string | undefined) ??
+        (card?.network as string | undefined);
+      const last4 = card?.last4 as string | undefined;
+      if (issuer && last4) return `Card · ${issuer} •• ${last4}`;
+      if (last4) return `Card •• ${last4}`;
+      return "Card";
+    }
+    case "netbanking": {
+      const bank = payEntity.bank as string | undefined;
+      return bank ? `Net Banking · ${bank}` : "Net Banking";
+    }
+    case "wallet": {
+      const wallet = payEntity.wallet as string | undefined;
+      return wallet ? `Wallet · ${wallet}` : "Wallet";
+    }
+    default:
+      return method;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // payment.captured  (one-time payment link flow)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -228,6 +270,9 @@ async function handlePaymentCaptured(body: unknown): Promise<void> {
     if (!snap.exists) throw new Error(`User not found: ${uid}`);
 
     const amountPaise = (entity.amount as number) ?? 0;
+    const method = entity.method as string | undefined;
+    const methodSummary = buildMethodSummary(entity);
+    const customerId = entity.customer_id as string | undefined;
 
     const update: Record<string, unknown> = {
       tier,
@@ -237,6 +282,9 @@ async function handlePaymentCaptured(body: unknown): Promise<void> {
       lastPaymentId: paymentId,
       lastPaymentAt: now,
       ...(amountPaise > 0 && {lastPaymentAmountPaise: amountPaise}),
+      ...(method && {lastPaymentMethod: method}),
+      ...(methodSummary && {lastPaymentMethodSummary: methodSummary}),
+      ...(customerId && !snap.data()?.razorpayCustomerId && {razorpayCustomerId: customerId}),
     };
     if (!snap.data()?.subscriptionSince) {
       update.subscriptionSince = now;
@@ -250,6 +298,8 @@ async function handlePaymentCaptured(body: unknown): Promise<void> {
       via: "razorpay_payment_link",
       paymentId,
       ...(amountPaise > 0 && {amountPaise}),
+      ...(method && {method}),
+      ...(methodSummary && {methodSummary}),
       timestamp: now,
     });
   });
@@ -286,6 +336,10 @@ async function handleSubscriptionActivated(body: unknown): Promise<void> {
   const planId = entity.plan_id as string | undefined;
   const firstPaymentId = payEntity.id as string | undefined;
   const firstPaymentAmount = (payEntity.amount as number) ?? 0;
+  const firstPaymentMethod = payEntity.method as string | undefined;
+  const firstPaymentMethodSummary = buildMethodSummary(payEntity);
+  const customerId = (entity.customer_id as string | undefined) ??
+    (payEntity.customer_id as string | undefined);
   const email = (payEntity.email as string | undefined) ??
     (entity.customer_email as string | undefined);
 
@@ -320,6 +374,9 @@ async function handleSubscriptionActivated(body: unknown): Promise<void> {
       // First payment details
       ...(firstPaymentId && {lastPaymentId: firstPaymentId}),
       ...(firstPaymentAmount > 0 && {lastPaymentAmountPaise: firstPaymentAmount}),
+      ...(firstPaymentMethod && {lastPaymentMethod: firstPaymentMethod}),
+      ...(firstPaymentMethodSummary && {lastPaymentMethodSummary: firstPaymentMethodSummary}),
+      ...(customerId && !snap.data()?.razorpayCustomerId && {razorpayCustomerId: customerId}),
       lastPaymentAt: now,
     };
     if (!snap.data()?.subscriptionSince) {
@@ -334,6 +391,8 @@ async function handleSubscriptionActivated(body: unknown): Promise<void> {
       subscriptionId: subId,
       ...(firstPaymentId && {paymentId: firstPaymentId}),
       ...(firstPaymentAmount > 0 && {amountPaise: firstPaymentAmount}),
+      ...(firstPaymentMethod && {method: firstPaymentMethod}),
+      ...(firstPaymentMethodSummary && {methodSummary: firstPaymentMethodSummary}),
       timestamp: now,
     });
   });
@@ -351,6 +410,8 @@ async function handleSubscriptionCharged(body: unknown): Promise<void> {
   const subId = subEntity.id as string | undefined;
   const paymentId = (payEntity.id as string) ?? "unknown";
   const amountPaise = (payEntity.amount as number) ?? 0;
+  const method = payEntity.method as string | undefined;
+  const methodSummary = buildMethodSummary(payEntity);
 
   if (!subId) {
     logger.error("subscription.charged — missing subId");
@@ -379,6 +440,8 @@ async function handleSubscriptionCharged(body: unknown): Promise<void> {
       lastPaymentId: paymentId,
       lastPaymentAmountPaise: amountPaise,
       lastPaymentAt: now,
+      ...(method && {lastPaymentMethod: method}),
+      ...(methodSummary && {lastPaymentMethodSummary: methodSummary}),
     });
 
     txn.set(userRef.collection("subscription_events").doc(), {
@@ -388,6 +451,8 @@ async function handleSubscriptionCharged(body: unknown): Promise<void> {
       subscriptionId: subId,
       paymentId,
       amountPaise,
+      ...(method && {method}),
+      ...(methodSummary && {methodSummary}),
       timestamp: now,
     });
   });

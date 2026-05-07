@@ -47,9 +47,9 @@ omni_bridge/
 │       │   ├── data/                # HistoryRemoteDataSource
 │       │   └── presentation/        # HistoryBloc, HistoryScreen
 │       ├── subscription/            # Quota & monetization
-│       │   ├── domain/              # ISubscriptionRepository · UseCases (GetSubscriptionStatus, GetAvailablePlans, ActivateTrial, OpenCheckout, HasUsedTrial, CancelSubscription, ResumeSubscription)
+│       │   ├── domain/              # ISubscriptionRepository · UseCases (GetSubscriptionStatus, GetAvailablePlans, ActivateTrial, OpenCheckout, HasUsedTrial, CancelSubscription, ResumeSubscription, GetBillingPeriodSummary) · Entities (BillingInfo, BillingPeriodSummary, PaymentEvent, SubscriptionPlan)
 │       │   ├── data/                # SubscriptionRepositoryImpl, SubscriptionRemoteDataSource
-│       │   └── presentation/        # SubscriptionBloc, SubscriptionScreen, BillingScreen, PlanCard, BillingCycleToggle, PlanCompareTable, PlanFaqSection, TrustPanel, BottomTrialCta
+│       │   └── presentation/        # SubscriptionBloc · Screens (SubscriptionScreen, BillingScreen) · Subscription widgets (PlanCard, BillingCycleToggle, PlanCompareTable, PlanFaqSection, TrustPanel, BottomTrialCta) · Billing widgets (BillingSubscriptionCard, BillingUsageCard, BillingPaymentMethodNotice, BillingInvoiceTable, BillingFootnote)
 │       ├── startup/                 # Bootstrapping & onboarding
 │       │   ├── domain/              # Entities (UpdateInfo, StartupPhase), Repositories (IStartupRepository, IUpdateRepository), UseCases (RunStartupSequence, CheckForUpdateUseCase)
 │       │   ├── data/                # StartupRepositoryImpl, UpdateRepositoryImpl (wrap StartupRemoteDataSource and UpdateRemoteDataSource)

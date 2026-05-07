@@ -19,12 +19,29 @@ class PaymentEvent extends Equatable {
   /// Razorpay subscription ID (`sub_XXXXX`).
   final String? subscriptionId;
 
+  /// Payment method type — `'upi' | 'card' | 'netbanking' | 'wallet'` — written
+  /// by `razorpayWebhook` from `payment.entity.method`. Null for non-charge
+  /// events and for legacy events written before the field was added.
+  final String? method;
+
+  /// Human-friendly summary of the method, e.g. `'UPI · maya@okhdfcbank'` or
+  /// `'Card · HDFC •• 4421'`. Derived server-side from `payment.entity` —
+  /// nullable because Razorpay doesn't always include the underlying detail.
+  final String? methodSummary;
+
+  /// Razorpay-hosted invoice PDF URL. Opened externally via `url_launcher`;
+  /// the app never generates its own invoices.
+  final String? invoiceUrl;
+
   const PaymentEvent({
     required this.event,
     required this.timestamp,
     this.paymentId,
     this.amountPaise,
     this.subscriptionId,
+    this.method,
+    this.methodSummary,
+    this.invoiceUrl,
   });
 
   bool get isCharge =>

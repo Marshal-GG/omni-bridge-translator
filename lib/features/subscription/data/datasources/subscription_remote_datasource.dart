@@ -130,6 +130,9 @@ class SubscriptionRemoteDataSource implements IResettable {
               amountPaise: (data['amountPaise'] as num?)?.toInt(),
               timestamp: ts,
               subscriptionId: data['subscriptionId'] as String?,
+              method: data['method'] as String?,
+              methodSummary: data['methodSummary'] as String?,
+              invoiceUrl: data['invoiceUrl'] as String?,
             );
           })
           .whereType<PaymentEvent>()
@@ -393,6 +396,9 @@ class SubscriptionRemoteDataSource implements IResettable {
               lastPaymentPaise: (data['lastPaymentAmountPaise'] as num?)?.toInt(),
               lastPaymentId: data['lastPaymentId'] as String?,
               endedAt: (data['subscriptionEndedAt'] as Timestamp?)?.toDate(),
+              customerId: data['razorpayCustomerId'] as String?,
+              lastPaymentMethod: data['lastPaymentMethod'] as String?,
+              lastPaymentMethodSummary: data['lastPaymentMethodSummary'] as String?,
             );
           });
         });
@@ -603,6 +609,9 @@ class SubscriptionRemoteDataSource implements IResettable {
       lastPaymentPaise: current.lastPaymentPaise,
       lastPaymentId: current.lastPaymentId,
       endedAt: current.nextBillingAt, // best estimate until webhook fires
+      customerId: current.customerId,
+      lastPaymentMethod: current.lastPaymentMethod,
+      lastPaymentMethodSummary: current.lastPaymentMethodSummary,
     );
 
     return null;
@@ -679,6 +688,9 @@ class SubscriptionRemoteDataSource implements IResettable {
       lastPaymentPaise: current.lastPaymentPaise,
       lastPaymentId: current.lastPaymentId,
       endedAt: null,
+      customerId: current.customerId,
+      lastPaymentMethod: current.lastPaymentMethod,
+      lastPaymentMethodSummary: current.lastPaymentMethodSummary,
     );
 
     return null;

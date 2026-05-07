@@ -163,13 +163,17 @@ A public HTTP endpoint registered in Razorpay Dashboard → Settings → Webhook
 
 | Event | Handler | Action |
 |---|---|---|
-| `payment.captured` | `handlePaymentCaptured` | One-time payment: upgrades tier, resets monthly quota |
+| `payment.captured` | `handlePaymentCaptured` | One-time payment: upgrades tier, resets monthly quota, captures payment method + customer ID |
 | `payment.failed` | `handlePaymentFailed` | Logs only — Flutter handles pending timeout itself |
-| `subscription.activated` | `handleSubscriptionActivated` | First charge: sets tier, stores `razorpaySubscriptionId` |
-| `subscription.charged` | `handleSubscriptionCharged` | Monthly renewal: resets `monthlyTokensUsed`, extends `monthlyResetAt` |
+| `subscription.activated` | `handleSubscriptionActivated` | First charge: sets tier, stores `razorpaySubscriptionId`, captures `razorpayCustomerId` (first activation only) and method details |
+| `subscription.charged` | `handleSubscriptionCharged` | Monthly renewal: resets `monthlyTokensUsed`, extends `monthlyResetAt`, refreshes payment method (user may have changed it between cycles) |
 | `subscription.halted` | `handleSubscriptionTerminated` | Renewal failed: downgrades to free |
-| `subscription.cancelled` | `handleSubscriptionTerminated` | User cancelled: downgrades to free |
+| `subscription.cancelled` | `handleSubscriptionCancelled` | User cancelled: marks `subscriptionStatus: "cancelled"` + `subscriptionEndedAt: current_end`, **keeps tier paid** until period ends |
 | `subscription.completed` | `handleSubscriptionTerminated` | Plan ended: downgrades to free |
+
+**Method capture** (`buildMethodSummary`): On every charge event, the webhook reads `payload.payment.entity` and writes both the raw method type (`upi` / `card` / `netbanking` / `wallet`) and a pre-formatted summary string (`"UPI · maya@okhdfcbank"`, `"Card · HDFC •• 4421"`) to the user doc + the `subscription_events` audit row. The Billing screen surfaces this in the invoice table's METHOD column and in the `BillingPaymentMethodNotice` widget. See [29 §5.1](29_billing_screen_redesign.md#51-capture-payment-method-on-paymentevent).
+
+**Customer ID capture**: `razorpayCustomerId` is captured **once** on first activation (whichever fires first: `payment.captured` or `subscription.activated`). Drives the "Manage in Razorpay" deep link via `BillingInfo.customerPortalUrl`. Existing pre-redesign users won't have it — backfill is tracked in [29 §13](29_billing_screen_redesign.md#13-risks--open-questions).
 
 **UID Resolution** (`resolveUid`): Three strategies tried in order:
 1. `notes.uid` — set by `createSubscription` (primary, always present for new subscriptions)
@@ -224,7 +228,8 @@ Razorpay charges user on billing date
      └─ resolveUid: notes.uid OR razorpaySubscriptionId query
      └─ resets monthlyTokensUsed = 0
      └─ extends monthlyResetAt = now + 30 days
-     └─ writes lastPaymentId, lastPaymentAmountPaise
+     └─ writes lastPaymentId, lastPaymentAmountPaise, lastPaymentMethod, lastPaymentMethodSummary
+     └─ writes subscription_events row with method + methodSummary for invoice history
      └─ app detects monthlyResetAt change → UI refreshes
 ```
 
@@ -282,10 +287,13 @@ subscription.halted / subscription.cancelled / subscription.completed
 | `lastPaymentId` | `captured`, `charged` | Razorpay payment ID |
 | `lastPaymentAmountPaise` | `charged` | Amount in paise |
 | `lastPaymentAt` | `captured`, `charged` | Server timestamp |
+| `lastPaymentMethod` | `captured`, `activated`, `charged` | `upi` / `card` / `netbanking` / `wallet` |
+| `lastPaymentMethodSummary` | `captured`, `activated`, `charged` | Pre-formatted method line (e.g. `"UPI · maya@okhdfcbank"`) |
+| `razorpayCustomerId` | First activation only | Captured once, never overwritten — drives `customerPortalUrl` |
 
 ### Subscription Event Audit Trail
 
-Every tier change is written to `users/{uid}/subscription_events/{push-id}`:
+Every tier change is written to `users/{uid}/subscription_events/{push-id}`. Charge rows additionally carry `method`, `methodSummary`, and (when captured) `invoiceUrl` — the Billing screen renders these directly:
 
 ```json
 {
@@ -293,9 +301,15 @@ Every tier change is written to `users/{uid}/subscription_events/{push-id}`:
   "to": "pro",
   "via": "razorpay_subscription",
   "subscriptionId": "sub_XXXXX",
+  "paymentId": "pay_XXXXX",
+  "amountPaise": 79900,
+  "method": "upi",
+  "methodSummary": "UPI · maya@okhdfcbank",
   "timestamp": "..."
 }
 ```
+
+> Full field schema is documented in [07 — Database Schema § Subscription Events](../02_architecture/07_database_schema.md#0a-subscription-events--usersuidsubscription_eventspush-id).
 
 ---
 

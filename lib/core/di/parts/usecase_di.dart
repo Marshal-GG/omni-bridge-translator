@@ -59,6 +59,7 @@ void initUseCaseDI() {
   sl.registerLazySingleton(() => CheckEngineLimitUseCase(sl()));
   sl.registerLazySingleton(() => CancelSubscriptionUseCase(sl()));
   sl.registerLazySingleton(() => ResumeSubscriptionUseCase(sl()));
+  sl.registerLazySingleton(() => GetBillingPeriodSummary(sl()));
 
   // Startup
   sl.registerLazySingleton(
