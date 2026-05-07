@@ -78,3 +78,61 @@ class ConfigHandler(BaseHandler):
         if self.ctx.audio_capture:
             self.ctx.audio_capture.desktop_volume = max(0.0, self.ctx.config["desktop_volume"])
             self.ctx.audio_capture.mic_volume = max(0.0, self.ctx.config["mic_volume"])
+
+    async def update_devices(self, websocket, msg: Dict[str, Any]):
+        """Hot-swap input / output capture devices.
+
+        The Flutter Settings screen sends this whenever the user picks a
+        different mic or desktop output. We update the meter streams in-place
+        (cheap — just re-opens two pyaudio streams). If a translation session
+        is currently running, the actual capture pipeline is restarted with
+        the new devices via a light SessionHandler.start (no model reload).
+        """
+        new_input = msg.get("input_device_index", self.ctx.config["input_device_index"])
+        new_output = msg.get("output_device_index", self.ctx.config["output_device_index"])
+
+        changed_input = self.ctx.config["input_device_index"] != new_input
+        changed_output = self.ctx.config["output_device_index"] != new_output
+        if not (changed_input or changed_output):
+            return
+
+        self.ctx.config["input_device_index"] = new_input
+        self.ctx.config["output_device_index"] = new_output
+
+        # Hot-swap the meter (cheap, idempotent — restarts streams in-place).
+        try:
+            self.ctx.audio_meter.configure(
+                input_device_index=new_input,
+                output_device_index=new_output,
+            )
+        except Exception as e:
+            logging.error(f"[Handler] device_update meter reconfigure failed: {e}")
+
+        # If a session is live, do a light restart so capture re-opens with
+        # the new devices. Models are kept warm.
+        if self.ctx.is_running:
+            logging.info("[Handler] device_update during live session — light restart.")
+            from .session_handler import SessionHandler
+            await SessionHandler(self.ctx).start(
+                websocket, self.ctx.config, reload_models=False,
+            )
+
+    async def update_mic(self, websocket, msg: Dict[str, Any]):
+        """Toggle the active capture source between mic and desktop audio.
+
+        Mirrors `update_devices` but for the use_mic flag — switching sources
+        mid-session needs the capture pipeline to re-open with the new mode,
+        so we do a light SessionHandler.start when running.
+        """
+        new_mic = msg.get("use_mic", self.ctx.config["use_mic"])
+        if self.ctx.config["use_mic"] == new_mic:
+            return
+
+        self.ctx.config["use_mic"] = bool(new_mic)
+
+        if self.ctx.is_running:
+            logging.info(f"[Handler] mic_update use_mic={new_mic} during live session — light restart.")
+            from .session_handler import SessionHandler
+            await SessionHandler(self.ctx).start(
+                websocket, self.ctx.config, reload_models=False,
+            )

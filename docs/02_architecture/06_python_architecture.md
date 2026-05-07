@@ -142,11 +142,14 @@ Bridges the async FastAPI event loop with background worker threads:
 
 | Command | Purpose | Key Fields |
 |---|---|---|
-| `start` | Begin audio session | `source`, `target`, `transcription_model`, `translation_model`, `use_mic`, `api_key`, `google_credentials`, plus dynamic `riva_` function IDs. Also `quota_daily_used` (chars used today) and `quota_daily_limit` (daily cap, `-1` = unlimited) for server-side quota enforcement. |
+| `start` | Begin audio session | `source`, `target`, `transcription_model`, `translation_model`, `use_mic`, `api_key`, `google_credentials`, plus dynamic `riva_` function IDs. Also `quota_daily_used` (chars used today) and `quota_daily_limit` (daily cap, `-1` = unlimited) for server-side quota enforcement. Each `start` increments `ctx.session_id` so the previous `audio_poll_loop` exits via `session_id != ctx.session_id` even if `is_running` flaps. |
 | `stop` | End audio session | (none) |
-| `settings_update` | Change settings mid-session | Same as `start` plus `model_changed: bool` — if `false`, backend skips model reinitialization |
+| `settings_update` | Change settings mid-session | Same as `start` plus `model_changed: bool` — if `false`, backend skips model reinitialization (light restart). On any light restart `ASRDispatcher.reset_dedup_state()` runs so a fresh first transcript isn't suppressed by the 6-second dedup window from the prior session. |
 | `volume_update` | Adjust gain in real-time | `desktop_volume`, `mic_volume` |
+| `device_update` | Hot-swap input / output capture devices without a full restart | `input_device_index?`, `output_device_index?`. Updates `ctx.config`, calls `audio_meter.configure(...)` to re-open meter streams in place, and triggers a light `SessionHandler.start(reload_models=False)` if a session is currently running. |
+| `mic_update` | Toggle the active capture source between microphone and desktop audio | `use_mic` (bool). Same light-restart semantics as `device_update` since the capture pipeline must re-open with the new source. |
 | `list_devices` | Enumerate WASAPI devices | (none) |
+| `reset_session` | Force the server to a clean idle state (no active stream, default config) | (none). Used by Flutter on logout / app restart. |
 
 ---
 

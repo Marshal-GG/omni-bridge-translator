@@ -80,6 +80,15 @@ class SessionHandler(BaseHandler):
                 await self.stop(websocket, msg)
                 await asyncio.sleep(0.5)
 
+            # Bump session_id BEFORE spawning the new audio_poll_loop so any
+            # zombie old loop (whose `is_running_func` could in theory flap
+            # back to True between stop() and the new is_running=True line)
+            # exits via the `session_id != ctx.session_id` mismatch check in
+            # audio_poll_loop. Lang-change light-restarts share the same
+            # orchestrator instance — without this the old loop and new loop
+            # both look like "session 0" and the lifecycle is ambiguous.
+            self.ctx.session_id += 1
+
             if self.ctx.orchestrator is None:
                 self.ctx.orchestrator = InferenceOrchestrator(
                     nvidia_api_key=self.ctx.config["nvidia_nim_key"],

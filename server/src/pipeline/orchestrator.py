@@ -165,7 +165,11 @@ class InferenceOrchestrator:
         self.asr_dispatcher.transcription_model = transcription_model.lower().strip()
         self.asr_dispatcher.source_lang = source_lang
         self.asr_dispatcher.sample_rate = sample_rate
-        
+        # Clear stale recent-transcript memory — without this, the first
+        # transcript of a lang-change light restart can be suppressed for
+        # up to 6s if it happens to match the OLD session's last transcript.
+        self.asr_dispatcher.reset_dedup_state()
+
         self.translation_dispatcher.source_lang = source_lang
         self.translation_dispatcher.target_lang = target_lang
         self.translation_dispatcher.translation_model = translation_model.lower().strip()

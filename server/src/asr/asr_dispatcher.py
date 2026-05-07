@@ -26,12 +26,22 @@ class ASRDispatcher:
         
         self.transcription_model = "online"
         self.source_lang = "auto"
-        
+
         self.seg = pysbd.Segmenter(language="en", clean=False)
         self._last_transcript: Optional[str] = None
         self._last_transcript_time: float = 0.0
         self._DEDUP_WINDOW_S = 6.0
         self._ASR_RMS_THRESHOLD = 120
+
+    def reset_dedup_state(self):
+        """Clear the recent-transcript dedup memory.
+
+        Called by `orchestrator.start_stream` so that lang-change light
+        restarts don't accidentally suppress the first transcript of the
+        new session because it happens to match a stale entry from before.
+        """
+        self._last_transcript = None
+        self._last_transcript_time = 0.0
 
     def process_chunk(self, chunk: Any, config: Any) -> Optional[Dict[str, Any]]:
         """

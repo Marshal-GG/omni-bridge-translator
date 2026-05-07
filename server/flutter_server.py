@@ -46,6 +46,8 @@ router.register("start", session_h.start)
 router.register("stop", session_h.stop)
 router.register("settings_update", config_h.update_settings)
 router.register("volume_update", config_h.update_volume)
+router.register("device_update", config_h.update_devices)
+router.register("mic_update", config_h.update_mic)
 router.register("list_devices", device_h.list_devices)
 router.register("reset_session", status_h.reset_session)
 
