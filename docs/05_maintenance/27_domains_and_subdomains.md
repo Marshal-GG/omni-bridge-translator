@@ -101,7 +101,7 @@ All records are managed in Cloudflare DNS for the `marshalx.dev` zone (shared wi
 | DNSSEC | Enabled | Prevents DNS hijacking. |
 | Proxy default for new records | OFF | Firebase needs explicit proxy decisions; safer to opt in than out. |
 | TTL | Auto (~5 min) | Lets us flip records quickly during incidents. |
-| Email DMARC/SPF | Out of scope | No `support@omnibridge.marshalx.dev` email yet. When added, document SPF/DKIM/DMARC here. |
+| Email DMARC/SPF | **Required next** | The address `support@omnibridge.marshalx.dev` is now referenced in-product (7-day money-back card in [`trust_panel.dart`](../../lib/features/subscription/presentation/widgets/trust_panel.dart) and the trial CTA flow). The mailbox itself still needs to be provisioned and SPF/DKIM/DMARC published. Until that's done, refunds reaching that address will bounce. |
 
 ---
 

@@ -21,7 +21,7 @@ import 'package:omni_bridge/features/subscription/domain/entities/payment_event.
 Color _accentColor(BillingInfo info) {
   if (info.isHalted || info.isCancelPending) return Colors.orange.shade400;
   return switch (info.tier.toLowerCase()) {
-    'enterprise' => const Color(0xFFFFD700),
+    'enterprise' => AppColors.splashPurple,
     'pro'        => Colors.tealAccent,
     'trial'      => Colors.purpleAccent,
     _            => Colors.white38,
@@ -651,7 +651,7 @@ class _ActionsSectionState extends State<_ActionsSection> {
             _OutlineBtn(
               label: 'Upgrade to Enterprise',
               icon: Icons.workspace_premium_rounded,
-              color: const Color(0xFFFFD700),
+              color: AppColors.splashPurple,
               onTap: () => Navigator.pushReplacementNamed(
                   context, AppRouter.subscription),
             ),

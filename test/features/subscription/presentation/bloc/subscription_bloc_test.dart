@@ -156,4 +156,38 @@ void main() {
       expect(bloc.state.isLoading, isFalse);
     },
   );
+
+  test('initial state has billingCycle=monthly', () {
+    final bloc = buildBloc();
+    expect(bloc.state.billingCycle, BillingCycle.monthly);
+    bloc.close();
+  });
+
+  blocTest<SubscriptionBloc, SubscriptionState>(
+    'updates billingCycle when SubscriptionBillingCycleChanged is added',
+    build: buildBloc,
+    act: (bloc) async {
+      await Future.delayed(const Duration(milliseconds: 50));
+      bloc.add(const SubscriptionBillingCycleChanged(BillingCycle.yearly));
+    },
+    wait: const Duration(milliseconds: 100),
+    verify: (bloc) {
+      expect(bloc.state.billingCycle, BillingCycle.yearly);
+    },
+  );
+
+  blocTest<SubscriptionBloc, SubscriptionState>(
+    'toggles billingCycle back to monthly',
+    build: buildBloc,
+    act: (bloc) async {
+      await Future.delayed(const Duration(milliseconds: 50));
+      bloc
+        ..add(const SubscriptionBillingCycleChanged(BillingCycle.yearly))
+        ..add(const SubscriptionBillingCycleChanged(BillingCycle.monthly));
+    },
+    wait: const Duration(milliseconds: 100),
+    verify: (bloc) {
+      expect(bloc.state.billingCycle, BillingCycle.monthly);
+    },
+  );
 }

@@ -69,7 +69,7 @@ All counters use **atomic increments** — concurrent writes are safe.
 
 1. `lastQuotaExceededAt` is written to Firestore.
 2. Translation is paused — `TranslationBloc` checks `SubscriptionStatus.isExceeded`.
-3. The UI displays the contextual `UpgradeSheet` for free-tier users.
+3. The user is directed to the Subscription screen (`/subscription`) where the redesigned plan grid + compare table walks them through upgrading. The previous `UpgradeSheet` modal was removed in favour of this full-screen flow — see [28 — Subscription Screen Redesign](28_subscription_screen_redesign.md).
 
 #### Per-Engine Monthly Limit Exceeded (Hybrid Approach)
 
@@ -317,6 +317,8 @@ Maps tier IDs to Razorpay plan IDs. Read by `createSubscription` to resolve whic
 ```
 
 > Update these values when switching from test to production plans (see [Going Live](#going-live)).
+
+> **Yearly billing — display only (as of 2026-05-07).** The Subscription screen's Monthly/Yearly toggle and the `Save 27% billed yearly` line are computed client-side in [`plan_card.dart`](../../lib/features/subscription/presentation/widgets/plan_card.dart) `_pricingFor()`. There are no `pro_yearly` / `enterprise_yearly` Razorpay plans seeded in `plan_ids` yet. When a user picks "Yearly" and clicks Upgrade, checkout still uses the monthly plan ID. Wiring real yearly plans is a follow-up: seed `pro_yearly` / `enterprise_yearly` rows here, then update `OpenCheckout(tierId, cycle)` to resolve the right plan ID. See [28 — Subscription Screen Redesign §15](28_subscription_screen_redesign.md#15-implementation-status-shipped) for what shipped and what's deferred.
 
 ### `function_urls` map
 

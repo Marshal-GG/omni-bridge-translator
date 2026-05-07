@@ -36,6 +36,7 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     on<SubscriptionStatusUpdated>(_onStatusUpdated);
     on<SubscriptionActivateTrial>(_onActivateTrial);
     on<SubscriptionOpenCheckout>(_onOpenCheckout);
+    on<SubscriptionBillingCycleChanged>(_onBillingCycleChanged);
 
     // Initial load
     add(SubscriptionLoaded());
@@ -108,6 +109,13 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     Emitter<SubscriptionState> emit,
   ) async {
     await _openCheckout(event.tierId);
+  }
+
+  void _onBillingCycleChanged(
+    SubscriptionBillingCycleChanged event,
+    Emitter<SubscriptionState> emit,
+  ) {
+    emit(state.copyWith(billingCycle: event.cycle));
   }
 
   @override

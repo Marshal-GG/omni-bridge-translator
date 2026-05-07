@@ -239,3 +239,50 @@ Per [CLAUDE.md doc map](../../CLAUDE.md#documentation-update-map), when this red
 - Update [DESIGN.md](../../DESIGN.md) if any new theme tokens, motion durations, or component patterns are added.
 - Update the [Global widget library](../../CLAUDE.md#global-widget-library--check-before-building) table in CLAUDE.md if any of the new widgets graduate from `lib/features/subscription/presentation/widgets/` to `lib/core/widgets/`.
 - Mark the relevant entry ✅ in [23 — Pre-Launch TODO](../../docs/05_maintenance/23_pre_launch_todo.md) if this redesign was on the list.
+
+## 15. Implementation status (shipped)
+
+Steps 1–7 of [§9 Implementation order](#9-implementation-order) all landed. Files:
+
+| Step | Files |
+|---|---|
+| 1 — `BillingCycle` state + event + handler + tests | [`subscription_state.dart`](../../lib/features/subscription/presentation/bloc/subscription_state.dart), [`subscription_event.dart`](../../lib/features/subscription/presentation/bloc/subscription_event.dart), [`subscription_bloc.dart`](../../lib/features/subscription/presentation/bloc/subscription_bloc.dart), [`subscription_bloc_test.dart`](../../test/features/subscription/presentation/bloc/subscription_bloc_test.dart) (+3 new bloc tests) |
+| 2 — `BillingCycleToggle` | [`billing_cycle_toggle.dart`](../../lib/features/subscription/presentation/widgets/billing_cycle_toggle.dart) |
+| 3 — Plan card restyle | [`plan_card.dart`](../../lib/features/subscription/presentation/widgets/plan_card.dart) — hover lift, ribbons, dual-price |
+| 4 — Layout shell rewrite + hero block | [`subscription_screen.dart`](../../lib/features/subscription/presentation/screens/subscription_screen.dart) — `_HeroBlock` + Manage Billing link |
+| 5 — Plan compare table | [`plan_compare_table.dart`](../../lib/features/subscription/presentation/widgets/plan_compare_table.dart) |
+| 6 — FAQ + Trust panel | [`plan_faq_section.dart`](../../lib/features/subscription/presentation/widgets/plan_faq_section.dart), [`trust_panel.dart`](../../lib/features/subscription/presentation/widgets/trust_panel.dart) |
+| 7 — Bottom trial CTA | [`bottom_trial_cta.dart`](../../lib/features/subscription/presentation/widgets/bottom_trial_cta.dart) |
+
+### Departures from the plan
+
+- **Yearly cycle: shipped Option B (display-only).** Yearly prices `₹6,990` (Pro) and `₹49,990` (Enterprise) are computed in [`plan_card.dart`](../../lib/features/subscription/presentation/widgets/plan_card.dart) `_pricingFor()`. Yearly checkout still uses the monthly Razorpay plan ID — wiring up real yearly plan documents in `monetization_config` is a follow-up tracked in [16 — Monetization Plan](16_monetization_plan.md).
+- **"Show details" toggle removed from plan cards.** Per-engine token caps moved into the comparison table instead. Each engine row in [`plan_compare_table.dart`](../../lib/features/subscription/presentation/widgets/plan_compare_table.dart) renders the cap from `engineLimits` (e.g. `250K/mo`), `✓` if no cap, or `—` if not in the plan's `allowedTranslationModels` / `allowedTranscriptionModels`. Removed `_buildToggle`, `_buildExpandedDetails`, `_expanded` state, `_SectionLabel`, `_DetailChip`, `_collapseWhisperModels` from `plan_card.dart`.
+- **Compare table is fully data-driven.** Initially planned as hardcoded marketing rows mirroring the prototype. Final implementation reads `monetization_config` via `state.plans` for quota + engine rows; only generic feature rows (translation history limit, custom NIM key, admin panel, priority support) stay hardcoded keyed by tier id.
+- **Compare table collapses by default.** `_collapsedRowCount = 5` shows the four quota rows + one feature; "Show N more features" toggle expands to all rows. Added because the data-driven table grew long once engines were inlined.
+- **Enterprise accent: purple, not gold.** Prototype used `#FFD700`; product preference was [`AppColors.splashPurple`](../../lib/core/theme/app_theme.dart) (`#8B5CF6`). Applied in plan card, compare table, and propagated to [`billing_screen.dart`](../../lib/features/subscription/presentation/screens/billing_screen.dart) for consistency (the gold hex was removed in the same audit).
+- **No card glow.** Plan card now sets `hasGlow: false` everywhere instead of `plan.isTrial || plan.isPopular` — prototype is flat.
+- **Equal card heights via `IntrinsicHeight`.** Plan card row wraps in [`IntrinsicHeight`](../../lib/features/subscription/presentation/screens/subscription_screen.dart) and the inner card `Column` drops `mainAxisSize.min` + wraps `_buildFeatures()` in `Expanded`, pushing CTAs to the bottom across all cards.
+- **Hero block defensive layout.** Right-side group (`BillingCycleToggle` + Manage Billing button) wrapped in `Flexible(Wrap)` to handle narrow window widths without `RenderFlex` overflow.
+- **Plan card price row** wraps both price + period in `Flexible` with `maxLines: 1` + ellipsis, so long Enterprise yearly prices don't overflow narrow cards.
+- **Support email** referenced in [`trust_panel.dart`](../../lib/features/subscription/presentation/widgets/trust_panel.dart) is `support@omnibridge.marshalx.dev` — see [27 — Domains & Subdomains](../../docs/05_maintenance/27_domains_and_subdomains.md) for SPF/DKIM/DMARC setup status.
+- **Manage Billing nav** uses `Navigator.pushReplacementNamed(AppRouter.billing)` to match the dashboard's nav-rail convention ([`app_navigation_rail.dart:419`](../../lib/features/shell/presentation/widgets/app_navigation_rail.dart#L419)).
+- **Widget barrel exports skipped.** [`subscription.dart`](../../lib/features/subscription/subscription.dart) doesn't export feature widgets in any other slice, so the new widgets follow the existing convention (relative imports from the screen).
+- **Widget tests skipped.** The repo has zero widget tests across all 7 features — the testing convention is bloc-only. Adding widget tests for the 5 new widgets would diverge. The 3 new bloc tests for `SubscriptionBillingCycleChanged` cover the only stateful addition.
+
+### Architecture audit (clean)
+
+| Check | Status |
+|---|---|
+| `print` / `debugPrint` in new code | None |
+| Silent exception swallowing | None |
+| Cross-feature `data/` imports | None |
+| `.instance` outside data layer | None |
+| Hardcoded Firestore paths outside [`firebase_paths.dart`](../../lib/core/constants/firebase_paths.dart) | None |
+| Generated files modified | None |
+| iOS/Android/macOS platform code | None |
+| Presentation→domain via `ISubscriptionRepository` interface (DI) | All call sites correct |
+| Hex literals introduced in new code | None |
+| Hex literals fixed in adjacent existing code | `#FFD700` (gold enterprise) → `AppColors.splashPurple` in [`billing_screen.dart`](../../lib/features/subscription/presentation/screens/billing_screen.dart). The legacy `upgrade_sheet.dart` (with its `#161616` literal) was deleted entirely — quota-exceeded users now route to the redesigned Subscription screen instead of a modal. |
+| `flutter analyze` | Zero issues across `lib/features/subscription/` and `test/features/subscription/` |
+| `flutter test` (subscription bloc) | 8/8 pass |

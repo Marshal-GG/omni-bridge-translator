@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:omni_bridge/features/usage/domain/entities/quota_status.dart';
 
+import 'subscription_state.dart';
+
 abstract class SubscriptionEvent extends Equatable {
   const SubscriptionEvent();
 
@@ -28,4 +30,13 @@ class SubscriptionOpenCheckout extends SubscriptionEvent {
 
   @override
   List<Object?> get props => [tierId];
+}
+
+class SubscriptionBillingCycleChanged extends SubscriptionEvent {
+  final BillingCycle cycle;
+
+  const SubscriptionBillingCycleChanged(this.cycle);
+
+  @override
+  List<Object?> get props => [cycle];
 }

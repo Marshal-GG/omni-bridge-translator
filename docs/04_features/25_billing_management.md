@@ -316,8 +316,10 @@ Exposed on `ISubscriptionRepository` (backed by `SubscriptionRemoteDataSource`).
 
 - **Route**: `/billing`
 - **Nav rail**: Billing tile between Subscription and Usage Analytics — icon `Icons.receipt_long_rounded`
+- **Subscription screen header**: "Manage Billing" outline button in [`subscription_screen.dart`](../../lib/features/subscription/presentation/screens/subscription_screen.dart) `_HeroBlock` calls `Navigator.pushReplacementNamed(AppRouter.billing)`. This is the primary entry point from the Plans page after the [redesign](28_subscription_screen_redesign.md).
 - **Window mode**: dashboard
 - **Back button**: shown in `OmniHeader` via `onBack: () => Navigator.pop(context)`
+- **Tier accent colour**: Enterprise renders as `AppColors.splashPurple` (#8B5CF6) to match the Subscription screen — see [28 — Subscription Screen Redesign §15](28_subscription_screen_redesign.md#15-implementation-status-shipped) for the full tier→colour map.
 
 ---
 

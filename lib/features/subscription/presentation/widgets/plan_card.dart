@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../domain/entities/subscription_plan.dart';
+import '../bloc/subscription_state.dart';
 import 'package:intl/intl.dart';
 import 'package:omni_bridge/core/di/di.dart';
+import 'package:omni_bridge/core/theme/app_theme.dart';
 import 'package:omni_bridge/features/subscription/domain/repositories/i_subscription_repository.dart';
 import 'package:omni_bridge/core/widgets/omni_card.dart';
 
@@ -10,12 +12,14 @@ Widget buildPlanCard({
   required SubscriptionPlan plan,
   bool isCurrent = false,
   bool trialUsed = false,
+  BillingCycle billingCycle = BillingCycle.monthly,
   required NumberFormat formatter,
 }) {
   return _PlanCard(
     plan: plan,
     isCurrent: isCurrent,
     trialUsed: trialUsed,
+    billingCycle: billingCycle,
     formatter: formatter,
   );
 }
@@ -26,12 +30,14 @@ class _PlanCard extends StatefulWidget {
   final SubscriptionPlan plan;
   final bool isCurrent;
   final bool trialUsed;
+  final BillingCycle billingCycle;
   final NumberFormat formatter;
 
   const _PlanCard({
     required this.plan,
     required this.isCurrent,
     required this.trialUsed,
+    required this.billingCycle,
     required this.formatter,
   });
 
@@ -40,9 +46,9 @@ class _PlanCard extends StatefulWidget {
 }
 
 class _PlanCardState extends State<_PlanCard> with WidgetsBindingObserver {
-  bool _expanded = false;
   bool _ctaLoading = false;
   bool _paymentPending = false;
+  bool _hovered = false;
   Timer? _pendingTimeout;
   Timer? _resumeGraceTimer;
 
@@ -105,27 +111,29 @@ class _PlanCardState extends State<_PlanCard> with WidgetsBindingObserver {
   SubscriptionPlan get plan => widget.plan;
   NumberFormat get fmt => widget.formatter;
 
-  Color get _accentColor => plan.isTrial
-      ? Colors.amberAccent
-      : plan.isPopular
-      ? Colors.tealAccent
-      : Colors.white70;
+  Color get _accentColor {
+    if (plan.id == 'enterprise') return AppColors.splashPurple;
+    if (plan.isTrial) return Colors.amberAccent;
+    if (plan.isPopular) return Colors.tealAccent;
+    return Colors.white70;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final cardBaseColor = plan.isTrial
+    final cardBaseColor = plan.id == 'enterprise'
+        ? AppColors.splashPurple
+        : plan.isTrial
         ? Colors.amberAccent
         : plan.isPopular
         ? Colors.tealAccent
         : Colors.white;
 
-    return OmniCard(
+    final card = OmniCard(
       baseColor: cardBaseColor,
-      hasGlow: plan.isTrial || plan.isPopular,
+      hasGlow: false,
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
           _buildHeader(),
           const SizedBox(height: 4),
@@ -142,15 +150,57 @@ class _PlanCardState extends State<_PlanCard> with WidgetsBindingObserver {
           const SizedBox(height: 10),
           const Divider(color: Colors.white12, height: 1),
           const SizedBox(height: 10),
-          _buildFeatures(),
-          _buildToggle(),
-          if (_expanded) ...[
-            const SizedBox(height: 8),
-            _buildExpandedDetails(),
-          ],
+          Expanded(child: _buildFeatures()),
           const SizedBox(height: 12),
           _buildCta(),
         ],
+      ),
+    );
+
+    final showPopularRibbon = plan.isPopular;
+    final showCurrentRibbon = widget.isCurrent && !plan.isPopular;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        transform: _hovered
+            ? (Matrix4.identity()..translateByDouble(0, -3, 0, 1))
+            : Matrix4.identity(),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            card,
+            if (showPopularRibbon)
+              Positioned(
+                top: -8,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: _PlanRibbon(
+                    label: 'MOST POPULAR',
+                    accent: Colors.tealAccent,
+                    solid: true,
+                  ),
+                ),
+              ),
+            if (showCurrentRibbon)
+              Positioned(
+                top: -8,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: _PlanRibbon(
+                    label: 'YOUR PLAN',
+                    accent: _accentColor,
+                    solid: false,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -174,9 +224,7 @@ class _PlanCardState extends State<_PlanCard> with WidgetsBindingObserver {
             label: widget.trialUsed ? 'USED' : 'ONE-TIME',
             color: Colors.amberAccent,
             dim: widget.trialUsed,
-          )
-        else if (plan.isPopular)
-          const _Badge(label: 'POPULAR', color: Colors.tealAccent),
+          ),
       ],
     );
   }
@@ -184,13 +232,52 @@ class _PlanCardState extends State<_PlanCard> with WidgetsBindingObserver {
   // ── Price ───────────────────────────────────────────────────────────────────
 
   Widget _buildPrice() {
-    return Text(
-      plan.price,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 22,
-        fontWeight: FontWeight.w700,
-      ),
+    final pricing = _pricingFor(plan, widget.billingCycle);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Flexible(
+              child: Text(
+                pricing.displayPrice,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(
+                  pricing.displayPeriod,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (pricing.discountPercent > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              'Save ${pricing.discountPercent}% billed yearly',
+              style: TextStyle(
+                color: _accentColor,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -266,103 +353,6 @@ class _PlanCardState extends State<_PlanCard> with WidgetsBindingObserver {
           ],
         ),
       )).toList(),
-    );
-  }
-
-  // ── Show/Hide details toggle ──────────────────────────────────────────────────
-
-  Widget _buildToggle() {
-    final hasEngines = plan.allowedTranslationModels.isNotEmpty ||
-        plan.allowedTranscriptionModels.isNotEmpty;
-    if (!hasEngines) return const SizedBox.shrink();
-
-    return GestureDetector(
-      onTap: () => setState(() => _expanded = !_expanded),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _expanded ? 'Hide details' : 'Show details',
-                style: TextStyle(
-                  color: _accentColor.withValues(alpha: 0.7),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(width: 3),
-              Icon(
-                _expanded
-                    ? Icons.keyboard_arrow_up_rounded
-                    : Icons.keyboard_arrow_down_rounded,
-                size: 13,
-                color: _accentColor.withValues(alpha: 0.7),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Expanded details ──────────────────────────────────────────────────────────
-
-  Widget _buildExpandedDetails() {
-    final src = sl<ISubscriptionRepository>();
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (plan.allowedTranslationModels.isNotEmpty) ...[
-            _SectionLabel(label: 'TRANSLATION ENGINES', color: _accentColor),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: plan.allowedTranslationModels.map((m) {
-                final limit = plan.engineLimits[m];
-                final suffix = limit != null
-                    ? ' (${fmt.format(limit)}/mo)'
-                    : '';
-                return _DetailChip(
-                  label: '${src.getModelDisplayName(m)}$suffix',
-                  color: _accentColor,
-                );
-              }).toList(),
-            ),
-          ],
-          if (plan.allowedTranslationModels.isNotEmpty &&
-              plan.allowedTranscriptionModels.isNotEmpty)
-            const SizedBox(height: 10),
-          if (plan.allowedTranscriptionModels.isNotEmpty) ...[
-            _SectionLabel(label: 'TRANSCRIPTION ENGINES', color: _accentColor),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: _collapseWhisperModels(plan.allowedTranscriptionModels)
-                  .map((m) => _DetailChip(
-                        label: m == 'whisper'
-                            ? 'Whisper (all variants)'
-                            : src.getModelDisplayName(m),
-                        color: _accentColor,
-                      ))
-                  .toList(),
-            ),
-          ],
-        ],
-      ),
     );
   }
 
@@ -537,67 +527,69 @@ class _QuotaRow extends StatelessWidget {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
+// ── Ribbon ────────────────────────────────────────────────────────────────────
+
+class _PlanRibbon extends StatelessWidget {
   final String label;
-  final Color color;
+  final Color accent;
+  final bool solid;
 
-  const _SectionLabel({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: TextStyle(
-        color: color.withValues(alpha: 0.5),
-        fontSize: 8,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 0.8,
-      ),
-    );
-  }
-}
-
-class _DetailChip extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _DetailChip({required this.label, required this.color});
+  const _PlanRibbon({
+    required this.label,
+    required this.accent,
+    required this.solid,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        color: solid ? accent : AppColors.bgDeepest,
+        borderRadius: AppShapes.sm,
+        border: solid
+            ? null
+            : Border.all(color: accent.withValues(alpha: 0.4)),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: color.withValues(alpha: 0.8),
           fontSize: 9,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1,
+          color: solid ? AppColors.black : accent,
         ),
       ),
     );
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Pricing helper ────────────────────────────────────────────────────────────
 
-List<String> _collapseWhisperModels(List<String> models) {
-  final result = <String>[];
-  var whisperAdded = false;
-  for (final m in models) {
-    if (m.startsWith('whisper-')) {
-      if (!whisperAdded) {
-        result.add('whisper');
-        whisperAdded = true;
-      }
-    } else {
-      result.add(m);
+class _PlanPricing {
+  final String displayPrice;
+  final String displayPeriod;
+  final int discountPercent;
+
+  const _PlanPricing(
+    this.displayPrice,
+    this.displayPeriod,
+    this.discountPercent,
+  );
+}
+
+_PlanPricing _pricingFor(SubscriptionPlan plan, BillingCycle cycle) {
+  if (cycle == BillingCycle.yearly) {
+    if (plan.id == 'pro') return const _PlanPricing('₹6,990', 'per year', 27);
+    if (plan.id == 'enterprise') {
+      return const _PlanPricing('₹49,990', 'per year', 17);
     }
   }
-  return result;
+  final period = plan.isTrial
+      ? '24 hours'
+      : plan.id == 'free'
+      ? 'forever'
+      : 'per month';
+  return _PlanPricing(plan.price, period, 0);
 }
+
