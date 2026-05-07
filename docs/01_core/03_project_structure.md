@@ -42,10 +42,10 @@ omni_bridge/
 │       │   ├── domain/              # UseCases (LoadDevices, ObserveAudioLevels, SyncSettings)
 │       │   ├── data/                # SettingsRemoteDataSource, StorageService
 │       │   └── presentation/        # SettingsBloc, SettingsScreen
-│       ├── history/                 # Caption history storage
-│       │   ├── domain/              # UseCases (GetLiveHistory, GetChunkedHistory, ClearHistory)
-│       │   ├── data/                # HistoryRemoteDataSource
-│       │   └── presentation/        # HistoryBloc, HistoryScreen
+│       ├── history/                 # Caption history storage (in-memory, session-scoped)
+│       │   ├── domain/              # UseCases (GetLiveHistory, GetChunkedHistory, ClearHistory, ConfigureHistory, AddHistoryEntry, GetVisibleHistory) · Entity (HistoryEntry with nullable `engine` field)
+│       │   ├── data/                # HistoryLocalDataSource (in-memory ValueNotifiers; `removeEntry` for single-row delete; `activeEngineProvider` lambda passed in by Translation feature) · HistoryRepositoryImpl
+│       │   └── presentation/        # HistoryBloc (search/langFilter state, no selection — entries aren't tappable) · HistoryPanel inside AppDashboardShell with three independent panes (lang sidebar / live history / 5-sec re-translations) · components (HistoryEntryCard, HistoryDayGroup, HistoryEmptyState, HistoryLangSidebar, HistoryStorageNotice, HistoryTierGate, history_lang_metadata helpers)
 │       ├── subscription/            # Quota & monetization
 │       │   ├── domain/              # ISubscriptionRepository · UseCases (GetSubscriptionStatus, GetAvailablePlans, ActivateTrial, OpenCheckout, HasUsedTrial, CancelSubscription, ResumeSubscription, GetBillingPeriodSummary) · Entities (BillingInfo, BillingPeriodSummary, PaymentEvent, SubscriptionPlan)
 │       │   ├── data/                # SubscriptionRepositoryImpl, SubscriptionRemoteDataSource

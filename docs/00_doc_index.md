@@ -50,6 +50,7 @@
 | 27 | [27_domains_and_subdomains.md](05_maintenance/27_domains_and_subdomains.md) | Maintainers | Public-facing hostnames (`omnibridge.marshalx.dev`, UAT), Firebase Hosting setup, Cloudflare DNS records, CI deploy targets |
 | 28 | [28_subscription_screen_redesign.md](04_features/28_subscription_screen_redesign.md) | Developers | Implementation plan to rebuild the Subscription screen from the `Monetization.html` prototype — billing cycle toggle, compare table, FAQ, trust panel |
 | 29 | [29_billing_screen_redesign.md](04_features/29_billing_screen_redesign.md) | Developers | Billing screen rebuilt from the `Billing.html` prototype (shipped) — scoped to the Razorpay-via-URL model; subscription + usage hero row, invoice table with method column, customer-portal link, footnote |
+| 30 | [30_history_screen_redesign.md](04_features/30_history_screen_redesign.md) | Developers | History screen rebuilt from the `History.html` prototype (shipped) — moves into `AppDashboardShell`; final layout is three independent borderless panes (lang sidebar / live history newest-first / 5-sec re-translations gated to Enterprise) with hover-only Copy + Delete. Includes server-side fixes for missing `device_update`/`mic_update` handlers and the language-change "stuck session" bug. In-memory session-only model unchanged (persistence tracked as follow-up). |
 
 ---
 
